@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Wallet } from "lucide-react";
+import { ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Wallet, Clock } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { MOCK_ESCROWS, Escrow, MOCK_GUARDIANS } from "@/lib/mockData";
@@ -27,7 +27,7 @@ export function EscrowMarketplace() {
     queryKey: ['escrows'],
     queryFn: async () => MOCK_ESCROWS,
     initialData: MOCK_ESCROWS,
-    staleTime: 60000, // 1 min cache
+    staleTime: 30000, // 30s cache
     gcTime: 300000, // 5 min garbage collection
   });
 
@@ -199,9 +199,6 @@ export function EscrowMarketplace() {
                           <SelectContent>
                             <SelectItem value="ETH">ETH (Base)</SelectItem>
                             <SelectItem value="$BASED">$BASED Token</SelectItem>
-                            <SelectItem value="BTC">BTC (Wrapped)</SelectItem>
-                            <SelectItem value="XRP">XRP (Pegged)</SelectItem>
-                            <SelectItem value="XLM">XLM (Pegged)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -238,6 +235,47 @@ export function EscrowMarketplace() {
 
 function EscrowCard({ escrow, onBuy, isConnected }: { escrow: Escrow, onBuy: () => void, isConnected: boolean }) {
   const isCompleted = escrow.status === 'Completed';
+  
+  // Real Admin Check
+  const { address } = useAccount();
+  const adminWallet = import.meta.env.VITE_ADMIN_WALLET;
+  const isAdmin = isConnected && address && adminWallet && address.toLowerCase() === adminWallet.toLowerCase();
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleCancel = () => {
+      queryClient.setQueryData(['escrows'], (old: Escrow[] = []) => 
+        old.filter(e => e.id !== escrow.id)
+      );
+      toast({
+        title: "Listing Cancelled",
+        description: "Admin override executed. Asset returned to seller.",
+        className: "bg-black border-red-500 text-red-500 font-orbitron",
+      });
+  };
+
+  // Expiration Timer Logic (24h default)
+  const [timeLeft, setTimeLeft] = useState("");
+  useEffect(() => {
+    if (isCompleted) return;
+    const timer = setInterval(() => {
+        const created = new Date(escrow.createdAt).getTime();
+        const expires = created + (24 * 60 * 60 * 1000);
+        const now = new Date().getTime();
+        const distance = expires - now;
+
+        if (distance < 0) {
+            setTimeLeft("EXPIRED");
+            clearInterval(timer);
+        } else {
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            setTimeLeft(`${hours}h ${minutes}m`);
+        }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [escrow.createdAt, isCompleted]);
 
   return (
     <Card className={`group relative overflow-hidden bg-card border-white/10 hover:border-primary/50 transition-all duration-300 ${isCompleted ? 'opacity-75' : ''}`}>
@@ -269,7 +307,14 @@ function EscrowCard({ escrow, onBuy, isConnected }: { escrow: Escrow, onBuy: () 
 
       {/* Content Area */}
       <div className="p-4">
-        <h4 className="text-lg font-orbitron text-white mb-4 truncate">{escrow.assetName}</h4>
+        <div className="flex justify-between items-start mb-4">
+           <h4 className="text-lg font-orbitron text-white truncate flex-1 mr-2">{escrow.assetName}</h4>
+           {!isCompleted && (
+             <Badge variant="outline" className="text-[10px] h-5 border-white/20 text-muted-foreground">
+               <Clock size={10} className="mr-1" /> {timeLeft || "24h"}
+             </Badge>
+           )}
+        </div>
         
         <div className="flex justify-between items-end mb-4">
           <div>
@@ -280,23 +325,31 @@ function EscrowCard({ escrow, onBuy, isConnected }: { escrow: Escrow, onBuy: () 
           </div>
         </div>
 
-        {isCompleted ? (
-          <Button disabled className="w-full bg-primary/20 text-primary border border-primary/20 min-h-[44px]">
-            <CheckCircle2 className="mr-2 h-4 w-4" /> SOLD
-          </Button>
-        ) : (
-          <Button 
-            onClick={onBuy} 
-            disabled={!isConnected}
-            className="w-full bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary transition-all font-orbitron min-h-[44px]"
-          >
-            {isConnected ? (
-              <>
-                <ShoppingBag className="mr-2 h-4 w-4" /> BUY NOW
-              </>
-            ) : "CONNECT TO BUY"}
-          </Button>
-        )}
+        <div className="space-y-2">
+            {isCompleted ? (
+            <Button disabled className="w-full bg-primary/20 text-primary border border-primary/20 min-h-[44px]">
+                <CheckCircle2 className="mr-2 h-4 w-4" /> SOLD
+            </Button>
+            ) : (
+            <Button 
+                onClick={onBuy} 
+                disabled={!isConnected || timeLeft === "EXPIRED"}
+                className="w-full bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary transition-all font-orbitron min-h-[44px]"
+            >
+                {isConnected ? (
+                <>
+                    <ShoppingBag className="mr-2 h-4 w-4" /> {timeLeft === "EXPIRED" ? "EXPIRED" : "BUY NOW"}
+                </>
+                ) : "CONNECT TO BUY"}
+            </Button>
+            )}
+            
+            {isAdmin && !isCompleted && (
+                <Button onClick={handleCancel} variant="destructive" size="sm" className="w-full h-8 text-xs font-mono bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">
+                    ADMIN CANCEL
+                </Button>
+            )}
+        </div>
       </div>
     </Card>
   );

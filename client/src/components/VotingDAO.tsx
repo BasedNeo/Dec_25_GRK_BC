@@ -41,7 +41,7 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
       return MOCK_PROPOSALS;
     },
     initialData: MOCK_PROPOSALS,
-    staleTime: 60000,
+    staleTime: 30000,
     gcTime: 300000,
   });
 
@@ -103,7 +103,8 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
             <Badge variant="outline" className="mb-2 border-accent/50 text-accent font-mono">GOVERNANCE</Badge>
             <h2 className="text-3xl md:text-4xl text-white mb-4">COUNCIL <span className="text-accent">DECISIONS</span></h2>
             <p className="text-muted-foreground font-rajdhani max-w-2xl">
-              Shape the future of the Based Guardians. 1 NFT = 1 Vote. Proposals are binding.
+              Shape the future of the Based Guardians. 1 NFT = 1 Vote. 
+              <span className="block mt-1 text-primary text-sm font-semibold">Votes are advisory — final decision by admin.</span>
             </p>
           </div>
           

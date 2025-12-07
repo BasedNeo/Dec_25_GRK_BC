@@ -1,0 +1,41 @@
+You have already built a working Based Command App with minting, wallet connect (RainbowKit), supply counter, cyberpunk UI, and tabs (Mint / Gallery / DAO / Pool). Do NOT rebuild anything.
+
+Now add and polish the following features only:
+
+1. NFT Gallery Tab  
+   - Fetch real Guardians NFTs from VITE_NFT_CONTRACT using Alchemy + VITE_ALCHEMY_KEY  
+   - Responsive grid with image, name, traits  
+   - Show total owned = vote power (1 NFT = 1 vote)
+
+2. NFT Value Estimation (show in Gallery)  
+   - Real-time pool balance = Ethers call to VITE_BASED_TOKEN.balanceOf(VITE_POOL_WALLET)  
+   - Per-NFT value = pool balance ÷ 3732  
+   - Total value = per-NFT × owned count  
+   - +30% boost if metadata.rarity === "rare" (use placeholder rare tokenIDs: [1,5,10])  
+   - Display clearly with refresh button
+
+3. Voting DAO Tab (advisory only)  
+   - Admin-only propose form (gate by VITE_ADMIN_WALLET)  
+   - Fields: description, options (yes/no or A/B/C/D), expiration timestamp (datepicker)  
+   - List all active proposals with countdown timer  
+   - Vote buttons (For/Against or A/B/C/D) weighted by NFT count  
+   - Non-admin wallets: view-only  
+   - Add note: "Votes are advisory — final decision by admin"
+
+4. Sales / Escrow Tab (simple version)  
+   - Start with ETH and $Based only (no wrapped ETH)  
+   - Seller creates listing: commit NFT or $Based amount + price in ETH or $Based  
+   - Buyer clicks "Buy" → pays exact amount → asset auto-transfers  
+   - List all active sales with timer (24h default)  
+   - Admin cancel button (VITE_ADMIN_WALLET)  
+   - Use safe transferFrom + ReentrancyGuard
+
+5. Global polish & security  
+   - Fix any remaining console errors / red overlay  
+   - Ensure mobile responsive (test on phone)  
+   - Add confetti on mint and successful sale  
+   - Cache all reads with react-query (30s refresh)  
+   - All env vars already exist — use them  
+   - Keep everything production-ready for Vercel deploy
+
+Do only these additions. Keep the current design and structure. Thank you!

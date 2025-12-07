@@ -29,7 +29,7 @@ export function useGuardians(useMockData: boolean = false) {
              type: attr.trait_type,
              value: attr.value
           })) || [],
-          rarity: (nft.raw.metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value === 'Rare' || [1,2,3].includes(parseInt(nft.tokenId))) ? 'Rare' : 'Common'
+          rarity: (nft.raw.metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value === 'Rare' || [1,5,10].includes(parseInt(nft.tokenId))) ? 'Rare' : 'Common'
         }));
       } catch (e) {
         console.warn("Failed to fetch real NFTs, falling back to empty/mock", e);
@@ -37,6 +37,6 @@ export function useGuardians(useMockData: boolean = false) {
       }
     },
     enabled: isConnected || useMockData,
-    staleTime: 60000,
+    staleTime: 30000,
   });
 }
