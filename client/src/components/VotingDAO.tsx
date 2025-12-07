@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MOCK_PROPOSALS, Proposal } from "@/lib/mockData";
-import { Vote, Clock, Check, X, PlusCircle } from "lucide-react";
+import { Vote, Clock, Check, X, PlusCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { useGuardians } from "@/hooks/useGuardians";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface VotingDAOProps {
   isConnected: boolean; // Legacy
@@ -21,17 +24,58 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   const { openConnectModal } = useConnectModal();
   const [showProposalForm, setShowProposalForm] = useState(false);
   const { toast } = useToast();
+  const { data: guardians } = useGuardians();
+  const queryClient = useQueryClient();
 
-  // Mock Admin Check (In real app, check owner() on contract)
-  // For demo, we treat specific address or just anyone connected as "admin" if enabled
-  const isAdmin = true; 
+  const votePower = guardians?.length || 0;
 
-  const handlePropose = (e: React.FormEvent) => {
+  // Real Admin Check
+  const adminWallet = import.meta.env.VITE_ADMIN_WALLET;
+  const isAdmin = isConnected && address && adminWallet && address.toLowerCase() === adminWallet.toLowerCase();
+
+  // Mock Proposal Fetching with React Query
+  const { data: proposals } = useQuery({
+    queryKey: ['proposals'],
+    queryFn: async () => {
+      // In a real app, this would fetch from backend/contract
+      return MOCK_PROPOSALS;
+    },
+    initialData: MOCK_PROPOSALS
+  });
+
+  const handlePropose = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const newProposal: Proposal = {
+      id: (proposals?.length || 0) + 1,
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      type: formData.get('type') as 'binary' | 'multiple',
+      options: formData.get('type') === 'binary' 
+        ? [
+            { id: 'yes', label: 'For', votes: 0 },
+            { id: 'no', label: 'Against', votes: 0 },
+            { id: 'abstain', label: 'Abstain', votes: 0 }
+          ]
+        : [
+            { id: 'a', label: formData.get('optionA') as string, votes: 0 },
+            { id: 'b', label: formData.get('optionB') as string, votes: 0 },
+            { id: 'c', label: formData.get('optionC') as string, votes: 0 },
+            { id: 'd', label: formData.get('optionD') as string, votes: 0 },
+          ].filter(o => o.label), // Filter out empty options
+      status: 'Active',
+      endTime: new Date(formData.get('endTime') as string).toISOString(),
+      totalVotes: 0
+    };
+
+    // Update Cache (Optimistic)
+    queryClient.setQueryData(['proposals'], (old: Proposal[] = []) => [newProposal, ...old]);
+
     setShowProposalForm(false);
     toast({
-      title: "Proposal Submitted",
-      description: "Your initiative has been broadcast to the DAO for review.",
+      title: "Proposal Created",
+      description: "Your initiative is now live for voting.",
       className: "bg-black border-primary text-primary font-orbitron",
     });
   };
@@ -50,7 +94,7 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
             </p>
           </div>
           
-          {isConnected && isAdmin && !showProposalForm && (
+          {isAdmin && !showProposalForm && (
             <Button 
               onClick={() => setShowProposalForm(true)}
               className="mt-4 md:mt-0 bg-accent text-white hover:bg-accent/80 font-orbitron"
@@ -66,13 +110,35 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
              <form onSubmit={handlePropose} className="space-y-4">
                <div>
                  <label className="text-xs font-mono text-muted-foreground mb-1 block">TITLE</label>
-                 <Input placeholder="Enter proposal title..." className="bg-black/50 border-white/10 text-white" required />
+                 <Input name="title" placeholder="Enter proposal title..." className="bg-black/50 border-white/10 text-white" required />
                </div>
                <div>
                  <label className="text-xs font-mono text-muted-foreground mb-1 block">DESCRIPTION</label>
-                 <Textarea placeholder="Describe the initiative and funding required..." className="bg-black/50 border-white/10 text-white min-h-[100px]" required />
+                 <Textarea name="description" placeholder="Describe the initiative and funding required..." className="bg-black/50 border-white/10 text-white min-h-[100px]" required />
                </div>
-               <div className="flex gap-4 pt-2">
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                   <label className="text-xs font-mono text-muted-foreground mb-1 block">TYPE</label>
+                   <Select name="type" defaultValue="binary">
+                     <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                       <SelectValue placeholder="Select Type" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="binary">Yes/No/Abstain</SelectItem>
+                       <SelectItem value="multiple">Multiple Choice (A/B/C/D)</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 <div>
+                   <label className="text-xs font-mono text-muted-foreground mb-1 block">END TIME</label>
+                   <Input name="endTime" type="datetime-local" className="bg-black/50 border-white/10 text-white" required />
+                 </div>
+               </div>
+
+               {/* Conditional Options inputs could go here for Multiple Choice, simplifying for prototype */}
+               
+               <div className="flex gap-4 pt-4">
                  <Button type="submit" className="bg-primary text-black hover:bg-primary/90">SUBMIT ON-CHAIN</Button>
                  <Button type="button" variant="ghost" onClick={() => setShowProposalForm(false)} className="text-muted-foreground">CANCEL</Button>
                </div>
@@ -82,8 +148,14 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {MOCK_PROPOSALS.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} isConnected={isConnected} onConnect={openConnectModal} />
+            {proposals?.map((proposal) => (
+              <ProposalCard 
+                key={proposal.id} 
+                proposal={proposal} 
+                isConnected={isConnected} 
+                onConnect={openConnectModal}
+                votePower={votePower}
+              />
             ))}
           </div>
 
@@ -92,8 +164,9 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
               <h3 className="font-orbitron text-lg text-white mb-4">YOUR VOTING POWER</h3>
               {isConnected ? (
                 <div className="text-center py-8">
-                  <div className="text-5xl font-black text-primary mb-2 text-glow">4</div>
+                  <div className="text-5xl font-black text-primary mb-2 text-glow">{votePower}</div>
                   <div className="text-sm text-muted-foreground">VOTES AVAILABLE</div>
+                  <p className="text-xs text-muted-foreground mt-2">(1 Guardian = 1 Vote)</p>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -120,16 +193,60 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   );
 }
 
-function ProposalCard({ proposal, isConnected, onConnect }: { proposal: Proposal, isConnected: boolean, onConnect: (() => void) | undefined }) {
-  const totalVotes = proposal.votesFor + proposal.votesAgainst + proposal.votesAbstain;
-  const percentFor = (proposal.votesFor / totalVotes) * 100;
-  const percentAgainst = (proposal.votesAgainst / totalVotes) * 100;
+function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposal: Proposal, isConnected: boolean, onConnect: (() => void) | undefined, votePower: number }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [timeLeft, setTimeLeft] = useState("");
 
-  const handleVote = (type: 'For' | 'Against') => {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const end = new Date(proposal.endTime).getTime();
+      const distance = end - now;
+
+      if (distance < 0) {
+        setTimeLeft("EXPIRED");
+        clearInterval(timer);
+      } else {
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        setTimeLeft(`${days}d ${hours}h left`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [proposal.endTime]);
+
+  const handleVote = (optionId: string) => {
+    if (votePower === 0) {
+      toast({
+        title: "No Voting Power",
+        description: "You need to own at least one Guardian to vote.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Optimistic Update
+    queryClient.setQueryData(['proposals'], (old: Proposal[] = []) => {
+      return old.map(p => {
+        if (p.id === proposal.id) {
+          const newOptions = p.options.map(o => 
+            o.id === optionId ? { ...o, votes: o.votes + votePower } : o
+          );
+          return {
+            ...p,
+            options: newOptions,
+            totalVotes: p.totalVotes + votePower
+          };
+        }
+        return p;
+      });
+    });
+
     toast({
-      title: "Vote Cast",
-      description: `You successfully voted ${type} on Proposal #${proposal.id}`,
+      title: "Vote Cast Successfully",
+      description: `You cast ${votePower} votes for option: ${proposal.options.find(o => o.id === optionId)?.label}`,
       className: "bg-black border-accent text-accent font-orbitron",
     });
   };
@@ -145,7 +262,8 @@ function ProposalCard({ proposal, isConnected, onConnect }: { proposal: Proposal
           {proposal.status}
         </Badge>
         <div className="text-xs text-muted-foreground flex items-center">
-          <Clock size={12} className="mr-1" /> Ends {new Date(proposal.endTime).toLocaleDateString()}
+          <Clock size={12} className="mr-1" /> 
+          {timeLeft || "Calculating..."}
         </div>
       </div>
 
@@ -153,35 +271,36 @@ function ProposalCard({ proposal, isConnected, onConnect }: { proposal: Proposal
       <p className="text-muted-foreground mb-6 text-sm">{proposal.description}</p>
 
       <div className="space-y-4 mb-6">
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-white">For</span>
-            <span className="text-white">{Math.round(percentFor)}%</span>
-          </div>
-          <Progress value={percentFor} className="h-1 bg-white/10" />
-        </div>
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-white">Against</span>
-            <span className="text-white">{Math.round(percentAgainst)}%</span>
-          </div>
-          <Progress value={percentAgainst} className="h-1 bg-white/10" /> 
-        </div>
+        {proposal.options.map(option => {
+          const percentage = proposal.totalVotes > 0 ? (option.votes / proposal.totalVotes) * 100 : 0;
+          return (
+            <div key={option.id}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white">{option.label}</span>
+                <span className="text-white">{Math.round(percentage)}% ({option.votes})</span>
+              </div>
+              <Progress value={percentage} className="h-1 bg-white/10" />
+            </div>
+          );
+        })}
       </div>
 
-      {proposal.status === 'Active' && (
-        <div className="flex gap-3">
+      {proposal.status === 'Active' && timeLeft !== "EXPIRED" && (
+        <div className="grid grid-cols-2 gap-3">
           {isConnected ? (
-            <>
-              <Button onClick={() => handleVote('For')} size="sm" className="flex-1 bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/50">
-                <Check size={16} className="mr-2" /> VOTE FOR
+            proposal.options.map(option => (
+              <Button 
+                key={option.id}
+                onClick={() => handleVote(option.id)} 
+                size="sm" 
+                variant="outline"
+                className="border-white/10 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+              >
+                {option.label}
               </Button>
-              <Button onClick={() => handleVote('Against')} size="sm" className="flex-1 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/50">
-                <X size={16} className="mr-2" /> VOTE AGAINST
-              </Button>
-            </>
+            ))
           ) : (
-            <Button onClick={onConnect} variant="outline" size="sm" className="w-full">
+            <Button onClick={onConnect} variant="outline" size="sm" className="col-span-2 w-full">
               Connect to Vote
             </Button>
           )}

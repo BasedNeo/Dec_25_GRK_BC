@@ -15,11 +15,11 @@ export interface Proposal {
   id: number;
   title: string;
   description: string;
-  votesFor: number;
-  votesAgainst: number;
-  votesAbstain: number;
+  type: 'binary' | 'multiple';
+  options: { id: string; label: string; votes: number }[];
   status: 'Active' | 'Passed' | 'Rejected' | 'Executed';
   endTime: string;
+  totalVotes: number;
 }
 
 export const MOCK_GUARDIANS: Guardian[] = [
@@ -74,31 +74,44 @@ export const MOCK_PROPOSALS: Proposal[] = [
     id: 1,
     title: "Initiative: Neon Streets Expansion",
     description: "Allocate 50,000 $BASED to acquire virtual land in the Neon District for the community hub.",
-    votesFor: 1500,
-    votesAgainst: 200,
-    votesAbstain: 50,
+    type: 'binary',
+    options: [
+        { id: 'yes', label: 'For', votes: 1500 },
+        { id: 'no', label: 'Against', votes: 200 },
+        { id: 'abstain', label: 'Abstain', votes: 50 }
+    ],
     status: 'Active',
-    endTime: "2025-12-10T12:00:00Z"
+    endTime: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days from now
+    totalVotes: 1750
   },
   {
     id: 2,
     title: "Grant: Cyber-Artist Fund",
     description: "Establish a 10,000 $BASED grant program for community artists to create lore-accurate artwork.",
-    votesFor: 890,
-    votesAgainst: 450,
-    votesAbstain: 100,
+    type: 'binary',
+    options: [
+        { id: 'yes', label: 'For', votes: 890 },
+        { id: 'no', label: 'Against', votes: 450 },
+        { id: 'abstain', label: 'Abstain', votes: 100 }
+    ],
     status: 'Passed',
-    endTime: "2025-11-20T12:00:00Z"
+    endTime: "2025-11-20T12:00:00Z",
+    totalVotes: 1440
   },
   {
     id: 3,
     title: "Protocol Upgrade: Staking V2",
     description: "Upgrade the staking contract to allow for variable lock-up periods with boosted APY.",
-    votesFor: 300,
-    votesAgainst: 1200,
-    votesAbstain: 50,
+    type: 'multiple',
+    options: [
+        { id: 'a', label: 'Option A: 30 Days (10% APY)', votes: 300 },
+        { id: 'b', label: 'Option B: 60 Days (15% APY)', votes: 1200 },
+        { id: 'c', label: 'Option C: 90 Days (20% APY)', votes: 50 },
+        { id: 'd', label: 'Option D: No Change', votes: 20 }
+    ],
     status: 'Rejected',
-    endTime: "2025-11-15T12:00:00Z"
+    endTime: "2025-11-15T12:00:00Z",
+    totalVotes: 1570
   }
 ];
 
