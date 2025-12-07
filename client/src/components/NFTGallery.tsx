@@ -37,12 +37,13 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
         return response.ownedNfts.map((nft, index) => ({
           id: parseInt(nft.tokenId) || index,
           name: nft.name || `Guardian #${nft.tokenId}`,
-          image: nft.image.originalUrl || nft.image.cachedUrl || MOCK_GUARDIANS[index % 4].image,
+          // Prioritize cachedUrl as it's an HTTP gateway to IPFS
+          image: nft.image.cachedUrl || nft.image.originalUrl || MOCK_GUARDIANS[index % 4].image,
           traits: nft.raw.metadata.attributes?.map((attr: any) => ({
              type: attr.trait_type,
              value: attr.value
           })) || [],
-          rarity: 'Common' as const // Simplified mapping
+          rarity: 'Common' as const
         }));
       } catch (e) {
         console.warn("Failed to fetch real NFTs, falling back to empty/mock", e);
