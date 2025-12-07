@@ -4,6 +4,7 @@ import { NFTGallery } from "@/components/NFTGallery";
 import { ValueEstimation } from "@/components/ValueEstimation";
 import { VotingDAO } from "@/components/VotingDAO";
 import { PoolTracker } from "@/components/PoolTracker";
+import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { Footer } from "@/components/Footer";
 import { useAccount } from "wagmi";
 
@@ -18,6 +19,7 @@ export default function Home() {
         <Hero />
         <ValueEstimation />
         <NFTGallery isConnected={isConnected} onConnect={() => {}} />
+        <EscrowMarketplace />
         <PoolTracker />
         <VotingDAO isConnected={isConnected} onConnect={() => {}} />
       </main>

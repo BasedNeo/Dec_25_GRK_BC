@@ -31,6 +31,7 @@ export function Navbar({ isConnected }: NavbarProps) {
           <div className="hidden md:flex items-center space-x-8">
             <a href="#hero" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">MINT</a>
             <a href="#gallery" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">GALLERY</a>
+            <a href="#escrow" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">MARKET</a>
             <a href="#voting" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">DAO</a>
             <a href="#pool" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">POOL</a>
             
@@ -156,6 +157,7 @@ export function Navbar({ isConnected }: NavbarProps) {
             <div className="px-4 pt-2 pb-8 space-y-4 flex flex-col items-center">
               <a onClick={() => setIsMobileMenuOpen(false)} href="#hero" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">MINT</a>
               <a onClick={() => setIsMobileMenuOpen(false)} href="#gallery" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">GALLERY</a>
+              <a onClick={() => setIsMobileMenuOpen(false)} href="#escrow" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">MARKET</a>
               <a onClick={() => setIsMobileMenuOpen(false)} href="#voting" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">DAO</a>
               <a onClick={() => setIsMobileMenuOpen(false)} href="#pool" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">POOL</a>
               

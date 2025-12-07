@@ -119,3 +119,47 @@ export const MOCK_POOL_BALANCE = 1250000;
 export const MINT_PRICE = 69420;
 export const TOTAL_SUPPLY = 3732;
 export const MINTED_COUNT = 1420;
+
+export interface Escrow {
+  id: number;
+  seller: string;
+  assetName: string;
+  assetImage: string;
+  price: number;
+  currency: 'ETH' | 'BTC' | 'XRP' | 'XLM' | '$BASED';
+  status: 'Open' | 'Pending' | 'Completed' | 'Disputed';
+  createdAt: string;
+}
+
+export const MOCK_ESCROWS: Escrow[] = [
+  {
+    id: 101,
+    seller: "0x71C...9A21",
+    assetName: "Guardian #0042",
+    assetImage: guardian1,
+    price: 0.5,
+    currency: 'ETH',
+    status: 'Open',
+    createdAt: "2023-10-25T10:00:00Z"
+  },
+  {
+    id: 102,
+    seller: "0x3D2...B44F",
+    assetName: "Guardian #0888 (Legendary)",
+    assetImage: guardian3,
+    price: 150000,
+    currency: '$BASED',
+    status: 'Open',
+    createdAt: "2023-10-26T14:30:00Z"
+  },
+  {
+    id: 103,
+    seller: "0x9F1...C22D",
+    assetName: "Guardian #0137",
+    assetImage: guardian2,
+    price: 2500,
+    currency: 'XRP',
+    status: 'Pending',
+    createdAt: "2023-10-24T09:15:00Z"
+  }
+];
