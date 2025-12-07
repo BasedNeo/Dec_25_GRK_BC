@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Wallet, LogOut, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@assets/generated_images/neon_cyan_glitch_text_logo_on_black.png";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 interface NavbarProps {
-  isConnected: boolean;
-  onConnect: () => void;
-  onDisconnect: () => void;
+  isConnected: boolean; // Kept for legacy prop compatibility if needed, but RainbowKit handles state
 }
 
-export function Navbar({ isConnected, onConnect, onDisconnect }: NavbarProps) {
+export function Navbar({ isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -35,25 +34,102 @@ export function Navbar({ isConnected, onConnect, onDisconnect }: NavbarProps) {
             <a href="#voting" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">DAO</a>
             <a href="#pool" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">POOL</a>
             
-            {isConnected ? (
-              <Button 
-                variant="outline" 
-                onClick={onDisconnect}
-                className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-orbitron tracking-wider cyber-button"
-              >
-                <span className="mr-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                0x71...3A92
-                <LogOut className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={onConnect}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider cyber-button shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.7)] transition-all duration-300"
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                CONNECT WALLET
-              </Button>
-            )}
+            <ConnectButton.Custom>
+              {({
+                account,
+                chain,
+                openAccountModal,
+                openChainModal,
+                openConnectModal,
+                authenticationStatus,
+                mounted,
+              }) => {
+                const ready = mounted && authenticationStatus !== 'loading';
+                const connected =
+                  ready &&
+                  account &&
+                  chain &&
+                  (!authenticationStatus ||
+                    authenticationStatus === 'authenticated');
+
+                return (
+                  <div
+                    {...(!ready && {
+                      'aria-hidden': true,
+                      'style': {
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      },
+                    })}
+                  >
+                    {(() => {
+                      if (!connected) {
+                        return (
+                          <Button 
+                            onClick={openConnectModal} 
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider cyber-button shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.7)] transition-all duration-300"
+                          >
+                            CONNECT WALLET
+                          </Button>
+                        );
+                      }
+
+                      if (chain.unsupported) {
+                        return (
+                          <Button onClick={openChainModal} variant="destructive">
+                            Wrong network
+                          </Button>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', gap: 12 }}>
+                          <Button
+                            onClick={openChainModal}
+                            variant="outline"
+                            className="border-primary/50 text-primary hidden lg:flex"
+                          >
+                            {chain.hasIcon && (
+                              <div
+                                style={{
+                                  background: chain.iconBackground,
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: 999,
+                                  overflow: 'hidden',
+                                  marginRight: 4,
+                                }}
+                              >
+                                {chain.iconUrl && (
+                                  <img
+                                    alt={chain.name ?? 'Chain icon'}
+                                    src={chain.iconUrl}
+                                    style={{ width: 12, height: 12 }}
+                                  />
+                                )}
+                              </div>
+                            )}
+                            {chain.name}
+                          </Button>
+
+                          <Button 
+                            onClick={openAccountModal} 
+                            variant="outline"
+                            className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-orbitron tracking-wider cyber-button"
+                          >
+                            {account.displayName}
+                            {account.displayBalance
+                              ? ` (${account.displayBalance})`
+                              : ''}
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              }}
+            </ConnectButton.Custom>
           </div>
 
           {/* Mobile menu button */}
@@ -83,22 +159,9 @@ export function Navbar({ isConnected, onConnect, onDisconnect }: NavbarProps) {
               <a onClick={() => setIsMobileMenuOpen(false)} href="#voting" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">DAO</a>
               <a onClick={() => setIsMobileMenuOpen(false)} href="#pool" className="text-foreground/80 hover:text-primary py-2 font-orbitron tracking-widest">POOL</a>
               
-              {isConnected ? (
-                <Button 
-                  variant="outline" 
-                  onClick={() => { onDisconnect(); setIsMobileMenuOpen(false); }}
-                  className="w-full border-primary/50 text-primary"
-                >
-                  0x71...3A92
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => { onConnect(); setIsMobileMenuOpen(false); }}
-                  className="w-full bg-primary text-primary-foreground"
-                >
-                  CONNECT WALLET
-                </Button>
-              )}
+              <div className="w-full flex justify-center pt-4">
+                <ConnectButton />
+              </div>
             </div>
           </motion.div>
         )}

@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
+import { WagmiProvider } from "wagmi";
+import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import { config } from "./lib/wagmi";
 
 function Router() {
   return (
@@ -17,12 +20,21 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Router />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider theme={darkTheme({
+          accentColor: '#00ffff',
+          accentColorForeground: 'black',
+          borderRadius: 'none',
+          fontStack: 'system',
+        })}>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
 

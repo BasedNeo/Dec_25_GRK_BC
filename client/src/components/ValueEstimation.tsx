@@ -1,13 +1,22 @@
 import { Card } from "@/components/ui/card";
 import { MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
 import { TrendingUp, DollarSign, Activity } from "lucide-react";
+import { useBalance } from "wagmi";
 
 interface ValueEstimationProps {
   ownedCount: number;
 }
 
 export function ValueEstimation({ ownedCount }: ValueEstimationProps) {
-  const valuePerNFT = MOCK_POOL_BALANCE / TOTAL_SUPPLY;
+  const { data: poolBalance } = useBalance({
+    address: import.meta.env.VITE_POOL_WALLET as `0x${string}` || undefined,
+  });
+
+  const currentPoolBalance = poolBalance 
+    ? parseFloat(poolBalance.formatted) 
+    : MOCK_POOL_BALANCE;
+    
+  const valuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
   const userTotalValue = valuePerNFT * ownedCount;
 
   return (

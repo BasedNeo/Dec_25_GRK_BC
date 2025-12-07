@@ -2,15 +2,58 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Grid, Lock } from "lucide-react";
+import { Grid, Lock, Loader2, RefreshCw } from "lucide-react";
 import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
+import { useAccount } from "wagmi";
+import { alchemy } from "@/lib/alchemy";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 interface NFTGalleryProps {
-  isConnected: boolean;
-  onConnect: () => void;
+  isConnected: boolean; // Kept for legacy
+  onConnect: () => void; // Kept for legacy
 }
 
-export function NFTGallery({ isConnected, onConnect }: NFTGalleryProps) {
+export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }: NFTGalleryProps) {
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const [useMockData, setUseMockData] = useState(false);
+
+  const { data: nfts, isLoading, isError, refetch } = useQuery({
+    queryKey: ['nfts', address],
+    queryFn: async () => {
+      if (!address || useMockData) return MOCK_GUARDIANS;
+      
+      try {
+        const contractAddress = import.meta.env.VITE_NFT_CONTRACT;
+        if (!contractAddress) throw new Error("No contract address");
+
+        const response = await alchemy.nft.getNftsForOwner(address, {
+          contractAddresses: [contractAddress],
+        });
+        
+        // Map Alchemy NFT format to our Guardian interface
+        return response.ownedNfts.map((nft, index) => ({
+          id: parseInt(nft.tokenId) || index,
+          name: nft.name || `Guardian #${nft.tokenId}`,
+          image: nft.image.originalUrl || nft.image.cachedUrl || MOCK_GUARDIANS[index % 4].image,
+          traits: nft.raw.metadata.attributes?.map((attr: any) => ({
+             type: attr.trait_type,
+             value: attr.value
+          })) || [],
+          rarity: 'Common' as const // Simplified mapping
+        }));
+      } catch (e) {
+        console.warn("Failed to fetch real NFTs, falling back to empty/mock", e);
+        return []; // Return empty if real fetch fails, let user switch to mock
+      }
+    },
+    enabled: isConnected,
+  });
+
+  const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -35,11 +78,23 @@ export function NFTGallery({ isConnected, onConnect }: NFTGalleryProps) {
             <p className="text-muted-foreground font-rajdhani">Manage your Guardians and view their traits.</p>
           </div>
           
-          {isConnected && (
-            <div className="mt-4 md:mt-0 px-4 py-2 bg-primary/10 border border-primary/30 rounded text-primary font-orbitron text-sm">
-              TOTAL OWNED: <span className="text-white ml-2">4</span>
-            </div>
-          )}
+          <div className="flex items-center gap-4 mt-4 md:mt-0">
+            {isConnected && (
+               <div className="flex items-center gap-2">
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={() => setUseMockData(!useMockData)}
+                   className="text-xs border-white/20"
+                 >
+                   {useMockData ? "Switch to Real" : "View Demo Data"}
+                 </Button>
+                 <div className="px-4 py-2 bg-primary/10 border border-primary/30 rounded text-primary font-orbitron text-sm">
+                   TOTAL OWNED: <span className="text-white ml-2">{displayNfts.length}</span>
+                 </div>
+               </div>
+            )}
+          </div>
         </div>
 
         {!isConnected ? (
@@ -48,26 +103,39 @@ export function NFTGallery({ isConnected, onConnect }: NFTGalleryProps) {
             <h3 className="text-xl font-orbitron text-white mb-2">WALLET LOCKED</h3>
             <p className="text-muted-foreground mb-6">Connect your wallet to view your Guardian collection.</p>
             <Button 
-              onClick={onConnect}
+              onClick={openConnectModal}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider"
             >
               CONNECT TO VIEW
             </Button>
           </div>
         ) : (
-          <motion.div 
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          >
-            {MOCK_GUARDIANS.map((guardian) => (
-              <motion.div key={guardian.id} variants={item}>
-                <GuardianCard guardian={guardian} />
+          <>
+            {isLoading && !useMockData ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              </div>
+            ) : displayNfts.length === 0 ? (
+               <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                 <p className="text-muted-foreground mb-4">No Guardians found in this wallet.</p>
+                 <Button onClick={() => setUseMockData(true)} variant="outline">Load Demo Data</Button>
+               </div>
+            ) : (
+              <motion.div 
+                variants={container}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+              >
+                {displayNfts.map((guardian, idx) => (
+                  <motion.div key={guardian.id || idx} variants={item}>
+                    <GuardianCard guardian={guardian} />
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
+            )}
+          </>
         )}
       </div>
     </section>
@@ -79,14 +147,20 @@ function GuardianCard({ guardian }: { guardian: Guardian }) {
     <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group">
       <div className="relative aspect-square overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        <img 
-          src={guardian.image} 
-          alt={guardian.name} 
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-        />
+        {guardian.image ? (
+          <img 
+            src={guardian.image} 
+            alt={guardian.name} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+          />
+        ) : (
+           <div className="w-full h-full bg-secondary flex items-center justify-center">
+             <span className="text-muted-foreground">No Image</span>
+           </div>
+        )}
         <div className="absolute top-2 right-2 z-20">
           <Badge variant={guardian.rarity === 'Legendary' ? 'default' : 'secondary'} className="font-mono text-xs uppercase">
-            {guardian.rarity}
+            {guardian.rarity || 'Common'}
           </Badge>
         </div>
       </div>
@@ -95,7 +169,7 @@ function GuardianCard({ guardian }: { guardian: Guardian }) {
         <h4 className="text-lg text-white mb-3">{guardian.name}</h4>
         
         <div className="space-y-2">
-          {guardian.traits.slice(0, 3).map((trait, i) => (
+          {guardian.traits && guardian.traits.slice(0, 3).map((trait, i) => (
             <div key={i} className="flex justify-between text-xs border-b border-white/5 pb-1 last:border-0 last:pb-0">
               <span className="text-muted-foreground">{trait.type}</span>
               <span className="text-primary font-medium">{trait.value}</span>

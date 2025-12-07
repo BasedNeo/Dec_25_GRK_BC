@@ -2,34 +2,88 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { MOCK_PROPOSALS, Proposal } from "@/lib/mockData";
-import { Vote, Clock, Check, X } from "lucide-react";
+import { Vote, Clock, Check, X, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 interface VotingDAOProps {
-  isConnected: boolean;
-  onConnect: () => void;
+  isConnected: boolean; // Legacy
+  onConnect: () => void; // Legacy
 }
 
-export function VotingDAO({ isConnected, onConnect }: VotingDAOProps) {
+export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: VotingDAOProps) {
+  const { isConnected, address } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const { toast } = useToast();
+
+  // Mock Admin Check (In real app, check owner() on contract)
+  // For demo, we treat specific address or just anyone connected as "admin" if enabled
+  const isAdmin = true; 
+
+  const handlePropose = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowProposalForm(false);
+    toast({
+      title: "Proposal Submitted",
+      description: "Your initiative has been broadcast to the DAO for review.",
+      className: "bg-black border-primary text-primary font-orbitron",
+    });
+  };
+
   return (
     <section id="voting" className="py-20 bg-black relative">
       <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="mb-12">
-          <Badge variant="outline" className="mb-2 border-accent/50 text-accent font-mono">GOVERNANCE</Badge>
-          <h2 className="text-3xl md:text-4xl text-white mb-4">COUNCIL <span className="text-accent">DECISIONS</span></h2>
-          <p className="text-muted-foreground font-rajdhani max-w-2xl">
-            Shape the future of the Based Guardians. 1 NFT = 1 Vote. Proposals are binding and executed via the Governor contract.
-          </p>
+        <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end">
+          <div>
+            <Badge variant="outline" className="mb-2 border-accent/50 text-accent font-mono">GOVERNANCE</Badge>
+            <h2 className="text-3xl md:text-4xl text-white mb-4">COUNCIL <span className="text-accent">DECISIONS</span></h2>
+            <p className="text-muted-foreground font-rajdhani max-w-2xl">
+              Shape the future of the Based Guardians. 1 NFT = 1 Vote. Proposals are binding.
+            </p>
+          </div>
+          
+          {isConnected && isAdmin && !showProposalForm && (
+            <Button 
+              onClick={() => setShowProposalForm(true)}
+              className="mt-4 md:mt-0 bg-accent text-white hover:bg-accent/80 font-orbitron"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> NEW PROPOSAL
+            </Button>
+          )}
         </div>
+
+        {showProposalForm && (
+           <Card className="mb-12 p-6 bg-card border-accent/50 animate-in fade-in slide-in-from-top-4">
+             <h3 className="text-xl font-orbitron text-white mb-6">NEW INITIATIVE</h3>
+             <form onSubmit={handlePropose} className="space-y-4">
+               <div>
+                 <label className="text-xs font-mono text-muted-foreground mb-1 block">TITLE</label>
+                 <Input placeholder="Enter proposal title..." className="bg-black/50 border-white/10 text-white" required />
+               </div>
+               <div>
+                 <label className="text-xs font-mono text-muted-foreground mb-1 block">DESCRIPTION</label>
+                 <Textarea placeholder="Describe the initiative and funding required..." className="bg-black/50 border-white/10 text-white min-h-[100px]" required />
+               </div>
+               <div className="flex gap-4 pt-2">
+                 <Button type="submit" className="bg-primary text-black hover:bg-primary/90">SUBMIT ON-CHAIN</Button>
+                 <Button type="button" variant="ghost" onClick={() => setShowProposalForm(false)} className="text-muted-foreground">CANCEL</Button>
+               </div>
+             </form>
+           </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             {MOCK_PROPOSALS.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} isConnected={isConnected} onConnect={onConnect} />
+              <ProposalCard key={proposal.id} proposal={proposal} isConnected={isConnected} onConnect={openConnectModal} />
             ))}
           </div>
 
@@ -43,7 +97,7 @@ export function VotingDAO({ isConnected, onConnect }: VotingDAOProps) {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Button onClick={onConnect} variant="outline" className="border-white/20 hover:border-primary text-white">
+                  <Button onClick={openConnectModal} variant="outline" className="border-white/20 hover:border-primary text-white">
                     Connect to Check
                   </Button>
                 </div>
@@ -51,12 +105,12 @@ export function VotingDAO({ isConnected, onConnect }: VotingDAOProps) {
             </Card>
 
             <Card className="p-6 bg-card border-white/10 bg-gradient-to-br from-card to-accent/5">
-              <h3 className="font-orbitron text-lg text-white mb-4">CREATE PROPOSAL</h3>
+              <h3 className="font-orbitron text-lg text-white mb-4">DELEGATION</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Guardians with more than 10 votes can submit new initiatives for community review.
+                Delegate your voting power to a community representative if you cannot participate directly.
               </p>
-              <Button disabled={!isConnected} className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10">
-                INITIATE PROPOSAL
+              <Button disabled={!isConnected} variant="outline" className="w-full border-white/10 text-muted-foreground hover:text-white hover:border-white/30">
+                MANAGE DELEGATES
               </Button>
             </Card>
           </div>
@@ -66,7 +120,7 @@ export function VotingDAO({ isConnected, onConnect }: VotingDAOProps) {
   );
 }
 
-function ProposalCard({ proposal, isConnected, onConnect }: { proposal: Proposal, isConnected: boolean, onConnect: () => void }) {
+function ProposalCard({ proposal, isConnected, onConnect }: { proposal: Proposal, isConnected: boolean, onConnect: (() => void) | undefined }) {
   const totalVotes = proposal.votesFor + proposal.votesAgainst + proposal.votesAbstain;
   const percentFor = (proposal.votesFor / totalVotes) * 100;
   const percentAgainst = (proposal.votesAgainst / totalVotes) * 100;
