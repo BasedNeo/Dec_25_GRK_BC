@@ -40,17 +40,30 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
       // In a real app, this would fetch from backend/contract
       return MOCK_PROPOSALS;
     },
-    initialData: MOCK_PROPOSALS
+    initialData: MOCK_PROPOSALS,
+    staleTime: 60000,
+    gcTime: 300000,
   });
 
   const handlePropose = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+
+    if (!title || !description || title.length < 5 || description.length < 10) {
+        toast({
+            title: "Validation Error",
+            description: "Title must be 5+ chars and description 10+ chars.",
+            variant: "destructive"
+        });
+        return;
+    }
     
     const newProposal: Proposal = {
       id: (proposals?.length || 0) + 1,
-      title: formData.get('title') as string,
-      description: formData.get('description') as string,
+      title: title.replace(/<[^>]*>?/gm, ''), // Basic XSS sanitization
+      description: description.replace(/<[^>]*>?/gm, ''),
       type: formData.get('type') as 'binary' | 'multiple',
       options: formData.get('type') === 'binary' 
         ? [
@@ -59,10 +72,10 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
             { id: 'abstain', label: 'Abstain', votes: 0 }
           ]
         : [
-            { id: 'a', label: formData.get('optionA') as string, votes: 0 },
-            { id: 'b', label: formData.get('optionB') as string, votes: 0 },
-            { id: 'c', label: formData.get('optionC') as string, votes: 0 },
-            { id: 'd', label: formData.get('optionD') as string, votes: 0 },
+            { id: 'a', label: (formData.get('optionA') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
+            { id: 'b', label: (formData.get('optionB') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
+            { id: 'c', label: (formData.get('optionC') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
+            { id: 'd', label: (formData.get('optionD') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
           ].filter(o => o.label), // Filter out empty options
       status: 'Active',
       endTime: new Date(formData.get('endTime') as string).toISOString(),

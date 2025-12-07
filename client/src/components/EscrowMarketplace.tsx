@@ -12,6 +12,7 @@ import { MOCK_ESCROWS, Escrow, MOCK_GUARDIANS } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -19,24 +20,43 @@ export function EscrowMarketplace() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("browse");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock Fetching Escrows
+  // Optimized Fetching with Caching
   const { data: escrows } = useQuery({
     queryKey: ['escrows'],
     queryFn: async () => MOCK_ESCROWS,
-    initialData: MOCK_ESCROWS
+    initialData: MOCK_ESCROWS,
+    staleTime: 60000, // 1 min cache
+    gcTime: 300000, // 5 min garbage collection
   });
 
   const handleCreateEscrow = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
+    const formData = new FormData(e.currentTarget);
+    const tokenId = formData.get('tokenId') as string;
+    const price = formData.get('price') as string;
+    
+    // Input Sanitization / Validation
+    if (!tokenId || !price || parseFloat(price) <= 0) {
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a valid Token ID and Price.",
+        variant: "destructive"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const newEscrow: Escrow = {
       id: Math.floor(Math.random() * 10000),
       seller: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "0xUSER",
-      assetName: `Guardian #${formData.get('tokenId')}`,
-      assetImage: MOCK_GUARDIANS[0].image, // Placeholder image
-      price: parseFloat(formData.get('price') as string),
+      assetName: `Guardian #${tokenId.replace(/[^0-9]/g, '')}`, // Sanitize to numbers only
+      assetImage: MOCK_GUARDIANS[0].image, 
+      price: parseFloat(price),
       currency: formData.get('currency') as any,
       status: 'Open',
       createdAt: new Date().toISOString()
@@ -51,6 +71,7 @@ export function EscrowMarketplace() {
       description: "Your asset is now locked in the smart contract and listed for sale.",
       className: "bg-black border-primary text-primary font-orbitron",
     });
+    setIsSubmitting(false);
   };
 
   const handleBuy = (escrow: Escrow) => {
@@ -70,6 +91,13 @@ export function EscrowMarketplace() {
         old.map(e => e.id === escrow.id ? { ...e, status: 'Completed' as const } : e)
       );
       
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#00ffff', '#bf00ff', '#ffffff']
+      });
+
       toast({
         title: "Purchase Successful",
         description: "Funds matched. Asset auto-released to your wallet.",
@@ -107,10 +135,10 @@ export function EscrowMarketplace() {
 
         <Tabs defaultValue="browse" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2 bg-black/50 border border-white/10 mb-8">
-            <TabsTrigger value="browse" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-orbitron">
+            <TabsTrigger value="browse" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-orbitron min-h-[44px]">
               BROWSE LISTINGS
             </TabsTrigger>
-            <TabsTrigger value="sell" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent font-orbitron">
+            <TabsTrigger value="sell" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent font-orbitron min-h-[44px]">
               CREATE ESCROW
             </TabsTrigger>
           </TabsList>
@@ -145,7 +173,7 @@ export function EscrowMarketplace() {
                   <Wallet className="w-16 h-16 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-orbitron text-white mb-2">WALLET DISCONNECTED</h3>
                   <p className="text-muted-foreground mb-6">Connect your wallet to access your assets and create an escrow.</p>
-                  <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90">
+                  <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90 min-h-[44px]">
                     CONNECT WALLET
                   </Button>
                 </div>
@@ -160,12 +188,12 @@ export function EscrowMarketplace() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-mono text-muted-foreground">ASSET (TOKEN ID)</label>
-                        <Input name="tokenId" placeholder="e.g. 420" className="bg-black/50 border-white/10 text-white" required />
+                        <Input name="tokenId" placeholder="e.g. 420" className="bg-black/50 border-white/10 text-white min-h-[44px]" required pattern="[0-9]*" inputMode="numeric" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-mono text-muted-foreground">CURRENCY</label>
                         <Select name="currency" defaultValue="ETH">
-                          <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                          <SelectTrigger className="bg-black/50 border-white/10 text-white min-h-[44px]">
                             <SelectValue placeholder="Select Currency" />
                           </SelectTrigger>
                           <SelectContent>
@@ -181,7 +209,7 @@ export function EscrowMarketplace() {
 
                     <div className="space-y-2">
                       <label className="text-xs font-mono text-muted-foreground">PRICE THRESHOLD</label>
-                      <Input name="price" type="number" step="0.000001" placeholder="0.00" className="bg-black/50 border-white/10 text-white font-mono text-lg" required />
+                      <Input name="price" type="number" step="0.000001" placeholder="0.00" className="bg-black/50 border-white/10 text-white font-mono text-lg min-h-[44px]" required min="0" />
                     </div>
                   </div>
 
@@ -194,8 +222,8 @@ export function EscrowMarketplace() {
                       </p>
                     </div>
 
-                    <Button type="submit" className="w-full bg-accent text-white hover:bg-accent/80 font-orbitron h-12">
-                      <Plus className="mr-2 h-4 w-4" /> CREATE ESCROW LISTING
+                    <Button type="submit" disabled={isSubmitting} className="w-full bg-accent text-white hover:bg-accent/80 font-orbitron h-12">
+                      {isSubmitting ? <RefreshCw className="animate-spin mr-2" /> : <Plus className="mr-2 h-4 w-4" />} CREATE ESCROW LISTING
                     </Button>
                   </div>
                 </form>
@@ -253,14 +281,14 @@ function EscrowCard({ escrow, onBuy, isConnected }: { escrow: Escrow, onBuy: () 
         </div>
 
         {isCompleted ? (
-          <Button disabled className="w-full bg-primary/20 text-primary border border-primary/20">
+          <Button disabled className="w-full bg-primary/20 text-primary border border-primary/20 min-h-[44px]">
             <CheckCircle2 className="mr-2 h-4 w-4" /> SOLD
           </Button>
         ) : (
           <Button 
             onClick={onBuy} 
             disabled={!isConnected}
-            className="w-full bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary transition-all font-orbitron"
+            className="w-full bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary transition-all font-orbitron min-h-[44px]"
           >
             {isConnected ? (
               <>
