@@ -80,6 +80,12 @@ body {
   background-size: 40px 40px;
 }
 
+/* Hide Vite and Replit Error Overlays */
+vite-error-overlay,
+replit-error-modal {
+  display: none !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   @apply font-orbitron tracking-wider uppercase;
 }
