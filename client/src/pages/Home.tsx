@@ -16,7 +16,7 @@ export default function Home() {
       
       <main>
         <Hero />
-        <ValueEstimation ownedCount={isConnected ? 4 : 0} />
+        <ValueEstimation />
         <NFTGallery isConnected={isConnected} onConnect={() => {}} />
         <PoolTracker />
         <VotingDAO isConnected={isConnected} onConnect={() => {}} />

@@ -1,26 +1,62 @@
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
-import { TrendingUp, DollarSign, Activity } from "lucide-react";
+import { TrendingUp, DollarSign, Activity, RefreshCw } from "lucide-react";
 import { useBalance } from "wagmi";
+import { useGuardians } from "@/hooks/useGuardians";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-interface ValueEstimationProps {
-  ownedCount: number;
-}
-
-export function ValueEstimation({ ownedCount }: ValueEstimationProps) {
-  const { data: poolBalance } = useBalance({
+export function ValueEstimation() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+  
+  // Fetch Pool Balance
+  const { data: poolBalance, refetch: refetchBalance } = useBalance({
     address: import.meta.env.VITE_POOL_WALLET as `0x${string}` || undefined,
+    token: import.meta.env.VITE_BASED_TOKEN as `0x${string}` || undefined, // Use specific token if env set
   });
+
+  // Fetch User Guardians
+  const { data: guardians, refetch: refetchGuardians } = useGuardians();
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([refetchBalance(), refetchGuardians()]);
+    // Simulate a min delay for visual feedback
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
 
   const currentPoolBalance = poolBalance 
     ? parseFloat(poolBalance.formatted) 
     : MOCK_POOL_BALANCE;
     
-  const valuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
-  const userTotalValue = valuePerNFT * ownedCount;
+  const baseValuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
+  
+  // Calculate User Total Value with Boosts
+  // Boost logic: 30% boost if rarity is 'Rare'
+  const userTotalValue = (guardians || []).reduce((total, guardian) => {
+    const multiplier = guardian.rarity === 'Rare' || guardian.rarity === 'Legendary' ? 1.3 : 1.0;
+    return total + (baseValuePerNFT * multiplier);
+  }, 0);
+
+  const ownedCount = guardians?.length || 0;
 
   return (
-    <section className="py-12 bg-background border-y border-white/5">
+    <section className="py-12 bg-background border-y border-white/5 relative group">
+      <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleRefresh}
+          className="text-muted-foreground hover:text-primary"
+        >
+          <RefreshCw size={14} className={cn("mr-2", isRefreshing && "animate-spin")} />
+          REFRESH RATES
+        </Button>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
@@ -30,7 +66,7 @@ export function ValueEstimation({ ownedCount }: ValueEstimationProps) {
             </div>
             <p className="text-sm text-muted-foreground font-mono mb-1">BASE VALUE / NFT</p>
             <h3 className="text-3xl font-orbitron text-white">
-              {Math.floor(valuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
+              {Math.floor(baseValuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
             </h3>
             <p className="text-xs text-green-400 mt-2 flex items-center">
               <TrendingUp size={12} className="mr-1" /> +5.2% (24h)
@@ -47,7 +83,7 @@ export function ValueEstimation({ ownedCount }: ValueEstimationProps) {
               {Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
             </h3>
             <p className="text-xs text-muted-foreground mt-2 z-10">
-              Based on {ownedCount} Guardians
+              Based on {ownedCount} Guardians {ownedCount > 0 && "(w/ Rarity Boost)"}
             </p>
           </Card>
 
@@ -60,7 +96,7 @@ export function ValueEstimation({ ownedCount }: ValueEstimationProps) {
               1.3x
             </h3>
             <p className="text-xs text-muted-foreground mt-2">
-              Applied to Legendary items
+              Applied to Rare/Legendary items
             </p>
           </Card>
 

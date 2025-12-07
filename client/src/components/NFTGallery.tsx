@@ -2,13 +2,12 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Grid, Lock, Loader2, RefreshCw } from "lucide-react";
-import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
+import { Lock, Loader2 } from "lucide-react";
+import { Guardian, MOCK_GUARDIANS } from "@/lib/mockData";
 import { useAccount } from "wagmi";
-import { alchemy } from "@/lib/alchemy";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useGuardians } from "@/hooks/useGuardians";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -16,42 +15,11 @@ interface NFTGalleryProps {
 }
 
 export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }: NFTGalleryProps) {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
 
-  const { data: nfts, isLoading, isError, refetch } = useQuery({
-    queryKey: ['nfts', address],
-    queryFn: async () => {
-      if (!address || useMockData) return MOCK_GUARDIANS;
-      
-      try {
-        const contractAddress = import.meta.env.VITE_NFT_CONTRACT;
-        if (!contractAddress) throw new Error("No contract address");
-
-        const response = await alchemy.nft.getNftsForOwner(address, {
-          contractAddresses: [contractAddress],
-        });
-        
-        // Map Alchemy NFT format to our Guardian interface
-        return response.ownedNfts.map((nft, index) => ({
-          id: parseInt(nft.tokenId) || index,
-          name: nft.name || `Guardian #${nft.tokenId}`,
-          // Prioritize cachedUrl as it's an HTTP gateway to IPFS
-          image: nft.image.cachedUrl || nft.image.originalUrl || MOCK_GUARDIANS[index % 4].image,
-          traits: nft.raw.metadata.attributes?.map((attr: any) => ({
-             type: attr.trait_type,
-             value: attr.value
-          })) || [],
-          rarity: 'Common' as const
-        }));
-      } catch (e) {
-        console.warn("Failed to fetch real NFTs, falling back to empty/mock", e);
-        return []; // Return empty if real fetch fails, let user switch to mock
-      }
-    },
-    enabled: isConnected,
-  });
+  const { data: nfts, isLoading } = useGuardians(useMockData);
 
   const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
@@ -160,7 +128,7 @@ function GuardianCard({ guardian }: { guardian: Guardian }) {
            </div>
         )}
         <div className="absolute top-2 right-2 z-20">
-          <Badge variant={guardian.rarity === 'Legendary' ? 'default' : 'secondary'} className="font-mono text-xs uppercase">
+          <Badge variant={guardian.rarity === 'Legendary' || guardian.rarity === 'Rare' ? 'default' : 'secondary'} className="font-mono text-xs uppercase">
             {guardian.rarity || 'Common'}
           </Badge>
         </div>
