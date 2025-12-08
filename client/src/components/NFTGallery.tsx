@@ -2,13 +2,15 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
 import { useAccount } from "wagmi";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
 import { IPFS_ROOT } from "@/lib/constants";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -19,6 +21,12 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Filters
+  const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
+  const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
 
   const { 
     data, 
@@ -30,7 +38,33 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
-  const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+  const allDisplayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+
+  // Filter Logic
+  const displayNfts = useMemo(() => {
+      let items = [...allDisplayNfts];
+      if (rarityFilter !== "all") {
+          items = items.filter(i => i.rarity?.toLowerCase() === rarityFilter);
+      }
+      if (traitTypeFilter !== "all" && traitValueFilter !== "all") {
+          items = items.filter(i => 
+              i.traits.some(t => t.type === traitTypeFilter && t.value === traitValueFilter)
+          );
+      }
+      return items;
+  }, [allDisplayNfts, rarityFilter, traitTypeFilter, traitValueFilter]);
+
+  // Extract Traits
+  const availableTraits = useMemo(() => {
+      const traits: Record<string, Set<string>> = {};
+      allDisplayNfts.forEach(item => {
+          item.traits?.forEach(t => {
+              if (!traits[t.type]) traits[t.type] = new Set();
+              traits[t.type].add(t.value);
+          });
+      });
+      return traits;
+  }, [allDisplayNfts]);
 
   // Value Estimation Logic
   const baseValuePerNFT = MOCK_POOL_BALANCE / TOTAL_SUPPLY;
@@ -59,7 +93,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   return (
     <section id="gallery" className="py-20 bg-black/50 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-8">
           <div>
             <h2 className="text-3xl md:text-4xl text-white mb-2">YOUR <span className="text-primary">BATTALION</span></h2>
             <p className="text-muted-foreground font-rajdhani">Manage your Guardians and view their traits.</p>
@@ -69,6 +103,14 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
             {isConnected && (
                <>
                  <div className="flex items-center gap-2">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     onClick={() => setShowFilters(!showFilters)}
+                     className={`text-xs border-white/20 ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
+                   >
+                     <Filter size={14} className="mr-2" /> Filters
+                   </Button>
                    <Button 
                      variant="outline" 
                      size="sm" 
@@ -85,6 +127,66 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
             )}
           </div>
         </div>
+
+        {/* Filters Panel */}
+        {showFilters && isConnected && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              className="overflow-hidden mb-8"
+            >
+              <Card className="p-4 bg-white/5 border-white/10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono text-muted-foreground">RARITY</Label>
+                  <Select value={rarityFilter} onValueChange={setRarityFilter}>
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                            <SelectValue placeholder="All Rarities" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Rarities</SelectItem>
+                            <SelectItem value="common">Common</SelectItem>
+                            <SelectItem value="rare">Rare</SelectItem>
+                            <SelectItem value="legendary">Legendary</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE TYPE</Label>
+                    <Select value={traitTypeFilter} onValueChange={(v) => { setTraitTypeFilter(v); setTraitValueFilter("all"); }}>
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                            <SelectValue placeholder="Select Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Attributes</SelectItem>
+                            {Object.keys(availableTraits).sort().map(type => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE VALUE</Label>
+                    <Select 
+                        value={traitValueFilter} 
+                        onValueChange={setTraitValueFilter}
+                        disabled={traitTypeFilter === "all"}
+                    >
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                            <SelectValue placeholder="Select Value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Values</SelectItem>
+                            {traitTypeFilter !== "all" && Array.from(availableTraits[traitTypeFilter] || []).sort().map(val => (
+                                <SelectItem key={val} value={val}>{val}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+              </Card>
+            </motion.div>
+        )}
 
         {!isConnected ? (
           <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
@@ -106,7 +208,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
               </div>
             ) : displayNfts.length === 0 ? (
                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                 <p className="text-muted-foreground mb-4">No Guardians found in this wallet.</p>
+                 <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
                  <Button onClick={() => setUseMockData(true)} variant="outline">Load Demo Data</Button>
                </div>
             ) : (

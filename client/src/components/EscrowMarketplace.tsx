@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
-  Flame, Zap, History, MessageCircle
+  Flame, Zap, History, MessageCircle, TrendingUp
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -44,6 +44,10 @@ export function EscrowMarketplace() {
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
   
+  // Commercial Search: Attribute Filters
+  const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
+  const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
+
   // Use infinite query for data instead of loading all at once
   const { 
     data, 
@@ -64,6 +68,29 @@ export function EscrowMarketplace() {
         owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
      })) as unknown as MarketItem[];
   }, [data]);
+
+  // Extract available traits for filters
+  const availableTraits = useMemo(() => {
+      const traits: Record<string, Set<string>> = {};
+      allItems.forEach(item => {
+          item.traits.forEach(t => {
+              if (!traits[t.type]) traits[t.type] = new Set();
+              traits[t.type].add(t.value);
+          });
+      });
+      return traits;
+  }, [allItems]);
+
+  // Mock Trending Trait
+  const trendingTrait = useMemo(() => {
+      const types = Object.keys(availableTraits);
+      if (types.length === 0) return null;
+      // Stable mock: Pick "Power" if available, else first
+      const type = types.find(t => t === 'Power') || types[0];
+      const values = Array.from(availableTraits[type]);
+      if (values.length === 0) return null;
+      return { type, value: values[0], change: '+22%' };
+  }, [availableTraits]);
 
   // --- Biometric Auth State ---
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
@@ -100,6 +127,13 @@ export function EscrowMarketplace() {
     // Rarity
     if (rarityFilter !== "all") {
       items = items.filter(i => i.rarity.toLowerCase() === rarityFilter);
+    }
+
+    // Commercial Attribute Filter
+    if (traitTypeFilter !== "all" && traitValueFilter !== "all") {
+        items = items.filter(i => 
+            i.traits.some(t => t.type === traitTypeFilter && t.value === traitValueFilter)
+        );
     }
 
     // Sort
@@ -276,7 +310,57 @@ export function EscrowMarketplace() {
                     ))}
                   </div>
                 </div>
-                {/* More filters could go here */}
+
+                {/* Attribute Filters */}
+                <div className="space-y-2">
+                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE TYPE</Label>
+                    <Select value={traitTypeFilter} onValueChange={(v) => { setTraitTypeFilter(v); setTraitValueFilter("all"); }}>
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                            <SelectValue placeholder="Select Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Attributes</SelectItem>
+                            {Object.keys(availableTraits).sort().map(type => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE VALUE</Label>
+                    <Select 
+                        value={traitValueFilter} 
+                        onValueChange={setTraitValueFilter}
+                        disabled={traitTypeFilter === "all"}
+                    >
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                            <SelectValue placeholder="Select Value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Values</SelectItem>
+                            {traitTypeFilter !== "all" && Array.from(availableTraits[traitTypeFilter] || []).sort().map(val => (
+                                <SelectItem key={val} value={val}>{val}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                {/* Trending Badge */}
+                <div className="flex flex-col justify-end">
+                    {trendingTrait && (
+                        <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="text-primary h-4 w-4" />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-muted-foreground uppercase">Trending</span>
+                                    <span className="text-xs font-bold text-white">{trendingTrait.value}</span>
+                                </div>
+                            </div>
+                            <Badge className="bg-primary/20 text-primary border-none">{trendingTrait.change}</Badge>
+                        </div>
+                    )}
+                </div>
               </Card>
             </motion.div>
           )}
