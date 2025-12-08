@@ -1,4 +1,66 @@
-import { Guardian, MOCK_GUARDIANS } from "./mockData";
+import { IPFS_ROOT } from "@/lib/constants";
+import { MOCK_GUARDIANS } from "./mockData";
+
+export interface Guardian {
+    id: number;
+    name: string;
+    image: string;
+    traits: { type: string; value: string }[];
+    rarity: string;
+}
+
+// ... existing code ...
+
+export interface MarketItem extends Guardian {
+    owner: string;
+    isListed: boolean;
+    price?: number;
+    currency?: 'ETH' | '$BASED';
+    listingId?: number;
+    listingExpiresAt?: string;
+    offers?: MarketOffer[];
+    estimatedValue?: number;
+}
+
+export interface MarketOffer {
+    id: number;
+    bidder: string;
+    amount: number;
+    currency: 'ETH' | '$BASED';
+    timestamp: string;
+}
+
+// Helper to fetch real metadata
+export async function fetchRealMetadata(id: number): Promise<Guardian | null> {
+    try {
+        const response = await fetch(`${IPFS_ROOT}${id}.json`);
+        if (!response.ok) throw new Error("Metadata fetch failed");
+        
+        const data = await response.json();
+        
+        // Sanitize and map
+        const traits = data.attributes?.map((attr: any) => ({
+            type: attr.trait_type,
+            value: attr.value
+        })) || [];
+        
+        // Determine rarity based on traits (Mock logic for now as actual rarity might be complex)
+        // Or check if it's explicitly in traits
+        const rarityTrait = traits.find((t: any) => t.type === "Rarity");
+        const rarity = rarityTrait ? rarityTrait.value : "Common";
+
+        return {
+            id,
+            name: data.name || `Guardian #${id}`,
+            image: data.image?.replace("ipfs://", "https://ipfs.io/ipfs/") || MOCK_GUARDIANS[0].image,
+            traits,
+            rarity
+        };
+    } catch (e) {
+        console.error(`Failed to fetch metadata for ${id}`, e);
+        return null; 
+    }
+}
 
 // Deterministic Pseudo-Random Number Generator for consistent mock data
 function sfc32(a: number, b: number, c: number, d: number) {
@@ -17,52 +79,57 @@ function sfc32(a: number, b: number, c: number, d: number) {
 
 const seed = sfc32(1337, 8888, 0xDEADBEEF, 0xBEEFDEAD);
 
-const TRAIT_TYPES = {
-    Background: ['Neon City', 'Matrix', 'Void', 'Industrial', 'Cyber Slums', 'High Orbit'],
-    Armor: ['Mk-IV Stealth', 'Holo-Mesh', 'Shadow Weave', 'Heavy Plating', 'Nanofiber', 'Chrome Dip'],
-    Weapon: ['Plasma Blade', 'Neuro-Whip', 'Smart Pistol', 'Gravity Hammer', 'None'],
-    Augment: ['Cyber-Eye', 'Neural Link', 'Robotic Arm', 'Synth-Skin', 'None']
-};
-
-export interface MarketItem extends Guardian {
-    owner: string;
-    isListed: boolean;
-    price?: number;
-    currency?: 'ETH' | '$BASED';
-    listingId?: number;
-    listingExpiresAt?: string;
-    offers?: MarketOffer[];
-}
-
-export interface MarketOffer {
-    id: number;
-    bidder: string;
-    amount: number;
-    currency: 'ETH' | '$BASED';
-    timestamp: string;
-}
-
-export function generateMarketplaceData(count: number = 3732): MarketItem[] {
+export async function generateMarketplaceData(count: number = 20): Promise<MarketItem[]> {
     const items: MarketItem[] = [];
+    const poolTotal = 1000000; // Mock pool total
     
     for (let i = 1; i <= count; i++) {
         // Use seeded random for consistency
         const rand = seed();
-        const isRare = rand > 0.85;
-        const isLegendary = rand > 0.98;
         
-        const rarity = isLegendary ? 'Legendary' : (isRare ? 'Rare' : 'Common');
-        
-        // Generate consistent traits based on ID
-        const traits = [
-            { type: "Background", value: TRAIT_TYPES.Background[i % TRAIT_TYPES.Background.length] },
-            { type: "Armor", value: TRAIT_TYPES.Armor[(i * 2) % TRAIT_TYPES.Armor.length] },
-            { type: "Weapon", value: TRAIT_TYPES.Weapon[(i * 3) % TRAIT_TYPES.Weapon.length] },
-        ];
-        
-        if (isRare || isLegendary) {
-            traits.push({ type: "Augment", value: TRAIT_TYPES.Augment[(i * 5) % TRAIT_TYPES.Augment.length] });
+        // Try to fetch real metadata for first few, else mock
+        let guardian: Guardian;
+        if (i <= 50) { // Fetch real for first 50 to demonstrate
+             const real = await fetchRealMetadata(i);
+             if (real) {
+                 guardian = real;
+             } else {
+                 // Fallback to mock
+                 guardian = {
+                     id: i,
+                     name: `Guardian #${i}`,
+                     image: MOCK_GUARDIANS[i % 4].image,
+                     traits: [],
+                     rarity: 'Common'
+                 }
+             }
+        } else {
+             // Pure mock for performance for rest
+             const isRare = rand > 0.85;
+             const isLegendary = rand > 0.98;
+             const rarity = isLegendary ? 'Legendary' : (isRare ? 'Rare' : 'Common');
+             guardian = {
+                id: i,
+                name: `Guardian #${i}`,
+                image: MOCK_GUARDIANS[i % 4].image,
+                traits: [
+                    { type: "Background", value: "Cyber City" },
+                    { type: "Armor", value: "Mk-IV" }
+                ],
+                rarity
+             };
         }
+
+        const isRare = guardian.rarity === 'Rare';
+        const isLegendary = guardian.rarity === 'Legendary';
+        const isEpic = guardian.rarity === 'Epic';
+
+        // Value Calc
+        let baseValue = (poolTotal / 3731);
+        if (isEpic || isRare || isLegendary) {
+            baseValue *= 1.3; // +30% boost
+        }
+        const estimatedValue = parseFloat(baseValue.toFixed(2));
 
         // Mock Listing Status (approx 10% listed)
         const isListed = rand > 0.90;
@@ -96,18 +163,15 @@ export function generateMarketplaceData(count: number = 3732): MarketItem[] {
         }
 
         items.push({
-            id: i,
-            name: `Guardian #${i.toString().padStart(4, '0')}`,
-            image: MOCK_GUARDIANS[i % 4].image, // Cycle through 4 base images for prototype
-            traits,
-            rarity,
+            ...guardian,
             owner: `0x${Math.floor(rand * 16777215).toString(16).padStart(6, '0')}...${Math.floor(rand * 65535).toString(16).padStart(4, '0')}`,
             isListed,
             price,
             currency,
             listingId: isListed ? 1000 + i : undefined,
             listingExpiresAt,
-            offers
+            offers,
+            estimatedValue
         });
     }
 

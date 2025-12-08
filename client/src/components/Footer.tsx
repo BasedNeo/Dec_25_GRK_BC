@@ -122,13 +122,20 @@ export function Footer() {
         </div>
 
         <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono text-center">
-           This DApp is for entertainment. Values are estimates; not financial advice. Advisory votes; admin decides. Use at own risk. © 2025 Based Guardians
+           Values estimates only; advisory votes; admin decides. © 2025 Based Guardians
         </div>
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">
+            <div className="flex items-center mb-4">
+               {/* Logo placeholder */}
+               <div className="w-8 h-8 border border-white/10 rounded-full flex items-center justify-center mr-2 bg-white/5">
+                 <span className="text-[8px]">LOGO</span>
+               </div>
+               BASED GUARDIANS
+            </div>
             <div className="flex items-center">
                 <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-                OPERATIONAL ON BASEDAI MAINNET ({CHAIN_ID})
+                OPERATIONAL ON BASED L1 ({CHAIN_ID})
             </div>
         </div>
       </div>

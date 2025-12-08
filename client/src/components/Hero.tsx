@@ -87,7 +87,7 @@ export function Hero() {
           </h1>
           
           <p className="text-lg text-muted-foreground mb-8 font-rajdhani leading-relaxed max-w-lg">
-            The Guardians of Flare — Step into the Based Universe where courage, creativity, and community collide. This collection features 3,731 unique NFTs forged on the Based Network. Each NFT is more than art — it's a warrior in the eternal battle against FUD pirates, defenders of truth across the Giga Brain Galaxy. Every Guardian generates emissions once staked to a BasedAI Brain (subnet) to earn $BASED rewards, with Legendary rarities unlocking higher yields.
+            The Guardians of Flare — Step into the Based Universe where courage, creativity, and community collide. 3,731 unique NFTs (1,776 Guardians, 1,319 Frogs, 636 Creatures). Staked to BasedAI Brain for $BASED emissions; Legendary rarities unlock yields/Race-to-Base privileges. Father-daughter vision blending 80s retro-fantasy with AI/blockchain/humanitarian mission. 'This story, your story, has only just begun... Stay Based.'
           </p>
 
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md">
