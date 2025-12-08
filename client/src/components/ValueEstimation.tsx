@@ -16,16 +16,21 @@ export function ValueEstimation() {
   const { data: poolBalance, refetch: refetchBalance } = useBalance({
     address: import.meta.env.VITE_POOL_WALLET as `0x${string}` || undefined,
     token: import.meta.env.VITE_BASED_TOKEN as `0x${string}` || undefined, // Use specific token if env set
+    query: {
+      staleTime: 30000,
+    }
   });
 
   // Fetch User Guardians
   const { data: guardians, refetch: refetchGuardians } = useGuardians();
 
+  // Debounced Refresh
   const handleRefresh = async () => {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     await Promise.all([refetchBalance(), refetchGuardians()]);
-    // Simulate a min delay for visual feedback
-    setTimeout(() => setIsRefreshing(false), 800);
+    // Simulate a min delay for visual feedback and debounce
+    setTimeout(() => setIsRefreshing(false), 2000);
   };
 
   const currentPoolBalance = poolBalance 
@@ -53,7 +58,8 @@ export function ValueEstimation() {
           variant="ghost" 
           size="sm" 
           onClick={handleRefresh}
-          className="text-muted-foreground hover:text-primary"
+          disabled={isRefreshing}
+          className="text-muted-foreground hover:text-primary min-h-[44px]"
         >
           <RefreshCw size={14} className={cn("mr-2", isRefreshing && "animate-spin")} />
           REFRESH RATES

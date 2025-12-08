@@ -61,6 +61,6 @@ export function useGuardians(useMockData: boolean = false) {
       }
     },
     enabled: isConnected || useMockData,
-    staleTime: 60000,
+    staleTime: 30000,
   });
 }

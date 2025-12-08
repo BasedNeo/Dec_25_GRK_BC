@@ -168,8 +168,8 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
            </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
             {proposals?.map((proposal) => (
               <ProposalCard 
                 key={proposal.id} 
@@ -320,15 +320,14 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
               <Button 
                 key={option.id}
                 onClick={() => handleVote(option.id)} 
-                size="sm" 
                 variant="outline"
-                className="border-white/10 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+                className="border-white/10 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all min-h-[44px]"
               >
                 {option.label}
               </Button>
             ))
           ) : (
-            <Button onClick={onConnect} variant="outline" size="sm" className="col-span-2 w-full">
+            <Button onClick={onConnect} variant="outline" className="col-span-2 w-full min-h-[44px]">
               Connect to Vote
             </Button>
           )}

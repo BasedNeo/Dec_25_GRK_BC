@@ -50,7 +50,7 @@ export function EscrowMarketplace() {
   const { data: allItems } = useQuery({
     queryKey: ['marketplace-items'],
     queryFn: async () => generateMarketplaceData(3732),
-    staleTime: Infinity, // Static for prototype
+    staleTime: 30000, // 30s caching
   });
 
   // --- Filtering Logic ---
@@ -413,13 +413,13 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
                 <div className="grid grid-cols-2 gap-2">
                   <Button 
                     variant="outline" 
-                    className="h-9 text-xs border-white/10 hover:border-white/30"
+                    className="h-11 text-xs border-white/10 hover:border-white/30"
                     onClick={() => setShowOfferModal(true)}
                   >
                     Make Offer
                   </Button>
                   <Button 
-                    className="h-9 text-xs bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary font-orbitron"
+                    className="h-11 text-xs bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary font-orbitron"
                     onClick={onBuy}
                   >
                     {isConnected ? 'BUY NOW' : 'CONNECT'}
@@ -427,13 +427,13 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
                 </div>
               ) : (
                 <div className="space-y-2">
-                    <Button variant="outline" className="w-full h-9 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10">
+                    <Button variant="outline" className="w-full h-11 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10">
                     CANCEL LISTING
                     </Button>
                     {(item.offers && item.offers.length > 0) && (
                         <Button 
                             variant="secondary" 
-                            className="w-full h-9 text-xs"
+                            className="w-full h-11 text-xs"
                             onClick={() => setShowOffersList(true)}
                         >
                             VIEW {item.offers.length} OFFERS
@@ -457,7 +457,7 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
           {isAdmin && item.isListed && (
               <Button 
                 onClick={onAdminCancel}
-                className="w-full mt-2 h-6 text-[10px] bg-red-900/20 text-red-500 border border-red-500/20 hover:bg-red-500/20"
+                className="w-full mt-2 h-8 text-[10px] bg-red-900/20 text-red-500 border border-red-500/20 hover:bg-red-500/20 min-h-[32px]"
               >
                 ADMIN OVERRIDE: DELIST
               </Button>
