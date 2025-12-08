@@ -82,6 +82,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
                 </Badge>
             )}
+            <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/50 hidden sm:flex">
+                BETA v1.0
+            </Badge>
           </div>
 
           {/* Desktop Navigation */}
@@ -105,6 +108,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               </button>
             ))}
             
+            <div className="flex items-center gap-2 ml-4 px-2 py-1 bg-white/5 rounded border border-white/10">
+                <span className="text-[10px] text-muted-foreground font-mono">1 ETH ≈ 50k $BASED</span>
+            </div>
+
             {isAdmin && (
                 <Button 
                     variant="outline" 

@@ -1,0 +1,49 @@
+You have already built a fully functional Based Command App on the BasedAI chain (Chain ID 32323) with minting, wallet connect, supply counter, tabs, and basic metadata loading.
+
+NOW execute every single remaining commercial requirement in one perfect iteration:
+
+1. **Chain & Token**
+   - Force the app to run ONLY on BasedAI mainnet (Chain ID 32323, RPC https://mainnet.basedaibridge.com/rpc/, symbol BASED, explorer https://explorer.bf1337.org/)
+   - ALL prices, balances, and mint costs must display in $BASED (never ETH) by default
+   - Add a small toggle button in header “View in ETH” that converts using a simple 1 ETH = 50,000 $BASED placeholder rate
+
+2. **Full Metadata Sync (3732 Guardians)**
+   - Load the uploaded CSV data/guardians-metadata.csv as the primary source (3732 rows)
+   - Use Papa Parse to read it at runtime
+   - For every NFT (Gallery + Sales tab), show ALL 13+ attributes in an expandable accordion (Character Type, Rarity Level, Speed, Agility, Intellect, Strength, Special Meta, etc.)
+   - Fallback to live IPFS only if CSV fails
+   - Add “Load More” + infinite scroll so ALL 3732 load without lag
+
+3. **NFT Value Calculation**
+   - “Backed by” value = community pool $BASED balance ÷ 3732 per NFT
+   - +30% boost if Rarity Level = "Rare", "Epic", or "Legendary"
+   - Show clearly: “Backed by X $BASED per NFT (+30% rare boost) | Your Total: Y $BASED”
+
+4. **Marketplace / Sales Tab (Premium)**
+   - Full searchable/sortable grid of all 3732 NFTs
+   - Sorting: Price low→high, NFT number, Rarity Level, Strength, Intellect, any trait
+   - Search bar that filters by any trait (e.g. “Strength 9+”, “Based Frog”, “Elite Guardian”)
+   - Listings: forever or timed (seller chooses), cancel anytime
+   - Buy with native $BASED only (no wrapped ETH)
+   - Counter-offers: buyer can bid lower → seller accepts/rejects
+   - 1% platform fee on every sale (sent to pool)
+
+5. **Voting DAO**
+   - Admin-only propose (VITE_ADMIN_WALLET = 0xAe543104fDBe456478E19894f7F0e01f0971c9B4)
+   - Options: Yes/No or A/B/C/D + expiration timer
+   - Votes weighted by NFT count
+   - Clear note: “Votes are advisory — final decision by admin”
+
+6. **Security & Commercial Polish**
+   - ReentrancyGuard + Ownable on all contracts
+   - Input sanitization everywhere
+   - Confetti on mint + successful sale
+   - Google Analytics (VITE_GA_ID)
+   - “BETA” ribbon + version v1.0
+   - Footer disclaimer: “Values are estimates. Actual market price may differ (e.g. Aftermint.trade). Not financial advice. Advisory votes only.”
+   - Mobile-first responsive (test on phone)
+   - Ready for Vercel deploy (no Replit-specific code)
+
+Do everything above in one go. Keep current cyberpunk design. Test with real wallet connect. No errors in console.
+
+This is the final commercial version — make it perfect.

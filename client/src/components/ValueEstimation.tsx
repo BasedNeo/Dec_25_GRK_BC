@@ -47,12 +47,19 @@ export function ValueEstimation() {
   const baseValuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
   
   // Calculate User Total Value with Boosts
-  // Boost logic: 30% boost if rarity is 'Rare', 'Legendary', or 'Epic'
-  const userTotalValue = (guardians || []).reduce((total, guardian) => {
-    // Explicit check for 'Rare'/'Legendary'/'Epic' (case insensitive)
-    const r = guardian.rarity?.toLowerCase() || '';
-    const isRare = r === 'rare' || r === 'legendary' || r === 'epic';
+  // Boost logic: 30% boost if Rarity Level is 'Rarest', 'Legendary', or contains 'Rare'
+  const userTotalValue = (guardians || []).reduce((total: number, guardian: any) => {
+    // Explicit check for Rarity Level from CSV or fallback
+    // CSV field is "Rarity Level" (mapped to guardian.rarity in loader if simple, or in traits)
+    
+    // Check traits first for "Rarity Level"
+    const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level')?.value || guardian.rarity || '';
+    const r = rarityTrait.toLowerCase();
+    
+    // Boost conditions: "rarest-legendary", "rarest", "rare"
+    const isRare = r.includes('rare') || r.includes('legendary') || r.includes('epic');
     const multiplier = isRare ? 1.3 : 1.0;
+    
     return total + (baseValuePerNFT * multiplier);
   }, 0);
 
@@ -80,12 +87,12 @@ export function ValueEstimation() {
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Activity size={24} />
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-1">BASE VALUE / NFT</p>
+            <p className="text-sm text-muted-foreground font-mono mb-1">BACKED BY / NFT</p>
             <h3 className="text-3xl font-orbitron text-white">
               {Math.floor(baseValuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
             </h3>
             <p className="text-xs text-green-400 mt-2 flex items-center">
-              <TrendingUp size={12} className="mr-1" /> +5.2% (24h)
+              <TrendingUp size={12} className="mr-1" /> +30% FOR RARE+
             </p>
           </Card>
 
@@ -94,12 +101,12 @@ export function ValueEstimation() {
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-4 text-primary z-10">
               <DollarSign size={24} />
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-1 z-10">YOUR HOLDINGS VALUE</p>
+            <p className="text-sm text-muted-foreground font-mono mb-1 z-10">YOUR TOTAL HOLDINGS</p>
             <h3 className="text-3xl font-orbitron text-white z-10 text-glow">
               {Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
             </h3>
             <p className="text-xs text-muted-foreground mt-2 z-10">
-              Based on {ownedCount} Guardians {ownedCount > 0 && "(w/ Rarity Boost)"}
+              {ownedCount} Guardians (Includes Rarity Boosts)
             </p>
           </Card>
 
