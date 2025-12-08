@@ -1,0 +1,21 @@
+Iterate on the existing Based Command App: Do NOT rebuild UI — keep the current cyberpunk design, tabs, mint hero, and RainbowKit wallet connect.
+
+Incorporate BasedAI chain: RPC https://mainnet.basedaibridge.com/rpc/, Chain ID 32323, explorer https://explorer.bf1337.org/, symbol BASED. Update Wagmi/RainbowKit for custom chain config. Ensure ETH-compatible wallets (MetaMask, Rabby, Trust) work seamlessly (no wrapped ETH).
+
+Integrate full Based Guardians branding and project data:
+- Name: "Based Guardians" (BGUARD symbol).
+- Supply: 3,731 NFTs (1,776 heroic Guardians, 1,319 resilient Frogs, 636 fierce Creatures).
+- Lore in hero/footer: "The Guardians of Flare — Step into the Based Universe where courage, creativity, and community collide. This collection features 3,731 unique NFTs forged on the Based Network. Each NFT is more than art — it's a warrior in the eternal battle against FUD pirates, defenders of truth across the Giga Brain Galaxy. Every Guardian generates emissions once staked to a BasedAI Brain (subnet) to earn $BASED rewards, with Legendary rarities unlocking higher yields and exclusive in-game privileges. Join the Race-to-Base — an evolving series of events where holders compete for prizes, recognition, and to advance our shared humanitarian mission. Born from a father-daughter vision, Based Guardians blends 1980s retro-fantasy nostalgia with cutting-edge AI, blockchain, and community storytelling — bridging generations and technologies in a living universe that grows with its holders. 'This story, your story, has only just begun... Stay vigilant. Stay powerful. Stay Based.' Twitter: https://x.com/based_guardians."
+- Admin: 0xAe543104fDBe456478E19894f7F0e01f0971c9B4; Royalty: 0xb1362caf09189887599ed40f056712b1a138210c.
+- Mint: 69,420 $BASED/NFT, 51% (35,404) to pool (grows via staking emissions/royalties).
+- Add disclaimer: "Values are estimates and may not be accurate due to market fluctuations. Not financial advice. Advisory votes; admin decides outcomes."
+
+Update NFT Gallery & Value:
+- Fetch real metadata from IPFS root https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeibjtmlygkgwq7kw56rehjleth46clcaokgrx2y5ijy3qjxlmomphi/ (e.g., /1.json for tokenId 1). Use Alchemy/VITE_ALCHEMY_KEY for owned NFTs from VITE_NFT_CONTRACT.
+- Grid: Image (IPFS), name, traits/attributes (e.g., type: "Guardian", rarity: "Epic").
+- Value: Per-NFT = pool balance / 3731; total = per * count; +30% if rarity = "rare"/"legendary"/"epic". Show "Est. Value: X $BASED (Rare Boost Applied)".
+- Sorting: By tokenId, rarity, traits (dropdown filters).
+
+Keep all existing features (mint, voting, pool). Secure: Sanitize metadata, cache with react-query. Cross-device: Mobile grid stacks. Optimize for 1000 users.
+
+Generate/test code.

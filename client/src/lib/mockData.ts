@@ -8,7 +8,7 @@ export interface Guardian {
   name: string;
   image: string;
   traits: { type: string; value: string }[];
-  rarity: 'Common' | 'Rare' | 'Legendary';
+  rarity: string; // Changed to string to support "Epic" etc dynamically
 }
 
 export interface Proposal {

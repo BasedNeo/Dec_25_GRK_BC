@@ -15,7 +15,7 @@ export function Footer() {
               ROYALTIES: SPLIT TO COMMUNITY & TEAM ({ROYALTY_WALLET})
             </p>
             <p className="text-xs text-muted-foreground mt-2 font-rajdhani max-w-sm">
-               The Guardians of Flare: 1776 Guardians, 1319 Frogs, 636 Creatures. Protecting the BasedAI Chain.
+               The Guardians of Flare: 3,731 Warriors. 1,776 Guardians, 1,319 Frogs, 636 Creatures. Protecting the Giga Brain Galaxy.
             </p>
           </div>
 

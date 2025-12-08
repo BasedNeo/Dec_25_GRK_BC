@@ -83,8 +83,8 @@ export function EscrowMarketplace() {
       if (sortBy === 'price-desc') return (b.price || 0) - (a.price || 0);
       if (sortBy === 'id-asc') return a.id - b.id;
       if (sortBy === 'rarity') {
-        const rarityScore = { 'Legendary': 3, 'Rare': 2, 'Common': 1 };
-        return rarityScore[b.rarity] - rarityScore[a.rarity];
+        const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
+        return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
       }
       return 0;
     });
@@ -225,7 +225,7 @@ export function EscrowMarketplace() {
 
         {/* Disclaimer */}
         <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono text-center">
-           DISCLAIMER: Values are estimates; not financial advice. All transactions are on Base Mainnet (8453).
+           DISCLAIMER: Values are estimates and may not be accurate due to market fluctuations. Not financial advice. Advisory votes; admin decides outcomes.
         </div>
 
         {/* Main Content Tabs */}

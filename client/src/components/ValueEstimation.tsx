@@ -35,10 +35,11 @@ export function ValueEstimation() {
   const baseValuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
   
   // Calculate User Total Value with Boosts
-  // Boost logic: 30% boost if rarity is 'Rare'
+  // Boost logic: 30% boost if rarity is 'Rare', 'Legendary', or 'Epic'
   const userTotalValue = (guardians || []).reduce((total, guardian) => {
-    // Explicit check for 'Rare' (case insensitive) or specific ID placeholders if fetched
-    const isRare = guardian.rarity.toLowerCase() === 'rare';
+    // Explicit check for 'Rare'/'Legendary'/'Epic' (case insensitive)
+    const r = guardian.rarity?.toLowerCase() || '';
+    const isRare = r === 'rare' || r === 'legendary' || r === 'epic';
     const multiplier = isRare ? 1.3 : 1.0;
     return total + (baseValuePerNFT * multiplier);
   }, 0);
@@ -93,12 +94,12 @@ export function ValueEstimation() {
             <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <TrendingUp size={24} />
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-1">RARE TRAIT MULTIPLIER</p>
+            <p className="text-sm text-muted-foreground font-mono mb-1">RARITY BOOST (1.3x)</p>
             <h3 className="text-3xl font-orbitron text-white">
-              1.3x
+              +30%
             </h3>
             <p className="text-xs text-muted-foreground mt-2">
-              Applied to Rare/Legendary items
+              Applied to Rare, Epic & Legendary
             </p>
           </Card>
 
