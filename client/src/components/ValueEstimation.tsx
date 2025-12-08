@@ -37,7 +37,9 @@ export function ValueEstimation() {
   // Calculate User Total Value with Boosts
   // Boost logic: 30% boost if rarity is 'Rare'
   const userTotalValue = (guardians || []).reduce((total, guardian) => {
-    const multiplier = guardian.rarity === 'Rare' || guardian.rarity === 'Legendary' ? 1.3 : 1.0;
+    // Explicit check for 'Rare' (case insensitive) or specific ID placeholders if fetched
+    const isRare = guardian.rarity.toLowerCase() === 'rare';
+    const multiplier = isRare ? 1.3 : 1.0;
     return total + (baseValuePerNFT * multiplier);
   }, 0);
 

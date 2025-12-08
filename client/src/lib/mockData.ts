@@ -25,25 +25,23 @@ export interface Proposal {
 export const MOCK_GUARDIANS: Guardian[] = [
   {
     id: 1,
-    name: "Guardian #0042",
-    image: guardian1,
+    name: "Guardian #1",
+    image: "https://via.placeholder.com/400x400/00ffff/000000?text=Guardian+Rare", // Placeholder as requested
     traits: [
-      { type: "Background", value: "Neon City" },
-      { type: "Armor", value: "Mk-IV Stealth" },
-      { type: "Weapon", value: "Plasma Blade" }
+      { type: "Power", value: "High" },
+      { type: "Background", value: "Neon City" }
     ],
-    rarity: 'Common'
+    rarity: 'Rare'
   },
   {
     id: 2,
-    name: "Guardian #0137",
-    image: guardian2,
+    name: "Guardian #2",
+    image: "https://via.placeholder.com/400x400/bf00ff/000000?text=Guardian+Common", // Placeholder as requested
     traits: [
-      { type: "Background", value: "Matrix" },
-      { type: "Armor", value: "Holo-Mesh" },
-      { type: "Eyes", value: "Cyber-Visor" }
+      { type: "Power", value: "Standard" },
+      { type: "Background", value: "Industrial" }
     ],
-    rarity: 'Rare'
+    rarity: 'Common'
   },
   {
     id: 3,

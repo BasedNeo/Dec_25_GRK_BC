@@ -20,17 +20,21 @@ export function useGuardians(useMockData: boolean = false) {
         });
         
         // Map Alchemy NFT format to our Guardian interface
-        return response.ownedNfts.map((nft, index) => ({
-          id: parseInt(nft.tokenId) || index,
-          name: nft.name || `Guardian #${nft.tokenId}`,
-          // Prioritize cachedUrl as it's an HTTP gateway to IPFS
-          image: nft.image.cachedUrl || nft.image.originalUrl || MOCK_GUARDIANS[index % 4].image,
-          traits: nft.raw.metadata.attributes?.map((attr: any) => ({
-             type: attr.trait_type,
-             value: attr.value
-          })) || [],
-          rarity: (nft.raw.metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value === 'Rare' || [1,5,10].includes(parseInt(nft.tokenId))) ? 'Rare' : 'Common'
-        }));
+        return response.ownedNfts.map((nft, index) => {
+          const sanitize = (str: string) => str ? str.replace(/<[^>]*>?/gm, '') : '';
+          
+          return {
+            id: parseInt(nft.tokenId) || index,
+            name: sanitize(nft.name || `Guardian #${nft.tokenId}`),
+            // Prioritize cachedUrl as it's an HTTP gateway to IPFS
+            image: nft.image.cachedUrl || nft.image.originalUrl || MOCK_GUARDIANS[index % 4].image,
+            traits: nft.raw.metadata.attributes?.map((attr: any) => ({
+               type: sanitize(attr.trait_type),
+               value: sanitize(attr.value)
+            })) || [],
+            rarity: (nft.raw.metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value === 'Rare' || [1,5,10].includes(parseInt(nft.tokenId))) ? 'Rare' : 'Common'
+          };
+        });
       } catch (e) {
         console.warn("Failed to fetch real NFTs, falling back to empty/mock", e);
         return [];
