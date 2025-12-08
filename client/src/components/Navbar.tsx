@@ -63,13 +63,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">
-      {/* Beta Ribbon - Top Right Corner of Viewport */}
-      <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 z-50 pointer-events-none">
-        <div className="absolute top-0 right-0 transform translate-x-8 translate-y-3 rotate-45 bg-primary text-black font-bold font-orbitron text-[10px] py-1 w-32 text-center shadow-lg border border-white/20">
-          BETA v1.0
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}

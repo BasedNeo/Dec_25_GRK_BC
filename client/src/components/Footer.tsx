@@ -138,7 +138,7 @@ export function Footer() {
                <div className="w-8 h-8 border border-white/10 rounded-full flex items-center justify-center mr-2 bg-white/5">
                  <span className="text-[8px]">LOGO</span>
                </div>
-               BASED GUARDIANS
+               BASED GUARDIANS v1.0
             </div>
             <div className="flex items-center">
                 <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>

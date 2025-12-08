@@ -89,6 +89,13 @@ export function Hero() {
 
   return (
     <section id="hero" className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden">
+      {/* Beta Ribbon (Red Corner Badge) */}
+      <div className="absolute top-24 left-0 w-32 h-32 overflow-hidden z-20 pointer-events-none">
+        <div className="absolute top-0 left-0 transform -translate-x-10 translate-y-6 -rotate-45 bg-red-600 text-white font-bold font-orbitron text-[10px] py-1 w-40 text-center shadow-lg border border-red-400/50">
+          BETA v1.0
+        </div>
+      </div>
+
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/80 z-10" />
