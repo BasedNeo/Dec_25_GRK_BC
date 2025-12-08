@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, PlayCircle, PauseCircle } from "lucide-react";
+import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@assets/generated_images/neon_cyan_glitch_text_logo_on_black.png";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -8,8 +8,8 @@ import { useAccount } from "wagmi";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NavbarProps {
   activeTab: string;
@@ -22,6 +22,19 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const { address, isConnected: wagmiConnected } = useAccount();
   const { isPaused, togglePause } = useSecurity();
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
+  
+  // Badge State
+  const [badges, setBadges] = useState<{topVoter: boolean, eliteSeller: boolean}>({ topVoter: false, eliteSeller: false });
+
+  useEffect(() => {
+    // Check for badges on mount/update
+    const votes = parseInt(localStorage.getItem('user_votes') || '0');
+    const sales = parseInt(localStorage.getItem('user_sales') || '0');
+    setBadges({
+        topVoter: votes >= 10,
+        eliteSeller: sales >= 5
+    });
+  }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
     { id: 'mint', label: 'MINT' },
@@ -87,7 +100,33 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </Button>
             )}
 
-            <div className="ml-4">
+            <div className="ml-4 flex items-center gap-3">
+              {/* Badges */}
+              {badges.topVoter && (
+                  <Tooltip>
+                      <TooltipTrigger>
+                        <div className="p-1.5 rounded-full bg-purple-500/20 border border-purple-500/50 text-purple-400">
+                            <Award size={16} />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-black border-purple-500 text-purple-400 font-orbitron">
+                          TOP VOTER (10+ VOTES)
+                      </TooltipContent>
+                  </Tooltip>
+              )}
+              {badges.eliteSeller && (
+                  <Tooltip>
+                      <TooltipTrigger>
+                        <div className="p-1.5 rounded-full bg-yellow-500/20 border border-yellow-500/50 text-yellow-400">
+                            <Star size={16} />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-black border-yellow-500 text-yellow-400 font-orbitron">
+                          ELITE SELLER (5+ SALES)
+                      </TooltipContent>
+                  </Tooltip>
+              )}
+
               <ConnectButton.Custom>
                 {({
                   account,

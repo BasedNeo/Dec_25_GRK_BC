@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
-  Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon
+  Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
+  Flame, Zap, History, MessageCircle
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -23,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -43,6 +45,7 @@ export function EscrowMarketplace() {
   // --- Biometric Auth State ---
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // --- Admin Check ---
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
@@ -51,7 +54,7 @@ export function EscrowMarketplace() {
   const { data: allItems } = useQuery({
     queryKey: ['marketplace-items'],
     queryFn: async () => generateMarketplaceData(3732),
-    staleTime: 30000, // 30s caching
+    staleTime: 60000, // 60s caching (Optimized)
   });
 
   // --- Filtering Logic ---
@@ -115,33 +118,46 @@ export function EscrowMarketplace() {
         description: "Biometric authentication successful.",
         className: "bg-black border-green-500 text-green-500 font-orbitron"
       });
+      if (pendingAction) {
+          pendingAction();
+          setPendingAction(null);
+      }
     } catch (e) {
       toast({ title: "Authentication Failed", variant: "destructive" });
     }
   };
 
   const handleBuy = (item: MarketItem) => {
-    if (isPaused) {
-        toast({ title: "Market Paused", description: "Trading halted by admin.", variant: "destructive" });
-        return;
-    }
+    const executeBuy = () => {
+        if (isPaused) {
+            toast({ title: "Market Paused", description: "Trading halted by admin.", variant: "destructive" });
+            return;
+        }
+
+        toast({
+          title: "Processing Transaction",
+          description: "Interacting with Escrow Contract...",
+          className: "bg-black border-accent text-accent font-orbitron",
+        });
+
+        setTimeout(() => {
+          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
+          toast({
+            title: "Purchase Successful",
+            description: `You are now the owner of ${item.name}. Asset transferred.`,
+            className: "bg-black border-green-500 text-green-500 font-orbitron",
+          });
+        }, 2000);
+    };
+
     if (!isConnected) { openConnectModal?.(); return; }
-    if (!biometricAuthenticated) { setShowBiometricModal(true); return; }
-
-    toast({
-      title: "Processing Transaction",
-      description: "Interacting with Escrow Contract...",
-      className: "bg-black border-accent text-accent font-orbitron",
-    });
-
-    setTimeout(() => {
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
-      toast({
-        title: "Purchase Successful",
-        description: `You are now the owner of ${item.name}. Asset transferred.`,
-        className: "bg-black border-green-500 text-green-500 font-orbitron",
-      });
-    }, 2000);
+    if (!biometricAuthenticated) { 
+        setPendingAction(() => executeBuy);
+        setShowBiometricModal(true); 
+        return; 
+    }
+    
+    executeBuy();
   };
 
   const handleAdminCancel = (item: MarketItem) => {
@@ -357,10 +373,31 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
     e.preventDefault();
     setShowOfferModal(false);
     toast({
-      title: "Offer Submitted",
-      description: `Your offer of ${new FormData(e.target as HTMLFormElement).get('offerAmount')} for ${item.name} has been sent.`,
+      title: "Offer Submitted (Timelock Active)",
+      description: `Your offer of ${new FormData(e.target as HTMLFormElement).get('offerAmount')} for ${item.name} is locked for 1 hour.`,
       className: "bg-black border-primary text-primary font-orbitron"
     });
+  };
+  
+  const handleAcceptOffer = (offerId: number) => {
+      setShowOffersList(false);
+      
+      // Update local storage for Elite Seller Badge
+      const currentSales = parseInt(localStorage.getItem('user_sales') || '0');
+      localStorage.setItem('user_sales', (currentSales + 1).toString());
+
+      confetti({
+        particleCount: 200,
+        spread: 120,
+        origin: { y: 0.6 },
+        colors: ['#00ff00', '#ffffff']
+      });
+
+      toast({
+          title: "Offer Accepted!",
+          description: "Transaction finalized. Funds transferred to your wallet.",
+          className: "bg-black border-green-500 text-green-500 font-orbitron"
+      });
   };
 
   const isExpired = item.listingExpiresAt ? new Date(item.listingExpiresAt) < new Date() : false;
@@ -440,12 +477,40 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
                   >
                     Make Offer
                   </Button>
-                  <Button 
-                    className="h-11 text-xs bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary font-orbitron"
-                    onClick={onBuy}
-                  >
-                    {isConnected ? 'BUY NOW' : 'CONNECT'}
-                  </Button>
+                  
+                  {/* Buy Button with Gas Preview Popover */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                        <Button 
+                            className="h-11 text-xs bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary font-orbitron"
+                        >
+                            {isConnected ? 'BUY NOW' : 'CONNECT'}
+                        </Button>
+                    </PopoverTrigger>
+                    {isConnected && (
+                        <PopoverContent className="w-56 bg-black border-white/20 text-white">
+                            <div className="space-y-2">
+                                <h5 className="font-orbitron text-sm border-b border-white/10 pb-2">TX PREVIEW</h5>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Price:</span>
+                                    <span>{item.price} {item.currency}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Est. Gas:</span>
+                                    <span className="text-orange-400 flex items-center"><Flame size={10} className="mr-1"/> 0.0004 ETH</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-bold pt-2 border-t border-white/10">
+                                    <span>Total:</span>
+                                    <span>{item.price} {item.currency}</span>
+                                </div>
+                                <Button size="sm" className="w-full mt-2 bg-primary text-black font-orbitron" onClick={onBuy}>
+                                    CONFIRM BUY
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    )}
+                  </Popover>
+
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -455,10 +520,11 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
                     {(item.offers && item.offers.length > 0) && (
                         <Button 
                             variant="secondary" 
-                            className="w-full h-11 text-xs"
+                            className="w-full h-11 text-xs relative"
                             onClick={() => setShowOffersList(true)}
                         >
                             VIEW {item.offers.length} OFFERS
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
                         </Button>
                     )}
                 </div>
@@ -491,9 +557,13 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
       <Dialog open={showOfferModal} onOpenChange={setShowOfferModal}>
         <DialogContent className="bg-black border-white/20 text-white">
           <DialogHeader>
-            <DialogTitle className="font-orbitron">MAKE AN OFFER</DialogTitle>
+            <DialogTitle className="font-orbitron">MAKE A COUNTER-OFFER</DialogTitle>
             <DialogDescription>
-              Enter your price for {item.name}. The owner will be notified.
+              Enter your bid for {item.name}.
+              <div className="mt-2 text-yellow-500/80 text-xs flex items-center bg-yellow-500/10 p-2 rounded">
+                 <Clock size={12} className="mr-2" /> 
+                 Security Note: Offers are timelocked for 1 hour to prevent front-running.
+              </div>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleMakeOffer} className="space-y-4 py-4">
@@ -516,8 +586,11 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
                 </div>
              </div>
              <Button type="submit" className="w-full bg-primary text-black font-orbitron">
-               SEND OFFER
+               SIGN & SEND OFFER
              </Button>
+             <div className="text-center text-[10px] text-muted-foreground">
+                 No gas required for off-chain signatures (Mocked)
+             </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -527,18 +600,35 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
         <DialogContent className="bg-black border-white/20 text-white">
           <DialogHeader>
             <DialogTitle className="font-orbitron">RECEIVED OFFERS</DialogTitle>
+            <DialogDescription>
+                Accepting an offer will immediately transfer the NFT.
+            </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[300px] pr-4">
               <div className="space-y-3">
                   {item.offers?.map((offer) => (
                       <div key={offer.id} className="flex items-center justify-between p-3 bg-white/5 rounded border border-white/10">
                           <div>
-                              <div className="text-lg font-bold text-white">{offer.amount} {offer.currency}</div>
+                              <div className="text-lg font-bold text-white flex items-center">
+                                  {offer.amount} {offer.currency}
+                                  {offer.amount < (item.price || 0) && (
+                                      <Badge variant="outline" className="ml-2 text-[10px] border-yellow-500/50 text-yellow-500 h-5">
+                                          {-Math.round((1 - offer.amount / (item.price || 1)) * 100)}%
+                                      </Badge>
+                                  )}
+                              </div>
                               <div className="text-xs text-muted-foreground">From: {offer.bidder}</div>
+                              <div className="text-[10px] text-gray-500 flex items-center mt-1">
+                                  <History size={10} className="mr-1"/> {new Date(offer.timestamp).toLocaleDateString()}
+                              </div>
                           </div>
                           <div className="flex gap-2">
-                              <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-900/20"><X size={16}/></Button>
-                              <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 hover:bg-green-900/20"><CheckCircle2 size={16}/></Button>
+                              <Button size="sm" variant="outline" className="h-8 text-xs border-red-500/20 hover:bg-red-500/10 text-red-500">
+                                  REJECT
+                              </Button>
+                              <Button size="sm" className="h-8 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-500 border border-green-500/50" onClick={() => handleAcceptOffer(offer.id)}>
+                                  ACCEPT
+                              </Button>
                           </div>
                       </div>
                   ))}
