@@ -11,6 +11,7 @@ import { config } from "./lib/wagmi";
 import { SecurityProvider } from "@/context/SecurityContext";
 import { initAnalytics } from "@/lib/analytics";
 import { useEffect } from "react";
+import { DisclaimerModal } from "@/components/DisclaimerModal";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function App() {
           <SecurityProvider>
             <TooltipProvider>
               <Router />
+              <DisclaimerModal />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>

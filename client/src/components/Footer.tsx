@@ -68,7 +68,13 @@ export function Footer() {
             </div>
 
             <div className="flex gap-6 text-sm text-muted-foreground font-mono">
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); toast({ title: "Terms of Service", description: "This is a placeholder for legal terms." }); }}
+                className="hover:text-white transition-colors"
+              >
+                Terms
+              </a>
               <a href="#" className="hover:text-white transition-colors">Privacy</a>
               <a href="#" className="hover:text-white transition-colors">Smart Contracts</a>
             </div>

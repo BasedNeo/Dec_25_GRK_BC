@@ -11,12 +11,14 @@ import confetti from "canvas-confetti";
 
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
+import { useABTest } from "@/hooks/useABTest";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
   const { isPaused } = useSecurity();
+  const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
 
   // Smart Contract Interaction Mock:
   // Implements nonReentrant, whenNotPaused modifiers from OpenZeppelin
@@ -118,7 +120,12 @@ export function Hero() {
             <Button 
               onClick={handleMint}
               disabled={isMinting || isPaused}
-              className="w-full py-6 text-lg font-orbitron tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 cyber-button shadow-[0_0_20px_rgba(0,255,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button
+                ${mintButtonColor === 'purple' 
+                  ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(0,255,255,0.4)]'
+                }
+              `}
             >
               {isPaused ? (
                   <span className="flex items-center text-red-500">
