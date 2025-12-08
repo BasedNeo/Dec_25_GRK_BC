@@ -27,6 +27,8 @@ import { useSecurity } from "@/context/SecurityContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trackEvent } from "@/lib/analytics";
 
+import { useGuardians } from "@/hooks/useGuardians";
+
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -41,7 +43,27 @@ export function EscrowMarketplace() {
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
-  const [displayLimit, setDisplayLimit] = useState(20); // Lazy load limit
+  
+  // Use infinite query for data instead of loading all at once
+  const { 
+    data, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    isLoading 
+  } = useGuardians(false); // Fetch real data
+
+  const allItems = useMemo(() => {
+     if (!data) return [];
+     // Flatten pages and add mock price/listing status for the marketplace demo
+     return data.pages.flatMap(page => page.nfts).map(item => ({
+        ...item,
+        isListed: true, // Assume all fetched are listed for this demo
+        price: 420 + (item.id % 100), // Mock price
+        currency: '$BASED',
+        owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
+     })) as unknown as MarketItem[];
+  }, [data]);
 
   // --- Biometric Auth State ---
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
@@ -52,11 +74,7 @@ export function EscrowMarketplace() {
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
 
   // --- Data Fetching (Mocking Alchemy/Contract fetch) ---
-  const { data: allItems } = useQuery({
-    queryKey: ['marketplace-items'],
-    queryFn: async () => generateMarketplaceData(3732),
-    staleTime: 60000, // 60s caching (Optimized)
-  });
+  // Replaced by useGuardians hook above
 
   // --- Filtering Logic ---
   const filteredItems = useMemo(() => {
@@ -99,11 +117,11 @@ export function EscrowMarketplace() {
     return items;
   }, [allItems, activeTab, search, rarityFilter, sortBy, isConnected]);
 
-  const displayedItems = filteredItems.slice(0, displayLimit);
-  const hasMore = filteredItems.length > displayLimit;
-
+  // Use full filtered list (pagination handled by fetchNextPage)
+  const displayedItems = filteredItems; 
+  
   const loadMore = () => {
-    setDisplayLimit(prev => prev + 20);
+    fetchNextPage();
   };
 
   // --- Actions ---
@@ -296,14 +314,19 @@ export function EscrowMarketplace() {
                ))}
              </div>
              
-             {hasMore && (
+             {(hasNextPage || isLoading) && (
                 <div className="flex justify-center py-8">
                     <Button 
                         variant="outline" 
                         onClick={loadMore}
+                        disabled={isFetchingNextPage || isLoading}
                         className="border-primary/50 text-primary hover:bg-primary/10 font-orbitron tracking-widest min-w-[200px]"
                     >
-                        LOAD MORE GUARDIANS
+                        {isFetchingNextPage || isLoading ? (
+                             <>LOADING <RefreshCw className="ml-2 h-4 w-4 animate-spin" /></>
+                        ) : (
+                             "LOAD MORE GUARDIANS"
+                        )}
                     </Button>
                 </div>
              )}
