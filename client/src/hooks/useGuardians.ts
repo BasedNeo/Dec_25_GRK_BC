@@ -4,18 +4,30 @@ import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
 import { fetchGuardiansPage, PAGE_SIZE } from "@/lib/ipfs";
 import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 
-export function useGuardians(useMockData: boolean = false, useCsvData: boolean = false) {
+export function useGuardians(useMockData: boolean = false, useCsvData: boolean = true) {
   const { address, isConnected } = useAccount();
 
   return useInfiniteQuery({
     queryKey: ['nfts', address, useMockData, useCsvData],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
-      // 0. CSV DATA MODE (Prioritized if toggled)
+      // 0. CSV DATA MODE (Default: True)
       if (useCsvData) {
           try {
-             const csvGuardians = await loadGuardiansFromCSV();
-             return { nfts: csvGuardians, nextCursor: undefined };
+             // Caching could be improved here, but for now we load all and slice
+             // Since loadGuardiansFromCSV fetches the whole file, we might want to cache the promise
+             const allGuardians = await loadGuardiansFromCSV();
+             
+             // Pagination logic for CSV data
+             const startId = typeof pageParam === 'number' ? pageParam : 1;
+             const pageSize = 20;
+             const startIndex = startId - 1;
+             const endIndex = startIndex + pageSize;
+             
+             const nfts = allGuardians.slice(startIndex, endIndex);
+             const nextCursor = endIndex < allGuardians.length ? endIndex + 1 : undefined;
+
+             return { nfts, nextCursor };
           } catch(e) {
              console.error("Failed to load CSV", e);
              return { nfts: [], nextCursor: undefined };
