@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
-  Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel 
+  Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -39,6 +39,9 @@ export function EscrowMarketplace() {
   // --- Biometric Auth State ---
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+
+  // --- Admin Check ---
+  const isAdmin = import.meta.env.VITE_ADMIN_WALLET && address?.toLowerCase() === import.meta.env.VITE_ADMIN_WALLET.toLowerCase();
 
   // --- Data Fetching (Mocking Alchemy/Contract fetch) ---
   const { data: allItems } = useQuery({
@@ -126,6 +129,14 @@ export function EscrowMarketplace() {
     }, 2000);
   };
 
+  const handleAdminCancel = (item: MarketItem) => {
+      toast({
+          title: "Admin Action",
+          description: `Listing for ${item.name} cancelled by admin override.`,
+          variant: "destructive"
+      });
+  };
+
   return (
     <section id="marketplace" className="py-20 bg-black min-h-screen relative">
        {/* Background */}
@@ -141,7 +152,7 @@ export function EscrowMarketplace() {
             <div className="flex gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Escrow Secured</span>
               <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
-              <span className="flex items-center gap-1"><RefreshCw size={12} className="text-primary"/> 0.5% Pool Fee</span>
+              <span className="flex items-center gap-1"><RefreshCw size={12} className="text-primary"/> 1% Platform Fee</span>
             </div>
           </div>
 
@@ -228,6 +239,7 @@ export function EscrowMarketplace() {
           </TabsList>
 
           <TabsContent value="buy" className="mt-0">
+             {/* Mobile: Horizontal scroll / Swipe | Desktop: Grid */}
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                {filteredItems.map((item) => (
                  <MarketCard 
@@ -236,6 +248,8 @@ export function EscrowMarketplace() {
                    onBuy={() => handleBuy(item)} 
                    isConnected={isConnected}
                    onConnect={openConnectModal}
+                   isAdmin={isAdmin}
+                   onAdminCancel={() => handleAdminCancel(item)}
                  />
                ))}
              </div>
@@ -291,8 +305,17 @@ export function EscrowMarketplace() {
   );
 }
 
-function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { item: MarketItem, onBuy?: () => void, isConnected: boolean, onConnect?: () => void, isOwner?: boolean }) {
+function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAdmin = false, onAdminCancel }: { 
+    item: MarketItem, 
+    onBuy?: () => void, 
+    isConnected: boolean, 
+    onConnect?: () => void, 
+    isOwner?: boolean,
+    isAdmin?: boolean,
+    onAdminCancel?: () => void
+}) {
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showOffersList, setShowOffersList] = useState(false);
   const { toast } = useToast();
 
   const handleMakeOffer = (e: React.FormEvent) => {
@@ -305,9 +328,11 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { 
     });
   };
 
+  const isExpired = item.listingExpiresAt ? new Date(item.listingExpiresAt) < new Date() : false;
+
   return (
     <>
-    <Card className="group bg-card border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col">
+    <Card className="group bg-card border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col relative">
       <div className="relative aspect-square overflow-hidden bg-black/50">
         <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         
@@ -321,6 +346,22 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { 
             {item.rarity}
           </Badge>
         </div>
+
+        {/* Listing Timer Overlay */}
+        {item.isListed && (
+             <div className="absolute top-2 left-2">
+                 {item.listingExpiresAt ? (
+                     <Badge variant="outline" className={`bg-black/50 backdrop-blur border-white/20 ${isExpired ? 'text-red-500 border-red-500' : 'text-white'}`}>
+                        <Timer size={10} className="mr-1"/> 
+                        {isExpired ? 'EXPIRED' : '24h Left'}
+                     </Badge>
+                 ) : (
+                     <Badge variant="outline" className="bg-black/50 backdrop-blur border-white/20 text-white">
+                        <InfinityIcon size={10} className="mr-1"/> Forever
+                     </Badge>
+                 )}
+             </div>
+        )}
 
         {/* Owner Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
@@ -372,9 +413,20 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { 
                   </Button>
                 </div>
               ) : (
-                <Button variant="outline" className="w-full h-9 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10">
-                  CANCEL LISTING
-                </Button>
+                <div className="space-y-2">
+                    <Button variant="outline" className="w-full h-9 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10">
+                    CANCEL LISTING
+                    </Button>
+                    {(item.offers && item.offers.length > 0) && (
+                        <Button 
+                            variant="secondary" 
+                            className="w-full h-9 text-xs"
+                            onClick={() => setShowOffersList(true)}
+                        >
+                            VIEW {item.offers.length} OFFERS
+                        </Button>
+                    )}
+                </div>
               )}
             </div>
           ) : (
@@ -386,6 +438,16 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { 
                  </Button>
                )}
             </div>
+          )}
+
+          {/* Admin Override */}
+          {isAdmin && item.isListed && (
+              <Button 
+                onClick={onAdminCancel}
+                className="w-full mt-2 h-6 text-[10px] bg-red-900/20 text-red-500 border border-red-500/20 hover:bg-red-500/20"
+              >
+                ADMIN OVERRIDE: DELIST
+              </Button>
           )}
         </div>
       </div>
@@ -422,6 +484,31 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { 
                SEND OFFER
              </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Offers List Modal (For Owner) */}
+      <Dialog open={showOffersList} onOpenChange={setShowOffersList}>
+        <DialogContent className="bg-black border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-orbitron">RECEIVED OFFERS</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-3">
+                  {item.offers?.map((offer) => (
+                      <div key={offer.id} className="flex items-center justify-between p-3 bg-white/5 rounded border border-white/10">
+                          <div>
+                              <div className="text-lg font-bold text-white">{offer.amount} {offer.currency}</div>
+                              <div className="text-xs text-muted-foreground">From: {offer.bidder}</div>
+                          </div>
+                          <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-900/20"><X size={16}/></Button>
+                              <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 hover:bg-green-900/20"><CheckCircle2 size={16}/></Button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </Card>

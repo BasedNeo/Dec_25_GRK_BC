@@ -82,6 +82,19 @@ export function generateMarketplaceData(count: number = 3732): MarketItem[] {
             }
         }
 
+        // Mock Offers (randomly)
+        const hasOffers = rand > 0.92;
+        const offers: MarketOffer[] = [];
+        if (hasOffers) {
+            offers.push({
+                id: 5000 + i,
+                bidder: `0x${Math.floor(rand * 999999).toString(16)}...`,
+                amount: isListed && price ? price * 0.9 : (isLegendary ? 5 : 0.4),
+                currency: currency || 'ETH',
+                timestamp: new Date(Date.now() - Math.floor(rand * 86400000)).toISOString()
+            });
+        }
+
         items.push({
             id: i,
             name: `Guardian #${i.toString().padStart(4, '0')}`,
@@ -94,7 +107,7 @@ export function generateMarketplaceData(count: number = 3732): MarketItem[] {
             currency,
             listingId: isListed ? 1000 + i : undefined,
             listingExpiresAt,
-            offers: []
+            offers
         });
     }
 
