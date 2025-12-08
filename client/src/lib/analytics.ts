@@ -30,6 +30,18 @@ export const initAnalytics = () => {
   }
 };
 
+export const trackSearch = (searchTerm: string) => {
+    if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'search', {
+            event_category: 'Marketplace',
+            event_label: searchTerm,
+            anonymize_ip: true
+        });
+        // Console Log for prototype verification as requested
+        console.log(`[Analytics] Search Tracked: "${searchTerm}" (Anonymized)`);
+    }
+};
+
 export const trackEvent = (action: string, category: string, label?: string, value?: number) => {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', action, {

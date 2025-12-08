@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackSearch } from "@/lib/analytics";
 
 import { useGuardians } from "@/hooks/useGuardians";
 
@@ -38,8 +38,42 @@ export function EscrowMarketplace() {
   const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Load saved searches on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('bguard_saved_searches');
+    if (saved) {
+        try {
+            setSavedSearches(JSON.parse(saved));
+        } catch(e) { console.error("Failed to load saved searches"); }
+    }
+  }, []);
+
+  const saveSearch = (term: string) => {
+     if (!term || term.length < 2) return;
+     const newSaved = [...new Set([term, ...savedSearches])].slice(0, 5); // Max 5 unique
+     setSavedSearches(newSaved);
+     localStorage.setItem('bguard_saved_searches', JSON.stringify(newSaved));
+     trackSearch(term);
+     toast({ title: "Search Saved", description: `"${term}" added to your saved searches.` });
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setSearch(val);
+      // Simple suggestion trigger logic
+      if (val.length > 0) setShowSavedSearches(true);
+  };
+  
+  const applySearch = (term: string) => {
+      setSearch(term);
+      setShowSavedSearches(false);
+      trackSearch(term);
+  };
+
   // --- State for Filters & Sort ---
   const [search, setSearch] = useState("");
+  const [savedSearches, setSavedSearches] = useState<string[]>([]);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
@@ -263,9 +297,75 @@ export function EscrowMarketplace() {
                  placeholder="Search Traits (e.g. 'High Power')..." 
                  className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
                  value={search}
-                 onChange={(e) => setSearch(e.target.value)}
+                 onChange={handleSearchChange}
+                 onKeyDown={(e) => {
+                     if (e.key === 'Enter') {
+                         saveSearch(search);
+                         setShowSavedSearches(false);
+                     }
+                 }}
+                 onFocus={() => setShowSavedSearches(true)}
                  type="text"
                />
+               
+               {/* Saved Searches / Suggestions Dropdown */}
+               <AnimatePresence>
+                {showSavedSearches && (search.length > 0 || savedSearches.length > 0) && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute top-full left-0 right-0 mt-2 bg-black border border-white/20 rounded-md shadow-xl z-50 overflow-hidden"
+                    >
+                        <div className="p-2">
+                             {/* Test: Suggest "Rare" if user types "R" or "r" */}
+                             {search.toLowerCase().startsWith('r') && search.length < 4 && (
+                                 <div 
+                                    className="px-3 py-2 text-sm text-white hover:bg-white/10 cursor-pointer flex items-center justify-between group"
+                                    onClick={() => applySearch("Rare")}
+                                 >
+                                    <span className="flex items-center"><Search size={12} className="mr-2 text-primary" /> Rare (Suggestion)</span>
+                                 </div>
+                             )}
+
+                             {savedSearches.filter(s => s.toLowerCase().includes(search.toLowerCase())).map(s => (
+                                 <div 
+                                    key={s} 
+                                    className="px-3 py-2 text-sm text-white hover:bg-white/10 cursor-pointer flex items-center justify-between group"
+                                    onClick={() => applySearch(s)}
+                                 >
+                                    <span className="flex items-center"><History size={12} className="mr-2 text-muted-foreground" /> {s}</span>
+                                    <X 
+                                        size={12} 
+                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newSaved = savedSearches.filter(item => item !== s);
+                                            setSavedSearches(newSaved);
+                                            localStorage.setItem('bguard_saved_searches', JSON.stringify(newSaved));
+                                        }}
+                                    />
+                                 </div>
+                             ))}
+                             
+                             {search.length > 1 && !savedSearches.includes(search) && (
+                                 <div 
+                                    className="px-3 py-2 text-xs text-primary hover:bg-primary/10 cursor-pointer border-t border-white/10 mt-1"
+                                    onClick={() => saveSearch(search)}
+                                 >
+                                     + Save "{search}"
+                                 </div>
+                             )}
+                        </div>
+                        {savedSearches.length > 0 && (
+                            <div className="bg-white/5 px-3 py-1 text-[10px] text-muted-foreground flex justify-between">
+                                <span>RECENT SEARCHES</span>
+                                <span className="cursor-pointer hover:text-white" onClick={() => setShowSavedSearches(false)}>CLOSE</span>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+               </AnimatePresence>
              </div>
              
              <div className="flex gap-2">
