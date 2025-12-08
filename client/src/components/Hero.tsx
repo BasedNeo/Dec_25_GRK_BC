@@ -62,7 +62,7 @@ export function Hero() {
           </h1>
           
           <p className="text-lg text-muted-foreground mb-8 font-rajdhani leading-relaxed max-w-lg">
-            3,732 unique cyber-enhanced guardians protecting the Base network. Mint yours to join the DAO and earn rewards from the community pool.
+            3,732 unique cyber-enhanced guardians protecting the Base network. Mint yours to join the Advisory DAO, earn rewards from the community pool, and compete in the Race-to-Base game.
           </p>
 
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md">

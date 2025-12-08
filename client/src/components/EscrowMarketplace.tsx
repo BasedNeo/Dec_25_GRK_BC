@@ -213,7 +213,7 @@ export function EscrowMarketplace() {
 
         {/* Disclaimer */}
         <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono text-center">
-           DISCLAIMER: All values and amounts are estimates and may not be accurate due to market fluctuations. Trade at your own risk.
+           DISCLAIMER: Values are estimates; not financial advice. All transactions are on Base Mainnet (8453).
         </div>
 
         {/* Main Content Tabs */}
