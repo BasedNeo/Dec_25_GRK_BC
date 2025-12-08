@@ -2,12 +2,13 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
+import { IPFS_ROOT } from "@/lib/constants";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -19,8 +20,16 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
 
-  const { data: nfts, isLoading } = useGuardians(useMockData);
+  const { 
+    data, 
+    isLoading, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useGuardians(useMockData);
 
+  // Flatten pages
+  const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
   const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
   const container = {
@@ -59,7 +68,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                    {useMockData ? "Switch to Real" : "View Demo Data"}
                  </Button>
                  <div className="px-4 py-2 bg-primary/10 border border-primary/30 rounded text-primary font-orbitron text-sm">
-                   TOTAL OWNED: <span className="text-white ml-2">{displayNfts.length}</span>
+                   TOTAL LOADED: <span className="text-white ml-2">{displayNfts.length}</span>
                  </div>
                </div>
             )}
@@ -80,7 +89,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           </div>
         ) : (
           <>
-            {isLoading && !useMockData ? (
+            {isLoading && !nfts.length && !useMockData ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
               </div>
@@ -90,19 +99,38 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                  <Button onClick={() => setUseMockData(true)} variant="outline">Load Demo Data</Button>
                </div>
             ) : (
-              <motion.div 
-                variants={container}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-              >
-                {displayNfts.map((guardian, idx) => (
-                  <motion.div key={guardian.id || idx} variants={item}>
-                    <GuardianCard guardian={guardian} />
-                  </motion.div>
-                ))}
-              </motion.div>
+              <>
+                <motion.div 
+                  variants={container}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                >
+                  {displayNfts.map((guardian, idx) => (
+                    <motion.div key={`${guardian.id}-${idx}`} variants={item}>
+                      <GuardianCard guardian={guardian} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {/* Load More Button */}
+                {hasNextPage && !useMockData && (
+                  <div className="flex justify-center mt-12">
+                    <Button 
+                      onClick={() => fetchNextPage()} 
+                      disabled={isFetchingNextPage}
+                      className="bg-secondary/50 hover:bg-secondary text-white font-orbitron tracking-widest min-w-[200px]"
+                    >
+                      {isFetchingNextPage ? (
+                        <>LOADING <Loader2 className="ml-2 h-4 w-4 animate-spin" /></>
+                      ) : (
+                        "LOAD MORE"
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -112,19 +140,56 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
 }
 
 function GuardianCard({ guardian }: { guardian: Guardian }) {
+  const [retryCount, setRetryCount] = useState(0);
+  const [imgSrc, setImgSrc] = useState(guardian.image);
+
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRetryCount(c => c + 1);
+    // Simple retry by cache busting the image or just re-setting it
+    const newSrc = `${guardian.image}?retry=${Date.now()}`;
+    setImgSrc(newSrc);
+    
+    // Also try to re-fetch metadata if it was an error state
+    if (guardian.isError) {
+        try {
+            const res = await fetch(`${IPFS_ROOT}${guardian.id}.json`);
+            if(res.ok) {
+                 window.location.reload(); // Brute force refresh for prototype
+            }
+        } catch(e) { console.error(e); }
+    }
+  };
+
+  if (guardian.isError) {
+      return (
+        <Card className="bg-red-950/20 border-red-500/20 h-full flex flex-col items-center justify-center p-6 text-center">
+             <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+             <h4 className="text-white font-bold mb-2">Metadata Error</h4>
+             <p className="text-xs text-muted-foreground mb-4">Could not fetch data for #{guardian.id}</p>
+             <Button variant="outline" size="sm" onClick={handleRetry} className="border-red-500/50 text-red-500 hover:bg-red-500/10">
+                 <RefreshCw size={14} className="mr-2" /> Retry
+             </Button>
+        </Card>
+      );
+  }
+
   return (
     <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group">
-      <div className="relative aspect-square overflow-hidden">
+      <div className="relative aspect-square overflow-hidden bg-secondary/20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        {guardian.image ? (
+        {imgSrc ? (
           <img 
-            src={guardian.image} 
+            src={imgSrc} 
             alt={guardian.name} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={() => {
+                // Fallback to placeholder or show error state
+            }} 
           />
         ) : (
-           <div className="w-full h-full bg-secondary flex items-center justify-center">
-             <span className="text-muted-foreground">No Image</span>
+           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+             <span className="mb-2">No Image</span>
            </div>
         )}
         <div className="absolute top-2 right-2 z-20">
@@ -141,9 +206,12 @@ function GuardianCard({ guardian }: { guardian: Guardian }) {
           {guardian.traits && guardian.traits.slice(0, 3).map((trait, i) => (
             <div key={i} className="flex justify-between text-xs border-b border-white/5 pb-1 last:border-0 last:pb-0">
               <span className="text-muted-foreground">{trait.type}</span>
-              <span className="text-primary font-medium">{trait.value}</span>
+              <span className="text-primary font-medium truncate ml-2">{trait.value}</span>
             </div>
           ))}
+          {(!guardian.traits || guardian.traits.length === 0) && (
+              <div className="text-xs text-muted-foreground italic">No traits found</div>
+          )}
         </div>
       </div>
     </Card>

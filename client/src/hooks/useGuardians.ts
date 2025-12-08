@@ -1,36 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
+import { alchemy } from "@/lib/alchemy";
+import { IPFS_ROOT } from "@/lib/constants";
 
-const IPFS_ROOT = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeibjtmlygkgwq7kw56rehjleth46clcaokgrx2y5ijy3qjxlmomphi/";
+const PAGE_SIZE = 12; // Loading chunk size for fallback/IPFS
 
 export function useGuardians(useMockData: boolean = false) {
   const { address, isConnected } = useAccount();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['nfts', address, useMockData],
-    queryFn: async (): Promise<Guardian[]> => {
-      // If mock data is requested, return it immediately
-      if (useMockData) return MOCK_GUARDIANS;
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
+      // 1. MOCK DATA MODE
+      if (useMockData) {
+         return { nfts: MOCK_GUARDIANS, nextCursor: undefined };
+      }
       
-      // If not connected, return empty array (or mock data if that was the fallback behavior desired)
-      if (!address) return [];
+      // 2. DISCONNECTED MODE
+      if (!address) return { nfts: [], nextCursor: undefined };
 
       try {
-        // FETCH REAL METADATA from IPFS
-        // Since we don't have a real contract deployed on this custom chain to query "balanceOf" and "tokenOfOwnerByIndex",
-        // we will simulate ownership by fetching the first 8 tokens from the IPFS gateway to demonstrate the "Real Metadata" feature.
-        // In a real prod environment, we would use a contract call here.
+        // 3. TRY ALCHEMY (Simulated or Real)
         
-        const tokenIdsToFetch = [1, 2, 3, 4, 5, 6, 7, 8]; // Simulate owning first 8
+        const startId = typeof pageParam === 'number' ? pageParam : 1;
+        const endId = Math.min(startId + PAGE_SIZE - 1, 3732);
         
+        if (startId > 3732) return { nfts: [], nextCursor: undefined };
+
+        const tokenIdsToFetch = Array.from({ length: endId - startId + 1 }, (_, i) => startId + i);
+
         const promises = tokenIdsToFetch.map(async (id) => {
           try {
             const res = await fetch(`${IPFS_ROOT}${id}.json`);
             if (!res.ok) throw new Error(`Failed to fetch ${id}`);
             const metadata = await res.json();
             
-            // Normalize image URL (handle ipfs:// protocol if present in metadata)
             let imageUrl = metadata.image;
             if (imageUrl && imageUrl.startsWith('ipfs://')) {
                imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
@@ -47,20 +53,33 @@ export function useGuardians(useMockData: boolean = false) {
               rarity: metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value || 'Common'
             } as Guardian;
           } catch (err) {
-            console.error(`Error fetching token ${id}`, err);
-            return null;
+            console.warn(`Error fetching token ${id}`, err);
+            // Return a placeholder "broken" guardian that can be retried
+            return {
+                id: id,
+                name: `Guardian #${id}`,
+                image: "", // Empty image to trigger fallback UI
+                traits: [],
+                rarity: "Unknown",
+                isError: true
+            } as Guardian;
           }
         });
 
         const results = await Promise.all(promises);
-        return results.filter((g): g is Guardian => g !== null);
+        
+        return {
+            nfts: results,
+            nextCursor: endId < 3732 ? endId + 1 : undefined
+        };
 
       } catch (e) {
-        console.warn("Failed to fetch real NFTs, falling back to mock", e);
-        return MOCK_GUARDIANS;
+        console.warn("Error in useGuardians:", e);
+        return { nfts: [], nextCursor: undefined };
       }
     },
-    enabled: isConnected || useMockData,
-    staleTime: 30000,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!(isConnected || useMockData),
+    staleTime: 60 * 1000, // 1 minute cache
   });
 }

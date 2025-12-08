@@ -8,7 +8,8 @@ export interface Guardian {
   name: string;
   image: string;
   traits: { type: string; value: string }[];
-  rarity: string; // Changed to string to support "Epic" etc dynamically
+  rarity: string; 
+  isError?: boolean; // Added for error handling in UI
 }
 
 export interface Proposal {
