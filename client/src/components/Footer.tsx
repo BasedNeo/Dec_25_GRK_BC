@@ -7,10 +7,14 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0">
             <span className="font-orbitron text-xl font-bold text-white tracking-widest">
-              BASED <span className="text-primary">GUARDIANS</span>
+              BASED <span className="text-primary">GUARDIANS (BGUARD)</span>
             </span>
             <p className="text-xs text-muted-foreground mt-2 font-mono">
-              © 2025 ALL RIGHTS RESERVED. ON-CHAIN.
+              © 2025 ALL RIGHTS RESERVED. ON-CHAIN.<br/>
+              ROYALTIES: SPLIT TO COMMUNITY & TEAM ({import.meta.env.VITE_ROYALTY_WALLET || "VITE_ROYALTY_WALLET"})
+            </p>
+            <p className="text-xs text-muted-foreground mt-2 font-rajdhani max-w-sm">
+               The Guardians of Flare: 1776 Guardians, 1319 Frogs, 636 Creatures. Protecting the BasedAI Chain.
             </p>
           </div>
 
@@ -32,7 +36,7 @@ export function Footer() {
           </div>
           <div className="flex items-center">
             <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-            OPERATIONAL ON BASE MAINNET
+            OPERATIONAL ON BASEDAI MAINNET (32323)
           </div>
         </div>
       </div>

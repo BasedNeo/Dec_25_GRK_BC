@@ -58,11 +58,11 @@ export function Hero() {
           </Badge>
           
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight text-white glitch-hover">
-            BASED <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">GUARDIANS</span>
+            BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">(BGUARD)</span>
           </h1>
           
           <p className="text-lg text-muted-foreground mb-8 font-rajdhani leading-relaxed max-w-lg">
-            3,732 unique cyber-enhanced guardians protecting the Base network. Mint yours to join the Advisory DAO, earn rewards from the community pool, and compete in the Race-to-Base game.
+            The Guardians of Flare protect the BasedAI network. A collection of 3,731 NFTs: 1776 Guardians, 1319 Frogs, and 636 Creatures. Mint yours to join the Advisory DAO, earn rewards from the community pool, and compete in the Race-to-Base game.
           </p>
 
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md">
