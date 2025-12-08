@@ -1,9 +1,10 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { Chain } from "wagmi/chains";
+import { RPC_URL, CHAIN_ID, BLOCK_EXPLORER } from "@/lib/constants";
 
 const basedAI = {
-  id: 32323,
+  id: CHAIN_ID,
   name: 'BasedAI',
   nativeCurrency: {
     decimals: 18,
@@ -11,11 +12,11 @@ const basedAI = {
     symbol: 'BASED',
   },
   rpcUrls: {
-    public: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
-    default: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+    public: { http: [RPC_URL] },
+    default: { http: [RPC_URL] },
   },
   blockExplorers: {
-    default: { name: 'BasedScan', url: 'https://explorer.bf1337.org/' },
+    default: { name: 'BasedScan', url: BLOCK_EXPLORER },
   },
 } as const satisfies Chain;
 

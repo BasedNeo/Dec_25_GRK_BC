@@ -13,6 +13,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ADMIN_WALLET } from "@/lib/constants";
 
 interface VotingDAOProps {
   isConnected: boolean; // Legacy
@@ -30,8 +31,7 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   const votePower = guardians?.length || 0;
 
   // Real Admin Check
-  const adminWallet = import.meta.env.VITE_ADMIN_WALLET;
-  const isAdmin = isConnected && address && adminWallet && address.toLowerCase() === adminWallet.toLowerCase();
+  const isAdmin = isConnected && address && address.toLowerCase() === ADMIN_WALLET.toLowerCase();
 
   // Mock Proposal Fetching with React Query
   const { data: proposals } = useQuery({

@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ADMIN_WALLET } from "@/lib/constants";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -41,7 +42,7 @@ export function EscrowMarketplace() {
   const [showBiometricModal, setShowBiometricModal] = useState(false);
 
   // --- Admin Check ---
-  const isAdmin = import.meta.env.VITE_ADMIN_WALLET && address?.toLowerCase() === import.meta.env.VITE_ADMIN_WALLET.toLowerCase();
+  const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
 
   // --- Data Fetching (Mocking Alchemy/Contract fetch) ---
   const { data: allItems } = useQuery({
