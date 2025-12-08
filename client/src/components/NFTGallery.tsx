@@ -22,6 +22,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
+  const [useCsvData, setUseCsvData] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
   // Filters & Search
@@ -29,6 +30,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
+  const [highStrengthFilter, setHighStrengthFilter] = useState(false);
   const [sortBy, setSortBy] = useState<string>("id-asc");
 
   const { 
@@ -37,7 +39,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
     fetchNextPage, 
     hasNextPage, 
     isFetchingNextPage 
-  } = useGuardians(useMockData);
+  } = useGuardians(useMockData, useCsvData);
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
@@ -65,6 +67,14 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           items = items.filter(i => 
               i.traits.some((t: any) => t.type === traitTypeFilter && t.value === traitValueFilter)
           );
+      }
+      
+      // Strength > 8 Filter
+      if (highStrengthFilter) {
+          items = items.filter(i => {
+              const strengthTrait = i.traits?.find((t: any) => t.type === 'Strength');
+              return strengthTrait && parseInt(strengthTrait.value) > 8;
+          });
       }
 
       // Sort
@@ -174,7 +184,15 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => setUseMockData(!useMockData)}
+                        onClick={() => setUseCsvData(!useCsvData)}
+                        className={`text-[10px] h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
+                    >
+                        {useCsvData ? "CSV Mode Active" : "Use CSV Data"}
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setUseMockData(!useMockData); setUseCsvData(false); }}
                         className="text-[10px] h-6 text-muted-foreground hover:text-white"
                     >
                         {useMockData ? "Switch to Real" : "View Demo Data"}
@@ -240,6 +258,18 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+                
+                {/* Advanced Filters */}
+                <div className="flex items-center space-x-2 pt-6">
+                    <Button 
+                        variant={highStrengthFilter ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHighStrengthFilter(!highStrengthFilter)}
+                        className={highStrengthFilter ? "bg-primary text-black" : "border-white/20"}
+                    >
+                        {highStrengthFilter ? "Strength > 8 (Active)" : "Filter: Strength > 8"}
+                    </Button>
                 </div>
               </Card>
             </motion.div>

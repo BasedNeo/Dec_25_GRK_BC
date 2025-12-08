@@ -2,14 +2,26 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
 import { fetchGuardiansPage, PAGE_SIZE } from "@/lib/ipfs";
+import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 
-export function useGuardians(useMockData: boolean = false) {
+export function useGuardians(useMockData: boolean = false, useCsvData: boolean = false) {
   const { address, isConnected } = useAccount();
 
   return useInfiniteQuery({
-    queryKey: ['nfts', address, useMockData],
+    queryKey: ['nfts', address, useMockData, useCsvData],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
+      // 0. CSV DATA MODE (Prioritized if toggled)
+      if (useCsvData) {
+          try {
+             const csvGuardians = await loadGuardiansFromCSV();
+             return { nfts: csvGuardians, nextCursor: undefined };
+          } catch(e) {
+             console.error("Failed to load CSV", e);
+             return { nfts: [], nextCursor: undefined };
+          }
+      }
+
       // 1. MOCK DATA MODE
       if (useMockData) {
          return { nfts: MOCK_GUARDIANS, nextCursor: undefined };

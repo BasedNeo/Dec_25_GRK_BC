@@ -1,0 +1,21 @@
+id,name,image,rarity,trait_Power,trait_Background,trait_Armor,trait_Strength
+1,Guardian #1,https://via.placeholder.com/400x400/00ffff/000000?text=Guardian+1,Rare,High,Neon City,Cyber Plating,9
+2,Guardian #2,https://via.placeholder.com/400x400/bf00ff/000000?text=Guardian+2,Common,Standard,Industrial,Light Vest,5
+3,Guardian #3,https://via.placeholder.com/400x400/ff00ff/000000?text=Guardian+3,Legendary,Extreme,Void,Shadow Weave,10
+4,Guardian #4,https://via.placeholder.com/400x400/0000ff/000000?text=Guardian+4,Common,Low,Slums,Rusted Metal,3
+5,Guardian #5,https://via.placeholder.com/400x400/00ff00/000000?text=Guardian+5,Rare,High,Cyber Jungle,Nano Suit,8
+6,Guardian #6,https://via.placeholder.com/400x400/ffff00/000000?text=Guardian+6,Epic,Very High,High Rise,Exo Skeleton,9
+7,Guardian #7,https://via.placeholder.com/400x400/ff0000/000000?text=Guardian+7,Common,Standard,Industrial,Standard Issue,6
+8,Guardian #8,https://via.placeholder.com/400x400/ffffff/000000?text=Guardian+8,Rare,High,Neon City,Chrome Finish,8
+9,Guardian #9,https://via.placeholder.com/400x400/000000/ffffff?text=Guardian+9,Legendary,Godlike,Space Station,Energy Shield,10
+10,Guardian #10,https://via.placeholder.com/400x400/808080/000000?text=Guardian+10,Common,Standard,Subway,Leather Jacket,5
+11,Guardian #11,https://via.placeholder.com/400x400/00ffff/000000?text=Guardian+11,Common,Standard,Neon City,None,4
+12,Guardian #12,https://via.placeholder.com/400x400/bf00ff/000000?text=Guardian+12,Epic,High,Void,Stealth Suit,9
+13,Guardian #13,https://via.placeholder.com/400x400/ff00ff/000000?text=Guardian+13,Rare,High,Industrial,Heavy Duty,8
+14,Guardian #14,https://via.placeholder.com/400x400/0000ff/000000?text=Guardian+14,Common,Low,Slums,Scrap Armor,3
+15,Guardian #15,https://via.placeholder.com/400x400/00ff00/000000?text=Guardian+15,Common,Standard,Cyber Jungle,Camo,6
+16,Guardian #16,https://via.placeholder.com/400x400/ffff00/000000?text=Guardian+16,Rare,High,High Rise,Golden Plate,8
+17,Guardian #17,https://via.placeholder.com/400x400/ff0000/000000?text=Guardian+17,Legendary,Extreme,Space Station,Void Armor,10
+18,Guardian #18,https://via.placeholder.com/400x400/ffffff/000000?text=Guardian+18,Common,Standard,Subway,Street Wear,5
+19,Guardian #19,https://via.placeholder.com/400x400/000000/ffffff?text=Guardian+19,Epic,Very High,Neon City,Force Field,9
+20,Guardian #20,https://via.placeholder.com/400x400/808080/000000?text=Guardian+20,Common,Standard,Industrial,Worker Gear,5

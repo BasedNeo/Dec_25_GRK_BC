@@ -75,8 +75,10 @@ export function EscrowMarketplace() {
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [highStrengthFilter, setHighStrengthFilter] = useState(false);
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
+  const [useCsvData, setUseCsvData] = useState(false); // Add CSV support to marketplace too
   
   // Commercial Search: Attribute Filters
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
@@ -89,7 +91,7 @@ export function EscrowMarketplace() {
     hasNextPage, 
     isFetchingNextPage,
     isLoading 
-  } = useGuardians(false); // Fetch real data
+  } = useGuardians(false, useCsvData); // Fetch real data or CSV
 
   const allItems = useMemo(() => {
      if (!data) return [];
@@ -171,6 +173,14 @@ export function EscrowMarketplace() {
         items = items.filter(i => 
             i.traits.some(t => t.type === traitTypeFilter && t.value === traitValueFilter)
         );
+    }
+
+    // Strength > 8 Filter
+    if (highStrengthFilter) {
+          items = items.filter(i => {
+              const strengthTrait = i.traits?.find(t => t.type === 'Strength');
+              return strengthTrait && parseInt(strengthTrait.value) > 8;
+          });
     }
 
     // Sort
@@ -275,8 +285,8 @@ export function EscrowMarketplace() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-end mb-8 gap-6">
           <div>
-            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono">
-                {isPaused ? "MARKET PAUSED" : "MARKETPLACE V2"}
+            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono cursor-pointer hover:bg-primary/10" onClick={() => setUseCsvData(!useCsvData)}>
+                {isPaused ? "MARKET PAUSED" : (useCsvData ? "MARKETPLACE V2 (CSV MODE)" : "MARKETPLACE V2")}
             </Badge>
             {/* AUDIT NOTE */}
             <div className="text-[10px] text-green-500 font-mono mb-2 flex items-center">
@@ -457,7 +467,7 @@ export function EscrowMarketplace() {
                 </div>
                 
                 {/* Trending Badge */}
-                <div className="flex flex-col justify-end">
+                <div className="flex flex-col justify-end space-y-2">
                     {trendingTrait && (
                         <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -470,6 +480,14 @@ export function EscrowMarketplace() {
                             <Badge className="bg-primary/20 text-primary border-none">{trendingTrait.change}</Badge>
                         </div>
                     )}
+                    <Button 
+                        variant={highStrengthFilter ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHighStrengthFilter(!highStrengthFilter)}
+                        className={`w-full ${highStrengthFilter ? "bg-primary text-black" : "border-white/20"}`}
+                    >
+                        {highStrengthFilter ? "Strength > 8 (Active)" : "Filter: Strength > 8"}
+                    </Button>
                 </div>
               </Card>
             </motion.div>
