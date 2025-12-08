@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
-import { Minus, Plus, Zap, CheckCircle } from "lucide-react";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { Minus, Plus, Zap, CheckCircle, Fingerprint } from "lucide-react";
 import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,15 @@ export function Hero() {
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
+  
+  // Supply Counter Animation
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+
+  useEffect(() => {
+    const animation = animate(count, MINTED_COUNT, { duration: 2, ease: "easeOut" });
+    return animation.stop;
+  }, []);
 
   // Smart Contract Interaction Mock:
   // Implements nonReentrant, whenNotPaused modifiers from OpenZeppelin
@@ -60,16 +69,33 @@ export function Hero() {
     }, 2000);
   };
 
+  const handlePasskeyConnect = () => {
+      toast({
+        title: "Passkey Auth Initiated",
+        description: "Scanning for Face ID / Touch ID...",
+        className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+      });
+      setTimeout(() => {
+          toast({
+              title: "Authentication Successful",
+              description: "Secure enclave signature verified.",
+              className: "bg-black border-green-500 text-green-500 font-orbitron",
+          });
+      }, 1500);
+  };
+
   const increment = () => setMintQuantity(prev => Math.min(prev + 1, 10));
   const decrement = () => setMintQuantity(prev => Math.max(prev - 1, 1));
 
   return (
     <section id="hero" className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden">
       {/* Background Elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.05)_0%,transparent_70%)]" />
-      <div className="absolute top-1/4 right-0 w-96 h-96 bg-accent/20 rounded-full blur-[100px]" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
-
+      <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-black/80 z-10" />
+          <img src="/hero.jpg" alt="Hero Background" className="w-full h-full object-cover opacity-50" />
+      </div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.05)_0%,transparent_70%)] z-0" />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
         {/* Left Column: Text & Mint UI */}
@@ -93,7 +119,9 @@ export function Hero() {
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md">
             <div className="flex justify-between items-center mb-6">
               <span className="text-sm text-muted-foreground font-mono">SUPPLY</span>
-              <span className="text-xl font-orbitron text-primary text-glow">{MINTED_COUNT} / {TOTAL_SUPPLY}</span>
+              <span className="text-xl font-orbitron text-primary text-glow">
+                  <motion.span>{rounded}</motion.span> / {TOTAL_SUPPLY}
+              </span>
             </div>
             
             {/* Progress Bar */}
@@ -101,6 +129,7 @@ export function Hero() {
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${(MINTED_COUNT / TOTAL_SUPPLY) * 100}%` }}
+                transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-primary to-accent"
               />
             </div>
@@ -120,7 +149,7 @@ export function Hero() {
             <Button 
               onClick={handleMint}
               disabled={isMinting || isPaused}
-              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button
+              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button mb-4
                 ${mintButtonColor === 'purple' 
                   ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
                   : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(0,255,255,0.4)]'
@@ -138,6 +167,15 @@ export function Hero() {
               ) : (
                 "MINT GUARDIAN"
               )}
+            </Button>
+
+            <Button
+                variant="outline"
+                onClick={handlePasskeyConnect}
+                className="w-full py-6 border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 font-mono text-xs flex items-center justify-center gap-2"
+            >
+                <Fingerprint size={16} />
+                CONNECT WITH PASSKEY / FACE ID
             </Button>
             
             <p className="mt-4 text-xs text-center text-muted-foreground/60 font-mono">

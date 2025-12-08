@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@assets/generated_images/neon_cyan_glitch_text_logo_on_black.png";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useSecurity } from "@/context/SecurityContext";
@@ -10,6 +9,7 @@ import { ADMIN_WALLET } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import confetti from "canvas-confetti";
 
 interface NavbarProps {
   activeTab: string;
@@ -25,6 +25,23 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   
   // Badge State
   const [badges, setBadges] = useState<{topVoter: boolean, eliteSeller: boolean}>({ topVoter: false, eliteSeller: false });
+
+  // Confetti on first connect
+  useEffect(() => {
+    if (wagmiConnected) {
+      const hasConnectedBefore = localStorage.getItem('has_connected_before');
+      if (!hasConnectedBefore) {
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.2 },
+          colors: ['#00ffff', '#bf00ff', '#ffffff']
+        });
+        localStorage.setItem('has_connected_before', 'true');
+        trackEvent('wallet_connected_first_time', 'Engagement', 'Navbar');
+      }
+    }
+  }, [wagmiConnected]);
 
   useEffect(() => {
     // Check for badges on mount/update
@@ -46,6 +63,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">
+      {/* Beta Ribbon - Top Right Corner of Viewport */}
+      <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 z-50 pointer-events-none">
+        <div className="absolute top-0 right-0 transform translate-x-8 translate-y-3 rotate-45 bg-primary text-black font-bold font-orbitron text-[10px] py-1 w-32 text-center shadow-lg border border-white/20">
+          BETA v1.0
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -55,7 +79,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           >
             <div className="relative">
               <img 
-                src={logo} 
+                src="/logo.png" 
                 alt="Based Guardians" 
                 className="h-10 w-auto object-contain glitch-hover"
               />
