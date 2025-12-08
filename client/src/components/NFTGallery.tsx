@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+import { NFTDetailModal } from "./NFTDetailModal";
+
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
   onConnect: () => void; // Kept for legacy
@@ -24,6 +26,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const [useMockData, setUseMockData] = useState(false);
   const [useCsvData, setUseCsvData] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // Filters & Search
   const [search, setSearch] = useState("");
@@ -309,7 +312,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                 >
                   {displayNfts.map((guardian, idx) => (
                     <motion.div key={`${guardian.id}-${idx}`} variants={item}>
-                      <GuardianCard guardian={guardian} />
+                      <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} />
                     </motion.div>
                   ))}
                 </motion.div>
@@ -335,6 +338,12 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           </>
         )}
       </div>
+
+      <NFTDetailModal 
+        isOpen={!!selectedNFT} 
+        onClose={() => setSelectedNFT(null)} 
+        nft={selectedNFT} 
+      />
     </section>
   );
 }
@@ -343,7 +352,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 // ... [Previous imports remain]
 
-function GuardianCard({ guardian }: { guardian: Guardian }) {
+function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
   const [retryCount, setRetryCount] = useState(0);
   const [imgSrc, setImgSrc] = useState(guardian.image);
 
@@ -367,7 +376,10 @@ function GuardianCard({ guardian }: { guardian: Guardian }) {
   const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level')?.value || guardian.rarity;
 
   return (
-    <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col">
+    <Card 
+        className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
+        onClick={onClick}
+    >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         {imgSrc ? (

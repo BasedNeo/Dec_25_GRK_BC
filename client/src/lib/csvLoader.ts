@@ -8,7 +8,11 @@ interface CSVRow {
   attributes: string;
 }
 
+let cachedGuardians: Guardian[] | null = null;
+
 export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
+  if (cachedGuardians) return cachedGuardians;
+
   return new Promise((resolve, reject) => {
     Papa.parse('/guardians-metadata.csv', {
       download: true,
@@ -60,6 +64,7 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
               });
             
             console.log(`Loaded ${guardians.length} guardians from CSV`);
+            cachedGuardians = guardians;
             resolve(guardians);
         } catch (err) {
             console.error("Error processing CSV data", err);

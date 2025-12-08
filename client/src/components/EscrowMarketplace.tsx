@@ -28,6 +28,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { trackEvent, trackSearch } from "@/lib/analytics";
 
 import { useGuardians } from "@/hooks/useGuardians";
+import Fuse from 'fuse.js';
+import { useDebounce } from "@/hooks/use-debounce"; 
+import { NFTDetailModal } from "./NFTDetailModal";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -37,6 +40,7 @@ export function EscrowMarketplace() {
   const { isPaused } = useSecurity();
   const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedNFT, setSelectedNFT] = useState<MarketItem | null>(null);
 
   // Load saved searches on mount
   useEffect(() => {
@@ -50,7 +54,7 @@ export function EscrowMarketplace() {
 
   const saveSearch = (term: string) => {
      if (!term || term.length < 2) return;
-     const newSaved = [...new Set([term, ...savedSearches])].slice(0, 5); // Max 5 unique
+     const newSaved = Array.from(new Set([term, ...savedSearches])).slice(0, 5); // Max 5 unique
      setSavedSearches(newSaved);
      localStorage.setItem('bguard_saved_searches', JSON.stringify(newSaved));
      trackSearch(term);
@@ -72,6 +76,7 @@ export function EscrowMarketplace() {
 
   // --- State for Filters & Sort ---
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300); // 300ms debounce
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
@@ -96,7 +101,7 @@ export function EscrowMarketplace() {
   const allItems = useMemo(() => {
      if (!data) return [];
      // Flatten pages and add mock price/listing status for the marketplace demo
-     return data.pages.flatMap(page => page.nfts).map(item => ({
+     return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
         ...item,
         isListed: true, // Assume all fetched are listed for this demo
         price: 420 + (item.id % 100), // Mock price
@@ -140,6 +145,24 @@ export function EscrowMarketplace() {
   // Replaced by useGuardians hook above
 
   // --- Filtering Logic ---
+  
+  // Fuse Instance (Memoized)
+  const fuse = useMemo(() => {
+    if (!allItems || allItems.length === 0) return null;
+    return new Fuse(allItems, {
+        keys: [
+            'name', 
+            'id', 
+            'traits.value', 
+            'traits.type',
+            'rarity'
+        ],
+        threshold: 0.3, // Fuzzy match threshold
+        distance: 100,
+        minMatchCharLength: 2
+    });
+  }, [allItems]);
+
   const filteredItems = useMemo(() => {
     if (!allItems) return [];
     let items = [...allItems];
@@ -152,15 +175,13 @@ export function EscrowMarketplace() {
        items = isConnected ? items.filter(i => i.id % 50 === 0) : [];
     }
 
-    // Search (Numeric validation included) & Keyword Search for Attributes
-    if (search) {
-      const searchLower = search.toLowerCase();
-      items = items.filter(i => 
-        i.name.toLowerCase().includes(searchLower) || 
-        i.id.toString().includes(search) ||
-        i.traits.some(t => t.value.toLowerCase().includes(searchLower)) ||
-        i.traits.some(t => t.type.toLowerCase().includes(searchLower))
-      );
+    // Search (Fuse.js)
+    if (debouncedSearch && fuse) {
+        const results = fuse.search(debouncedSearch);
+        items = results.map(r => r.item);
+    } else if (search) {
+        // Fallback or immediate typing (optional, usually wait for debounce)
+        // But let's stick to debounced for performance
     }
 
     // Rarity
@@ -200,7 +221,22 @@ export function EscrowMarketplace() {
     });
 
     return items;
-  }, [allItems, activeTab, search, rarityFilter, sortBy, isConnected]);
+  }, [allItems, activeTab, debouncedSearch, fuse, rarityFilter, traitTypeFilter, traitValueFilter, highStrengthFilter, sortBy, isConnected]);
+
+  // Suggested Filters (Premium UX)
+  const suggestedFilters = useMemo(() => {
+    return [
+        { label: "High Strength", action: () => setHighStrengthFilter(true) },
+        { label: "Legendary Only", action: () => setRarityFilter("legendary") },
+        { label: "Based Frog", action: () => { 
+            // We need to set trait filters, but this is a specific value. 
+            // We can just use the search for this or set specific filters if we know the type.
+            // Assuming "Character Type" is the type for "Based Frog"
+            setTraitTypeFilter("Character Type");
+            setTraitValueFilter("Based Frog");
+        }}
+    ];
+  }, []);
 
   // Use full filtered list (pagination handled by fetchNextPage)
   const displayedItems = filteredItems; 
@@ -367,6 +403,29 @@ export function EscrowMarketplace() {
                                  </div>
                              )}
                         </div>
+                        
+                        {/* Suggested Filters in Dropdown */}
+                        {search.length === 0 && savedSearches.length === 0 && (
+                            <div className="p-2 border-t border-white/10">
+                                <span className="text-[10px] text-muted-foreground px-2 mb-2 block">SUGGESTED</span>
+                                <div className="flex flex-wrap gap-2 px-2">
+                                    {suggestedFilters.map((sf, i) => (
+                                        <Badge 
+                                            key={i} 
+                                            variant="outline" 
+                                            className="cursor-pointer hover:bg-white/10 text-xs border-white/20"
+                                            onClick={() => {
+                                                sf.action();
+                                                setShowSavedSearches(false);
+                                            }}
+                                        >
+                                            {sf.label}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {savedSearches.length > 0 && (
                             <div className="bg-white/5 px-3 py-1 text-[10px] text-muted-foreground flex justify-between">
                                 <span>RECENT SEARCHES</span>
@@ -509,21 +568,23 @@ export function EscrowMarketplace() {
               MY INVENTORY
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="buy" className="mt-0">
-             {/* Mobile: Horizontal scroll / Swipe | Desktop: Grid */}
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-               {displayedItems.map((item) => (
-                 <MarketCard 
-                   key={item.id} 
-                   item={item} 
-                   onBuy={() => handleBuy(item)} 
-                   isConnected={isConnected}
-                   onConnect={openConnectModal}
-                   isAdmin={isAdmin}
-                   onAdminCancel={() => handleAdminCancel(item)}
-                 />
-               ))}
+          
+          <TabsContent value="buy" className="mt-0 space-y-6">
+             {/* Render Grid Items with onClick for Modal */}
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {displayedItems.slice(0, 20).map((item) => ( 
+                   <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <MarketCard 
+                               item={item} 
+                               onBuy={() => handleBuy(item)} 
+                               isConnected={isConnected}
+                               onConnect={openConnectModal}
+                               isAdmin={isAdmin}
+                               onAdminCancel={() => handleAdminCancel(item)}
+                               onViewDetails={() => setSelectedNFT(item)}
+                        />
+                   </motion.div>
+                ))}
              </div>
              
              {(hasNextPage || isLoading) && (
@@ -557,9 +618,14 @@ export function EscrowMarketplace() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                 {/* Mock Inventory Items */}
                  {filteredItems.length > 0 ? filteredItems.map((item) => (
-                   <MarketCard key={item.id} item={item} isOwner={true} isConnected={true} />
+                   <MarketCard 
+                        key={item.id} 
+                        item={item} 
+                        isOwner={true} 
+                        isConnected={true} 
+                        onViewDetails={() => setSelectedNFT(item)}
+                   />
                  )) : (
                    <div className="col-span-full text-center py-20 text-muted-foreground">You don't own any Guardians yet.</div>
                  )}
@@ -567,6 +633,12 @@ export function EscrowMarketplace() {
             )}
           </TabsContent>
         </Tabs>
+
+        <NFTDetailModal 
+            isOpen={!!selectedNFT} 
+            onClose={() => setSelectedNFT(null)} 
+            nft={selectedNFT} 
+        />
       </div>
 
       {/* Biometric Modal */}
@@ -595,14 +667,15 @@ export function EscrowMarketplace() {
   );
 }
 
-function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAdmin = false, onAdminCancel }: { 
+function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAdmin = false, onAdminCancel, onViewDetails }: { 
     item: MarketItem, 
     onBuy?: () => void, 
     isConnected: boolean, 
     onConnect?: () => void, 
     isOwner?: boolean,
     isAdmin?: boolean,
-    onAdminCancel?: () => void
+    onAdminCancel?: () => void,
+    onViewDetails?: () => void
 }) {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showOffersList, setShowOffersList] = useState(false);
@@ -650,7 +723,10 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
   return (
     <>
     <Card className="group bg-card border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col relative">
-      <div className="relative aspect-square overflow-hidden bg-black/50">
+      <div 
+        className="relative aspect-square overflow-hidden bg-black/50 cursor-pointer"
+        onClick={onViewDetails}
+      >
         <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         
         {/* Hot Badge */}
