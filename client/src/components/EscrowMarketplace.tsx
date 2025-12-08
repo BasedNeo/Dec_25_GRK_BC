@@ -150,7 +150,7 @@ export function EscrowMarketplace() {
           });
 
           // Analytics: Track Sale (Buy Action)
-          trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat(item.price.toString()));
+          trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat((item.price || 0).toString()));
         }, 2000);
     };
 
@@ -407,7 +407,7 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
       });
 
       // Analytics: Track Sale (Sell Action)
-      trackEvent('nft_sell', 'Marketplace', `Item #${item.id} (Offer Accepted)`, parseFloat(item.price.toString()));
+      trackEvent('nft_sell', 'Marketplace', `Item #${item.id} (Offer Accepted)`, parseFloat((item.price || 0).toString()));
   };
 
   const isExpired = item.listingExpiresAt ? new Date(item.listingExpiresAt) < new Date() : false;

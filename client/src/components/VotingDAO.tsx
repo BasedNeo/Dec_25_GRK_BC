@@ -27,11 +27,12 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   const { openConnectModal } = useConnectModal();
   const [showProposalForm, setShowProposalForm] = useState(false);
   const { toast } = useToast();
-  const { data: guardians } = useGuardians();
+  const { data: guardiansData } = useGuardians();
   const queryClient = useQueryClient();
   const { sanitize, isPaused } = useSecurity();
 
-  const votePower = guardians?.length || 0;
+  // Fix: guardiansData is InfiniteData, need to flatten
+  const votePower = guardiansData?.pages.flatMap((page: any) => page.nfts).length || 0;
 
   // Real Admin Check
   const isAdmin = isConnected && address && address.toLowerCase() === ADMIN_WALLET.toLowerCase();

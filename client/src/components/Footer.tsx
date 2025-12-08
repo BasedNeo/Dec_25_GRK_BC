@@ -7,8 +7,11 @@ import { Send, MessageSquare, ShieldCheck, Twitter, Github } from "lucide-react"
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
 
+import { useSecurity } from "@/context/SecurityContext";
+
 export function Footer() {
   const { toast } = useToast();
+  const { sanitize } = useSecurity();
   const [feedback, setFeedback] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,6 +22,10 @@ export function Footer() {
 
     setIsSubmitting(true);
     
+    // Security: Sanitize Input
+    const safeFeedback = sanitize(feedback);
+    const safeEmail = sanitize(email);
+
     // Track feedback submission event
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
@@ -27,8 +34,8 @@ export function Footer() {
       setFeedback("");
       setEmail("");
       toast({
-        title: "Feedback Received",
-        description: "Thank you for helping us improve the Based Guardians ecosystem.",
+        title: "Feedback Sent",
+        description: `Your suggestion has been securely sent to admin@basedguardians.com (Placeholder).`,
         className: "bg-black border-primary text-primary font-orbitron",
       });
     }, 1500);
@@ -88,12 +95,12 @@ export function Footer() {
           <div className="bg-card/30 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-4">
               <MessageSquare size={18} className="text-primary" />
-              <h4 className="text-lg font-orbitron text-white">SYSTEM FEEDBACK</h4>
+              <h4 className="text-lg font-orbitron text-white">Suggestions?</h4>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <Textarea 
-                placeholder="Report bugs or suggest features..." 
+                placeholder="Share your thoughts with us..." 
                 className="bg-black/50 border-white/10 text-white min-h-[80px] focus:border-primary/50"
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
