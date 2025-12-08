@@ -115,7 +115,7 @@ export const MOCK_PROPOSALS: Proposal[] = [
 
 export const MOCK_POOL_BALANCE = 132127728; // 3731 * 35404
 export const MINT_PRICE = 69420;
-export const TOTAL_SUPPLY = 3731;
+export const TOTAL_SUPPLY = 3732;
 export const MINTED_COUNT = 1420;
 
 export interface Escrow {
