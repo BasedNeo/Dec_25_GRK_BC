@@ -26,7 +26,10 @@ export function ValueEstimation() {
   // const { data: floorPrice } = useQuery(...)
 
   // Fetch User Guardians
-  const { data: guardians, refetch: refetchGuardians } = useGuardians();
+  const { data, refetch: refetchGuardians } = useGuardians();
+  
+  // Flatten pages from infinite query
+  const guardians = data?.pages.flatMap((page: any) => page.nfts) || [];
 
   // Debounced Refresh
   const handleRefresh = async () => {
