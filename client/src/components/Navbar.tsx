@@ -8,6 +8,8 @@ import { useAccount } from "wagmi";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 interface NavbarProps {
   isConnected: boolean; // Kept for legacy prop compatibility if needed, but RainbowKit handles state
@@ -15,9 +17,16 @@ interface NavbarProps {
 
 export function Navbar({ isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { address } = useAccount();
+  const { address, isConnected: wagmiConnected } = useAccount();
   const { isPaused, togglePause } = useSecurity();
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
+
+  // Track Wallet Connection
+  useEffect(() => {
+    if (wagmiConnected && address) {
+        trackEvent('wallet_connect', 'User', 'Navbar');
+    }
+  }, [wagmiConnected, address]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">

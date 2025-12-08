@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
 
 import { useSecurity } from "@/context/SecurityContext";
+import { trackEvent } from "@/lib/analytics";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -30,6 +31,10 @@ export function Hero() {
     }
 
     setIsMinting(true);
+    
+    // Analytics: Track Mint Attempt
+    trackEvent('mint_attempt', 'Transaction', 'Hero Section', mintQuantity);
+
     setTimeout(() => {
       setIsMinting(false);
       
@@ -40,6 +45,9 @@ export function Hero() {
         origin: { y: 0.6 },
         colors: ['#00ffff', '#bf00ff', '#ffffff']
       });
+
+      // Analytics: Track Successful Mint
+      trackEvent('mint_success', 'Transaction', 'Hero Section', mintQuantity);
 
       toast({
         title: "Mint Successful!",

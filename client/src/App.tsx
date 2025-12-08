@@ -9,6 +9,8 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
 import { SecurityProvider } from "@/context/SecurityContext";
+import { initAnalytics } from "@/lib/analytics";
+import { useEffect } from "react";
 
 function Router() {
   return (
@@ -20,6 +22,10 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

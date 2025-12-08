@@ -15,6 +15,7 @@ import { useGuardians } from "@/hooks/useGuardians";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
+import { trackEvent } from "@/lib/analytics";
 
 interface VotingDAOProps {
   isConnected: boolean; // Legacy
@@ -271,6 +272,9 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
         return p;
       });
     });
+
+    // Analytics: Track Vote
+    trackEvent('vote_cast', 'Governance', `Proposal #${proposal.id}`, votePower);
 
     toast({
       title: "Vote Cast Successfully",
