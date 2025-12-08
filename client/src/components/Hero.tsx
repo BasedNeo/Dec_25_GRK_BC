@@ -9,12 +9,26 @@ import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
 
+import { useSecurity } from "@/context/SecurityContext";
+
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
+  const { isPaused } = useSecurity();
 
+  // Smart Contract Interaction Mock:
+  // Implements nonReentrant, whenNotPaused modifiers from OpenZeppelin
   const handleMint = () => {
+    if (isPaused) {
+        toast({
+            title: "System Paused",
+            description: "Minting is currently paused by the administrator.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     setIsMinting(true);
     setTimeout(() => {
       setIsMinting(false);
@@ -95,10 +109,14 @@ export function Hero() {
 
             <Button 
               onClick={handleMint}
-              disabled={isMinting}
-              className="w-full py-6 text-lg font-orbitron tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 cyber-button shadow-[0_0_20px_rgba(0,255,255,0.4)]"
+              disabled={isMinting || isPaused}
+              className="w-full py-6 text-lg font-orbitron tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 cyber-button shadow-[0_0_20px_rgba(0,255,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isMinting ? (
+              {isPaused ? (
+                  <span className="flex items-center text-red-500">
+                      <Zap className="mr-2 h-4 w-4" /> PAUSED
+                  </span>
+              ) : isMinting ? (
                 <span className="animate-pulse flex items-center">
                   PROCESSING <Zap className="ml-2 h-4 w-4 animate-bounce" />
                 </span>

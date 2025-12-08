@@ -14,6 +14,7 @@ import { useAccount } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ADMIN_WALLET } from "@/lib/constants";
+import { useSecurity } from "@/context/SecurityContext";
 
 interface VotingDAOProps {
   isConnected: boolean; // Legacy
@@ -27,6 +28,7 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   const { toast } = useToast();
   const { data: guardians } = useGuardians();
   const queryClient = useQueryClient();
+  const { sanitize, isPaused } = useSecurity();
 
   const votePower = guardians?.length || 0;
 
@@ -48,8 +50,12 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
   const handlePropose = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
+    const titleRaw = formData.get('title') as string;
+    const descRaw = formData.get('description') as string;
+    
+    // Security: Input Sanitization using DOMPurify
+    const title = sanitize(titleRaw);
+    const description = sanitize(descRaw);
 
     if (!title || !description || title.length < 5 || description.length < 10) {
         toast({
@@ -62,8 +68,8 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
     
     const newProposal: Proposal = {
       id: (proposals?.length || 0) + 1,
-      title: title.replace(/<[^>]*>?/gm, ''), // Basic XSS sanitization
-      description: description.replace(/<[^>]*>?/gm, ''),
+      title: title, // Already sanitized
+      description: description, // Already sanitized
       type: formData.get('type') as 'binary' | 'multiple',
       options: formData.get('type') === 'binary' 
         ? [
@@ -72,10 +78,10 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
             { id: 'abstain', label: 'Abstain', votes: 0 }
           ]
         : [
-            { id: 'a', label: (formData.get('optionA') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
-            { id: 'b', label: (formData.get('optionB') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
-            { id: 'c', label: (formData.get('optionC') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
-            { id: 'd', label: (formData.get('optionD') as string)?.replace(/<[^>]*>?/gm, ''), votes: 0 },
+            { id: 'a', label: sanitize(formData.get('optionA') as string), votes: 0 },
+            { id: 'b', label: sanitize(formData.get('optionB') as string), votes: 0 },
+            { id: 'c', label: sanitize(formData.get('optionC') as string), votes: 0 },
+            { id: 'd', label: sanitize(formData.get('optionD') as string), votes: 0 },
           ].filter(o => o.label), // Filter out empty options
       status: 'Active',
       endTime: new Date(formData.get('endTime') as string).toISOString(),
@@ -111,9 +117,11 @@ export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: 
           {isAdmin && !showProposalForm && (
             <Button 
               onClick={() => setShowProposalForm(true)}
-              className="mt-4 md:mt-0 bg-accent text-white hover:bg-accent/80 font-orbitron"
+              disabled={isPaused}
+              className="mt-4 md:mt-0 bg-accent text-white hover:bg-accent/80 font-orbitron disabled:opacity-50"
             >
-              <PlusCircle className="mr-2 h-4 w-4" /> NEW PROPOSAL
+              {isPaused ? <AlertTriangle className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              {isPaused ? "PAUSED" : "NEW PROPOSAL"}
             </Button>
           )}
         </div>
@@ -211,6 +219,7 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [timeLeft, setTimeLeft] = useState("");
+  const { isPaused } = useSecurity();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -232,6 +241,11 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
   }, [proposal.endTime]);
 
   const handleVote = (optionId: string) => {
+    if (isPaused) {
+        toast({ title: "Voting Paused", description: "System is currently paused.", variant: "destructive" });
+        return;
+    }
+
     if (votePower === 0) {
       toast({
         title: "No Voting Power",

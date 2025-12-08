@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
+import { SecurityProvider } from "@/context/SecurityContext";
 
 function Router() {
   return (
@@ -28,10 +29,12 @@ function App() {
           borderRadius: 'none',
           fontStack: 'system',
         })}>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
+          <SecurityProvider>
+            <TooltipProvider>
+              <Router />
+              <Toaster />
+            </TooltipProvider>
+          </SecurityProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

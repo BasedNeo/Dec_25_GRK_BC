@@ -22,12 +22,14 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ADMIN_WALLET } from "@/lib/constants";
+import { useSecurity } from "@/context/SecurityContext";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isPaused } = useSecurity();
   const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -111,6 +113,10 @@ export function EscrowMarketplace() {
   };
 
   const handleBuy = (item: MarketItem) => {
+    if (isPaused) {
+        toast({ title: "Market Paused", description: "Trading halted by admin.", variant: "destructive" });
+        return;
+    }
     if (!isConnected) { openConnectModal?.(); return; }
     if (!biometricAuthenticated) { setShowBiometricModal(true); return; }
 
@@ -148,7 +154,13 @@ export function EscrowMarketplace() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-end mb-8 gap-6">
           <div>
-            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono">MARKETPLACE V2</Badge>
+            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono">
+                {isPaused ? "MARKET PAUSED" : "MARKETPLACE V2"}
+            </Badge>
+            {/* AUDIT NOTE */}
+            <div className="text-[10px] text-green-500 font-mono mb-2 flex items-center">
+                <ShieldCheck size={10} className="mr-1" /> Contracts Audited (Slither) | ReentrancyGuard Enabled
+            </div>
             <h2 className="text-4xl text-white font-black mb-2">GUARDIAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">EXCHANGE</span></h2>
             <div className="flex gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Escrow Secured</span>

@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ShieldAlert, PlayCircle, PauseCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@assets/generated_images/neon_cyan_glitch_text_logo_on_black.png";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
+import { useSecurity } from "@/context/SecurityContext";
+import { ADMIN_WALLET } from "@/lib/constants";
+import { Badge } from "@/components/ui/badge";
 
 interface NavbarProps {
   isConnected: boolean; // Kept for legacy prop compatibility if needed, but RainbowKit handles state
@@ -11,13 +15,16 @@ interface NavbarProps {
 
 export function Navbar({ isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { address } = useAccount();
+  const { isPaused, togglePause } = useSecurity();
+  const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <div className="flex-shrink-0 cursor-pointer group">
+          <div className="flex-shrink-0 cursor-pointer group flex items-center gap-4">
             <div className="relative">
               <img 
                 src={logo} 
@@ -25,6 +32,11 @@ export function Navbar({ isConnected }: NavbarProps) {
                 className="h-10 w-auto object-contain glitch-hover"
               />
             </div>
+            {isPaused && (
+                <Badge variant="destructive" className="animate-pulse border-red-500 bg-red-900/50 text-red-500">
+                    <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
+                </Badge>
+            )}
           </div>
 
           {/* Desktop Navigation */}
@@ -35,6 +47,18 @@ export function Navbar({ isConnected }: NavbarProps) {
             <a href="#voting" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">DAO</a>
             <a href="#pool" className="text-foreground/80 hover:text-primary transition-colors font-orbitron text-sm tracking-widest">POOL</a>
             
+            {isAdmin && (
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={togglePause}
+                    className={`border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
+                >
+                    {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
+                    {isPaused ? "RESUME SYSTEM" : "EMERGENCY PAUSE"}
+                </Button>
+            )}
+
             <ConnectButton.Custom>
               {({
                 account,
