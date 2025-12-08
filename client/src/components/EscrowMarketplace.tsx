@@ -116,11 +116,14 @@ export function EscrowMarketplace() {
        items = isConnected ? items.filter(i => i.id % 50 === 0) : [];
     }
 
-    // Search (Numeric validation included)
+    // Search (Numeric validation included) & Keyword Search for Attributes
     if (search) {
+      const searchLower = search.toLowerCase();
       items = items.filter(i => 
-        i.name.toLowerCase().includes(search.toLowerCase()) || 
-        i.id.toString().includes(search)
+        i.name.toLowerCase().includes(searchLower) || 
+        i.id.toString().includes(search) ||
+        i.traits.some(t => t.value.toLowerCase().includes(searchLower)) ||
+        i.traits.some(t => t.type.toLowerCase().includes(searchLower))
       );
     }
 
@@ -138,14 +141,18 @@ export function EscrowMarketplace() {
 
     // Sort
     items.sort((a, b) => {
-      if (sortBy === 'price-asc') return (a.price || 0) - (b.price || 0);
-      if (sortBy === 'price-desc') return (b.price || 0) - (a.price || 0);
-      if (sortBy === 'id-asc') return a.id - b.id;
-      if (sortBy === 'rarity') {
-        const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
-        return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
+      const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
+      
+      switch (sortBy) {
+        case 'price-asc': return (a.price || 0) - (b.price || 0);
+        case 'price-desc': return (b.price || 0) - (a.price || 0);
+        case 'floor-price': return (a.price || 0) - (b.price || 0); // Alias for price-asc really, but conceptual
+        case 'id-asc': return a.id - b.id;
+        case 'id-desc': return b.id - a.id;
+        case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
+        case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
+        default: return 0;
       }
-      return 0;
     });
 
     return items;
@@ -250,11 +257,11 @@ export function EscrowMarketplace() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-             <div className="relative flex-1 sm:w-64">
+             <div className="relative flex-1 w-full md:w-64 transition-all duration-300">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                <Input 
-                 placeholder="Search ID (e.g. 100) or Name..." 
-                 className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50"
+                 placeholder="Search Traits (e.g. 'High Power')..." 
+                 className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
                  value={search}
                  onChange={(e) => setSearch(e.target.value)}
                  type="text"
@@ -270,15 +277,18 @@ export function EscrowMarketplace() {
                  <Filter size={16} className="mr-2" /> Filters
                </Button>
                <Select value={sortBy} onValueChange={setSortBy}>
-                 <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white">
+                 <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
                    <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
                    <SelectValue placeholder="Sort By" />
                  </SelectTrigger>
                  <SelectContent>
                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                   <SelectItem value="rarity">Rarity: High to Low</SelectItem>
-                   <SelectItem value="id-asc">Token ID: Low to High</SelectItem>
+                   <SelectItem value="floor-price">Floor Price (Lowest)</SelectItem>
+                   <SelectItem value="rarity-desc">Rarity: High to Low</SelectItem>
+                   <SelectItem value="rarity-asc">Rarity: Low to High</SelectItem>
+                   <SelectItem value="id-asc">ID: Low to High</SelectItem>
+                   <SelectItem value="id-desc">ID: High to Low</SelectItem>
                  </SelectContent>
                </Select>
              </div>
@@ -525,6 +535,15 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
       <div className="relative aspect-square overflow-hidden bg-black/50">
         <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         
+        {/* Hot Badge */}
+        {item.listingExpiresAt && (
+           <div className="absolute top-2 left-2 z-20 animate-pulse">
+             <Badge className="bg-orange-500/90 hover:bg-orange-500 text-black border-none font-bold flex items-center gap-1">
+                <Flame size={12} fill="currentColor" /> HOT
+             </Badge>
+           </div>
+        )}
+
         {/* Rarity Badge */}
         <div className="absolute top-2 right-2">
           <Badge className={`backdrop-blur-md border-none ${

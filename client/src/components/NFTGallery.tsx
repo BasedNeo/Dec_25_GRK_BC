@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp } from "lucide-react";
+import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo } from "react";
@@ -11,6 +11,7 @@ import { useGuardians } from "@/hooks/useGuardians";
 import { IPFS_ROOT } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -23,10 +24,12 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const [useMockData, setUseMockData] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
-  // Filters
+  // Filters & Search
+  const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("id-asc");
 
   const { 
     data, 
@@ -43,22 +46,47 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   // Filter Logic
   const displayNfts = useMemo(() => {
       let items = [...allDisplayNfts];
+      
+      // Search
+      if (search) {
+        const searchLower = search.toLowerCase();
+        items = items.filter(i => 
+            i.name.toLowerCase().includes(searchLower) || 
+            i.id.toString().includes(search) ||
+            (i.traits && i.traits.some((t: any) => t.value.toLowerCase().includes(searchLower) || t.type.toLowerCase().includes(searchLower)))
+        );
+      }
+
+      // Filters
       if (rarityFilter !== "all") {
           items = items.filter(i => i.rarity?.toLowerCase() === rarityFilter);
       }
       if (traitTypeFilter !== "all" && traitValueFilter !== "all") {
           items = items.filter(i => 
-              i.traits.some(t => t.type === traitTypeFilter && t.value === traitValueFilter)
+              i.traits.some((t: any) => t.type === traitTypeFilter && t.value === traitValueFilter)
           );
       }
+
+      // Sort
+      const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
+      items.sort((a, b) => {
+          switch (sortBy) {
+            case 'id-asc': return a.id - b.id;
+            case 'id-desc': return b.id - a.id;
+            case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
+            case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
+            default: return 0;
+          }
+      });
+
       return items;
-  }, [allDisplayNfts, rarityFilter, traitTypeFilter, traitValueFilter]);
+  }, [allDisplayNfts, search, rarityFilter, traitTypeFilter, traitValueFilter, sortBy]);
 
   // Extract Traits
   const availableTraits = useMemo(() => {
       const traits: Record<string, Set<string>> = {};
       allDisplayNfts.forEach(item => {
-          item.traits?.forEach(t => {
+          item.traits?.forEach((t: any) => {
               if (!traits[t.type]) traits[t.type] = new Set();
               traits[t.type].add(t.value);
           });
@@ -99,31 +127,60 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
             <p className="text-muted-foreground font-rajdhani">Manage your Guardians and view their traits.</p>
           </div>
           
-          <div className="flex flex-col items-end gap-2 mt-4 md:mt-0">
+          <div className="flex flex-col items-end gap-2 mt-4 md:mt-0 w-full md:w-auto">
             {isConnected && (
-               <>
-                 <div className="flex items-center gap-2">
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
-                     onClick={() => setShowFilters(!showFilters)}
-                     className={`text-xs border-white/20 ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
-                   >
-                     <Filter size={14} className="mr-2" /> Filters
-                   </Button>
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
-                     onClick={() => setUseMockData(!useMockData)}
-                     className="text-xs border-white/20"
-                   >
-                     {useMockData ? "Switch to Real" : "View Demo Data"}
-                   </Button>
+               <div className="flex flex-col gap-4 w-full md:items-end">
+                 
+                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 w-full md:w-64">
+                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                       <Input 
+                         placeholder="Search ID or Traits..." 
+                         className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
+                         value={search}
+                         onChange={(e) => setSearch(e.target.value)}
+                         type="text"
+                       />
+                    </div>
+                    
+                    <div className="flex gap-2">
+                         <Select value={sortBy} onValueChange={setSortBy}>
+                             <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white">
+                               <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
+                               <SelectValue placeholder="Sort By" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="id-asc">ID: Low to High</SelectItem>
+                               <SelectItem value="id-desc">ID: High to Low</SelectItem>
+                               <SelectItem value="rarity-desc">Rarity: High to Low</SelectItem>
+                               <SelectItem value="rarity-asc">Rarity: Low to High</SelectItem>
+                             </SelectContent>
+                           </Select>
+                           
+                           <Button 
+                             variant="outline" 
+                             onClick={() => setShowFilters(!showFilters)}
+                             className={`border-white/20 ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
+                           >
+                             <Filter size={14} />
+                           </Button>
+                    </div>
                  </div>
-                 <div className="px-4 py-2 bg-primary/5 border border-primary/20 rounded text-xs font-mono text-primary/80 mt-2 md:mt-0 text-right">
-                    Backed by {Math.floor(baseValuePerNFT).toLocaleString()} $BASED per NFT | Your Total: <span className="text-white font-bold">{Math.floor(userTotalValue).toLocaleString()} $BASED</span>
+
+                 <div className="flex items-center justify-between md:justify-end gap-2 w-full">
+                    <div className="px-4 py-2 bg-primary/5 border border-primary/20 rounded text-xs font-mono text-primary/80">
+                        Backed by {Math.floor(baseValuePerNFT).toLocaleString()} $BASED per NFT
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setUseMockData(!useMockData)}
+                        className="text-[10px] h-6 text-muted-foreground hover:text-white"
+                    >
+                        {useMockData ? "Switch to Real" : "View Demo Data"}
+                    </Button>
                  </div>
-               </>
+               </div>
             )}
           </div>
         </div>
