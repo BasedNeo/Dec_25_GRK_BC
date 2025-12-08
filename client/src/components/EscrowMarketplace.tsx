@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { trackEvent } from "@/lib/analytics";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -147,6 +148,9 @@ export function EscrowMarketplace() {
             description: `You are now the owner of ${item.name}. Asset transferred.`,
             className: "bg-black border-green-500 text-green-500 font-orbitron",
           });
+
+          // Analytics: Track Sale (Buy Action)
+          trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat(item.price.toString()));
         }, 2000);
     };
 
@@ -377,6 +381,9 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
       description: `Your offer of ${new FormData(e.target as HTMLFormElement).get('offerAmount')} for ${item.name} is locked for 1 hour.`,
       className: "bg-black border-primary text-primary font-orbitron"
     });
+
+    // Analytics: Track Offer
+    trackEvent('make_offer', 'Marketplace', `Item #${item.id}`, parseFloat(new FormData(e.target as HTMLFormElement).get('offerAmount') as string || '0'));
   };
   
   const handleAcceptOffer = (offerId: number) => {
@@ -398,6 +405,9 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
           description: "Transaction finalized. Funds transferred to your wallet.",
           className: "bg-black border-green-500 text-green-500 font-orbitron"
       });
+
+      // Analytics: Track Sale (Sell Action)
+      trackEvent('nft_sell', 'Marketplace', `Item #${item.id} (Offer Accepted)`, parseFloat(item.price.toString()));
   };
 
   const isExpired = item.listingExpiresAt ? new Date(item.listingExpiresAt) < new Date() : false;
