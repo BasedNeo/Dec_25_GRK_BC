@@ -1,356 +1,431 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Wallet, Clock } from "lucide-react";
+import { 
+  ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
+  Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel 
+} from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { MOCK_ESCROWS, Escrow, MOCK_GUARDIANS } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
+import { generateMarketplaceData, MarketItem } from "@/lib/marketplaceData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("browse");
+  const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Optimized Fetching with Caching
-  const { data: escrows } = useQuery({
-    queryKey: ['escrows'],
-    queryFn: async () => MOCK_ESCROWS,
-    initialData: MOCK_ESCROWS,
-    staleTime: 30000, // 30s cache
-    gcTime: 300000, // 5 min garbage collection
+  // --- State for Filters & Sort ---
+  const [search, setSearch] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("price-asc");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // --- Biometric Auth State ---
+  const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
+
+  // --- Data Fetching (Mocking Alchemy/Contract fetch) ---
+  const { data: allItems } = useQuery({
+    queryKey: ['marketplace-items'],
+    queryFn: async () => generateMarketplaceData(3732),
+    staleTime: Infinity, // Static for prototype
   });
 
-  const handleCreateEscrow = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    
-    const formData = new FormData(e.currentTarget);
-    const tokenId = formData.get('tokenId') as string;
-    const price = formData.get('price') as string;
-    
-    // Input Sanitization / Validation
-    if (!tokenId || !price || parseFloat(price) <= 0) {
-      toast({
-        title: "Invalid Input",
-        description: "Please provide a valid Token ID and Price.",
-        variant: "destructive"
-      });
-      setIsSubmitting(false);
-      return;
+  // --- Filtering Logic ---
+  const filteredItems = useMemo(() => {
+    if (!allItems) return [];
+    let items = [...allItems];
+
+    // Tab Filter
+    if (activeTab === "buy") {
+       items = items.filter(i => i.isListed);
+    } else if (activeTab === "inventory") {
+       // Mock inventory for connected user (just show some random ones if connected)
+       items = isConnected ? items.filter(i => i.id % 50 === 0) : [];
     }
 
-    const newEscrow: Escrow = {
-      id: Math.floor(Math.random() * 10000),
-      seller: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "0xUSER",
-      assetName: `Guardian #${tokenId.replace(/[^0-9]/g, '')}`, // Sanitize to numbers only
-      assetImage: MOCK_GUARDIANS[0].image, 
-      price: parseFloat(price),
-      currency: formData.get('currency') as any,
-      status: 'Open',
-      createdAt: new Date().toISOString()
-    };
+    // Search
+    if (search) {
+      items = items.filter(i => 
+        i.name.toLowerCase().includes(search.toLowerCase()) || 
+        i.id.toString().includes(search)
+      );
+    }
 
-    // Optimistic Update
-    queryClient.setQueryData(['escrows'], (old: Escrow[] = []) => [newEscrow, ...old]);
-    
-    setActiveTab("browse");
-    toast({
-      title: "Asset Escrowed",
-      description: "Your asset is now locked in the smart contract and listed for sale.",
-      className: "bg-black border-primary text-primary font-orbitron",
+    // Rarity
+    if (rarityFilter !== "all") {
+      items = items.filter(i => i.rarity.toLowerCase() === rarityFilter);
+    }
+
+    // Sort
+    items.sort((a, b) => {
+      if (sortBy === 'price-asc') return (a.price || 0) - (b.price || 0);
+      if (sortBy === 'price-desc') return (b.price || 0) - (a.price || 0);
+      if (sortBy === 'id-asc') return a.id - b.id;
+      if (sortBy === 'rarity') {
+        const rarityScore = { 'Legendary': 3, 'Rare': 2, 'Common': 1 };
+        return rarityScore[b.rarity] - rarityScore[a.rarity];
+      }
+      return 0;
     });
-    setIsSubmitting(false);
+
+    return items.slice(0, 50); // Pagination / Limit for performance in prototype
+  }, [allItems, activeTab, search, rarityFilter, sortBy, isConnected]);
+
+  // --- Actions ---
+  const handleBiometricAuth = async () => {
+    // Mock WebAuthn
+    try {
+      toast({ title: "Authenticating...", description: "Please verify your identity." });
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Sim delay
+      setBiometricAuthenticated(true);
+      setShowBiometricModal(false);
+      toast({ 
+        title: "Identity Verified", 
+        description: "Biometric authentication successful.",
+        className: "bg-black border-green-500 text-green-500 font-orbitron"
+      });
+    } catch (e) {
+      toast({ title: "Authentication Failed", variant: "destructive" });
+    }
   };
 
-  const handleBuy = (escrow: Escrow) => {
-    if (!isConnected) {
-      openConnectModal?.();
-      return;
-    }
+  const handleBuy = (item: MarketItem) => {
+    if (!isConnected) { openConnectModal?.(); return; }
+    if (!biometricAuthenticated) { setShowBiometricModal(true); return; }
 
     toast({
-      title: "Transaction Pending",
-      description: `Sending ${escrow.price} ${escrow.currency} to escrow contract...`,
+      title: "Processing Transaction",
+      description: "Interacting with Escrow Contract...",
       className: "bg-black border-accent text-accent font-orbitron",
     });
 
     setTimeout(() => {
-      queryClient.setQueryData(['escrows'], (old: Escrow[] = []) => 
-        old.map(e => e.id === escrow.id ? { ...e, status: 'Completed' as const } : e)
-      );
-      
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00ffff', '#bf00ff', '#ffffff']
-      });
-
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
       toast({
         title: "Purchase Successful",
-        description: "Funds matched. Asset auto-released to your wallet.",
+        description: `You are now the owner of ${item.name}. Asset transferred.`,
         className: "bg-black border-green-500 text-green-500 font-orbitron",
       });
     }, 2000);
   };
 
   return (
-    <section id="escrow" className="py-20 bg-black/80 border-t border-white/5 relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-      <div className="absolute top-1/2 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-10">
+    <section id="marketplace" className="py-20 bg-black min-h-screen relative">
+       {/* Background */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
+      
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-end mb-8 gap-6">
           <div>
-            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono">SECURE EXCHANGE</Badge>
-            <h2 className="text-3xl md:text-4xl text-white mb-2">ESCROW <span className="text-primary">MARKET</span></h2>
-            <p className="text-muted-foreground font-rajdhani max-w-2xl">
-              Trustless P2P trading. Assets are locked in smart contracts until payment thresholds are met.
-            </p>
+            <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono">MARKETPLACE V2</Badge>
+            <h2 className="text-4xl text-white font-black mb-2">GUARDIAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">EXCHANGE</span></h2>
+            <div className="flex gap-4 text-xs text-muted-foreground font-mono">
+              <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Escrow Secured</span>
+              <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
+              <span className="flex items-center gap-1"><RefreshCw size={12} className="text-primary"/> 0.5% Pool Fee</span>
+            </div>
           </div>
-          
-          <div className="flex gap-4 mt-4 md:mt-0">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/5 px-3 py-1 rounded-full border border-white/10">
-              <ShieldCheck size={14} className="text-green-500" /> Contract Audited
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/5 px-3 py-1 rounded-full border border-white/10">
-              <RefreshCw size={14} className="text-primary" /> Auto-Release
-            </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+             <div className="relative flex-1 sm:w-64">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+               <Input 
+                 placeholder="Search ID or Name..." 
+                 className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50"
+                 value={search}
+                 onChange={(e) => setSearch(e.target.value)}
+               />
+             </div>
+             
+             <div className="flex gap-2">
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowFilters(!showFilters)}
+                 className={`border-white/10 ${showFilters ? 'bg-primary/20 border-primary/50 text-primary' : 'text-muted-foreground'}`}
+               >
+                 <Filter size={16} className="mr-2" /> Filters
+               </Button>
+               <Select value={sortBy} onValueChange={setSortBy}>
+                 <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white">
+                   <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
+                   <SelectValue placeholder="Sort By" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                   <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                   <SelectItem value="rarity">Rarity: High to Low</SelectItem>
+                   <SelectItem value="id-asc">Token ID</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
           </div>
         </div>
 
-        <Tabs defaultValue="browse" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-black/50 border border-white/10 mb-8">
-            <TabsTrigger value="browse" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-orbitron min-h-[44px]">
-              BROWSE LISTINGS
+        {/* Filters Panel (Collapsible) */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-8"
+            >
+              <Card className="p-4 bg-white/5 border-white/10 grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono text-muted-foreground">RARITY</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['all', 'common', 'rare', 'legendary'].map(r => (
+                      <Badge 
+                        key={r}
+                        variant="outline" 
+                        className={`cursor-pointer capitalize ${rarityFilter === r ? 'bg-primary text-black border-primary' : 'text-muted-foreground hover:text-white'}`}
+                        onClick={() => setRarityFilter(r)}
+                      >
+                        {r}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                {/* More filters could go here */}
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Disclaimer */}
+        <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono text-center">
+           DISCLAIMER: All values and amounts are estimates and may not be accurate due to market fluctuations. Trade at your own risk.
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-transparent border-b border-white/10 w-full justify-start rounded-none h-auto p-0 mb-8 gap-6">
+            <TabsTrigger value="buy" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-0 pb-3 font-orbitron text-lg">
+              LIVE LISTINGS <span className="ml-2 text-xs bg-white/10 px-2 py-0.5 rounded-full text-muted-foreground">{allItems?.filter(i => i.isListed).length || 0}</span>
             </TabsTrigger>
-            <TabsTrigger value="sell" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent font-orbitron min-h-[44px]">
-              CREATE ESCROW
+            <TabsTrigger value="inventory" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-accent px-0 pb-3 font-orbitron text-lg">
+              MY INVENTORY
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="browse" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <AnimatePresence>
-                {escrows?.map((escrow) => (
-                  <motion.div
-                    key={escrow.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <EscrowCard escrow={escrow} onBuy={() => handleBuy(escrow)} isConnected={isConnected} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-            {escrows?.length === 0 && (
-               <div className="text-center py-20 border border-dashed border-white/10 rounded-xl">
-                 <p className="text-muted-foreground">No active escrows found.</p>
-               </div>
-            )}
+          <TabsContent value="buy" className="mt-0">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+               {filteredItems.map((item) => (
+                 <MarketCard 
+                   key={item.id} 
+                   item={item} 
+                   onBuy={() => handleBuy(item)} 
+                   isConnected={isConnected}
+                   onConnect={openConnectModal}
+                 />
+               ))}
+             </div>
+             {filteredItems.length === 0 && (
+                <div className="text-center py-20 text-muted-foreground">No guardians found matching your criteria.</div>
+             )}
           </TabsContent>
 
-          <TabsContent value="sell">
-            <Card className="max-w-2xl mx-auto p-6 bg-card border-white/10 relative overflow-hidden">
-              {!isConnected ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Wallet className="w-16 h-16 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-orbitron text-white mb-2">WALLET DISCONNECTED</h3>
-                  <p className="text-muted-foreground mb-6">Connect your wallet to access your assets and create an escrow.</p>
-                  <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90 min-h-[44px]">
-                    CONNECT WALLET
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleCreateEscrow} className="space-y-6">
-                  <div>
-                    <h3 className="text-xl font-orbitron text-white mb-1">LIST ASSET</h3>
-                    <p className="text-sm text-muted-foreground mb-6">Lock your NFT in the escrow contract. It will be released automatically when the buyer sends the funds.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-mono text-muted-foreground">ASSET (TOKEN ID)</label>
-                        <Input name="tokenId" placeholder="e.g. 420" className="bg-black/50 border-white/10 text-white min-h-[44px]" required pattern="[0-9]*" inputMode="numeric" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-mono text-muted-foreground">CURRENCY</label>
-                        <Select name="currency" defaultValue="ETH">
-                          <SelectTrigger className="bg-black/50 border-white/10 text-white min-h-[44px]">
-                            <SelectValue placeholder="Select Currency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ETH">ETH (Base)</SelectItem>
-                            <SelectItem value="$BASED">$BASED Token</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-mono text-muted-foreground">PRICE THRESHOLD</label>
-                      <Input name="price" type="number" step="0.000001" placeholder="0.00" className="bg-black/50 border-white/10 text-white font-mono text-lg min-h-[44px]" required min="0" />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/10">
-                    <div className="flex items-start gap-2 mb-6 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-200">
-                      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                      <p>
-                        Listing an item requires two transactions: 1. Approve contract to transfer NFT. 2. Deposit NFT into Escrow.
-                        <br/>Your asset will be held safely by the contract until sold or cancelled.
-                      </p>
-                    </div>
-
-                    <Button type="submit" disabled={isSubmitting} className="w-full bg-accent text-white hover:bg-accent/80 font-orbitron h-12">
-                      {isSubmitting ? <RefreshCw className="animate-spin mr-2" /> : <Plus className="mr-2 h-4 w-4" />} CREATE ESCROW LISTING
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </Card>
+          <TabsContent value="inventory" className="mt-0">
+            {!isConnected ? (
+              <div className="text-center py-20 border border-dashed border-white/10 rounded-xl">
+                 <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                 <h3 className="text-white text-lg font-orbitron mb-2">WALLET NOT CONNECTED</h3>
+                 <Button onClick={openConnectModal} className="mt-4 bg-primary text-black">Connect Wallet</Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                 {/* Mock Inventory Items */}
+                 {filteredItems.length > 0 ? filteredItems.map((item) => (
+                   <MarketCard key={item.id} item={item} isOwner={true} isConnected={true} />
+                 )) : (
+                   <div className="col-span-full text-center py-20 text-muted-foreground">You don't own any Guardians yet.</div>
+                 )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Biometric Modal */}
+      <Dialog open={showBiometricModal} onOpenChange={setShowBiometricModal}>
+        <DialogContent className="bg-black border-white/20 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-orbitron text-center flex flex-col items-center gap-4 pt-4">
+              <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center animate-pulse">
+                <Fingerprint size={32} className="text-accent" />
+              </div>
+              BIOMETRIC AUTH REQUIRED
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Please verify your identity to authorize this high-value transaction.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center pb-4">
+             <Button onClick={handleBiometricAuth} className="w-full bg-accent text-white hover:bg-accent/90 font-orbitron h-12">
+               VERIFY IDENTITY
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </section>
   );
 }
 
-function EscrowCard({ escrow, onBuy, isConnected }: { escrow: Escrow, onBuy: () => void, isConnected: boolean }) {
-  const isCompleted = escrow.status === 'Completed';
-  
-  // Real Admin Check
-  const { address } = useAccount();
-  const adminWallet = import.meta.env.VITE_ADMIN_WALLET;
-  const isAdmin = isConnected && address && adminWallet && address.toLowerCase() === adminWallet.toLowerCase();
-  
+function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false }: { item: MarketItem, onBuy?: () => void, isConnected: boolean, onConnect?: () => void, isOwner?: boolean }) {
+  const [showOfferModal, setShowOfferModal] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const handleCancel = () => {
-      queryClient.setQueryData(['escrows'], (old: Escrow[] = []) => 
-        old.filter(e => e.id !== escrow.id)
-      );
-      toast({
-        title: "Listing Cancelled",
-        description: "Admin override executed. Asset returned to seller.",
-        className: "bg-black border-red-500 text-red-500 font-orbitron",
-      });
+  const handleMakeOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowOfferModal(false);
+    toast({
+      title: "Offer Submitted",
+      description: `Your offer of ${new FormData(e.target as HTMLFormElement).get('offerAmount')} for ${item.name} has been sent.`,
+      className: "bg-black border-primary text-primary font-orbitron"
+    });
   };
 
-  // Expiration Timer Logic (24h default)
-  const [timeLeft, setTimeLeft] = useState("");
-  useEffect(() => {
-    if (isCompleted) return;
-    const timer = setInterval(() => {
-        const created = new Date(escrow.createdAt).getTime();
-        const expires = created + (24 * 60 * 60 * 1000);
-        const now = new Date().getTime();
-        const distance = expires - now;
-
-        if (distance < 0) {
-            setTimeLeft("EXPIRED");
-            clearInterval(timer);
-        } else {
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            setTimeLeft(`${hours}h ${minutes}m`);
-        }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [escrow.createdAt, isCompleted]);
-
   return (
-    <Card className={`group relative overflow-hidden bg-card border-white/10 hover:border-primary/50 transition-all duration-300 ${isCompleted ? 'opacity-75' : ''}`}>
-      {/* Image Area */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-black/50">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent z-10" />
-        <img 
-          src={escrow.assetImage} 
-          alt={escrow.assetName} 
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-        />
+    <>
+    <Card className="group bg-card border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col">
+      <div className="relative aspect-square overflow-hidden bg-black/50">
+        <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         
-        <div className="absolute top-2 right-2 z-20">
-          <Badge variant="outline" className={`
-            backdrop-blur-md
-            ${escrow.status === 'Open' ? 'border-green-500 text-green-500 bg-green-500/10' : ''}
-            ${escrow.status === 'Pending' ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' : ''}
-            ${escrow.status === 'Completed' ? 'border-primary text-primary bg-primary/10' : ''}
-          `}>
-            {escrow.status}
+        {/* Rarity Badge */}
+        <div className="absolute top-2 right-2">
+          <Badge className={`backdrop-blur-md border-none ${
+             item.rarity === 'Legendary' ? 'bg-orange-500/20 text-orange-400' : 
+             item.rarity === 'Rare' ? 'bg-purple-500/20 text-purple-400' : 
+             'bg-white/10 text-gray-300'
+          }`}>
+            {item.rarity}
           </Badge>
         </div>
 
-        <div className="absolute bottom-3 left-3 z-20">
-          <p className="text-xs text-muted-foreground font-mono">SELLER</p>
-          <p className="text-sm text-white font-mono">{escrow.seller}</p>
+        {/* Owner Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+          <p className="text-[10px] text-muted-foreground font-mono">OWNER</p>
+          <p className="text-xs text-white font-mono truncate">{item.owner}</p>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-4">
-           <h4 className="text-lg font-orbitron text-white truncate flex-1 mr-2">{escrow.assetName}</h4>
-           {!isCompleted && (
-             <Badge variant="outline" className="text-[10px] h-5 border-white/20 text-muted-foreground">
-               <Clock size={10} className="mr-1" /> {timeLeft || "24h"}
-             </Badge>
-           )}
-        </div>
-        
-        <div className="flex justify-between items-end mb-4">
-          <div>
-            <p className="text-xs text-muted-foreground font-mono mb-1">ASKING PRICE</p>
-            <div className="text-2xl font-bold text-white flex items-baseline gap-1">
-              {escrow.price.toLocaleString()} <span className="text-xs text-primary font-normal">{escrow.currency}</span>
-            </div>
-          </div>
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex justify-between items-start mb-2">
+          <h4 className="font-orbitron text-white text-sm truncate pr-2">{item.name}</h4>
+          <div className="text-xs text-muted-foreground font-mono">#{item.id}</div>
         </div>
 
-        <div className="space-y-2">
-            {isCompleted ? (
-            <Button disabled className="w-full bg-primary/20 text-primary border border-primary/20 min-h-[44px]">
-                <CheckCircle2 className="mr-2 h-4 w-4" /> SOLD
-            </Button>
-            ) : (
-            <Button 
-                onClick={onBuy} 
-                disabled={!isConnected || timeLeft === "EXPIRED"}
-                className="w-full bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary transition-all font-orbitron min-h-[44px]"
-            >
-                {isConnected ? (
-                <>
-                    <ShoppingBag className="mr-2 h-4 w-4" /> {timeLeft === "EXPIRED" ? "EXPIRED" : "BUY NOW"}
-                </>
-                ) : "CONNECT TO BUY"}
-            </Button>
-            )}
-            
-            {isAdmin && !isCompleted && (
-                <Button onClick={handleCancel} variant="destructive" size="sm" className="w-full h-8 text-xs font-mono bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">
-                    ADMIN CANCEL
+        {/* Attributes (Mini) */}
+        <div className="flex gap-1 mb-4 overflow-hidden">
+           {item.traits.slice(0, 2).map((t, i) => (
+             <span key={i} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-gray-400 border border-white/5 truncate">
+               {t.value}
+             </span>
+           ))}
+           {item.traits.length > 2 && <span className="text-[10px] text-gray-500">+{item.traits.length - 2}</span>}
+        </div>
+
+        <div className="mt-auto pt-3 border-t border-white/5">
+          {item.isListed ? (
+            <div>
+              <div className="flex justify-between items-end mb-3">
+                <span className="text-xs text-muted-foreground">PRICE</span>
+                <span className="text-lg font-bold text-white flex items-center gap-1">
+                   {item.price} <span className={`text-xs ${item.currency === 'ETH' ? 'text-blue-400' : 'text-primary'}`}>{item.currency}</span>
+                </span>
+              </div>
+              
+              {!isOwner ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="h-9 text-xs border-white/10 hover:border-white/30"
+                    onClick={() => setShowOfferModal(true)}
+                  >
+                    Make Offer
+                  </Button>
+                  <Button 
+                    className="h-9 text-xs bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary font-orbitron"
+                    onClick={onBuy}
+                  >
+                    {isConnected ? 'BUY NOW' : 'CONNECT'}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" className="w-full h-9 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10">
+                  CANCEL LISTING
                 </Button>
-            )}
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between h-[66px]">
+               <span className="text-xs text-muted-foreground italic">Not Listed</span>
+               {isOwner && (
+                 <Button className="h-8 text-xs bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20">
+                   LIST FOR SALE
+                 </Button>
+               )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Offer Modal */}
+      <Dialog open={showOfferModal} onOpenChange={setShowOfferModal}>
+        <DialogContent className="bg-black border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-orbitron">MAKE AN OFFER</DialogTitle>
+            <DialogDescription>
+              Enter your price for {item.name}. The owner will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleMakeOffer} className="space-y-4 py-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input name="offerAmount" type="number" step="0.001" placeholder="0.00" className="bg-white/5 border-white/10" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Select name="currency" defaultValue="ETH">
+                    <SelectTrigger className="bg-white/5 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ETH">ETH</SelectItem>
+                      <SelectItem value="$BASED">$BASED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+             </div>
+             <Button type="submit" className="w-full bg-primary text-black font-orbitron">
+               SEND OFFER
+             </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Card>
+    </>
   );
 }
+
