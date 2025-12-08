@@ -122,7 +122,7 @@ export function Footer() {
         </div>
 
         <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono text-center">
-           Values estimates only; advisory votes; admin decides. © 2025 Based Guardians
+           Values are estimates based on community pool; actual market value may differ (e.g., from Aftermint.trade). Not financial advice. © 2025 Based Guardians
         </div>
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">

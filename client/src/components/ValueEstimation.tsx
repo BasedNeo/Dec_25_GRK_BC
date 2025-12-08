@@ -21,6 +21,10 @@ export function ValueEstimation() {
     }
   });
 
+  // FUTURE INTEGRATION: Fetch Average Floor Price from Aftermint.trade API
+  // Currently manual admin update via VITE_FLOOR_PRICE env var or admin dashboard
+  // const { data: floorPrice } = useQuery(...)
+
   // Fetch User Guardians
   const { data: guardians, refetch: refetchGuardians } = useGuardians();
 

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Lock, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS } from "@/lib/mockData";
+import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -32,6 +32,15 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
   const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
+  // Value Estimation Logic
+  const baseValuePerNFT = MOCK_POOL_BALANCE / TOTAL_SUPPLY;
+  const userTotalValue = displayNfts.reduce((total, guardian) => {
+    const r = guardian.rarity?.toLowerCase() || '';
+    const isRare = r === 'rare' || r === 'legendary' || r === 'epic';
+    const multiplier = isRare ? 1.3 : 1.0;
+    return total + (baseValuePerNFT * multiplier);
+  }, 0);
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -56,21 +65,23 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
             <p className="text-muted-foreground font-rajdhani">Manage your Guardians and view their traits.</p>
           </div>
           
-          <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <div className="flex flex-col items-end gap-2 mt-4 md:mt-0">
             {isConnected && (
-               <div className="flex items-center gap-2">
-                 <Button 
-                   variant="outline" 
-                   size="sm" 
-                   onClick={() => setUseMockData(!useMockData)}
-                   className="text-xs border-white/20"
-                 >
-                   {useMockData ? "Switch to Real" : "View Demo Data"}
-                 </Button>
-                 <div className="px-4 py-2 bg-primary/10 border border-primary/30 rounded text-primary font-orbitron text-sm">
-                   TOTAL LOADED: <span className="text-white ml-2">{displayNfts.length}</span>
+               <>
+                 <div className="flex items-center gap-2">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     onClick={() => setUseMockData(!useMockData)}
+                     className="text-xs border-white/20"
+                   >
+                     {useMockData ? "Switch to Real" : "View Demo Data"}
+                   </Button>
                  </div>
-               </div>
+                 <div className="px-4 py-2 bg-primary/5 border border-primary/20 rounded text-xs font-mono text-primary/80 mt-2 md:mt-0 text-right">
+                    Backed by {Math.floor(baseValuePerNFT).toLocaleString()} $BASED per NFT | Your Total: <span className="text-white font-bold">{Math.floor(userTotalValue).toLocaleString()} $BASED</span>
+                 </div>
+               </>
             )}
           </div>
         </div>
