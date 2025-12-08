@@ -38,7 +38,8 @@ export function EscrowMarketplace() {
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
-  
+  const [displayLimit, setDisplayLimit] = useState(20); // Lazy load limit
+
   // --- Biometric Auth State ---
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
@@ -66,7 +67,7 @@ export function EscrowMarketplace() {
        items = isConnected ? items.filter(i => i.id % 50 === 0) : [];
     }
 
-    // Search
+    // Search (Numeric validation included)
     if (search) {
       items = items.filter(i => 
         i.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -91,8 +92,15 @@ export function EscrowMarketplace() {
       return 0;
     });
 
-    return items.slice(0, 50); // Pagination / Limit for performance in prototype
+    return items;
   }, [allItems, activeTab, search, rarityFilter, sortBy, isConnected]);
+
+  const displayedItems = filteredItems.slice(0, displayLimit);
+  const hasMore = filteredItems.length > displayLimit;
+
+  const loadMore = () => {
+    setDisplayLimit(prev => prev + 20);
+  };
 
   // --- Actions ---
   const handleBiometricAuth = async () => {
@@ -173,10 +181,11 @@ export function EscrowMarketplace() {
              <div className="relative flex-1 sm:w-64">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                <Input 
-                 placeholder="Search ID or Name..." 
+                 placeholder="Search ID (e.g. 100) or Name..." 
                  className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50"
                  value={search}
                  onChange={(e) => setSearch(e.target.value)}
+                 type="text"
                />
              </div>
              
@@ -197,7 +206,7 @@ export function EscrowMarketplace() {
                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
                    <SelectItem value="rarity">Rarity: High to Low</SelectItem>
-                   <SelectItem value="id-asc">Token ID</SelectItem>
+                   <SelectItem value="id-asc">Token ID: Low to High</SelectItem>
                  </SelectContent>
                </Select>
              </div>
@@ -253,8 +262,8 @@ export function EscrowMarketplace() {
 
           <TabsContent value="buy" className="mt-0">
              {/* Mobile: Horizontal scroll / Swipe | Desktop: Grid */}
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-               {filteredItems.map((item) => (
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+               {displayedItems.map((item) => (
                  <MarketCard 
                    key={item.id} 
                    item={item} 
@@ -266,6 +275,19 @@ export function EscrowMarketplace() {
                  />
                ))}
              </div>
+             
+             {hasMore && (
+                <div className="flex justify-center py-8">
+                    <Button 
+                        variant="outline" 
+                        onClick={loadMore}
+                        className="border-primary/50 text-primary hover:bg-primary/10 font-orbitron tracking-widest min-w-[200px]"
+                    >
+                        LOAD MORE GUARDIANS
+                    </Button>
+                </div>
+             )}
+
              {filteredItems.length === 0 && (
                 <div className="text-center py-20 text-muted-foreground">No guardians found matching your criteria.</div>
              )}
