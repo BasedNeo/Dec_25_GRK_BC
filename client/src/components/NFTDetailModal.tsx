@@ -84,7 +84,11 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   if (!nft) return null;
 
   // Rarity Multiplier for Display
-  const isRareItem = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity || '');
+  const isRareItem = ['Rare', 'Epic', 'Legendary', 'Rarest', 'Most Rare', 'Very Rare'].includes(nft.rarity || '') || nft.rarity?.includes('Rare') || nft.rarity?.includes('Legendary');
+  
+  // Calculate Boosted Value
+  // Base formula: 51% mint share + emissions
+  // Boost: +30% on the total value for rare items
   const displayValue = Math.floor(backedValue * (isRareItem ? 1.3 : 1.0));
 
   const handleCopyTraits = () => {
@@ -201,6 +205,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                             Includes 51% Mint Share + Daily Emissions
                             {isRareItem && <span className="text-green-400 ml-1">(+30% Rarity Boost Active)</span>}
+                            <div className="mt-1 text-primary/70">Boosted Value: {displayValue.toLocaleString()} $BASED</div>
                         </div>
                     </div>
                     </div>
@@ -275,7 +280,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                         <div className="text-[10px] text-muted-foreground uppercase mb-1 truncate" title={trait.type}>
                                             {safeSanitize(trait.type)}
                                         </div>
-                                        <div className="text-sm font-bold text-white truncate" title={trait.value}>
+                                        <div className="text-sm font-bold text-white whitespace-normal break-words leading-tight" title={trait.value}>
                                             {safeSanitize(trait.value)}
                                         </div>
                                         {/* Hover Copy Button */}

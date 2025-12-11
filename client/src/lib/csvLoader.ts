@@ -29,25 +29,29 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                 // Parse attributes JSON if available
                 if (csvRow.attributes) {
                     try {
-                        // Handle double quotes if they are escaped weirdly or standard JSON
-                        const cleanJson = csvRow.attributes.replace(/""/g, '"'); 
-                        // Sometimes CSV parsers handle the double quote unescaping, but let's be safe.
-                        // Actually Papa Parse handles CSV escaping, so we should get a string with single quotes inside?
-                        // The snippet showed `[{""trait_type""...`. Papa Parse usually unescapes `""` to `"`.
-                        // So `row.attributes` should be `[{"trait_type" ...`.
-                        
+                        // Standard JSON parse should work if PapaParse handled the CSV escaping correctly
                         const parsedAttrs = JSON.parse(csvRow.attributes);
                         traits = parsedAttrs.map((attr: any) => ({
                             type: attr.trait_type,
                             value: attr.value.toString()
                         }));
 
-                        // Extract Rarity
+                        // Extract Rarity from traits if available
                         const rarityTrait = traits.find(t => t.type === 'Rarity Level');
                         if (rarityTrait) rarity = rarityTrait.value;
 
                     } catch (e) {
-                        console.warn(`Failed to parse attributes for row ${index}`, e);
+                        // Fallback: try manual cleanup if standard parse fails
+                        try {
+                             const cleanJson = csvRow.attributes.replace(/""/g, '"');
+                             const parsedAttrs = JSON.parse(cleanJson);
+                             traits = parsedAttrs.map((attr: any) => ({
+                                type: attr.trait_type,
+                                value: attr.value.toString()
+                            }));
+                        } catch (e2) {
+                            console.warn(`Failed to parse attributes for row ${index}`, e);
+                        }
                     }
                 }
 

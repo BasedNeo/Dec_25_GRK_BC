@@ -13,6 +13,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -29,12 +30,26 @@ export function Hero() {
   const count = useMotionValue(0);
   const rounded = useTransform(count, Math.round);
 
-  // Fetch Real Guardian #300
-  const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, false, { search: "300" });
+  // Fetch Real Guardian #3000 as requested
+  const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "3000" });
   const heroGuardian = searchData?.pages[0]?.nfts[0];
   
   // Calculate Backing Value (Live)
   const [backingValue, setBackingValue] = useState(calculateBackedValue());
+
+  // Rarity Data for Chart
+  const rarityData = [
+    { name: 'Most Common', value: 922, color: '#3b82f6' },
+    { name: 'Common', value: 1216, color: '#60a5fa' },
+    { name: 'Less Common', value: 661, color: '#2dd4bf' },
+    { name: 'Less Rare', value: 329, color: '#34d399' },
+    { name: 'Rare', value: 504, color: '#a855f7' },
+    { name: 'Very Rare', value: 28, color: '#d946ef' },
+    { name: 'Most Rare', value: 14, color: '#ec4899' },
+    { name: 'Rarest', value: 37, color: '#f43f5e' },
+    { name: 'Rarest/Legendary', value: 18, color: '#eab308' },
+    { name: 'Rarest-Legendary', value: 3, color: '#f59e0b' },
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -108,14 +123,14 @@ export function Hero() {
 
   // Rarity Badge Color Logic
   const getRarityColor = (rarity: string) => {
-      if (rarity?.includes('Legendary')) return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
+      if (rarity?.includes('Legendary') || rarity?.includes('Rarest')) return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
       if (rarity?.includes('Epic')) return 'bg-pink-500/20 text-pink-400 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.3)]';
       if (rarity?.includes('Rare')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
       return 'bg-black/40 text-gray-300 border-white/10';
   };
 
   return (
-    <section id="hero" className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden">
+    <section id="hero" className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden bg-black">
       {/* Beta Ribbon (Red Corner Badge) */}
       <div className="absolute top-24 left-0 w-32 h-32 overflow-hidden z-20 pointer-events-none">
         <div className="absolute top-0 left-0 transform -translate-x-10 translate-y-6 -rotate-45 bg-red-600 text-white font-bold font-orbitron text-[10px] py-1 w-40 text-center shadow-lg border border-red-400/50">
@@ -123,8 +138,18 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Background Elements - Replaced with SpaceBackground in App.tsx */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)] z-0" />
+      {/* Premium Parallax Cyberpunk Space Background */}
+      <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/50 via-[#0a0a0a] to-black"></div>
+          {/* Stars/Nebula Effect (CSS driven for low CPU) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,255,0.05)_0%,transparent_50%)] animate-pulse"></div>
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+             <div className="absolute top-[10%] left-[20%] w-1 h-1 bg-white rounded-full shadow-[0_0_5px_#fff] animate-[twinkle_3s_infinite]"></div>
+             <div className="absolute top-[30%] left-[70%] w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_cyan] animate-[twinkle_5s_infinite]"></div>
+             <div className="absolute top-[70%] left-[40%] w-1 h-1 bg-purple-400 rounded-full shadow-[0_0_5px_purple] animate-[twinkle_4s_infinite]"></div>
+          </div>
+      </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
@@ -133,6 +158,7 @@ export function Hero() {
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
+          className="flex flex-col items-center lg:items-start text-center lg:text-left"
         >
           <Badge variant="outline" className="mb-4 border-primary/50 text-primary font-mono tracking-widest bg-primary/5">
             SERIES 01: GENESIS
@@ -146,7 +172,7 @@ export function Hero() {
             The Based Guardians — Step into the Based Universe where courage, creativity, and community collide. 3,732 unique NFTs (1,776 Guardians, 1,320 Frogs, 636 Creatures). Staked to BasedAI Brain for $BASED emissions; Legendary rarities unlock yields/Race-to-Base privileges. Father-daughter vision blending 80s retro-fantasy with AI/blockchain/humanitarian mission. 'This story, your story, has only just begun... Stay Based.'
           </p>
 
-          <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md shadow-2xl">
+          <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md shadow-2xl w-full">
             <div className="flex justify-between items-center mb-6">
               <span className="text-sm text-muted-foreground font-mono">MINTED</span>
               <span className="text-xl font-orbitron text-primary text-glow">
@@ -162,6 +188,34 @@ export function Hero() {
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-primary to-accent"
               />
+            </div>
+
+            {/* Rarity Distribution Chart (Pie) */}
+            <div className="mb-6 h-32 w-full relative">
+                 <div className="absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground pointer-events-none">
+                     RARITY<br/>DISTRIBUTION
+                 </div>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={rarityData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={60}
+                            paddingAngle={2}
+                            dataKey="value"
+                        >
+                            {rarityData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                            ))}
+                        </Pie>
+                        <RechartsTooltip 
+                             contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px', fontSize: '10px' }}
+                             itemStyle={{ color: '#fff' }}
+                        />
+                    </PieChart>
+                 </ResponsiveContainer>
             </div>
 
             <div className="flex justify-between items-center mb-8">
@@ -199,18 +253,9 @@ export function Hero() {
                 "MINT GUARDIAN"
               )}
             </Button>
-
-            <Button
-                variant="outline"
-                onClick={handlePasskeyConnect}
-                className="w-full py-6 border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 font-mono text-xs flex items-center justify-center gap-2"
-            >
-                <Fingerprint size={16} />
-                CONNECT WITH PASSKEY / FACE ID
-            </Button>
             
             <p className="mt-4 text-xs text-center text-muted-foreground/60 font-mono">
-              51% of proceeds sent to Community Pool
+              Prices are in $BASED — switch wallet to BasedAI.
             </p>
           </div>
         </motion.div>
@@ -220,9 +265,9 @@ export function Hero() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative"
+          className="relative flex justify-center"
         >
-          <div className="relative aspect-square max-w-md mx-auto">
+          <div className="relative aspect-square w-full max-w-md">
             {/* Decorative Rings */}
             <div className="absolute inset-0 border border-primary/20 rounded-full animate-[spin_10s_linear_infinite]" />
             <div className="absolute inset-4 border border-accent/20 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
@@ -260,7 +305,7 @@ export function Hero() {
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-black/50">
-                    <span className="text-primary animate-pulse font-orbitron">LOADING DATA...</span>
+                    <span className="text-primary animate-pulse font-orbitron">LOADING #3000...</span>
                 </div>
               )}
             </Card>

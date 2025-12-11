@@ -13,6 +13,7 @@ import { initAnalytics } from "@/lib/analytics";
 import { useEffect } from "react";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { SpaceBackground } from "@/components/SpaceBackground";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function App() {
               <SpaceBackground />
               <Router />
               <DisclaimerModal />
+              <OnboardingTour />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>

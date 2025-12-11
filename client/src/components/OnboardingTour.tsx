@@ -29,8 +29,8 @@ export function OnboardingTour() {
 
   const steps = [
     {
-      title: "WELCOME TO BASED GUARDIANS",
-      desc: "Connect your wallet to begin your journey in the Based Universe. Your gateway to the first fully on-chain cyberpunk world.",
+      title: "WELCOME TO BASED GUARDIANS (BETA)",
+      desc: "Connect your wallet to begin your journey in the Based Universe. This is the V1 Beta release on BasedAI L1.",
       target: "top-right", 
     },
     {

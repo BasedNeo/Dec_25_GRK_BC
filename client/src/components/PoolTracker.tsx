@@ -18,6 +18,7 @@ import {
   TimeScale
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from 'recharts';
 
 ChartJS.register(
   CategoryScale,
@@ -38,6 +39,8 @@ export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // ... (existing state & logic) ...
 
   const updateBalance = async () => {
       // 1. Get Emissions (Calculated)
@@ -93,9 +96,16 @@ export function PoolTracker() {
   };
 
   const displayBalance = balance.toLocaleString();
-
   const symbol = "$BASED";
   
+  // Stat Averages Data
+  const statData = [
+    { name: 'Speed', value: 6.86 },
+    { name: 'Agility', value: 7.56 },
+    { name: 'Intellect', value: 7.70 },
+    { name: 'Strength', value: 6.31 },
+  ];
+
   // Generate Chart Data: Project to Halving (Dec 31, 2025)
   const chartData = useMemo(() => {
       const labels = [];
@@ -235,15 +245,42 @@ export function PoolTracker() {
              </div>
           </div>
 
-          {/* Chart Container */}
-          <div className="w-full h-64 md:h-80 bg-black/60 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-sm shadow-2xl relative">
-             <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
-                <TrendingUp size={14} /> PROJECTED EMISSIONS TO HALVING (DEC 2025)
-             </div>
-             <div className="pt-6 h-full">
-                {/* @ts-ignore */}
-                <Line data={chartData} options={chartOptions} />
-             </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            {/* Emissions Chart */}
+            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80">
+                <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
+                    <TrendingUp size={14} /> PROJECTED EMISSIONS TO HALVING
+                </div>
+                <div className="pt-6 h-full">
+                    {/* @ts-ignore */}
+                    <Line data={chartData} options={chartOptions} />
+                </div>
+            </div>
+
+            {/* Stat Averages Chart */}
+            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80">
+                 <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
+                    <Database size={14} /> AVERAGE STATS (ALL 3732)
+                 </div>
+                 <div className="pt-8 h-full w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={statData}>
+                            <XAxis dataKey="name" stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
+                            <RechartsTooltip 
+                                cursor={{fill: 'transparent'}}
+                                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px' }}
+                                itemStyle={{ color: '#00ffff', fontFamily: 'monospace' }}
+                            />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                {statData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00ffff' : '#bf00ff'} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                 </div>
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-6">
