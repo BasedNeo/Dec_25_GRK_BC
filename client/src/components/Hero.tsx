@@ -103,6 +103,7 @@ export function Hero() {
           <div className="absolute inset-0 bg-black/60 z-10" />
           <video 
             src={flagVideo} 
+            poster="/hero.jpg"
             autoPlay 
             loop 
             muted 

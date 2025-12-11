@@ -1,0 +1,25 @@
+Iterate existing Based Command App: Do NOT rebuild UI/tabs/wallet/mint — keep everything. Focus on these proven commercial improvements for world-class status:
+
+1. **Metadata & Gallery (Fix #1 Issue)**: Load ALL 3732 NFTs with full 13+ traits (batch IPFS fetches 100 at a time, infinite scroll + "Load More"). Expandable modal on click shows all attributes (Character Type, Rarity Level, etc.) with wrap text (no cutoff). Secure: Sanitize, cache react-query 60s.
+
+2. **Sales Tab Search (OpenSea-Level)**: Fix search for exact NFT # (e.g., "3000" shows #3000). Add fuzzy search by attributes (e.g., "high strength" finds Strength ≥8). Filters: Character Type ("Based Frog"/"Guardian"/"Creature"), Rarity, any trait. Sorting: Keep existing + "Floor Price" (lowest for-sale). Mobile: Collapsible panel.
+
+3. **Pool Tab**: Replace "Treasury governed by Guardians" with "Pool increases by emissions and royalties from secondary sales." Add growth chart (Chart.js line for balance over time).
+
+4. **All Pages**: Remove wallet address displays (replace with "Connected" icon). Keep header ENS/short address only.
+
+5. **NFT Previews**: Dynamic top-right badge from metadata (e.g., "Rare" for Rare, "Epic" for Epic, blank for Common). Neon color by rarity (cyan Rare, purple Epic).
+
+6. **Modals**: Make "X" close button larger/red/hover-glow, centered top-right. Add click-outside/escape key close. Mobile: Swipe-down gesture.
+
+7. **Gallery Page**: Center "YOUR BATTALION" text (Tailwind text-center).
+
+8. **Share Links**: Make all work (X/Discord with "I just [action] on Based Command App! #BasedGuardians").
+
+9. **Explorer Links**: Ensure all buttons link to https://explorer.bf1337.org/address/[contract] (NFT, pool, etc.). Open new tab.
+
+10. **Video Optimization**: Compress front-page video to <1MB (use FFmpeg or placeholder GIF if needed). Lazy-load (load after scroll). Mobile: Auto-play off, reduce to 720p.
+
+Additional commercial: Add A/B test for mint button colors (cyan vs purple). Add "Install PWA" button. GA events for search/votes. Lighthouse 98+. No errors; test 3732 NFTs fully, mobile emulation.
+
+Generate/test code. Keep cyberpunk design intact.

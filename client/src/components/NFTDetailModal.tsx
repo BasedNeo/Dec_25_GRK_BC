@@ -1,11 +1,11 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check } from "lucide-react";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
@@ -43,18 +43,27 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const shareText = `Check out my Based Guardian #${nft.id}! Rarity: ${nft.rarity} #BasedGuardians #BasedAI`;
+  const shareUrl = window.location.href;
+
   const handleShare = async () => {
-      const shareData = {
-          title: `Based Guardian #${nft.id}`,
-          text: `Check out my Based Guardian #${nft.id}! Rarity: ${nft.rarity}`,
-          url: window.location.href
-      };
       if (navigator.share) {
-          try { await navigator.share(shareData); } catch(e) {}
+          try { 
+            await navigator.share({
+                title: `Based Guardian #${nft.id}`,
+                text: shareText,
+                url: shareUrl
+            }); 
+          } catch(e) {}
       } else {
-          navigator.clipboard.writeText(window.location.href);
-          // Show toast or something? For now just silent copy
+          navigator.clipboard.writeText(shareUrl);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
       }
+  };
+
+  const handleTwitterShare = () => {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
 
   // Determine rarity color
@@ -122,9 +131,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-10 w-10 text-muted-foreground hover:text-white hover:bg-red-500/20 hover:text-red-500 rounded-full transition-colors"
+                        className="absolute top-4 right-4 h-12 w-12 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-lg hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] z-50"
                     >
-                        <X size={24} />
+                        <X size={28} />
                     </Button>
                 </DialogClose>
             </div>
@@ -188,12 +197,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto">
-                <div className="grid grid-cols-2 gap-4">
-                     <Button variant="outline" onClick={handleShare} className="w-full border-white/10 hover:bg-white/5 text-xs font-mono">
+                <div className="grid grid-cols-3 gap-3">
+                     <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
+                        <Twitter size={14} className="mr-2" /> TWEET
+                     </Button>
+                     <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
                         <Share2 size={14} className="mr-2" /> SHARE
                      </Button>
-                     <Button variant="default" asChild className="w-full bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
-                        <a href={`https://explorer.bf1337.org/token/${import.meta.env.VITE_NFT_CONTRACT}?a=${nft.id}`} target="_blank" rel="noopener noreferrer">
+                     <Button variant="default" asChild className="bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
+                        <a href={`https://explorer.bf1337.org/token/${import.meta.env.VITE_NFT_CONTRACT || "0x..."}?a=${nft.id}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink size={14} className="mr-2" /> EXPLORER
                         </a>
                      </Button>

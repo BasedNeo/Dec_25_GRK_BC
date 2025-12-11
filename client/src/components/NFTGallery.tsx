@@ -136,8 +136,8 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-8">
           <div>
-            <h2 className="text-3xl md:text-4xl text-white mb-2 text-center md:text-left">YOUR <span className="text-primary">BATTALION</span></h2>
-            <p className="text-muted-foreground font-rajdhani text-center md:text-left">Manage your Guardians and view their traits.</p>
+            <h2 className="text-3xl md:text-4xl text-white mb-2 text-center">YOUR <span className="text-primary">BATTALION</span></h2>
+            <p className="text-muted-foreground font-rajdhani text-center">Manage your Guardians and view their traits.</p>
           </div>
           
           <div className="flex flex-col items-center md:items-end gap-2 mt-4 md:mt-0 w-full md:w-auto">
@@ -403,7 +403,12 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
            </div>
         )}
         <div className="absolute top-2 right-2 z-20">
-          <Badge variant={rarityTrait?.includes('Legendary') || rarityTrait?.includes('Rare') ? 'default' : 'secondary'} className="font-mono text-[10px] uppercase">
+          <Badge className={`backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
+             rarityTrait?.includes('Legendary') ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : 
+             rarityTrait?.includes('Epic') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
+             rarityTrait?.includes('Rare') ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
+             'bg-black/40 text-gray-300'
+          } font-mono text-[10px] uppercase`}>
             {rarityTrait || 'Common'}
           </Badge>
         </div>
