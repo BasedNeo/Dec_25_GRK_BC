@@ -70,7 +70,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <VotingDAO isConnected={isConnected} onConnect={() => {}} />
+              <VotingDAO />
             </motion.div>
           )}
 

@@ -58,8 +58,7 @@ export function Hero() {
     { name: 'Very Rare', value: 28, color: '#d946ef' },
     { name: 'Most Rare', value: 14, color: '#ec4899' },
     { name: 'Rarest', value: 37, color: '#f43f5e' },
-    { name: 'Rarest/Legendary', value: 18, color: '#eab308' },
-    { name: 'Rarest-Legendary', value: 3, color: '#f59e0b' },
+    { name: 'Legendary', value: 21, color: '#eab308' },
   ];
 
   useEffect(() => {
