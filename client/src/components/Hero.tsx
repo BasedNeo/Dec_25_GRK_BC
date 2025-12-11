@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint } from "lucide-react";
 import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
@@ -13,23 +13,12 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 
-import flagVideo from '@assets/FlagVideo1_1765424361045.mp4';
-
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const isInView = useInView(videoRef, { once: true, margin: "200px" });
-
-  useEffect(() => {
-    if (isInView && videoRef.current) {
-        videoRef.current.play().catch(e => console.log("Video autoplay failed", e));
-    }
-  }, [isInView]);
   
   // Supply Counter Animation
   const count = useMotionValue(0);
@@ -107,22 +96,8 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Background Elements */}
-      <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-black/60 z-10" />
-          <video 
-            ref={videoRef}
-            src={flagVideo} 
-            poster="/hero.jpg"
-            loop 
-            muted 
-            playsInline 
-            preload="none"
-            className="w-full h-full object-cover opacity-80"
-          />
-          <img src="/hero.jpg" alt="Hero Background" className="w-full h-full object-cover opacity-20 absolute inset-0 mix-blend-overlay" />
-      </div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.05)_0%,transparent_70%)] z-0" />
+      {/* Background Elements - Replaced with SpaceBackground in App.tsx */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)] z-0" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
