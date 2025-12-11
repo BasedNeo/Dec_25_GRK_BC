@@ -23,8 +23,16 @@ import { useTokenPrice } from "@/hooks/useTokenPrice";
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   const { toast } = useToast();
   const { address, isConnected: wagmiConnected } = useAccount();
+  
+  const handleLogoClick = () => {
+    setIsShaking(true);
+    onTabChange('mint');
+    setTimeout(() => setIsShaking(false), 500); // Shake for 500ms
+  };
+
   const { isPaused, togglePause } = useSecurity();
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
   
@@ -102,14 +110,16 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           {/* Logo */}
           <div 
             className="flex-shrink-0 cursor-pointer group flex items-center gap-4 outline-none select-none"
-            onClick={() => onTabChange('mint')}
+            onClick={handleLogoClick}
             style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             <div className="relative">
               <img 
                 src={rocketLogo}
                 alt="Based Guardians Rocket" 
-                className="h-14 w-auto object-contain active:animate-[mild-shake_0.2s_ease-in-out_infinite] hover:animate-[mild-shake_0.2s_ease-in-out_infinite] relative z-10 mix-blend-screen"
+                className={`h-14 w-auto object-contain relative z-10 mix-blend-screen transition-all ${
+                  isShaking ? 'animate-[mild-shake_0.1s_ease-in-out_infinite]' : 'group-hover:animate-[mild-shake_0.2s_ease-in-out_infinite]'
+                }`}
               />
             </div>
             {isPaused && (
