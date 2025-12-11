@@ -1,6 +1,6 @@
 import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions, HALVING_TIMESTAMP, EMISSION_RATE_DAILY, TOTAL_SUPPLY } from "@/lib/mockData";
 import { motion } from "framer-motion";
-import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info, ExternalLink, Timer, Zap } from "lucide-react";
+import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info, ExternalLink, Timer, Zap, Brain } from "lucide-react";
 import { Line } from "react-chartjs-2";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -366,7 +366,12 @@ export function PoolTracker() {
                  <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
                     <Database size={14} /> AVERAGE STATS (ALL 3732)
                  </div>
-                 <Database className="text-white/20" size={48} />
+                 <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                 >
+                    <Brain className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" size={64} />
+                 </motion.div>
                  <div className="space-y-1">
                     <p className="text-white font-orbitron text-lg tracking-wide">Agent Arena Data</p>
                     <p className="text-primary font-mono text-sm animate-pulse">COMING SOON</p>
