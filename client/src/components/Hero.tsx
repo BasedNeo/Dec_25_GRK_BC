@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint } from "lucide-react";
 import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
+import flagBg from "@/assets/flag1.png";
 
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
@@ -19,6 +20,10 @@ export function Hero() {
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
+  
+  // Parallax
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 500], [0, 150]);
   
   // Supply Counter Animation
   const count = useMotionValue(0);
@@ -96,8 +101,20 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Background Elements - Replaced with SpaceBackground in App.tsx */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)] z-0" />
+      {/* Parallax Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+          <motion.div 
+            style={{ y }} 
+            className="absolute inset-0 w-full h-[120%]"
+          >
+             <img 
+                src={flagBg} 
+                alt="Based Guardians Flag" 
+                className="w-full h-full object-cover opacity-40 mix-blend-screen" 
+             />
+             <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/50 to-background" />
+          </motion.div>
+      </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
@@ -119,7 +136,7 @@ export function Hero() {
             The Based Guardians — Step into the Based Universe where courage, creativity, and community collide. 3,732 unique NFTs (1,776 Guardians, 1,320 Frogs, 636 Creatures). Staked to BasedAI Brain for $BASED emissions; Legendary rarities unlock yields/Race-to-Base privileges. Father-daughter vision blending 80s retro-fantasy with AI/blockchain/humanitarian mission. 'This story, your story, has only just begun... Stay Based.'
           </p>
 
-          <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md">
+          <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <span className="text-sm text-muted-foreground font-mono">SUPPLY</span>
               <span className="text-xl font-orbitron text-primary text-glow">
