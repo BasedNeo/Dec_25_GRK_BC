@@ -159,7 +159,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                  <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0 md:pr-8">
                      <div className="flex items-center gap-2 mb-1">
                         <div className="p-2 bg-primary/10 rounded-full text-primary"><TrendingUp size={16} /></div>
-                        <span className="text-xs text-muted-foreground font-mono tracking-widest">YOUR TOTAL HOLDINGS</span>
+                        <span className="text-xs text-muted-foreground font-mono tracking-widest">TOTAL HOLDINGS VALUE</span>
                      </div>
                      <span className="text-4xl md:text-5xl font-black font-orbitron text-white text-glow">
                         {Math.floor(userTotalValue).toLocaleString()} <span className="text-2xl text-primary font-bold">$BASED</span>
