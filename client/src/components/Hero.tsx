@@ -191,9 +191,34 @@ export function Hero() {
               />
             </div>
 
-            {/* Average Stats Chart - Replaces Rarity Distribution */}
+            {/* Rarity Distribution Chart (Pie) */}
             <div className="mb-6 h-64 w-full relative">
-                 <AverageStatsChart />
+                 <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground pointer-events-none text-center leading-tight z-10">
+                     RARITY<br/>DISTRIBUTION
+                 </div>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={rarityData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                            stroke="none"
+                        >
+                            {rarityData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#000', borderColor: '#333', fontSize: '12px', fontFamily: 'Orbitron' }}
+                            itemStyle={{ color: '#fff' }}
+                            formatter={(value: number) => [`${value} items`, 'Count']}
+                        />
+                    </PieChart>
+                 </ResponsiveContainer>
             </div>
 
             <div className="flex justify-between items-center mb-8">
