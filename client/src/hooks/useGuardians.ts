@@ -3,28 +3,145 @@ import { useAccount } from "wagmi";
 import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
 import { fetchGuardiansPage, PAGE_SIZE } from "@/lib/ipfs";
 import { loadGuardiansFromCSV } from "@/lib/csvLoader";
+import Fuse from 'fuse.js';
 
-export function useGuardians(useMockData: boolean = false, useCsvData: boolean = true) {
-  const { address, isConnected } = useAccount();
+export interface GuardianFilters {
+  search?: string;
+  rarity?: string;
+  traitType?: string;
+  traitValue?: string;
+  sortBy?: string;
+}
+
+export function useGuardians(
+  useMockData: boolean = false, 
+  useCsvData: boolean = true,
+  filters: GuardianFilters = {}
+) {
+  const { address } = useAccount();
 
   return useInfiniteQuery({
-    queryKey: ['nfts', address, useMockData, useCsvData],
+    queryKey: ['nfts', address, useMockData, useCsvData, filters],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
-      // 0. CSV DATA MODE (Default: True)
+      // 0. CSV DATA MODE (Default: True) & SEARCH/FILTERING
       if (useCsvData) {
           try {
-             // Caching could be improved here, but for now we load all and slice
-             // Since loadGuardiansFromCSV fetches the whole file, we might want to cache the promise
-             const allGuardians = await loadGuardiansFromCSV();
+             let allGuardians = await loadGuardiansFromCSV();
              
-             // Pagination logic for CSV data
+             // --- FILTERING ENGINE ---
+             
+             // 1. Text Search (Advanced)
+             if (filters.search) {
+                 const term = filters.search.trim();
+                 
+                 // A. Numeric Range Search (e.g. "Strength >= 8")
+                 const rangeMatch = term.match(/^([a-zA-Z\s]+)\s*(>=|>|<=|<|=)\s*(\d+)$/i);
+                 if (rangeMatch) {
+                     const [_, traitName, operator, valueStr] = rangeMatch;
+                     const value = parseInt(valueStr);
+                     
+                     allGuardians = allGuardians.filter(g => {
+                         const trait = g.traits.find(t => t.type.toLowerCase() === traitName.trim().toLowerCase());
+                         if (!trait) return false;
+                         const traitVal = parseInt(trait.value);
+                         if (isNaN(traitVal)) return false;
+
+                         switch(operator) {
+                             case '>=': return traitVal >= value;
+                             case '>': return traitVal > value;
+                             case '<=': return traitVal <= value;
+                             case '<': return traitVal < value;
+                             case '=': return traitVal === value;
+                             default: return false;
+                         }
+                     });
+                 } 
+                 // B. Exact ID Search
+                 else if (/^\d+$/.test(term)) {
+                     const id = parseInt(term);
+                     const exact = allGuardians.find(g => g.id === id);
+                     if (exact) {
+                         // If exact match found, put it first, but also keep others if fuzzy match enabled? 
+                         // User said "3000 shows #3000". Usually implies just that one or that one top.
+                         // Let's return just that one for exact ID search to be precise, or put it at top.
+                         // "3000 finds #3000 first" implies ordering.
+                         const others = allGuardians.filter(g => g.id !== id);
+                         // We can also fuzzy search others? No, exact ID is usually specific.
+                         allGuardians = [exact, ...others]; 
+                         // Wait, if I type "3000", I probably ONLY want #3000.
+                         // But if I type "300", I might want #300, #3000, #3001...
+                         // Let's filter to include ID match or Name match.
+                         allGuardians = allGuardians.filter(g => g.id.toString().includes(term) || g.name.toLowerCase().includes(term));
+                         
+                         // Sort exact match to top
+                         allGuardians.sort((a, b) => {
+                             if (a.id === id) return -1;
+                             if (b.id === id) return 1;
+                             return 0;
+                         });
+                     } else {
+                         // No exact match, search ID substring
+                         allGuardians = allGuardians.filter(g => g.id.toString().includes(term));
+                     }
+                 }
+                 // C. Fuzzy Search (Fuse.js)
+                 else {
+                     const fuse = new Fuse(allGuardians, {
+                         keys: [
+                             { name: 'name', weight: 0.4 },
+                             { name: 'traits.value', weight: 0.3 },
+                             { name: 'traits.type', weight: 0.2 },
+                             { name: 'rarity', weight: 0.1 }
+                         ],
+                         threshold: 0.3,
+                         ignoreLocation: true
+                     });
+                     const results = fuse.search(term);
+                     allGuardians = results.map(r => r.item);
+                 }
+             }
+
+             // 2. Rarity Filter
+             if (filters.rarity && filters.rarity !== 'all') {
+                 allGuardians = allGuardians.filter(g => g.rarity?.toLowerCase() === filters.rarity?.toLowerCase());
+             }
+
+             // 3. Trait Filter
+             if (filters.traitType && filters.traitType !== 'all') {
+                 allGuardians = allGuardians.filter(g => g.traits.some(t => t.type === filters.traitType));
+                 
+                 if (filters.traitValue && filters.traitValue !== 'all') {
+                     allGuardians = allGuardians.filter(g => 
+                         g.traits.some(t => t.type === filters.traitType && t.value === filters.traitValue)
+                     );
+                 }
+             }
+
+             // 4. Sorting
+             if (filters.sortBy) {
+                 const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
+                 allGuardians.sort((a, b) => {
+                     switch (filters.sortBy) {
+                        case 'price-asc': return (a.price || 0) - (b.price || 0);
+                        case 'price-desc': return (b.price || 0) - (a.price || 0);
+                        case 'id-asc': return a.id - b.id;
+                        case 'id-desc': return b.id - a.id;
+                        case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
+                        case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
+                        default: return 0;
+                     }
+                 });
+             }
+
+             // Pagination logic
              const startId = typeof pageParam === 'number' ? pageParam : 1;
              const pageSize = 20;
              const startIndex = startId - 1;
              const endIndex = startIndex + pageSize;
              
              const nfts = allGuardians.slice(startIndex, endIndex);
+             // If we have more items after this page, next cursor is next index
              const nextCursor = endIndex < allGuardians.length ? endIndex + 1 : undefined;
 
              return { nfts, nextCursor };
@@ -39,34 +156,19 @@ export function useGuardians(useMockData: boolean = false, useCsvData: boolean =
          return { nfts: MOCK_GUARDIANS, nextCursor: undefined };
       }
       
-      // 2. DISCONNECTED MODE (But we might want to show all for marketplace? 
-      // The gallery specifically asks for user's wallet, but this hook seems to be used for general fetching too?
-      // Actually, standard useGuardians usually implies "my guardians". 
-      // But looking at the implementation, it fetches range 1..N. It doesn't filter by owner.
-      // So it's actually fetching the collection.
-      
-      // For now, let's keep the isConnected check if it was intended for "My Gallery", 
-      // but the previous implementation just fetched IDs 1..N regardless of owner.
-      // I'll assume this is for the general collection view or that we're simulating "owning" them for now.
-      
+      // 2. IPFS Fallback
       try {
         const startId = typeof pageParam === 'number' ? pageParam : 1;
         const nfts = await fetchGuardiansPage(startId);
-        
         const nextCursor = (startId + 100) <= 3732 ? startId + 100 : undefined;
-
-        return {
-            nfts,
-            nextCursor
-        };
-
+        return { nfts, nextCursor };
       } catch (e) {
         console.warn("Error in useGuardians:", e);
         return { nfts: [], nextCursor: undefined };
       }
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: true, // Always enabled to allow fetching
-    staleTime: 1000 * 60 * 60 * 24, // 24 hour cache
+    enabled: true,
+    staleTime: 1000 * 60 * 60, // 1 hour cache
   });
 }

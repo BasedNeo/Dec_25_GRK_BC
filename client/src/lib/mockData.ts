@@ -7,10 +7,50 @@ export interface Guardian {
   id: number;
   name: string;
   image: string;
-  traits: { type: string; value: string }[];
+  traits: { type: string; value: string; rarity?: number }[];
   rarity: string; 
-  isError?: boolean; // Added for error handling in UI
+  isError?: boolean;
+  description?: string;
+  price?: number;
+  currency?: string;
+  isListed?: boolean;
+  owner?: string;
 }
+
+export const MOCK_GUARDANS_COUNT = 3732;
+
+// Deterministic mock data generator for 20 items (or more if needed)
+export const generateMockGuardian = (id: number): Guardian => {
+  const isRare = id % 10 === 0;
+  const isEpic = id % 50 === 0;
+  const isLegendary = id % 100 === 0;
+  
+  let rarity = 'Common';
+  if (isLegendary) rarity = 'Legendary';
+  else if (isEpic) rarity = 'Epic';
+  else if (isRare) rarity = 'Rare';
+
+  return {
+    id,
+    name: `Guardian #${id}`,
+    image: `https://ipfs.io/ipfs/bafybeig5g3p5n7j5q5n7j5q5n7j5q5n7j5q5n7j5q/image/${id}.png`, // Using IPFS pattern
+    rarity,
+    traits: [
+      { type: 'Background', value: isRare ? 'Cyber Void' : 'Industrial' },
+      { type: 'Armor', value: isEpic ? 'Quantum Plate' : 'Standard Kevlar' },
+      { type: 'Weapon', value: isLegendary ? 'Plasma Railgun' : 'Pulse Rifle' },
+      { type: 'Strength', value: String(Math.floor(Math.random() * 10) + 1) },
+      { type: 'Speed', value: String(Math.floor(Math.random() * 10) + 1) },
+      { type: 'Intelligence', value: String(Math.floor(Math.random() * 10) + 1) },
+      { type: 'Character Type', value: id % 3 === 0 ? 'Based Frog' : (id % 3 === 1 ? 'Based Guardian' : 'Based Creature') }
+    ],
+    description: `A unique Guardian from the 3232nd Battalion.`,
+    price: 420 + (id % 100),
+    currency: '$BASED',
+    isListed: id % 3 === 0, 
+    owner: `0x${id.toString(16).padStart(40, '0')}`
+  };
+};
 
 export interface Proposal {
   id: number;
@@ -23,50 +63,7 @@ export interface Proposal {
   totalVotes: number;
 }
 
-export const MOCK_GUARDIANS: Guardian[] = [
-  {
-    id: 1,
-    name: "Guardian #1",
-    image: "https://via.placeholder.com/400x400/00ffff/000000?text=Guardian+Rare", // Placeholder as requested
-    traits: [
-      { type: "Power", value: "High" },
-      { type: "Background", value: "Neon City" }
-    ],
-    rarity: 'Rare'
-  },
-  {
-    id: 2,
-    name: "Guardian #2",
-    image: "https://via.placeholder.com/400x400/bf00ff/000000?text=Guardian+Common", // Placeholder as requested
-    traits: [
-      { type: "Power", value: "Standard" },
-      { type: "Background", value: "Industrial" }
-    ],
-    rarity: 'Common'
-  },
-  {
-    id: 3,
-    name: "Guardian #0888",
-    image: guardian3,
-    traits: [
-      { type: "Background", value: "Void" },
-      { type: "Armor", value: "Shadow Weave" },
-      { type: "Aura", value: "Blue Flame" }
-    ],
-    rarity: 'Legendary'
-  },
-  {
-    id: 4,
-    name: "Guardian #1024",
-    image: guardian4,
-    traits: [
-      { type: "Background", value: "Industrial" },
-      { type: "Armor", value: "Heavy Plating" },
-      { type: "Damage", value: "Battle Scars" }
-    ],
-    rarity: 'Common'
-  }
-];
+export const MOCK_GUARDIANS: Guardian[] = Array.from({ length: 20 }, (_, i) => generateMockGuardian(i + 1));
 
 export const MOCK_PROPOSALS: Proposal[] = [
   {

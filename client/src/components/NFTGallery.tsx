@@ -12,6 +12,7 @@ import { IPFS_ROOT } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/use-debounce";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -25,88 +26,61 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(false);
+  const [useCsvData, setUseCsvData] = useState(true); // Default to CSV for indexing
   const [showFilters, setShowFilters] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // Filters & Search
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
-  const [highStrengthFilter, setHighStrengthFilter] = useState(false);
   const [sortBy, setSortBy] = useState<string>("id-asc");
 
+  // Pass filters to hook for server-side (CSV-side) filtering
   const { 
     data, 
     isLoading, 
     fetchNextPage, 
     hasNextPage, 
     isFetchingNextPage 
-  } = useGuardians(useMockData, useCsvData);
+  } = useGuardians(useMockData, useCsvData, {
+      search: debouncedSearch,
+      rarity: rarityFilter,
+      traitType: traitTypeFilter,
+      traitValue: traitValueFilter,
+      sortBy
+  });
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
-  const allDisplayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+  const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
-  // Filter Logic
-  const displayNfts = useMemo(() => {
-      let items = [...allDisplayNfts];
-      
-      // Search
-      if (search) {
-        const searchLower = search.toLowerCase();
-        items = items.filter(i => 
-            i.name.toLowerCase().includes(searchLower) || 
-            i.id.toString().includes(search) ||
-            (i.traits && i.traits.some((t: any) => t.value.toLowerCase().includes(searchLower) || t.type.toLowerCase().includes(searchLower)))
-        );
-      }
-
-      // Filters
-      if (rarityFilter !== "all") {
-          items = items.filter(i => i.rarity?.toLowerCase() === rarityFilter);
-      }
-      if (traitTypeFilter !== "all" && traitValueFilter !== "all") {
-          items = items.filter(i => 
-              i.traits.some((t: any) => t.type === traitTypeFilter && t.value === traitValueFilter)
-          );
-      }
-      
-      // Strength > 8 Filter
-      if (highStrengthFilter) {
-          items = items.filter(i => {
-              const strengthTrait = i.traits?.find((t: any) => t.type === 'Strength');
-              return strengthTrait && parseInt(strengthTrait.value) > 8;
-          });
-      }
-
-      // Sort
-      const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
-      items.sort((a, b) => {
-          switch (sortBy) {
-            case 'id-asc': return a.id - b.id;
-            case 'id-desc': return b.id - a.id;
-            case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
-            case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
-            default: return 0;
-          }
-      });
-
-      return items;
-  }, [allDisplayNfts, search, rarityFilter, traitTypeFilter, traitValueFilter, sortBy]);
-
-  // Extract Traits
+  // Extract Traits (This might need to come from full CSV loader directly if we want ALL traits in dropdown, 
+  // but for now extracting from displayed/loaded is standard unless we expose a separate "metadata" hook)
+  // For better UX, we could hardcode known traits or fetch just metadata once.
+  // Using displayed items for trait extraction works ok for now as long as we load enough, 
+  // but ideally we'd want all options available. 
+  // Since we don't have a separate "get all traits" hook yet, let's stick to this or hardcode common ones.
   const availableTraits = useMemo(() => {
       const traits: Record<string, Set<string>> = {};
-      allDisplayNfts.forEach(item => {
-          item.traits?.forEach((t: any) => {
-              if (!traits[t.type]) traits[t.type] = new Set();
-              traits[t.type].add(t.value);
-          });
-      });
+      // Iterate over a larger set if possible? 
+      // Since useGuardians filters on the backend (hook), `displayNfts` are just the results.
+      // So the dropdowns might shrink if we filter. 
+      // Ideally we want *all* possible traits in the dropdown.
+      // For this mockup, let's pre-populate some key ones or rely on what's visible + defaults.
+      
+      if (displayNfts.length > 0) {
+        displayNfts.forEach(item => {
+            item.traits?.forEach((t: any) => {
+                if (!traits[t.type]) traits[t.type] = new Set();
+                traits[t.type].add(t.value);
+            });
+        });
+      }
       return traits;
-  }, [allDisplayNfts]);
+  }, [displayNfts]);
 
   // Value Estimation Logic
   const baseValuePerNFT = MOCK_POOL_BALANCE / TOTAL_SUPPLY;
@@ -168,7 +142,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     <div className="relative flex-1 w-full md:max-w-md">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                        <Input 
-                         placeholder="Search ID or Traits..." 
+                         placeholder="Search ID, Name, or 'Strength >= 8'..." 
                          className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
                          value={search}
                          onChange={(e) => setSearch(e.target.value)}
@@ -207,7 +181,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         onClick={() => setUseCsvData(!useCsvData)}
                         className={`text-[10px] h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
                     >
-                        {useCsvData ? "CSV Mode Active" : "Use CSV Data"}
+                        {useCsvData ? "Full Index (CSV) Active" : "Use IPFS Only"}
                     </Button>
                     <Button 
                         variant="ghost" 
@@ -241,6 +215,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                             <SelectItem value="all">All Rarities</SelectItem>
                             <SelectItem value="common">Common</SelectItem>
                             <SelectItem value="rare">Rare</SelectItem>
+                            <SelectItem value="epic">Epic</SelectItem>
                             <SelectItem value="legendary">Legendary</SelectItem>
                         </SelectContent>
                     </Select>
@@ -254,9 +229,18 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Attributes</SelectItem>
-                            {Object.keys(availableTraits).sort().map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
+                            {/* Pre-populate common types if empty to ensure UX */}
+                            {Object.keys(availableTraits).length > 0 ? 
+                                Object.keys(availableTraits).sort().map(type => (
+                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                )) : (
+                                    <>
+                                        <SelectItem value="Character Type">Character Type</SelectItem>
+                                        <SelectItem value="Strength">Strength</SelectItem>
+                                        <SelectItem value="Speed">Speed</SelectItem>
+                                    </>
+                                )
+                            }
                         </SelectContent>
                     </Select>
                 </div>
@@ -280,16 +264,23 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     </Select>
                 </div>
                 
-                {/* Advanced Filters */}
-                <div className="flex items-center space-x-2 pt-6">
-                    <Button 
-                        variant={highStrengthFilter ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setHighStrengthFilter(!highStrengthFilter)}
-                        className={highStrengthFilter ? "bg-primary text-black" : "border-white/20"}
-                    >
-                        {highStrengthFilter ? "Strength > 8 (Active)" : "Filter: Strength > 8"}
-                    </Button>
+                {/* Character Type Shortcuts */}
+                <div className="col-span-1 md:col-span-3 pt-4 border-t border-white/5 flex gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground mr-2 py-1">QUICK FILTERS:</span>
+                    {['Based Frog', 'Based Guardian', 'Based Creature'].map(type => (
+                        <Badge 
+                            key={type}
+                            variant="outline" 
+                            className="cursor-pointer hover:bg-primary/20 hover:text-primary hover:border-primary/50 transition-colors"
+                            onClick={() => {
+                                setTraitTypeFilter("Character Type");
+                                // Small delay to allow state update if needed, but React matches usually work
+                                setTraitValueFilter(type);
+                            }}
+                        >
+                            {type}
+                        </Badge>
+                    ))}
                 </div>
               </Card>
             </motion.div>
@@ -309,14 +300,17 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           </div>
         ) : (
           <>
-            {isLoading && !nfts.length && !useMockData ? (
+            {isLoading && !displayNfts.length && !useMockData ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
               </div>
             ) : displayNfts.length === 0 ? (
                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
                  <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
-                 <Button onClick={() => setUseMockData(true)} variant="outline">Load Demo Data</Button>
+                 <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
+                 <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
+                    Clear Filters
+                 </Button>
                </div>
             ) : (
               <>
