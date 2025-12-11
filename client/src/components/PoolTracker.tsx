@@ -169,15 +169,15 @@ export function PoolTracker() {
         updateBalance();
     }, 1000);
 
-    // Poll Subnet every 4 hours
+    // Poll Subnet every 5 minutes
     const subnetInterval = setInterval(() => {
         pollSubnet();
-    }, 4 * 60 * 60 * 1000);
+    }, 5 * 60 * 1000);
     
-    // Refresh price every 10 mins
+    // Refresh price every 5 minutes
     const priceInterval = setInterval(() => {
         fetchPriceHistory();
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
     return () => {
         clearInterval(interval);
@@ -212,6 +212,9 @@ export function PoolTracker() {
     { name: 'Intellect', value: 7.70 },
     { name: 'Strength', value: 6.31 },
   ];
+
+  // Halving Logic
+  const daysToHalving = differenceInDays(new Date(HALVING_TIMESTAMP), new Date());
 
   // Generate Chart Data: 7-Day Price History
   const chartData = useMemo(() => {
