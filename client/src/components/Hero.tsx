@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
-import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp } from "lucide-react";
+import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw } from "lucide-react";
 import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE, calculateBackedValue } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,8 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
-import { useTotalSupply } from "@/hooks/useTotalSupply";
+import { fetchTotalSupply } from "@/lib/onchain";
+import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 import { AverageStatsChart } from "./AverageStatsChart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -23,8 +24,99 @@ export function Hero() {
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
-  const { totalSupply, isLoading: isLoadingSupply } = useTotalSupply();
   
+  // Rarity Sync State
+  const [isUpdatingRarity, setIsUpdatingRarity] = useState(false);
+  const [classifiedCount, setClassifiedCount] = useState(0);
+  const [currentSupply, setCurrentSupply] = useState(0);
+  
+  // Default Rarity Data Structure
+  const [rarityStats, setRarityStats] = useState([
+    { name: 'Most Common', value: 922, color: '#3b82f6', minted: 0 },
+    { name: 'Common', value: 1216, color: '#60a5fa', minted: 0 },
+    { name: 'Less Common', value: 661, color: '#2dd4bf', minted: 0 },
+    { name: 'Less Rare', value: 329, color: '#34d399', minted: 0 },
+    { name: 'Rare', value: 504, color: '#a855f7', minted: 0 },
+    { name: 'Very Rare', value: 28, color: '#d946ef', minted: 0 },
+    { name: 'Most Rare', value: 14, color: '#ec4899', minted: 0 },
+    { name: 'Rarest', value: 37, color: '#f43f5e', minted: 0 },
+    { name: 'Legendary', value: 21, color: '#eab308', minted: 0 },
+  ]);
+
+  // Live Rarity Sync Logic
+  const fetchLiveRarity = async () => {
+    setIsUpdatingRarity(true);
+    try {
+        // 1. Get Live Supply
+        const supply = await fetchTotalSupply();
+        // Fallback to MINTED_COUNT if contract call fails (for demo/mockup stability)
+        const activeSupply = supply !== null ? supply : MINTED_COUNT;
+        
+        setCurrentSupply(activeSupply);
+        
+        // 2. Get Baseline Data (Full Collection)
+        const allGuardians = await loadGuardiansFromCSV();
+        
+        // 3. Slice to currently minted subset
+        // We clone to avoid mutating the cached array directly if we modify it
+        const mintedGuardians = allGuardians.slice(0, activeSupply).map(g => ({...g}));
+        
+        // 4. Update last 3 minted from IPFS (Live Check)
+        const startIndex = Math.max(0, activeSupply - 3);
+        const idsToFetch = [];
+        for (let i = startIndex; i < activeSupply; i++) {
+             idsToFetch.push(i + 1); // IDs are 1-based
+        }
+        
+        await Promise.all(idsToFetch.map(async (id) => {
+            try {
+                const res = await fetch(`https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dvrjfalfyu52y/${id}.json`);
+                const json = await res.json();
+                const rarityAttr = json.attributes.find((t:any) => t.trait_type === 'Rarity Level' || t.trait_type === 'Rarity');
+                
+                if (rarityAttr) {
+                    // Update the guardian in our list
+                    const gIndex = id - 1;
+                    if (mintedGuardians[gIndex]) {
+                        mintedGuardians[gIndex].rarity = rarityAttr.value;
+                    }
+                }
+            } catch (e) {
+                console.warn(`Failed to fetch IPFS for #${id}`, e);
+            }
+        }));
+        
+        // 5. Aggregate Counts
+        const counts: Record<string, number> = {};
+        mintedGuardians.forEach(g => {
+            // Normalize rarity strings if needed
+            let r = g.rarity || 'Common';
+            // Map specific naming variations if CSV differs from Display
+            if (r === 'Rarest (1/1s)') r = 'Rarest'; 
+            
+            counts[r] = (counts[r] || 0) + 1;
+        });
+        
+        // 6. Update State
+        setRarityStats(prev => prev.map(item => ({
+            ...item,
+            minted: counts[item.name] || 0
+        })));
+        setClassifiedCount(activeSupply);
+        
+    } catch (e) {
+        console.error("Rarity Sync Failed", e);
+    } finally {
+        setIsUpdatingRarity(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveRarity();
+    const interval = setInterval(fetchLiveRarity, 15 * 60 * 1000); // Poll every 15 min
+    return () => clearInterval(interval);
+  }, []);
+
   // Parallax
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 500], [0, 150]);
@@ -33,13 +125,10 @@ export function Hero() {
   const count = useMotionValue(0);
   const rounded = useTransform(count, Math.round);
 
-  // Use real supply if loaded, otherwise fallback to mock
-  const displayCount = isLoadingSupply ? MINTED_COUNT : totalSupply;
-
   useEffect(() => {
-    const animation = animate(count, displayCount, { duration: 2, ease: "easeOut" });
+    const animation = animate(count, currentSupply, { duration: 2, ease: "easeOut" });
     return animation.stop;
-  }, [displayCount]);
+  }, [currentSupply]);
 
   // Fetch Real Guardian #3000 as requested
   const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "3000" });
@@ -48,18 +137,7 @@ export function Hero() {
   // Calculate Backing Value (Live)
   const [backingValue, setBackingValue] = useState(calculateBackedValue());
 
-  // Rarity Data for Chart
-  const rarityData = [
-    { name: 'Most Common', value: 922, color: '#3b82f6' },
-    { name: 'Common', value: 1216, color: '#60a5fa' },
-    { name: 'Less Common', value: 661, color: '#2dd4bf' },
-    { name: 'Less Rare', value: 329, color: '#34d399' },
-    { name: 'Rare', value: 504, color: '#a855f7' },
-    { name: 'Very Rare', value: 28, color: '#d946ef' },
-    { name: 'Most Rare', value: 14, color: '#ec4899' },
-    { name: 'Rarest', value: 37, color: '#f43f5e' },
-    { name: 'Legendary', value: 21, color: '#eab308' },
-  ];
+  // Rarity Data for Chart - REMOVED (Replaced by State)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,8 +147,8 @@ export function Hero() {
   }, []);
 
   useEffect(() => {
-    const animation = animate(count, MINTED_COUNT, { duration: 2, ease: "easeOut" });
-    return animation.stop;
+    // animate(count, MINTED_COUNT... moved to up to currentSupply
+    return () => {};
   }, []);
 
   // Smart Contract Interaction Mock:
@@ -189,7 +267,7 @@ export function Hero() {
             <div className="w-full h-2 bg-secondary rounded-full overflow-hidden mb-8">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(displayCount / TOTAL_SUPPLY) * 100}%` }}
+                animate={{ width: `${(currentSupply / TOTAL_SUPPLY) * 100}%` }}
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-primary to-accent"
               />
@@ -197,15 +275,26 @@ export function Hero() {
 
             {/* Rarity Distribution Bars */}
             <div className="mb-6 w-full space-y-3 pr-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                 <div className="text-xs text-muted-foreground font-orbitron mb-2 tracking-widest text-center border-b border-white/10 pb-2">
-                     RARITY LEVELS
+                 <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                     <span className="text-xs text-muted-foreground font-orbitron tracking-widest">
+                        RARITY DISTRIBUTION
+                     </span>
+                     <div className="flex items-center gap-2">
+                         {isUpdatingRarity && <Loader2 size={10} className="animate-spin text-primary" />}
+                         <span className="text-[10px] text-muted-foreground font-mono">
+                             {TOTAL_SUPPLY.toLocaleString()} TOTAL | <span className="text-white">{classifiedCount.toLocaleString()} CLASSIFIED</span>
+                         </span>
+                         <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-primary" onClick={fetchLiveRarity} disabled={isUpdatingRarity}>
+                             <RefreshCw size={10} className={isUpdatingRarity ? "animate-spin" : ""} />
+                         </Button>
+                     </div>
                  </div>
-                 {rarityData.map((item, index) => {
-                    // Proportional minted count logic
-                    const mintedCount = Math.floor((displayCount / TOTAL_SUPPLY) * item.value);
-                    // Ensure at least 0
-                    const safeMinted = Math.max(0, mintedCount);
-                    // Percentage for width
+                 
+                 {rarityStats.map((item, index) => {
+                    // Real dynamic data from sync
+                    const safeMinted = item.minted;
+                    // Percentage for width (relative to TOTAL supply or relative to ITEM max?)
+                    // Usually bars show progress towards cap.
                     const percent = Math.min(100, (safeMinted / item.value) * 100);
                     
                     return (
