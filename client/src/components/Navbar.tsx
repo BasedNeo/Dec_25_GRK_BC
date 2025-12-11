@@ -11,6 +11,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
 import { useToast } from "@/hooks/use-toast";
+import rocketLogo from '@assets/generated_images/neon_cyan_line_art_rocket_ship.png';
 
 interface NavbarProps {
   activeTab: string;
@@ -105,8 +106,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           >
             <div className="relative">
               <img 
-                src="/logo.png" 
-                alt="Based Guardians" 
+                src={rocketLogo}
+                alt="Based Guardians Rocket" 
                 className="h-10 w-auto object-contain glitch-hover"
               />
             </div>
