@@ -41,9 +41,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   useEffect(() => {
     if (isOpen && nft) {
-      // Trigger confetti - Always trigger for fun or check rarity
-      const isRare = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity) || nft.id % 100 === 0;
-      if (isRare) {
+      // Trigger confetti only for Legendaries to reduce clutter
+      const isLegendary = nft.rarity?.toLowerCase().includes('legendary') || nft.rarity?.toLowerCase().includes('rarest');
+      if (isLegendary) {
         // Use a slightly lower z-index than modal to ensure it doesn't block interactions if that was the issue
         setTimeout(() => {
             confetti({
