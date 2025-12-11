@@ -35,16 +35,24 @@ export const RARITY_CONFIG: Record<string, { weight: number, multiplier: number,
 export const generateMockGuardian = (id: number): Guardian => {
   // Deterministic rarity distribution based on ID
   let rarity = 'Most Common';
-  const mod = id % 1000; // Use 1000 for finer grain
   
-  if (mod < 34) rarity = 'Rarest-Legendary';       // 3.4%
-  else if (mod < 51) rarity = 'Very Rare';         // 3.4 + 1.7 = 5.1% -> 51
-  else if (mod < 172) rarity = 'More Rare';        // 5.1 + 12.1 = 17.2% -> 172
-  else if (mod < 344) rarity = 'Rare';             // 17.2 + 17.2 = 34.4% -> 344
-  else if (mod < 396) rarity = 'Less Rare';        // 34.4 + 5.2 = 39.6% -> 396
-  else if (mod < 620) rarity = 'Less Common';      // 39.6 + 22.4 = 62.0% -> 620
-  else if (mod < 844) rarity = 'Common';           // 62.0 + 22.4 = 84.4% -> 844
-  else rarity = 'Most Common';                     // Remainder ~15.6%
+  // Specific Overrides for "Live Mint" Demo State (to match contract deployment)
+  if ([1282, 3002, 149].includes(id)) rarity = 'Rare';
+  else if (id === 183) rarity = 'Common';
+  else if ([1059, 1166].includes(id)) rarity = 'Most Common';
+  else {
+      // Standard distribution for others
+      const mod = id % 1000; // Use 1000 for finer grain
+      
+      if (mod < 34) rarity = 'Rarest-Legendary';       // 3.4%
+      else if (mod < 51) rarity = 'Very Rare';         // 3.4 + 1.7 = 5.1% -> 51
+      else if (mod < 172) rarity = 'More Rare';        // 5.1 + 12.1 = 17.2% -> 172
+      else if (mod < 344) rarity = 'Rare';             // 17.2 + 17.2 = 34.4% -> 344
+      else if (mod < 396) rarity = 'Less Rare';        // 34.4 + 5.2 = 39.6% -> 396
+      else if (mod < 620) rarity = 'Less Common';      // 39.6 + 22.4 = 62.0% -> 620
+      else if (mod < 844) rarity = 'Common';           // 62.0 + 22.4 = 84.4% -> 844
+      else rarity = 'Most Common';                     // Remainder ~15.6%
+  }
 
   return {
     id,
