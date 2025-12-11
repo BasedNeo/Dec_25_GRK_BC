@@ -1,10 +1,10 @@
-import { MOCK_POOL_BALANCE, calculatePoolBalance } from "@/lib/mockData";
+import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info } from "lucide-react";
 import { Line } from "react-chartjs-2";
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
+import { fetchTotalSupply } from "@/lib/onchain";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -29,38 +29,64 @@ ChartJS.register(
 );
 
 const SUBNET_ADDRESS = "0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4";
-const ETH_RPC = "https://eth.llamarpc.com"; // Public RPC
 
 export function PoolTracker() {
   const [balance, setBalance] = useState<number>(MOCK_POOL_BALANCE);
+  const [mintedCount, setMintedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Use the calculated balance from mockData which includes Mint Revenue + Daily Emissions
-  // We can simulate live updates here
+  const updateBalance = async () => {
+      // 1. Get Emissions (Calculated)
+      const emissions = calculateEmissions();
+      
+      // 2. Get Mint Count (On-chain)
+      let currentMinted = mintedCount;
+      if (currentMinted === null) {
+          const supply = await fetchTotalSupply();
+          if (supply !== null) {
+              currentMinted = supply;
+              setMintedCount(supply);
+          } else {
+              // Fallback to mock if fetch fails
+              currentMinted = 6; 
+          }
+      }
+
+      // 3. Calculate Total
+      // Pool = (Minted * Price) + Emissions
+      const mintRevenue = (currentMinted || 6) * MINT_PRICE;
+      const total = mintRevenue + emissions;
+      
+      setBalance(total);
+  };
+
   useEffect(() => {
-    // Initial load
-    setBalance(calculatePoolBalance());
+    // Initial Load
+    updateBalance();
     setLastUpdated(new Date());
 
-    // Live Ticker
+    // Live Ticker (Updates emissions every second)
     const interval = setInterval(() => {
-        setBalance(calculatePoolBalance());
+        updateBalance();
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [mintedCount]); // Re-run if mint count updates
 
-  const fetchEmissions = async () => {
-    // For now, we are strictly using the calculated formula based on user request:
-    // (6 Mints * 69,420) + (Daily Emissions)
-    // We simulate a "sync" by just re-calculating
+  const fetchOnChainData = async () => {
     setLoading(true);
-    setTimeout(() => {
-        setBalance(calculatePoolBalance());
-        setLastUpdated(new Date());
+    try {
+        const supply = await fetchTotalSupply();
+        if (supply !== null) {
+            setMintedCount(supply);
+            setLastUpdated(new Date());
+        }
+    } catch (e) {
+        console.error("Failed to sync onchain", e);
+    } finally {
         setLoading(false);
-    }, 1000);
+    }
   };
 
   const displayBalance = balance.toLocaleString();
@@ -163,6 +189,11 @@ export function PoolTracker() {
                     <p className="text-xs text-muted-foreground">
                         Subnet emissions from <span className="text-white font-mono">{SUBNET_ADDRESS.slice(0,6)}...</span> flow into this community pool over time.
                         <br/><span className="text-[10px] text-primary/70 mt-1 block">Current Rate Est. ~5,000 BASED/day (Halving forecast late Dec 2,500 BASED/day)</span>
+                        {mintedCount !== null && (
+                            <span className="text-[10px] text-green-400 mt-1 block font-mono">
+                                + Live Mint Revenue: {(mintedCount * MINT_PRICE).toLocaleString()} BASED (from {mintedCount} mints)
+                            </span>
+                        )}
                     </p>
                 </div>
              </div>
@@ -195,12 +226,12 @@ export function PoolTracker() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={fetchEmissions} 
+                onClick={fetchOnChainData} 
                 disabled={loading}
                 className="border-white/10 hover:bg-white/5 text-xs font-mono h-8"
               >
                  <RefreshCw size={12} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-                 {loading ? 'SYNCING...' : 'REFRESH DATA'}
+                 {loading ? 'SYNCING ON-CHAIN...' : 'REFRESH ON-CHAIN'}
               </Button>
           </div>
 
