@@ -10,12 +10,15 @@ import { useAccount } from "wagmi";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { OnboardingTour } from "@/components/OnboardingTour";
+
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("mint");
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
+      <OnboardingTour />
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
       
       <main className="pt-20 min-h-screen flex flex-col">

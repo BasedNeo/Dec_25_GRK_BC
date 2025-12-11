@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 import { NFTDetailModal } from "./NFTDetailModal";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -309,12 +310,14 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                </div>
             ) : (
               <>
+
+                {/* Desktop Grid */}
                 <motion.div 
                   variants={container}
                   initial="hidden"
                   whileInView="show"
                   viewport={{ once: true }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 >
                   {displayNfts.map((guardian, idx) => (
                     <motion.div key={`${guardian.id}-${idx}`} variants={item}>
@@ -322,6 +325,26 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     </motion.div>
                   ))}
                 </motion.div>
+
+                {/* Mobile Swipe Gallery */}
+                <div className="md:hidden">
+                    <Carousel className="w-full max-w-xs mx-auto">
+                        <CarouselContent>
+                            {displayNfts.map((guardian, idx) => (
+                                <CarouselItem key={`${guardian.id}-${idx}`}>
+                                    <div className="p-1">
+                                        <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} />
+                                    </div>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                        <CarouselPrevious className="border-primary/50 text-primary" />
+                        <CarouselNext className="border-primary/50 text-primary" />
+                    </Carousel>
+                    <div className="text-center text-xs text-muted-foreground mt-4 font-mono animate-pulse">
+                        &lt; SWIPE TO VIEW &gt;
+                    </div>
+                </div>
 
                 {/* Load More Button */}
                 {hasNextPage && !useMockData && (

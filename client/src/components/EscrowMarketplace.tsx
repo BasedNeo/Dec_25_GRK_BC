@@ -64,12 +64,22 @@ export function EscrowMarketplace() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setSearch(val);
+      
+      // Smart Search Logic
+      if (val.toLowerCase().includes("high strength")) {
+          setHighStrengthFilter(true);
+      } else if (val.length < 5 && highStrengthFilter) {
+          // Reset if user clears it (optional, but good UX)
+          // setHighStrengthFilter(false); 
+      }
+
       // Simple suggestion trigger logic
       if (val.length > 0) setShowSavedSearches(true);
   };
   
   const applySearch = (term: string) => {
       setSearch(term);
+      if (term.toLowerCase().includes("high strength")) setHighStrengthFilter(true);
       setShowSavedSearches(false);
       trackSearch(term);
   };
@@ -227,7 +237,7 @@ export function EscrowMarketplace() {
       switch (sortBy) {
         case 'price-asc': return (a.price || 0) - (b.price || 0);
         case 'price-desc': return (b.price || 0) - (a.price || 0);
-        case 'floor-price': return (a.price || 0) - (b.price || 0); // Alias for price-asc really, but conceptual
+        case 'floor-price': return (a.price || 0) - (b.price || 0); // Floor Price = Lowest Price
         case 'id-asc': return a.id - b.id;
         case 'id-desc': return b.id - a.id;
         case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
@@ -245,11 +255,9 @@ export function EscrowMarketplace() {
         { label: "High Strength", action: () => setHighStrengthFilter(true) },
         { label: "Legendary Only", action: () => setRarityFilter("legendary") },
         { label: "Based Frog", action: () => { 
-            // We need to set trait filters, but this is a specific value. 
-            // We can just use the search for this or set specific filters if we know the type.
-            // Assuming "Character Type" is the type for "Based Frog"
+            // Filter for "Character Type" = "Based Frog"
             setTraitTypeFilter("Character Type");
-            setTraitValueFilter("Based Frog");
+            setTimeout(() => setTraitValueFilter("Based Frog"), 0);
         }}
     ];
   }, []);

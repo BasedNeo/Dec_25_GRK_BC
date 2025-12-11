@@ -61,7 +61,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const navItems = [
     { id: 'mint', label: 'MINT' },
     { id: 'gallery', label: 'GALLERY' },
-    { id: 'voting', label: 'DAO' },
+    { id: 'voting', label: 'DAO' }, // Will add ID to the button in the map
     { id: 'escrow', label: 'SALES' },
     { id: 'pool', label: 'POOL' },
   ];
@@ -97,6 +97,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             {navItems.map((item) => (
               <button
                 key={item.id}
+                id={item.id === 'voting' ? 'nav-vote' : undefined}
                 onClick={() => onTabChange(item.id)}
                 className={`relative px-4 py-2 font-orbitron text-sm tracking-widest transition-colors ${
                   activeTab === item.id ? 'text-primary' : 'text-foreground/80 hover:text-white'
@@ -184,6 +185,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
                   return (
                     <div
+                      id="connect-wallet-btn"
                       {...(!ready && {
                         'aria-hidden': true,
                         'style': {

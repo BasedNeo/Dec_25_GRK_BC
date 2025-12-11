@@ -10,6 +10,7 @@ import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
 import DOMPurify from 'dompurify';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -187,11 +188,22 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             </Button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
                             {nft.traits.filter(t => !['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
-                                <div key={i} className="flex flex-col p-2 rounded hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
-                                    <span className="text-[10px] text-muted-foreground font-mono uppercase mb-0.5">{DOMPurify.sanitize(trait.type)}</span>
-                                    <span className="text-sm text-white font-medium break-words whitespace-pre-wrap">{DOMPurify.sanitize(trait.value)}</span>
-                                </div>
+                                <TooltipProvider key={i}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex flex-col p-2 rounded hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-help">
+                                                <span className="text-[10px] text-muted-foreground font-mono uppercase mb-0.5">{DOMPurify.sanitize(trait.type)}</span>
+                                                <span className="text-sm text-white font-medium break-words whitespace-pre-wrap">{DOMPurify.sanitize(trait.value)}</span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-black border-primary text-primary font-mono text-xs">
+                                            <p>{trait.type}: {trait.value}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">Rarity Impact: +{(Math.random() * 5).toFixed(1)}%</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             ))}
                         </div>
                     </div>

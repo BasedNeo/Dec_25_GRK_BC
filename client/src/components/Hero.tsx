@@ -165,6 +165,7 @@ export function Hero() {
             </div>
 
             <Button 
+              id="hero-mint-section"
               onClick={handleMint}
               disabled={isMinting || isPaused}
               className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button mb-4
