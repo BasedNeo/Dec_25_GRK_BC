@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp } from "lucide-react";
-import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE } from "@/lib/mockData";
+import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE, calculateBackedValue } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
@@ -33,8 +33,15 @@ export function Hero() {
   const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, false, { search: "300" });
   const heroGuardian = searchData?.pages[0]?.nfts[0];
   
-  // Calculate Backing Value
-  const backingValue = Math.floor(MOCK_POOL_BALANCE / TOTAL_SUPPLY).toLocaleString();
+  // Calculate Backing Value (Live)
+  const [backingValue, setBackingValue] = useState(calculateBackedValue());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setBackingValue(calculateBackedValue());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const animation = animate(count, MINTED_COUNT, { duration: 2, ease: "easeOut" });
@@ -239,7 +246,7 @@ export function Hero() {
                         </Badge>
                         <div className="bg-black/60 backdrop-blur-sm border border-white/10 px-2 py-1 rounded text-[10px] text-green-400 font-mono flex items-center gap-1">
                             <TrendingUp size={10} />
-                            BACKED: {backingValue} $BASED
+                            BACKED: {backingValue.toLocaleString()} $BASED
                         </div>
                     </div>
 

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
+import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY, calculateBackedValue } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -83,7 +83,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   }, [displayNfts]);
 
   // Value Estimation Logic
-  const baseValuePerNFT = MOCK_POOL_BALANCE / TOTAL_SUPPLY;
+  const baseValuePerNFT = calculateBackedValue();
   const userTotalValue = displayNfts.reduce((total, guardian) => {
     const r = guardian.rarity?.toLowerCase() || '';
     const isRare = r === 'rare' || r === 'legendary' || r === 'epic';

@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3 } from "lucide-react";
-import { Guardian } from "@/lib/mockData";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp } from "lucide-react";
+import { Guardian, calculateBackedValue } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useEffect, useState, useMemo } from "react";
@@ -23,6 +23,15 @@ interface NFTDetailModalProps {
 
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
+  const [backedValue, setBackedValue] = useState(calculateBackedValue());
+
+  // Live Ticker for Backed Value
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setBackedValue(calculateBackedValue());
+    }, 1000); // Update every second
+    return () => clearInterval(interval);
+  }, []);
 
   // Safe Sanitize Helper
   const safeSanitize = (content: string | undefined | null) => {
@@ -70,12 +79,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   if (!nft) return null;
 
-  // Value Calculation
-  const MOCK_POOL_BALANCE = 5000000; 
-  const TOTAL_SUPPLY = 3732;
-  const baseValue = Math.floor(MOCK_POOL_BALANCE / TOTAL_SUPPLY);
+  // Rarity Multiplier for Display
   const isRareItem = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity || '');
-  const backedValue = Math.floor(baseValue * (isRareItem ? 1.3 : 1.0));
+  const displayValue = Math.floor(backedValue * (isRareItem ? 1.3 : 1.0));
 
   const handleCopyTraits = () => {
     const text = nft.traits.map(t => `${t.type}: ${t.value}`).join('\n');
@@ -184,15 +190,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger>
-                                    <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full cursor-help">
-                                        <Activity size={12} className="text-green-400" />
+                                    <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full cursor-help hover:bg-green-500/20 transition-colors">
+                                        <TrendingUp size={12} className="text-green-400" />
                                         <span className="text-[10px] text-green-400 font-mono font-bold tracking-wider">
-                                            BACKED BY: {backedValue.toLocaleString()} $BASED
+                                            BACKED BY: {displayValue.toLocaleString()} $BASED {isRareItem && <span className="text-white/70 ml-1">(+30% BOOST)</span>}
                                         </span>
                                     </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="bg-black border-green-500 text-green-400 font-mono text-xs max-w-[200px]">
-                                    <p>This NFT is backed by {backedValue.toLocaleString()} $BASED in the community treasury.</p>
+                                    <p>This NFT is backed by {displayValue.toLocaleString()} $BASED in the community treasury (Includes 51% Mint Share + Passive Emissions).</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
