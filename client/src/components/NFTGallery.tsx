@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download } from "lucide-react";
+import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, calculateBackedValue } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect } from "react";
@@ -66,6 +66,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("id-asc");
+  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 4);
 
   // Pass filters to hook for server-side (CSV-side) filtering
   const { 
@@ -198,7 +199,27 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                        />
                     </div>
                     
-                    <div className="flex gap-2 w-full md:w-auto">
+                    <div className="flex gap-2 w-full md:w-auto items-center">
+                           {/* Grid Toggle */}
+                           <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10 h-10 mr-2">
+                              <span className="text-[10px] text-muted-foreground font-mono px-2 hidden xl:inline">VIEW:</span>
+                              {[1, 2, 4, 6].map((cols) => (
+                                <Button
+                                  key={cols}
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setGridCols(cols)}
+                                  className={`w-8 h-8 ${gridCols === cols ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-muted-foreground hover:text-white'}`}
+                                  title={`${cols}-wide view`}
+                                >
+                                  {cols === 1 && <Square size={14} />}
+                                  {cols === 2 && <LayoutGrid size={14} />}
+                                  {cols === 4 && <Grid3x3 size={14} />}
+                                  {cols === 6 && <Grid size={14} />}
+                                </Button>
+                              ))}
+                           </div>
+
                          <Select value={sortBy} onValueChange={setSortBy}>
                              <SelectTrigger className="w-full md:w-[180px] bg-white/5 border-white/10 text-white">
                                <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
@@ -362,13 +383,18 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                </div>
             ) : (
               <>
-                {/* Desktop Grid */}
+                {/* Unified Grid (Replaces separate Desktop Grid and Mobile Carousel) */}
                 <motion.div 
                   variants={container}
                   initial="hidden"
                   whileInView="show"
                   viewport={{ once: true }}
-                  className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  className={`grid gap-6 transition-all duration-300 ${
+                    gridCols === 1 ? 'grid-cols-1' : 
+                    gridCols === 2 ? 'grid-cols-2' : 
+                    gridCols === 4 ? 'grid-cols-4' : 
+                    'grid-cols-6'
+                  }`}
                 >
                   {displayNfts.map((guardian, idx) => (
                     <motion.div key={`${guardian.id}-${idx}`} variants={item}>
@@ -376,26 +402,6 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     </motion.div>
                   ))}
                 </motion.div>
-
-                {/* Mobile Swipe Gallery */}
-                <div className="md:hidden">
-                    <Carousel className="w-full max-w-xs mx-auto">
-                        <CarouselContent>
-                            {displayNfts.map((guardian, idx) => (
-                                <CarouselItem key={`${guardian.id}-${idx}`}>
-                                    <div className="p-1">
-                                        <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} />
-                                    </div>
-                                </CarouselItem>
-                            ))}
-                        </CarouselContent>
-                        <CarouselPrevious className="border-primary/50 text-primary" />
-                        <CarouselNext className="border-primary/50 text-primary" />
-                    </Carousel>
-                    <div className="text-center text-xs text-muted-foreground mt-4 font-mono animate-pulse">
-                        &lt; SWIPE TO VIEW &gt;
-                    </div>
-                </div>
 
                 {/* Load More Button */}
                 {hasNextPage && !useMockData && (

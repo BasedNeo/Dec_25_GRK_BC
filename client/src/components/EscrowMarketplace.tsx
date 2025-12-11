@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
-  Flame, Zap, History, MessageCircle, TrendingUp, Loader2
+  Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -84,6 +84,7 @@ export function EscrowMarketplace() {
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV for indexing
+  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 4);
   
   // Commercial Search: Attribute Filters
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
@@ -403,7 +404,27 @@ export function EscrowMarketplace() {
                </AnimatePresence>
              </div>
              
-             <div className="flex gap-2">
+             <div className="flex gap-2 items-center">
+               {/* Grid Toggle */}
+               <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10 h-10 mr-2">
+                  <span className="text-[10px] text-muted-foreground font-mono px-2 hidden xl:inline">VIEW:</span>
+                  {[1, 2, 4, 6].map((cols) => (
+                    <Button
+                      key={cols}
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setGridCols(cols)}
+                      className={`w-8 h-8 ${gridCols === cols ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-muted-foreground hover:text-white'}`}
+                      title={`${cols}-wide view`}
+                    >
+                      {cols === 1 && <Square size={14} />}
+                      {cols === 2 && <LayoutGrid size={14} />}
+                      {cols === 4 && <Grid3x3 size={14} />}
+                      {cols === 6 && <Grid size={14} />}
+                    </Button>
+                  ))}
+               </div>
+
                <Button 
                  variant="outline" 
                  onClick={() => setShowFilters(!showFilters)}
@@ -517,7 +538,12 @@ export function EscrowMarketplace() {
             
             <TabsContent value="buy" className="space-y-8">
                 {displayedItems.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className={`grid gap-6 transition-all duration-300 ${
+                        gridCols === 1 ? 'grid-cols-1' : 
+                        gridCols === 2 ? 'grid-cols-2' : 
+                        gridCols === 4 ? 'grid-cols-4' : 
+                        'grid-cols-6'
+                    }`}>
                         {displayedItems.map((item) => (
                             <MarketCard key={item.id} item={item} onBuy={() => handleBuy(item)} onClick={() => setSelectedNFT(item)} isAdmin={isAdmin} onCancel={() => handleAdminCancel(item)} />
                         ))}
@@ -560,7 +586,12 @@ export function EscrowMarketplace() {
                         <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90">CONNECT NOW</Button>
                      </div>
                 ) : displayedItems.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                     <div className={`grid gap-6 transition-all duration-300 ${
+                        gridCols === 1 ? 'grid-cols-1' : 
+                        gridCols === 2 ? 'grid-cols-2' : 
+                        gridCols === 4 ? 'grid-cols-4' : 
+                        'grid-cols-6'
+                    }`}>
                         {displayedItems.map((item) => (
                             <MarketCard key={item.id} item={item} onBuy={() => {}} onClick={() => setSelectedNFT(item)} isOwner={true} />
                         ))}
