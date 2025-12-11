@@ -155,11 +155,6 @@ export function Hero() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/50 via-[#0a0a0a] to-black"></div>
           {/* Stars/Nebula Effect (CSS driven for low CPU) */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,255,0.05)_0%,transparent_50%)] animate-pulse"></div>
-          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-             <div className="absolute top-[10%] left-[20%] w-1 h-1 bg-white rounded-full shadow-[0_0_5px_#fff] animate-[twinkle_3s_infinite]"></div>
-             <div className="absolute top-[30%] left-[70%] w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_cyan] animate-[twinkle_5s_infinite]"></div>
-             <div className="absolute top-[70%] left-[40%] w-1 h-1 bg-purple-400 rounded-full shadow-[0_0_5px_purple] animate-[twinkle_4s_infinite]"></div>
-          </div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
