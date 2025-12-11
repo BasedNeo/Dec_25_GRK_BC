@@ -120,6 +120,17 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   const rarityColorClass = getRarityColor(nft.rarity);
 
+  // Grouped Stats Logic
+  const statKeys = ['Speed', 'Agility', 'Intellect', 'Intelligence', 'Strength'];
+  const stats = nft.traits?.filter(t => statKeys.includes(t.type)) || [];
+  const otherTraits = nft.traits?.filter(t => !statKeys.includes(t.type)) || [];
+  
+  // Helper to safely parse stat value
+  const getStatValue = (val: string) => {
+    const parsed = parseInt(val);
+    return isNaN(parsed) ? 5 : parsed; // Default to 5 if not a number
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       {/* 
@@ -212,12 +223,44 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     </div>
 
                     <Separator className="bg-white/10" />
+                    
+                    {/* Stats Group (Speed, Agility, etc.) */}
+                    {stats.length > 0 && (
+                        <div>
+                             <h3 className="text-sm font-orbitron text-white mb-3 flex items-center">
+                                <BarChart3 size={14} className="mr-2 text-primary" /> BASE STATS
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {stats.map((stat, i) => {
+                                    const val = getStatValue(stat.value);
+                                    return (
+                                        <div key={i} className="bg-white/5 border border-white/10 rounded p-3">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">{stat.type}</span>
+                                                <span className="text-sm font-bold text-white font-orbitron">{stat.value}/10</span>
+                                            </div>
+                                            {/* Green Progress Bar */}
+                                            <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${(val / 10) * 100}%` }}
+                                                    transition={{ duration: 1, delay: 0.2 }}
+                                                    className="h-full bg-green-500 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.5)]"
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <Separator className="bg-white/10 mt-6" />
+                        </div>
+                    )}
 
                     {/* Detailed Attributes (Wrapped Grid) */}
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-sm font-orbitron text-white flex items-center">
-                                <Zap size={14} className="mr-2 text-accent" /> ATTRIBUTES ({nft.traits?.length || 0})
+                                <Zap size={14} className="mr-2 text-accent" /> ATTRIBUTES ({otherTraits.length || 0})
                             </h3>
                             <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground hover:text-white" onClick={handleCopyTraits}>
                                 {copied ? <Check size={12} className="mr-1 text-green-500" /> : <Copy size={12} className="mr-1" />}
@@ -225,9 +268,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             </Button>
                         </div>
                         
-                        {nft.traits && nft.traits.length > 0 ? (
+                        {otherTraits && otherTraits.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {nft.traits.map((trait, i) => (
+                                {otherTraits.map((trait, i) => (
                                     <div key={i} className="bg-white/5 border border-white/10 rounded p-3 hover:border-primary/30 transition-colors group relative overflow-hidden">
                                         <div className="text-[10px] text-muted-foreground uppercase mb-1 truncate" title={trait.type}>
                                             {safeSanitize(trait.type)}
