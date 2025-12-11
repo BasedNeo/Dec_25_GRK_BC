@@ -154,18 +154,28 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           </div>
 
           {isConnected && nfts.length > 0 && (
-             <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-4 flex items-center gap-6 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
-                 <div className="flex flex-col items-center border-r border-white/10 pr-6">
-                     <span className="text-xs text-muted-foreground font-mono">YOUR TOTAL HOLDINGS</span>
-                     <span className="text-2xl font-orbitron text-white"> {Math.floor(userTotalValue).toLocaleString()} <span className="text-primary text-sm">$BASED</span></span>
-                     <span className="text-[10px] text-muted-foreground mt-1">{displayNfts.length} Guardians (Includes Rarity Boosts)</span>
-                 </div>
-                 <div className="flex flex-col items-center pl-2">
-                     <span className="text-xs text-muted-foreground font-mono">BACKED BY / NFT</span>
-                     <span className="text-sm font-mono text-green-400 flex items-center gap-1">
-                        <TrendingUp size={12} /> {Math.floor(baseValuePerNFT).toLocaleString()} $BASED
+             <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-6 flex flex-col md:flex-row items-center gap-8 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
+                 <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0 md:pr-8">
+                     <div className="flex items-center gap-2 mb-1">
+                        <div className="p-2 bg-primary/10 rounded-full text-primary"><TrendingUp size={16} /></div>
+                        <span className="text-xs text-muted-foreground font-mono tracking-widest">YOUR TOTAL HOLDINGS</span>
+                     </div>
+                     <span className="text-4xl md:text-5xl font-black font-orbitron text-white text-glow">
+                        {Math.floor(userTotalValue).toLocaleString()} <span className="text-2xl text-primary font-bold">$BASED</span>
                      </span>
-                     <span className="text-[10px] text-green-400/70 mt-0.5">↗ +30% FOR RARE+</span>
+                     <span className="text-xs text-muted-foreground mt-2 font-mono bg-white/5 px-2 py-1 rounded">
+                        {displayNfts.length} Guardians (Includes Rarity Boosts)
+                     </span>
+                 </div>
+                 
+                 <div className="flex flex-col items-center md:items-start pl-2">
+                     <span className="text-xs text-muted-foreground font-mono mb-1">BACKED PER NFT</span>
+                     <span className="text-xl font-mono text-green-400 flex items-center gap-2 font-bold">
+                        {Math.floor(baseValuePerNFT).toLocaleString()} $BASED
+                     </span>
+                     <span className="text-[10px] text-green-400/70 mt-1 flex items-center">
+                        <TrendingUp size={10} className="mr-1" /> Includes Mint + Emissions
+                     </span>
                  </div>
              </Card>
           )}
