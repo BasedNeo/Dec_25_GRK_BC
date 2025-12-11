@@ -17,11 +17,16 @@ interface NavbarProps {
   isConnected: boolean; 
 }
 
+import { useTokenPrice } from "@/hooks/useTokenPrice";
+
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { address, isConnected: wagmiConnected } = useAccount();
   const { isPaused, togglePause } = useSecurity();
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
+  
+  // Price Data
+  const { data: priceData } = useTokenPrice();
   
   // Badge State
   const [badges, setBadges] = useState<{topVoter: boolean, eliteSeller: boolean}>({ topVoter: false, eliteSeller: false });
@@ -109,7 +114,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             ))}
             
             <div className="flex items-center gap-2 ml-4 px-2 py-1 bg-white/5 rounded border border-white/10">
-                <span className="text-[10px] text-muted-foreground font-mono">1 ETH ≈ 50k $BASED</span>
+                <span className="text-[10px] text-muted-foreground font-mono flex flex-col leading-tight">
+                    <span>$BASED: ${priceData?.usd.toFixed(2) || "..."}</span>
+                    <span className="text-[8px] opacity-70">L1: ~${priceData ? (priceData.usd / 1000).toFixed(4) : "..."}</span>
+                </span>
             </div>
 
             {/* PWA Install Button (Mock) */}
