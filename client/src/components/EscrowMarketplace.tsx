@@ -110,7 +110,8 @@ export function EscrowMarketplace() {
      return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
         ...item,
         isListed: true, // Assume all fetched are listed for this demo
-        price: 420 + (item.id % 100), // Mock price
+        // Mock price: Make some items (e.g., every 3rd one) have NO price to test the "Offer" state
+        price: item.id % 3 === 0 ? undefined : 420 + (item.id % 100), 
         currency: '$BASED',
         owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
      })) as unknown as MarketItem[];
@@ -639,11 +640,17 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
             
             {/* Details */}
             <div className="p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground uppercase">Price</span>
-                        <span className="text-lg font-bold text-primary font-mono">{item.price} $BASED</span>
-                    </div>
+                <div className="flex justify-between items-center min-h-[3rem]">
+                    {item.price && item.price > 0 ? (
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground uppercase">Price</span>
+                            <span className="text-lg font-bold text-primary font-mono">{item.price} $BASED</span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col justify-center">
+                            <span className="text-[10px] text-muted-foreground uppercase italic">Taking Offers</span>
+                        </div>
+                    )}
                 </div>
                 
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -653,7 +660,7 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
                         </Button>
                     ) : (
                         <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold" onClick={onBuy}>
-                            BUY NOW
+                            {item.price && item.price > 0 ? "BUY NOW" : "OFFER"}
                         </Button>
                     )}
                     
