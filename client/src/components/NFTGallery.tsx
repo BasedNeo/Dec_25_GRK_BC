@@ -26,7 +26,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(true); // Default to CSV for indexing
+  const [useCsvData, setUseCsvData] = useState(false); // Default to IPFS (False) for fresh metadata, fallbacks to CSV for search
   const [showFilters, setShowFilters] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
@@ -183,7 +183,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         onClick={() => setUseCsvData(!useCsvData)}
                         className={`text-[10px] h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
                     >
-                        {useCsvData ? "Full Index (CSV) Active" : "Use IPFS Only"}
+                        {useCsvData ? "CSV Index Active" : "Live IPFS Data"}
                     </Button>
                     <Button 
                         variant="ghost" 

@@ -24,8 +24,17 @@ export function useGuardians(
     queryKey: ['nfts', address, useMockData, useCsvData, filters],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
-      // 0. CSV DATA MODE (Default: True) & SEARCH/FILTERING
-      if (useCsvData) {
+      
+      // Check if we need to force CSV mode due to active filters (Search, Rarity, Traits, Sort)
+      // IPFS mode only supports simple pagination, so we switch to CSV index for advanced queries.
+      const hasActiveFilters = 
+          !!filters.search || 
+          (filters.rarity && filters.rarity !== 'all') || 
+          (filters.traitType && filters.traitType !== 'all') || 
+          (filters.sortBy && filters.sortBy !== 'id-asc'); // Default sort is ID ASC, anything else needs CSV
+
+      // 0. CSV DATA MODE (Explicitly requested OR Active Filters)
+      if (useCsvData || hasActiveFilters) {
           try {
              let allGuardians = await loadGuardiansFromCSV();
              
@@ -167,15 +176,29 @@ export function useGuardians(
          return { nfts: MOCK_GUARDIANS, nextCursor: undefined };
       }
       
-      // 2. IPFS Fallback
+      // 2. IPFS Fallback (Default Mode)
       try {
         const startId = typeof pageParam === 'number' ? pageParam : 1;
         const nfts = await fetchGuardiansPage(startId);
         const nextCursor = (startId + 100) <= 3732 ? startId + 100 : undefined;
         return { nfts, nextCursor };
       } catch (e) {
-        console.warn("Error in useGuardians:", e);
-        return { nfts: [], nextCursor: undefined };
+        console.warn("IPFS fetch failed, falling back to CSV index:", e);
+        // Fallback to CSV if IPFS fails
+        try {
+            const csvNfts = await loadGuardiansFromCSV();
+            // Simulate pagination on CSV data
+            const startId = typeof pageParam === 'number' ? pageParam : 1;
+            const pageSize = 20; // Use smaller page size for CSV fallback to match standard behavior
+            const startIndex = startId - 1;
+            const endIndex = startIndex + pageSize;
+            const nfts = csvNfts.slice(startIndex, endIndex);
+            const nextCursor = endIndex < csvNfts.length ? endIndex + 1 : undefined;
+            return { nfts, nextCursor };
+        } catch (csvErr) {
+            console.error("Critical: Both IPFS and CSV failed", csvErr);
+            return { nfts: [], nextCursor: undefined };
+        }
       }
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
