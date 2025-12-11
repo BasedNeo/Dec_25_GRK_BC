@@ -75,24 +75,28 @@ export function PoolTracker() {
 
         // MOCK OVERRIDE IF DATA IS EMPTY (for demo purposes)
         if (balVal < 100) {
-             balVal = 5000000; // Mock ~5M $BASED earned by subnet
+             balVal = 350000; // Mock ~350k $BASED earned by subnet (Total Subnet Balance)
         }
 
         setSubnetBalance(balVal);
         
-        // 3. Calculate 10% Pool Share
-        const share = balVal * 0.10;
+        // 3. Calculate 10% Pool Share (Total Accrued Passive Emissions)
+        const share = balVal * 0.10; // ~35,000 if using mock
         setPoolShare(share);
 
         // 4. Calculate Daily Passive per NFT
-        const perNft = share / TOTAL_SUPPLY; // Using Fixed Total Supply as divisor
+        // User context: "passive emissions has only been acuring on for a week" (7 days)
+        // Daily Yield = (Total Pool Share / 7 Days) / 3732 NFTs
+        const daysActive = 7; 
+        const dailyPoolShare = share / daysActive; 
+        const perNft = dailyPoolShare / TOTAL_SUPPLY; 
         setDailyPassive(perNft > 0 ? perNft : 1.34);
 
     } catch (e) {
         console.error("Subnet Poll failed", e);
         // Fallback
-        setSubnetBalance(5000000);
-        setPoolShare(500000);
+        setSubnetBalance(350000);
+        setPoolShare(35000);
         setDailyPassive(1.34);
     }
   }, []);
