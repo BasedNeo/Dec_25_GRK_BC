@@ -156,11 +156,7 @@ export function Footer() {
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">
             <div className="flex items-center mb-4">
-               {/* Logo placeholder */}
-               <div className="w-8 h-8 border border-white/10 rounded-full flex items-center justify-center mr-2 bg-white/5">
-                 <span className="text-[8px]">LOGO</span>
-               </div>
-               BASED GUARDIANS v1.0
+               <span className="font-orbitron font-bold text-sm tracking-widest text-white">BASED GUARDIANS</span>
             </div>
             <div className="flex items-center">
                 <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>

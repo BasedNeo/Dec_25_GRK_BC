@@ -397,9 +397,9 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                   viewport={{ once: true }}
                   className={`grid gap-6 transition-all duration-300 ${
                     gridCols === 1 ? 'grid-cols-1' : 
-                    gridCols === 2 ? 'grid-cols-2' : 
-                    gridCols === 4 ? 'grid-cols-4' : 
-                    'grid-cols-6'
+                    gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                    gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
                   }`}
                 >
                   {displayNfts.map((guardian, idx) => (
