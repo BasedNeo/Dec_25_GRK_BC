@@ -70,21 +70,23 @@ export function PoolTracker() {
 
   const symbol = "$BASED";
 
-  // Mock Chart Data - Emissions Growth (Last 7 Days)
-  const chartData = {
+    const dailyEmission = 5000; // Pre-halving rate
+    const chartData = {
     labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
     datasets: [
       {
         label: 'Subnet Emissions ($BASED)',
-        data: [
-            balance ? parseFloat(balance) * 0.85 : 10000, 
-            balance ? parseFloat(balance) * 0.88 : 12000, 
-            balance ? parseFloat(balance) * 0.91 : 15000, 
-            balance ? parseFloat(balance) * 0.94 : 18000, 
-            balance ? parseFloat(balance) * 0.96 : 22000, 
-            balance ? parseFloat(balance) * 0.98 : 26000, 
-            balance ? parseFloat(balance) : 30000
-        ],
+        data: balance 
+            ? [
+                Math.max(0, parseFloat(balance) - dailyEmission * 6),
+                Math.max(0, parseFloat(balance) - dailyEmission * 5),
+                Math.max(0, parseFloat(balance) - dailyEmission * 4),
+                Math.max(0, parseFloat(balance) - dailyEmission * 3),
+                Math.max(0, parseFloat(balance) - dailyEmission * 2),
+                Math.max(0, parseFloat(balance) - dailyEmission * 1),
+                parseFloat(balance)
+              ]
+            : [0, 5000, 10000, 15000, 20000, 25000, 30000],
         borderColor: '#00ffff',
         backgroundColor: 'rgba(0, 255, 255, 0.1)',
         tension: 0.4,
@@ -163,7 +165,8 @@ export function PoolTracker() {
                 <div>
                     <p className="text-sm text-white font-bold mb-1">Baseline Emissions (non-staking)</p>
                     <p className="text-xs text-muted-foreground">
-                        10% of subnet emissions from <span className="text-white font-mono">{SUBNET_ADDRESS.slice(0,6)}...</span> flow into this community pool over time.
+                        Subnet emissions from <span className="text-white font-mono">{SUBNET_ADDRESS.slice(0,6)}...</span> flow into this community pool over time.
+                        <br/><span className="text-[10px] text-primary/70 mt-1 block">Current Rate: 5,000 BASED/day (Halving to 2,500 mid-Dec)</span>
                     </p>
                 </div>
              </div>
