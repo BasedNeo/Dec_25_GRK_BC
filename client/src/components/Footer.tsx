@@ -98,15 +98,6 @@ export function Footer() {
               <a href="#" className="hover:text-white transition-colors">Smart Contracts</a>
             </div>
 
-            {/* Discord CTA */}
-            <div className="pt-4">
-                <Button 
-                    className="bg-[#5865F2] hover:bg-[#4752C4] text-white font-orbitron tracking-wider w-full sm:w-auto cyber-button shadow-[0_0_15px_rgba(88,101,242,0.4)]"
-                    onClick={() => window.open('https://discord.gg/basedguardians', '_blank')}
-                >
-                    <Disc size={18} className="mr-2" /> JOIN DISCORD COMMUNITY
-                </Button>
-            </div>
             
             <p className="text-xs text-muted-foreground mt-2 font-mono">
               ROYALTIES: SPLIT TO COMMUNITY & TEAM ({ROYALTY_WALLET})

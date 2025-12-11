@@ -104,12 +104,6 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
 
-  const handleDiscordShare = () => {
-      // Mock Discord Share (usually just copies link or opens Discord web)
-      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-  };
 
   // Determine rarity color
   const getRarityColor = (rarity: string) => {
@@ -311,12 +305,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0">
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                      <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
                         <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
-                     </Button>
-                     <Button variant="outline" onClick={handleDiscordShare} className="border-white/10 hover:bg-[#5865F2]/20 hover:text-[#5865F2] hover:border-[#5865F2]/50 text-xs font-mono">
-                        <Disc size={14} className="mr-2" /> <span className="hidden sm:inline">DISCORD</span>
                      </Button>
                      <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
                         <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
