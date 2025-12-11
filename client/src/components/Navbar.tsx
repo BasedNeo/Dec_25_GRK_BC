@@ -108,7 +108,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               <img 
                 src={rocketLogo}
                 alt="Based Guardians Rocket" 
-                className="h-12 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
+                className="h-14 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
               />
               {/* Smoke Particles */}
               <div className="smoke-particle smoke-1 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
