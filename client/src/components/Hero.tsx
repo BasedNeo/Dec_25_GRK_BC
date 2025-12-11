@@ -13,6 +13,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
+import { useTotalSupply } from "@/hooks/useTotalSupply";
 import { AverageStatsChart } from "./AverageStatsChart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -22,6 +23,7 @@ export function Hero() {
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
+  const { totalSupply, isLoading: isLoadingSupply } = useTotalSupply();
   
   // Parallax
   const { scrollY } = useScroll();
@@ -30,6 +32,14 @@ export function Hero() {
   // Supply Counter Animation
   const count = useMotionValue(0);
   const rounded = useTransform(count, Math.round);
+
+  // Use real supply if loaded, otherwise fallback to mock
+  const displayCount = isLoadingSupply ? MINTED_COUNT : totalSupply;
+
+  useEffect(() => {
+    const animation = animate(count, displayCount, { duration: 2, ease: "easeOut" });
+    return animation.stop;
+  }, [displayCount]);
 
   // Fetch Real Guardian #3000 as requested
   const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "3000" });
@@ -185,7 +195,7 @@ export function Hero() {
             <div className="w-full h-2 bg-secondary rounded-full overflow-hidden mb-8">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(MINTED_COUNT / TOTAL_SUPPLY) * 100}%` }}
+                animate={{ width: `${(displayCount / TOTAL_SUPPLY) * 100}%` }}
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-primary to-accent"
               />
@@ -235,8 +245,8 @@ export function Hero() {
 
             <Button 
               id="hero-mint-section"
-              onClick={handleMint}
-              disabled={isMinting || isPaused}
+              onClick={() => window.open('https://aftermint.trade', '_blank')}
+              disabled={isPaused}
               className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button mb-4
                 ${mintButtonColor === 'purple' 
                   ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
@@ -248,12 +258,8 @@ export function Hero() {
                   <span className="flex items-center text-red-500">
                       <Zap className="mr-2 h-4 w-4" /> PAUSED
                   </span>
-              ) : isMinting ? (
-                <span className="animate-pulse flex items-center">
-                  PROCESSING <Zap className="ml-2 h-4 w-4 animate-bounce" />
-                </span>
               ) : (
-                "MINT GUARDIAN"
+                "MINT ON AFTERMINT"
               )}
             </Button>
             
