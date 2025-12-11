@@ -161,7 +161,7 @@ export function PoolTracker() {
              <div className="flex items-start gap-3 text-left">
                 <Info className="text-primary shrink-0 mt-1" size={18} />
                 <div>
-                    <p className="text-sm text-white font-bold mb-1">10% Allocation Strategy</p>
+                    <p className="text-sm text-white font-bold mb-1">Baseline Emissions (non-staking)</p>
                     <p className="text-xs text-muted-foreground">
                         10% of subnet emissions from <span className="text-white font-mono">{SUBNET_ADDRESS.slice(0,6)}...</span> flow into this community pool over time.
                     </p>
