@@ -147,12 +147,21 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             BASED L1
                         </Badge>
                         {/* Backed Value Display (Premium Feature) */}
-                        <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
-                            <Activity size={12} className="text-green-400" />
-                            <span className="text-[10px] text-green-400 font-mono font-bold tracking-wider">
-                                BACKED BY: {backedValue.toLocaleString()} $BASED {isRareItem && <span className="text-white/70 ml-1">(+30% BOOST)</span>}
-                            </span>
-                        </div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full cursor-help">
+                                        <Activity size={12} className="text-green-400" />
+                                        <span className="text-[10px] text-green-400 font-mono font-bold tracking-wider">
+                                            BACKED BY: {backedValue.toLocaleString()} $BASED {isRareItem && <span className="text-white/70 ml-1">(+30% BOOST)</span>}
+                                        </span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-black border-green-500 text-green-400 font-mono text-xs max-w-[200px]">
+                                    <p>This NFT is backed by {backedValue.toLocaleString()} $BASED in the community treasury.{isRareItem ? " Includes a 30% rarity multiplier." : ""}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
                 

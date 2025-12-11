@@ -373,7 +373,7 @@ export function EscrowMarketplace() {
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                <Input 
                  placeholder="Search Traits (e.g. 'High Power')..." 
-                 className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
+                 className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full scroll-mt-20"
                  value={search}
                  onChange={handleSearchChange}
                  onKeyDown={(e) => {
