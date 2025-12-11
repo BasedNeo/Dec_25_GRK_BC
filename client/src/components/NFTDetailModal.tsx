@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,13 +44,16 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       // Trigger confetti - Always trigger for fun or check rarity
       const isRare = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity) || nft.id % 100 === 0;
       if (isRare) {
-        confetti({
-          particleCount: 150,
-          spread: 100,
-          origin: { y: 0.6 },
-          colors: ['#00ffff', '#bf00ff', '#ffffff'],
-          zIndex: 1000
-        });
+        // Use a slightly lower z-index than modal to ensure it doesn't block interactions if that was the issue
+        setTimeout(() => {
+            confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#00ffff', '#bf00ff', '#ffffff'],
+            zIndex: 100 // Lower z-index to be safe, modal is usually 50-100+
+            });
+        }, 300);
       }
     }
   }, [isOpen, nft]);
@@ -137,10 +140,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       {/* 
-          Mobile: fixed inset-0 (full screen), z-[110] to ensure it's top
-          Desktop: md:w-full md:h-[95vh] etc.
+          Using standard Dialog structure but with custom overlay/content styling for full screen mobile
       */}
-      <DialogContent className="fixed inset-0 w-screen h-[100dvh] md:relative md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[110]">
+      <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[100vw] h-[100vh] md:w-[90vw] md:h-[90vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[150] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] duration-200">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
