@@ -1,29 +1,34 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MOCK_POOL_BALANCE, TOTAL_SUPPLY } from "@/lib/mockData";
+import { MOCK_POOL_BALANCE, TOTAL_SUPPLY, calculateBackedValue } from "@/lib/mockData";
 import { TrendingUp, DollarSign, Activity, RefreshCw } from "lucide-react";
 import { useBalance } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export function ValueEstimation() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   
-  // Fetch Pool Balance
+  // Use the centralized harmonized value logic
+  const [baseValuePerNFT, setBaseValuePerNFT] = useState(calculateBackedValue());
+
+  // Live Ticker
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setBaseValuePerNFT(calculateBackedValue());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch Pool Balance (for reference/debug, but not used for the display value anymore)
   const { data: poolBalance, refetch: refetchBalance } = useBalance({
     address: import.meta.env.VITE_POOL_WALLET as `0x${string}` || undefined,
-    token: import.meta.env.VITE_BASED_TOKEN as `0x${string}` || undefined, // Use specific token if env set
-    query: {
-      staleTime: 30000,
-    }
+    token: import.meta.env.VITE_BASED_TOKEN as `0x${string}` || undefined, 
+    query: { staleTime: 30000 }
   });
-
-  // FUTURE INTEGRATION: Fetch Average Floor Price from Aftermint.trade API
-  // Currently manual admin update via VITE_FLOOR_PRICE env var or admin dashboard
-  // const { data: floorPrice } = useQuery(...)
 
   // Fetch User Guardians
   const { data, refetch: refetchGuardians } = useGuardians();
@@ -39,12 +44,6 @@ export function ValueEstimation() {
     // Simulate a min delay for visual feedback and debounce
     setTimeout(() => setIsRefreshing(false), 2000);
   };
-
-  const currentPoolBalance = poolBalance 
-    ? parseFloat(poolBalance.formatted) 
-    : MOCK_POOL_BALANCE;
-    
-  const baseValuePerNFT = currentPoolBalance / TOTAL_SUPPLY;
   
   // Calculate User Total Value with Boosts
   // Boost logic: 30% boost if Rarity Level is 'Rarest', 'Legendary', or contains 'Rare'
