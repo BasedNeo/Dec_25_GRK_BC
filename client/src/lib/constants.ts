@@ -5,6 +5,6 @@ export const ADMIN_WALLET = import.meta.env.VITE_ADMIN_WALLET || "0xAe543104104f
 export const ROYALTY_WALLET = import.meta.env.VITE_ROYALTY_WALLET || "0xb1362caf09189887599ed40f056712b1a138210c";
 export const NFT_SYMBOL = "BASED";
 export const TWITTER_URL = "https://x.com/based_guardians";
-export const IPFS_ROOT = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeibjtmlygkgwq7kw56rehjleth46clcaokgrx2y5ijy3qjxlmomphi/";
+export const IPFS_ROOT = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/";
 export const ALCHEMY_KEY = import.meta.env.VITE_ALCHEMY_KEY;
 export const NFT_CONTRACT = import.meta.env.VITE_NFT_CONTRACT;
