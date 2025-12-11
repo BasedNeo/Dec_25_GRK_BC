@@ -71,22 +71,22 @@ export function PoolTracker() {
   const symbol = "$BASED";
 
     const dailyEmission = 5000; // Pre-halving rate
+    
+    // "Chart these emissions starting now" -> Forward looking projection of the accumulation
     const chartData = {
-    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
+    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
     datasets: [
       {
-        label: 'Subnet Emissions ($BASED)',
-        data: balance 
-            ? [
-                Math.max(0, parseFloat(balance) - dailyEmission * 6),
-                Math.max(0, parseFloat(balance) - dailyEmission * 5),
-                Math.max(0, parseFloat(balance) - dailyEmission * 4),
-                Math.max(0, parseFloat(balance) - dailyEmission * 3),
-                Math.max(0, parseFloat(balance) - dailyEmission * 2),
-                Math.max(0, parseFloat(balance) - dailyEmission * 1),
-                parseFloat(balance)
-              ]
-            : [0, 5000, 10000, 15000, 20000, 25000, 30000],
+        label: 'Projected Accumulation ($BASED)',
+        data: [
+            dailyEmission * 1,
+            dailyEmission * 2,
+            dailyEmission * 3,
+            dailyEmission * 4,
+            dailyEmission * 5,
+            dailyEmission * 6,
+            dailyEmission * 7
+        ],
         borderColor: '#00ffff',
         backgroundColor: 'rgba(0, 255, 255, 0.1)',
         tension: 0.4,
@@ -175,7 +175,7 @@ export function PoolTracker() {
           {/* Chart Container */}
           <div className="w-full h-64 md:h-80 bg-black/60 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-sm shadow-2xl relative">
              <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
-                <TrendingUp size={14} /> EMISSIONS GROWTH (7D)
+                <TrendingUp size={14} /> EMISSIONS FORECAST (7D)
              </div>
              <div className="pt-6 h-full">
                 <Line data={chartData} options={chartOptions} />
