@@ -11,7 +11,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
 import { useToast } from "@/hooks/use-toast";
-import rocketLogo from '@assets/generated_images/neon_cyan_line_art_rocket_ship.png';
+import rocketLogo from '@assets/generated_images/neon_cyan_line_art_rocket_with_small_flame.png';
 
 interface NavbarProps {
   activeTab: string;
@@ -110,10 +110,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 alt="Based Guardians Rocket" 
                 className="h-14 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
               />
-              {/* Smoke Particles */}
-              <div className="smoke-particle smoke-1 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
-              <div className="smoke-particle smoke-2 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
-              <div className="smoke-particle smoke-3 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
             </div>
             {isPaused && (
                 <Badge variant="destructive" className="animate-pulse border-red-500 bg-red-900/50 text-red-500">
