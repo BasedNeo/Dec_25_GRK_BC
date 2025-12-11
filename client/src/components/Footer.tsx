@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Send, MessageSquare, ShieldCheck, Twitter, Github } from "lucide-react";
+import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
 
@@ -72,6 +72,18 @@ export function Footer() {
                 <ShieldCheck size={12} className="text-green-500" />
                 Audited & Secure
               </div>
+            </div>
+
+            <div className="pt-2">
+                <a 
+                    href="https://www.destinyrescue.org/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors font-mono group"
+                >
+                    <Heart size={12} className="text-red-500 fill-red-500/20 group-hover:fill-red-500 transition-colors" />
+                    <span>Proudly donating 4% of profits to <span className="underline decoration-primary/30 underline-offset-2 group-hover:decoration-primary">Destiny Rescue</span></span>
+                </a>
             </div>
 
             <div className="flex gap-6 text-sm text-muted-foreground font-mono">
