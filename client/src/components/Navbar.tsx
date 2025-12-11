@@ -112,6 +112,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 <span className="text-[10px] text-muted-foreground font-mono">1 ETH ≈ 50k $BASED</span>
             </div>
 
+            {/* PWA Install Button (Mock) */}
+            <Button variant="ghost" size="sm" className="ml-2 text-[10px] text-muted-foreground hover:text-white border border-transparent hover:border-white/20">
+                INSTALL APP
+            </Button>
+
             {isAdmin && (
                 <Button 
                     variant="outline" 

@@ -177,8 +177,24 @@ export function EscrowMarketplace() {
 
     // Search (Fuse.js)
     if (debouncedSearch && fuse) {
-        const results = fuse.search(debouncedSearch);
-        items = results.map(r => r.item);
+        // Check for exact ID match first
+        if (/^\d+$/.test(debouncedSearch)) {
+             const exactIdMatch = items.find(i => i.id === parseInt(debouncedSearch));
+             if (exactIdMatch) {
+                 // Move exact match to top or just show it if user wants exact
+                 // For now, let's just make sure it's in the results, maybe filteredItems logic handles it?
+                 // Fuse might not prioritize exact ID match perfectly if thresholds are loose.
+                 // Let's force it.
+                 const others = fuse.search(debouncedSearch).map(r => r.item).filter(i => i.id !== exactIdMatch.id);
+                 items = [exactIdMatch, ...others];
+             } else {
+                 const results = fuse.search(debouncedSearch);
+                 items = results.map(r => r.item);
+             }
+        } else {
+             const results = fuse.search(debouncedSearch);
+             items = results.map(r => r.item);
+        }
     } else if (search) {
         // Fallback or immediate typing (optional, usually wait for debounce)
         // But let's stick to debounced for performance
@@ -740,10 +756,11 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
 
         {/* Rarity Badge */}
         <div className="absolute top-2 right-2">
-          <Badge className={`backdrop-blur-md border-none ${
-             item.rarity === 'Legendary' ? 'bg-orange-500/20 text-orange-400' : 
-             item.rarity === 'Rare' ? 'bg-purple-500/20 text-purple-400' : 
-             'bg-white/10 text-gray-300'
+          <Badge className={`backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
+             item.rarity === 'Legendary' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : 
+             item.rarity === 'Epic' ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
+             item.rarity === 'Rare' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
+             'bg-black/40 text-gray-300'
           }`}>
             {item.rarity}
           </Badge>
@@ -768,7 +785,9 @@ function MarketCard({ item, onBuy, isConnected, onConnect, isOwner = false, isAd
         {/* Owner Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
           <p className="text-[10px] text-muted-foreground font-mono">OWNER</p>
-          <p className="text-xs text-white font-mono truncate">{item.owner}</p>
+          <p className="text-xs text-white font-mono truncate">
+            {item.owner.slice(0, 6)}...{item.owner.slice(-4)}
+          </p>
         </div>
       </div>
 

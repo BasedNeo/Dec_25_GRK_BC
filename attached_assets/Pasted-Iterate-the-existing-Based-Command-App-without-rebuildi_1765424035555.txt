@@ -1,0 +1,21 @@
+Iterate the existing Based Command App without rebuilding any core structure or features. Focus on the following optimizations and fixes for each section, ensuring world-class commercial quality: Secure (no leaks, sanitization), performant (fast loads for 3732 items), cross-device responsive (mobile/desktop, touch/keyboard), and user-sticky (engaging animations, easy nav). Use best practices from OpenSea/Blur/Magic Eden (e.g., fuzzy search, attribute badges, bulk-free). Add: SEO meta tags per section, GA event tracking for interactions, feedback hooks. No errors; test with 3732 NFTs.
+
+1. **Sales Tab Marketplace (NFT Search & Display)**: Fix NFT search to correctly pull exact tokenId (e.g., "NFT 3000" shows #3000 first). Add fuzzy/exact match toggle. Enhance filters: By name (partial), Rarity Level, Character Type ("Based Frog", "Based Guardians", "Based Creature"), any trait (e.g., "Strength >8"). Instant results with debounce (300ms). Add "Trending NFTs" section (top 10 by views/offers). Secure: Sanitize search inputs. Mobile: Filter dropdowns collapsible.
+
+2. **Pool Tab**: Remove "Treasury is governed by Based Guardians" — replace with "Pool increases by emissions and royalties from secondary sales." Add real-time chart (simple line via Chart.js) for pool growth. Show admin wallet (shortened) with explorer link. Secure: Read-only balance call. Mobile: Chart resizes.
+
+3. **All Pages**: Remove wallet address display everywhere (hide or replace with "Connected" icon). Only show shortened address/ENS in header after connect. Secure: No full address leaks.
+
+4. **NFT Previews (Gallery/Sales)**: Update translucent top-right block to dynamically show "Rarity Level" from metadata (e.g., "Rare" for rare, "Epic" for epic, remove if common). Make block neon-colored based on rarity (cyan for Rare, purple for Epic). Secure: Sanitize labels.
+
+5. **Modals/Windows**: Make "X" close button more prominent (larger, red hover, centered top-right) without distracting (subtle glow). Add escape key/click-outside to close. Mobile: Add swipe-down gesture. Secure: No modal exploits.
+
+6. **Gallery Tab**: Center "YOUR BATTALION" text (use Tailwind text-center). Add total value summary above grid. Secure: Cached fetches.
+
+7. **NFT Metadata Area/Previews**: Expand modal width to 80% screen (desktop), full-width mobile. Ensure descriptions wrap (no cutoff; use CSS white-space: pre-wrap). Show all 13+ attributes in scrollable list. Add copy button for traits. Secure: Escape long texts.
+
+8. **Share Links**: Make all share buttons work (X/Discord) — on listings/votes, generate "I just voted on [proposal] in Based Command App! #BasedGuardians" with link. Use navigator.share on mobile. Secure: No data in shares.
+
+9. **Explorer Links**: Ensure all contract/explorer buttons work (e.g., NFT contract → https://explorer.bf1337.org/address/VITE_NFT_CONTRACT). Add to footer/pool. Secure: External links open in new tab.
+
+Additional commercial optimizations: Add A/B test for mint button (cyan vs purple). Add "Install App" PWA button in header. Add Sentry error tracking (VITE_SENTRY_DSN). Full Lighthouse 98+ (compress images, minify). Simulate 100 users: No lag on search/loads. Cross-device: iOS/Android gestures. No errors; test 3732 NFTs fully.

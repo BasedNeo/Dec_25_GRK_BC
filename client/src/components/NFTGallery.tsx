@@ -136,11 +136,17 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-8">
           <div>
-            <h2 className="text-3xl md:text-4xl text-white mb-2">YOUR <span className="text-primary">BATTALION</span></h2>
-            <p className="text-muted-foreground font-rajdhani">Manage your Guardians and view their traits.</p>
+            <h2 className="text-3xl md:text-4xl text-white mb-2 text-center md:text-left">YOUR <span className="text-primary">BATTALION</span></h2>
+            <p className="text-muted-foreground font-rajdhani text-center md:text-left">Manage your Guardians and view their traits.</p>
           </div>
           
-          <div className="flex flex-col items-end gap-2 mt-4 md:mt-0 w-full md:w-auto">
+          <div className="flex flex-col items-center md:items-end gap-2 mt-4 md:mt-0 w-full md:w-auto">
+             {/* Total Value Summary */}
+             {isConnected && nfts.length > 0 && (
+                 <div className="text-xs font-mono text-primary mb-2">
+                     TOTAL VALUE: ≈ {userTotalValue.toLocaleString()} $BASED
+                 </div>
+             )}
             {isConnected && (
                <div className="flex flex-col gap-4 w-full md:items-end">
                  
