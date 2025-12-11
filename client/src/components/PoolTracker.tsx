@@ -1,8 +1,8 @@
-import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions } from "@/lib/mockData";
+import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions, HALVING_TIMESTAMP, EMISSION_RATE_DAILY } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info } from "lucide-react";
 import { Line } from "react-chartjs-2";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { fetchTotalSupply } from "@/lib/onchain";
 import {
@@ -14,8 +14,10 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  TimeScale
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -25,7 +27,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  TimeScale
 );
 
 const SUBNET_ADDRESS = "0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4";
@@ -92,35 +95,56 @@ export function PoolTracker() {
   const displayBalance = balance.toLocaleString();
 
   const symbol = "$BASED";
-  const dailyEmission = 5000; // Pre-halving rate
-    
-    // "Chart these emissions starting now" -> Forward looking projection of the accumulation
-    const chartData = {
-    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
-    datasets: [
-      {
-        label: 'Projected Accumulation ($BASED)',
-        data: [
-            dailyEmission * 1,
-            dailyEmission * 2,
-            dailyEmission * 3,
-            dailyEmission * 4,
-            dailyEmission * 5,
-            dailyEmission * 6,
-            dailyEmission * 7
-        ],
-        borderColor: '#00ffff',
-        backgroundColor: 'rgba(0, 255, 255, 0.1)',
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#000',
-        pointBorderColor: '#00ffff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6
+  
+  // Generate Chart Data: Project to Halving (Dec 31, 2025)
+  const chartData = useMemo(() => {
+      const labels = [];
+      const dataPoints = [];
+      
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Generate monthly points until Dec 2025
+      let iterDate = new Date(currentYear, currentMonth, 1);
+      const endDate = new Date(HALVING_TIMESTAMP);
+      
+      let accumulatedEmissions = calculateEmissions(); // Start with current
+      
+      while (iterDate <= endDate) {
+          labels.push(iterDate.toISOString().split('T')[0]); // YYYY-MM-DD
+          dataPoints.push(accumulatedEmissions);
+          
+          // Add ~30 days of emissions
+          accumulatedEmissions += EMISSION_RATE_DAILY * 30;
+          
+          // Increment month
+          iterDate.setMonth(iterDate.getMonth() + 1);
       }
-    ]
-  };
+      
+      // Add final point
+      labels.push(new Date(HALVING_TIMESTAMP).toISOString().split('T')[0]);
+      dataPoints.push(accumulatedEmissions);
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Projected Emissions ($BASED)',
+            data: dataPoints,
+            borderColor: '#00ffff',
+            backgroundColor: 'rgba(0, 255, 255, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#000',
+            pointBorderColor: '#00ffff',
+            pointBorderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6
+          }
+        ]
+      };
+  }, []);
 
   const chartOptions = {
     responsive: true,
@@ -137,13 +161,25 @@ export function PoolTracker() {
         borderWidth: 1,
         padding: 10,
         titleFont: { family: 'Orbitron' },
-        bodyFont: { family: 'Space Mono' }
+        bodyFont: { family: 'Space Mono' },
+        callbacks: {
+            label: function(context: any) {
+                return ` ${context.parsed.y.toLocaleString()} $BASED`;
+            }
+        }
       }
     },
     scales: {
       x: {
+        type: 'time',
+        time: {
+            unit: 'month',
+            displayFormats: {
+                month: 'MMM yyyy'
+            }
+        },
         grid: { display: false, drawBorder: false },
-        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Space Mono', size: 10 } }
+        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Space Mono', size: 10 }, maxRotation: 45, minRotation: 45 }
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
@@ -202,9 +238,10 @@ export function PoolTracker() {
           {/* Chart Container */}
           <div className="w-full h-64 md:h-80 bg-black/60 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-sm shadow-2xl relative">
              <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
-                <TrendingUp size={14} /> EMISSIONS FORECAST (7D)
+                <TrendingUp size={14} /> PROJECTED EMISSIONS TO HALVING (DEC 2025)
              </div>
              <div className="pt-6 h-full">
+                {/* @ts-ignore */}
                 <Line data={chartData} options={chartOptions} />
              </div>
           </div>

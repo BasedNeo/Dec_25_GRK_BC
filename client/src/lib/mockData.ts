@@ -113,11 +113,11 @@ export const MOCK_PROPOSALS: Proposal[] = [
 
 export const MINT_PRICE = 69420;
 export const TOTAL_SUPPLY = 3732;
-export const MINTED_COUNT = 6; // Updated to 6 based on user input
+export const MINTED_COUNT = 6; 
 
 // Backing Value Constants & Logic
-// Genesis Date: Dec 1st, 2024 (Arbitrary start for demo)
 export const GENESIS_TIMESTAMP = new Date('2024-12-01T00:00:00Z').getTime(); 
+export const HALVING_TIMESTAMP = new Date('2025-12-31T23:59:59Z').getTime();
 export const EMISSION_RATE_DAILY = 5000; // 5,000 $BASED per day
 export const MINT_REVENUE_PERCENT = 0.51; // 51%
 
@@ -129,24 +129,32 @@ export const calculateEmissions = () => {
 };
 
 export const calculateBackedValue = () => {
-  const totalEmissions = calculateEmissions();
-  const mintRevenuePerUnit = MINT_PRICE * MINT_REVENUE_PERCENT; // 51% backing per unit
+  // 1. Base per-NFT from mints: 51% of 69,420
+  const mintShare = MINT_PRICE * MINT_REVENUE_PERCENT; // 35,404.2
   
-  // Backed By Per NFT = Mint Share + Emissions Share (distributed across all supply? or just minted?)
-  // Usually backing is Total Treasury / Total Supply.
-  // Treasury = (Minted * Price * 0.51) + Emissions
-  // But here we want a per-NFT value. 
-  // Let's keep the previous logic for "Backed By" (Mint Rev Unit + Emissions Unit)
-  // Emissions per unit = Total Emissions / TOTAL_SUPPLY (diluted by total supply)
+  // 2. Daily Emissions Accrual (Projected to Halving)
+  const dailyEmissionPerNft = EMISSION_RATE_DAILY / TOTAL_SUPPLY; // ~1.34
   
-  const emissionsPerUnit = totalEmissions / TOTAL_SUPPLY;
-  return Math.floor(mintRevenuePerUnit + emissionsPerUnit);
+  // Calculate total days from Genesis to Halving
+  const msTotalDuration = Math.max(0, HALVING_TIMESTAMP - GENESIS_TIMESTAMP);
+  const totalDays = msTotalDuration / (1000 * 60 * 60 * 24);
+  
+  const emissionsShare = dailyEmissionPerNft * totalDays;
+  
+  // Total harmonized value = mint-backed + full emissions cycle to halving
+  return Math.floor(mintShare + emissionsShare);
 };
 
-// Pool Balance = (Minted * Price) + Emissions
-// User requested: "6x 69.240" (Full price?) + Daily Emissions
+// Pool Balance = (Minted * Price * 0.51) + Emissions
+// Note: User prompt asked for "6x 69.240" for pool total earlier, but here we are harmonizing.
+// The "Pool Total" usually tracks the *actual* treasury.
+// But the "Backed By Per NFT" tracks the *theoretical* value per unit.
 export const calculatePoolBalance = () => {
-    const mintRevenue = MINTED_COUNT * MINT_PRICE; 
+    // We stick to the previous requested logic for the POOL TRACKER total (Live Mint Revenue + Emissions)
+    // But we update the "Backed By" logic elsewhere.
+    const mintRevenue = MINTED_COUNT * MINT_PRICE; // Full revenue or 51%? User said "6x 69.240" earlier.
+    // Let's keep the Pool Balance logic consistent with the previous specific request for the *hero/pool display*,
+    // but the *per NFT* value uses the new harmonized logic.
     const emissions = calculateEmissions();
     return mintRevenue + emissions;
 };

@@ -202,7 +202,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                     </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="bg-black border-green-500 text-green-400 font-mono text-xs max-w-[200px]">
-                                    <p>This NFT is backed by {displayValue.toLocaleString()} $BASED in the community treasury (Includes 51% Mint Share + Passive Emissions).</p>
+                                    <p>Backed by {displayValue.toLocaleString()} $BASED per NFT (includes mints + emissions until Dec 31 halving)</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

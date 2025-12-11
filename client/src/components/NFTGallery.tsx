@@ -156,14 +156,16 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
           {isConnected && nfts.length > 0 && (
              <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-4 flex items-center gap-6 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
                  <div className="flex flex-col items-center border-r border-white/10 pr-6">
-                     <span className="text-xs text-muted-foreground font-mono">TOTAL VALUE</span>
-                     <span className="text-2xl font-orbitron text-white">≈ {Math.floor(userTotalValue).toLocaleString()} <span className="text-primary text-sm">$BASED</span></span>
+                     <span className="text-xs text-muted-foreground font-mono">YOUR TOTAL HOLDINGS</span>
+                     <span className="text-2xl font-orbitron text-white"> {Math.floor(userTotalValue).toLocaleString()} <span className="text-primary text-sm">$BASED</span></span>
+                     <span className="text-[10px] text-muted-foreground mt-1">{displayNfts.length} Guardians (Includes Rarity Boosts)</span>
                  </div>
                  <div className="flex flex-col items-center pl-2">
-                     <span className="text-xs text-muted-foreground font-mono">BACKING</span>
+                     <span className="text-xs text-muted-foreground font-mono">BACKED BY / NFT</span>
                      <span className="text-sm font-mono text-green-400 flex items-center gap-1">
-                        <TrendingUp size={12} /> +{Math.floor(baseValuePerNFT).toLocaleString()} / NFT
+                        <TrendingUp size={12} /> {Math.floor(baseValuePerNFT).toLocaleString()} $BASED
                      </span>
+                     <span className="text-[10px] text-green-400/70 mt-0.5">↗ +30% FOR RARE+</span>
                  </div>
              </Card>
           )}
