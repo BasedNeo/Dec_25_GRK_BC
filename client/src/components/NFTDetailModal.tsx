@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp } from "lucide-react";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download } from "lucide-react";
 import { Guardian, calculateBackedValue } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -41,14 +41,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   useEffect(() => {
     if (isOpen && nft) {
-      // Trigger confetti for rare items
-      const isRare = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity);
+      // Trigger confetti - Always trigger for fun or check rarity
+      const isRare = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity) || nft.id % 100 === 0;
       if (isRare) {
         confetti({
-          particleCount: 100,
-          spread: 70,
+          particleCount: 150,
+          spread: 100,
           origin: { y: 0.6 },
-          colors: ['#00ffff', '#bf00ff', '#ffffff']
+          colors: ['#00ffff', '#bf00ff', '#ffffff'],
+          zIndex: 1000
         });
       }
     }
@@ -56,14 +57,14 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   // Chart Data Preparation
   const chartData = useMemo(() => {
-    if (!nft) return [];
+    if (!nft || !nft.traits) return [];
     
     // Extract standard stats or generate mock ones for the visual if missing
     // We try to find specific traits, or fallback to random/hash based values for the chart visual
     const getTraitValue = (name: string) => {
         const t = nft.traits.find(tr => tr.type === name);
         if (t) return parseInt(t.value) || 5;
-        // Deterministic fallback based on ID for consistency
+        // Deterministic fallback based on ID for consistency if missing
         return (nft.id * name.length) % 10 + 1;
     };
 
@@ -84,6 +85,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const displayValue = Math.floor(backedValue * (isRareItem ? 1.3 : 1.0));
 
   const handleCopyTraits = () => {
+    if (!nft.traits) return;
     const text = nft.traits.map(t => `${t.type}: ${t.value}`).join('\n');
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -135,10 +137,10 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       {/* 
-          Mobile: fixed inset-0 (full screen), z-50
+          Mobile: fixed inset-0 (full screen), z-[110] to ensure it's top
           Desktop: md:w-full md:h-[95vh] etc.
       */}
-      <DialogContent className="fixed inset-0 w-screen h-[100dvh] md:relative md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[100]">
+      <DialogContent className="fixed inset-0 w-screen h-[100dvh] md:relative md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[110]">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
@@ -209,9 +211,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-14 w-14 md:h-16 md:w-16 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.8)] z-50 group"
+                        className="absolute top-4 right-4 h-16 w-16 text-muted-foreground hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border-2 border-white/20 hover:border-red-500 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.8)] z-50 group"
                     >
-                        <X size={32} className="md:w-10 md:h-10 group-hover:scale-110 transition-transform group-hover:text-red-400" />
+                        <X size={32} className="group-hover:scale-110 transition-transform group-hover:text-red-400" />
                     </Button>
                 </DialogClose>
             </div>
@@ -225,7 +227,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <span>Metadata is fetched directly from on-chain/IPFS sources. Rarity and values are estimates only.</span>
                     </div>
 
-                    {/* Radar Chart (Recharts) - Restoring the "Charts" view */}
+                    {/* Radar Chart (Recharts) */}
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                         <h3 className="text-sm font-orbitron text-white mb-3 flex items-center">
                             <BarChart3 size={14} className="mr-2 text-primary" /> GUARDIAN METRICS
@@ -267,35 +269,41 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             </Button>
                         </div>
                         
-                        <Accordion type="single" collapsible className="w-full">
-                            {nft.traits.map((trait, i) => (
-                                <AccordionItem key={i} value={`item-${i}`} className="border-white/10">
-                                    <AccordionTrigger className="text-xs hover:text-primary py-2 font-mono uppercase text-muted-foreground">
-                                        <div className="flex justify-between w-full pr-4">
-                                            <span>{safeSanitize(trait.type)}</span>
-                                            <span className="text-white font-bold">
-                                                {safeSanitize(trait.value).substring(0, 15)}
-                                                {trait.value && trait.value.length > 15 ? '...' : ''}
-                                            </span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="text-sm text-white font-medium whitespace-pre-wrap bg-white/5 p-3 rounded">
-                                        {safeSanitize(trait.value)}
-                                        <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
-                                            <Badge variant="outline" className="text-[10px] border-white/20 text-muted-foreground">
-                                                Rarity Impact: +{(Math.random() * 5).toFixed(1)}%
-                                            </Badge>
-                                            <Button size="sm" variant="ghost" className="h-5 text-[10px]" onClick={() => {
-                                                navigator.clipboard.writeText(trait.value);
-                                                toast({ description: "Trait value copied" });
-                                            }}>
-                                                Copy
-                                            </Button>
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
+                        {nft.traits && nft.traits.length > 0 ? (
+                            <Accordion type="single" collapsible className="w-full">
+                                {nft.traits.map((trait, i) => (
+                                    <AccordionItem key={i} value={`item-${i}`} className="border-white/10">
+                                        <AccordionTrigger className="text-xs hover:text-primary py-2 font-mono uppercase text-muted-foreground">
+                                            <div className="flex justify-between w-full pr-4">
+                                                <span>{safeSanitize(trait.type)}</span>
+                                                <span className="text-white font-bold">
+                                                    {safeSanitize(trait.value).substring(0, 20)}
+                                                    {trait.value && trait.value.length > 20 ? '...' : ''}
+                                                </span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="text-sm text-white font-medium whitespace-pre-wrap bg-white/5 p-3 rounded">
+                                            {safeSanitize(trait.value)}
+                                            <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
+                                                <Badge variant="outline" className="text-[10px] border-white/20 text-muted-foreground">
+                                                    Rarity Impact: +{(Math.random() * 5).toFixed(1)}%
+                                                </Badge>
+                                                <Button size="sm" variant="ghost" className="h-5 text-[10px]" onClick={() => {
+                                                    navigator.clipboard.writeText(trait.value);
+                                                    toast({ description: "Trait value copied" });
+                                                }}>
+                                                    Copy
+                                                </Button>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        ) : (
+                            <div className="text-center py-4 text-muted-foreground text-xs font-mono">
+                                No attributes found for this Guardian.
+                            </div>
+                        )}
                     </div>
                 </div>
             </ScrollArea>

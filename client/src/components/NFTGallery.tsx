@@ -2,20 +2,21 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS, MOCK_POOL_BALANCE, TOTAL_SUPPLY, calculateBackedValue } from "@/lib/mockData";
+import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download } from "lucide-react";
+import { Guardian, MOCK_GUARDIANS, calculateBackedValue } from "@/lib/mockData";
 import { useAccount } from "wagmi";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
-import { IPFS_ROOT } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
+import { toast } from "@/hooks/use-toast";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface NFTGalleryProps {
   isConnected: boolean; // Kept for legacy
@@ -26,9 +27,37 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(false); // Default to IPFS (False) for fresh metadata, fallbacks to CSV for search
+  const [useCsvData, setUseCsvData] = useState(false); // Default to IPFS
   const [showFilters, setShowFilters] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
+  
+  // PWA Install Prompt
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+  }, []);
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        }
+        setDeferredPrompt(null);
+      });
+    } else {
+        toast({
+            title: "App Already Installed",
+            description: "Or your browser doesn't support PWA installation.",
+            variant: "default"
+        });
+    }
+  };
   
   // Filters & Search
   const [search, setSearch] = useState("");
@@ -57,19 +86,9 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
   const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
-  // Extract Traits (This might need to come from full CSV loader directly if we want ALL traits in dropdown, 
-  // but for now extracting from displayed/loaded is standard unless we expose a separate "metadata" hook)
-  // For better UX, we could hardcode known traits or fetch just metadata once.
-  // Using displayed items for trait extraction works ok for now as long as we load enough, 
-  // but ideally we'd want all options available. 
-  // Since we don't have a separate "get all traits" hook yet, let's stick to this or hardcode common ones.
+  // Extract Traits
   const availableTraits = useMemo(() => {
       const traits: Record<string, Set<string>> = {};
-      // Iterate over a larger set if possible? 
-      // Since useGuardians filters on the backend (hook), `displayNfts` are just the results.
-      // So the dropdowns might shrink if we filter. 
-      // Ideally we want *all* possible traits in the dropdown.
-      // For this mockup, let's pre-populate some key ones or rely on what's visible + defaults.
       
       if (displayNfts.length > 0) {
         displayNfts.forEach(item => {
@@ -112,9 +131,26 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
         
         {/* Header & Value Summary */}
         <div className="flex flex-col items-center mb-12 space-y-6">
-          <div className="text-center">
-            <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter">YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span></h2>
+          <div className="text-center relative">
+            <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter uppercase relative z-10">
+                YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span>
+            </h2>
+             {/* Center Glow Effect */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-[50px] -z-10 rounded-full pointer-events-none"></div>
+
             <p className="text-muted-foreground font-rajdhani text-lg">Manage your Guardians and view their traits.</p>
+            
+            {/* PWA Install Button */}
+            {deferredPrompt && (
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleInstallClick}
+                    className="mt-4 text-xs font-mono text-primary border border-primary/20 hover:bg-primary/10"
+                >
+                    <Download size={12} className="mr-2" /> INSTALL APP
+                </Button>
+            )}
           </div>
 
           {isConnected && nfts.length > 0 && (
@@ -142,7 +178,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     <div className="relative flex-1 w-full md:max-w-md">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                        <Input 
-                         placeholder="Search ID, Name, or 'Strength >= 8'..." 
+                         placeholder="Search ID (e.g. 3000), Name, or 'Strength >= 8'..." 
                          className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
                          value={search}
                          onChange={(e) => setSearch(e.target.value)}
@@ -231,7 +267,6 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Attributes</SelectItem>
-                            {/* Pre-populate common types if empty to ensure UX */}
                             {Object.keys(availableTraits).length > 0 ? 
                                 Object.keys(availableTraits).sort().map(type => (
                                     <SelectItem key={type} value={type}>{type}</SelectItem>
@@ -276,7 +311,6 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                             className="cursor-pointer hover:bg-primary/20 hover:text-primary hover:border-primary/50 transition-colors"
                             onClick={() => {
                                 setTraitTypeFilter("Character Type");
-                                // Small delay to allow state update if needed, but React matches usually work
                                 setTraitValueFilter(type);
                             }}
                         >
@@ -316,7 +350,6 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                </div>
             ) : (
               <>
-
                 {/* Desktop Grid */}
                 <motion.div 
                   variants={container}
@@ -383,18 +416,10 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   );
 }
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
-// ... [Previous imports remain]
-
 function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
-  const [retryCount, setRetryCount] = useState(0);
   const [imgSrc, setImgSrc] = useState(guardian.image);
 
-  // ... [Retry logic remains]
-
   if (guardian.isError) {
-      // ... [Error card remains]
       return (
         <Card className="bg-red-950/20 border-red-500/20 h-full flex flex-col items-center justify-center p-6 text-center">
              <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
@@ -407,8 +432,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
       );
   }
 
-  // Get Rarity for Badge
-  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level')?.value || guardian.rarity;
+  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity;
   const isCommon = !rarityTrait || rarityTrait === 'Common' || rarityTrait === 'common';
 
   return (
@@ -425,7 +449,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             onError={() => {
-                // Fallback to placeholder or show error state
+                // Fallback
             }} 
           />
         ) : (
@@ -434,7 +458,6 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
            </div>
         )}
         
-        {/* Dynamic Rarity Badge */}
         {!isCommon && (
             <div className="absolute top-2 right-2 z-20">
             <Badge className={`backdrop-blur-md border shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
@@ -461,7 +484,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
                     </AccordionTrigger>
                     <AccordionContent>
                         <div className="space-y-2 pt-2">
-                          {guardian.traits && guardian.traits.map((trait, i) => (
+                          {guardian.traits && guardian.traits.slice(0, 5).map((trait, i) => (
                             <div key={i} className="flex justify-between text-[10px] border-b border-white/5 pb-1 last:border-0 last:pb-0">
                               <span className="text-muted-foreground/70">{trait.type}</span>
                               <span className="text-primary font-medium truncate ml-2 text-right max-w-[60%]">{trait.value}</span>
@@ -469,6 +492,9 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
                           ))}
                           {(!guardian.traits || guardian.traits.length === 0) && (
                               <div className="text-xs text-muted-foreground italic">No traits found</div>
+                          )}
+                          {guardian.traits && guardian.traits.length > 5 && (
+                              <div className="text-[10px] text-muted-foreground text-center pt-1">+ {guardian.traits.length - 5} more</div>
                           )}
                         </div>
                     </AccordionContent>
