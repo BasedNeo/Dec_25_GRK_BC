@@ -128,6 +128,7 @@ h1, h2, h3, h4, h5, h6 {
   100% { transform: translateY(15px) scale(3); opacity: 0; filter: blur(5px); }
 }
 
+.mild-shake:active,
 .mild-shake:hover {
   animation: mild-shake 0.2s ease-in-out infinite;
   color: hsl(var(--primary));

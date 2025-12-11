@@ -11,7 +11,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
 import { useToast } from "@/hooks/use-toast";
-import rocketLogo from '@assets/generated_images/neon_cyan_line_art_rocket_with_small_flame.png';
+import rocketLogo from '@assets/generated_images/neon_cyan_rocket_with_simple_flame_on_black.png';
 
 interface NavbarProps {
   activeTab: string;
@@ -101,14 +101,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div 
-            className="flex-shrink-0 cursor-pointer group flex items-center gap-4"
+            className="flex-shrink-0 cursor-pointer group flex items-center gap-4 outline-none select-none"
             onClick={() => onTabChange('mint')}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
-            <div className="relative group">
+            <div className="relative">
               <img 
                 src={rocketLogo}
                 alt="Based Guardians Rocket" 
-                className="h-14 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
+                className="h-14 w-auto object-contain active:animate-[mild-shake_0.2s_ease-in-out_infinite] hover:animate-[mild-shake_0.2s_ease-in-out_infinite] relative z-10 mix-blend-screen"
               />
             </div>
             {isPaused && (
