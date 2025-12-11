@@ -18,11 +18,10 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 
 interface VotingDAOProps {
-  isConnected: boolean; // Legacy
-  onConnect: () => void; // Legacy
+  // Props are legacy but kept for interface compatibility if needed by parent
 }
 
-export function VotingDAO({ isConnected: _isConnected, onConnect: _onConnect }: VotingDAOProps) {
+export function VotingDAO({}: VotingDAOProps) {
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [showProposalForm, setShowProposalForm] = useState(false);
