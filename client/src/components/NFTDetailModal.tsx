@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
+import DOMPurify from 'dompurify';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -116,7 +117,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex justify-between items-start relative">
                 <div className="pr-12">
-                    <h2 className="text-2xl md:text-4xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">{nft.name}</h2>
+                    <h2 className="text-2xl md:text-4xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
+                        {DOMPurify.sanitize(nft.name)}
+                    </h2>
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="border-primary/50 text-primary font-mono text-[10px]">
                             <ShieldCheck size={10} className="mr-1" /> VERIFIED
@@ -155,7 +158,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <div className="grid grid-cols-2 gap-3">
                             {nft.traits.filter(t => ['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
                                 <div key={i} className="bg-white/5 border border-white/5 rounded p-3 flex justify-between items-center group hover:border-primary/30 transition-colors">
-                                    <span className="text-xs text-muted-foreground font-mono uppercase">{trait.type}</span>
+                                    <span className="text-xs text-muted-foreground font-mono uppercase">{DOMPurify.sanitize(trait.type)}</span>
                                     <div className="flex items-center gap-2">
                                         <div className="h-1.5 w-16 bg-white/10 rounded-full overflow-hidden">
                                             <div 
@@ -163,7 +166,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                                 style={{ width: `${Math.min(parseInt(trait.value) * 10, 100)}%` }}
                                             />
                                         </div>
-                                        <span className="text-sm font-bold text-white">{trait.value}</span>
+                                        <span className="text-sm font-bold text-white">{DOMPurify.sanitize(trait.value)}</span>
                                     </div>
                                 </div>
                             ))}
@@ -186,8 +189,8 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {nft.traits.filter(t => !['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
                                 <div key={i} className="flex flex-col p-2 rounded hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
-                                    <span className="text-[10px] text-muted-foreground font-mono uppercase mb-0.5">{trait.type}</span>
-                                    <span className="text-sm text-white font-medium break-words whitespace-pre-wrap">{trait.value}</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono uppercase mb-0.5">{DOMPurify.sanitize(trait.type)}</span>
+                                    <span className="text-sm text-white font-medium break-words whitespace-pre-wrap">{DOMPurify.sanitize(trait.value)}</span>
                                 </div>
                             ))}
                         </div>
