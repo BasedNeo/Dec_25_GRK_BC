@@ -1,4 +1,4 @@
-import { MOCK_POOL_BALANCE } from "@/lib/mockData";
+import { MOCK_POOL_BALANCE, calculatePoolBalance } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info } from "lucide-react";
 import { Line } from "react-chartjs-2";
@@ -32,45 +32,41 @@ const SUBNET_ADDRESS = "0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4";
 const ETH_RPC = "https://eth.llamarpc.com"; // Public RPC
 
 export function PoolTracker() {
-  const [balance, setBalance] = useState<string | null>(null);
+  const [balance, setBalance] = useState<number>(MOCK_POOL_BALANCE);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchEmissions = async () => {
-    try {
-      setLoading(true);
-      // Read-only provider
-      const provider = new ethers.JsonRpcProvider(ETH_RPC);
-      const balanceWei = await provider.getBalance(SUBNET_ADDRESS);
-      const balanceEth = ethers.formatEther(balanceWei);
-      
-      // The prompt says "Show 10% allocation to community pool". 
-      // Assuming the balance on this subnet IS the total, and 10% flows here.
-      // Or 10% of this balance is relevant. 
-      // "10% of subnet emissions flow here over time" -> display the subnet balance and say 10% of this comes to us.
-      
-      setBalance(parseFloat(balanceEth).toFixed(2));
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error("Failed to fetch emissions", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Use the calculated balance from mockData which includes Mint Revenue + Daily Emissions
+  // We can simulate live updates here
   useEffect(() => {
-    fetchEmissions();
-    // Cache 60s handled by not auto-refreshing too often or just simple state
+    // Initial load
+    setBalance(calculatePoolBalance());
+    setLastUpdated(new Date());
+
+    // Live Ticker
+    const interval = setInterval(() => {
+        setBalance(calculatePoolBalance());
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Use real balance if available, otherwise fallback to mock for demo
-  const displayBalance = balance 
-    ? parseFloat(balance).toLocaleString() 
-    : MOCK_POOL_BALANCE.toLocaleString();
+  const fetchEmissions = async () => {
+    // For now, we are strictly using the calculated formula based on user request:
+    // (6 Mints * 69,420) + (Daily Emissions)
+    // We simulate a "sync" by just re-calculating
+    setLoading(true);
+    setTimeout(() => {
+        setBalance(calculatePoolBalance());
+        setLastUpdated(new Date());
+        setLoading(false);
+    }, 1000);
+  };
+
+  const displayBalance = balance.toLocaleString();
 
   const symbol = "$BASED";
-
-    const dailyEmission = 5000; // Pre-halving rate
+  const dailyEmission = 5000; // Pre-halving rate
     
     // "Chart these emissions starting now" -> Forward looking projection of the accumulation
     const chartData = {

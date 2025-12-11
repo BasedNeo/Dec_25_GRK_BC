@@ -113,7 +113,7 @@ export const MOCK_PROPOSALS: Proposal[] = [
 
 export const MINT_PRICE = 69420;
 export const TOTAL_SUPPLY = 3732;
-export const MINTED_COUNT = 1420;
+export const MINTED_COUNT = 6; // Updated to 6 based on user input
 
 // Backing Value Constants & Logic
 // Genesis Date: Dec 1st, 2024 (Arbitrary start for demo)
@@ -121,21 +121,37 @@ export const GENESIS_TIMESTAMP = new Date('2024-12-01T00:00:00Z').getTime();
 export const EMISSION_RATE_DAILY = 5000; // 5,000 $BASED per day
 export const MINT_REVENUE_PERCENT = 0.51; // 51%
 
-export const calculateBackedValue = () => {
+export const calculateEmissions = () => {
   const now = Date.now();
   const msSinceGenesis = Math.max(0, now - GENESIS_TIMESTAMP);
   const daysSinceGenesis = msSinceGenesis / (1000 * 60 * 60 * 24);
+  return Math.floor(daysSinceGenesis * EMISSION_RATE_DAILY);
+};
+
+export const calculateBackedValue = () => {
+  const totalEmissions = calculateEmissions();
+  const mintRevenuePerUnit = MINT_PRICE * MINT_REVENUE_PERCENT; // 51% backing per unit
   
-  const totalEmissions = daysSinceGenesis * EMISSION_RATE_DAILY;
-  const mintRevenuePerUnit = MINT_PRICE * MINT_REVENUE_PERCENT;
+  // Backed By Per NFT = Mint Share + Emissions Share (distributed across all supply? or just minted?)
+  // Usually backing is Total Treasury / Total Supply.
+  // Treasury = (Minted * Price * 0.51) + Emissions
+  // But here we want a per-NFT value. 
+  // Let's keep the previous logic for "Backed By" (Mint Rev Unit + Emissions Unit)
+  // Emissions per unit = Total Emissions / TOTAL_SUPPLY (diluted by total supply)
   
-  // Backed By Per NFT = Mint Share + Emissions Share
   const emissionsPerUnit = totalEmissions / TOTAL_SUPPLY;
-  
   return Math.floor(mintRevenuePerUnit + emissionsPerUnit);
 };
 
-export const MOCK_POOL_BALANCE = 132127728; // Legacy constant, kept for compatibility
+// Pool Balance = (Minted * Price) + Emissions
+// User requested: "6x 69.240" (Full price?) + Daily Emissions
+export const calculatePoolBalance = () => {
+    const mintRevenue = MINTED_COUNT * MINT_PRICE; 
+    const emissions = calculateEmissions();
+    return mintRevenue + emissions;
+};
+
+export const MOCK_POOL_BALANCE = calculatePoolBalance(); // Initial static value
 
 export interface Escrow {
   id: number;
