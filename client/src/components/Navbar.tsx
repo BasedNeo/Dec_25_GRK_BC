@@ -87,10 +87,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
-    { id: 'mint', label: 'MINT' },
+    { id: 'mint', label: 'HOME' },
     { id: 'gallery', label: 'GALLERY' },
     { id: 'voting', label: 'DAO' }, // Will add ID to the button in the map
-    { id: 'escrow', label: 'SALES' },
+    { id: 'escrow', label: 'SERIES' },
     { id: 'pool', label: 'POOL' },
   ];
 
