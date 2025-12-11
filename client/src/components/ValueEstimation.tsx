@@ -47,19 +47,10 @@ export function ValueEstimation() {
   
   // Calculate User Total Value with Boosts
   // Boost logic: 30% boost if Rarity Level is 'Rarest', 'Legendary', or contains 'Rare'
+  // UPDATE: User requested to simplify this to just Base Value * Count for the total holdings view
   const userTotalValue = (guardians || []).reduce((total: number, guardian: any) => {
-    // Explicit check for Rarity Level from CSV or fallback
-    // CSV field is "Rarity Level" (mapped to guardian.rarity in loader if simple, or in traits)
-    
-    // Check traits first for "Rarity Level"
-    const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level')?.value || guardian.rarity || '';
-    const r = rarityTrait.toLowerCase();
-    
-    // Boost conditions: "rarest-legendary", "rarest", "rare"
-    const isRare = r.includes('rare') || r.includes('legendary') || r.includes('epic');
-    const multiplier = isRare ? 1.3 : 1.0;
-    
-    return total + (baseValuePerNFT * multiplier);
+    // We simply sum the base value for each guardian
+    return total + baseValuePerNFT;
   }, 0);
 
   const ownedCount = guardians?.length || 0;
@@ -105,7 +96,7 @@ export function ValueEstimation() {
               {Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
             </h3>
             <p className="text-xs text-muted-foreground mt-2 z-10">
-              {ownedCount} Guardians (Includes Rarity Boosts)
+              {ownedCount} Guardians
             </p>
           </Card>
 
