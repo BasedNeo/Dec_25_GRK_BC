@@ -191,38 +191,9 @@ export function Hero() {
               />
             </div>
 
-            {/* Rarity Distribution Chart (Pie) */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="h-32 w-full relative">
-                     <div className="absolute inset-0 flex items-center justify-center text-[8px] text-muted-foreground pointer-events-none text-center leading-tight">
-                         RARITY<br/>DISTRIBUTION
-                     </div>
-                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={rarityData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={30}
-                                outerRadius={45}
-                                paddingAngle={2}
-                                dataKey="value"
-                            >
-                                {rarityData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                ))}
-                            </Pie>
-                            <RechartsTooltip 
-                                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px', fontSize: '10px' }}
-                                 itemStyle={{ color: '#fff' }}
-                            />
-                        </PieChart>
-                     </ResponsiveContainer>
-                </div>
-                {/* Average Stats Mini Chart Placeholder - Only visible on LG screens to save space, or if we want to show it here */}
-                <div className="flex items-center justify-center">
-                    <AverageStatsChart />
-                </div>
+            {/* Average Stats Chart - Replaces Rarity Distribution */}
+            <div className="mb-6 h-64 w-full relative">
+                 <AverageStatsChart />
             </div>
 
             <div className="flex justify-between items-center mb-8">

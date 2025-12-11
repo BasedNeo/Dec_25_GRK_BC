@@ -120,12 +120,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
                 </Badge>
             )}
-            <div className="flex items-center gap-2">
-                <div className="bg-primary/10 border border-primary/50 px-2 py-0.5 rounded text-[9px] font-orbitron text-primary tracking-widest flex items-center gap-2 shadow-[0_0_10px_rgba(0,255,255,0.2)]">
-                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse"></span>
-                    AGENT ARENA STATS - COMING SOON
-                </div>
-            </div>
           </div>
 
           {/* Desktop Navigation */}

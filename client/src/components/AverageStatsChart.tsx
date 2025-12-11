@@ -38,16 +38,18 @@ export function AverageStatsChart() {
               ticks={[0, 2, 4, 6, 8]}
             />
             <RechartsTooltip 
-              cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              cursor={{ fill: 'rgba(0,255,255,0.05)' }}
               contentStyle={{ 
-                backgroundColor: 'rgba(0,0,0,0.9)', 
-                border: '1px solid rgba(0,255,255,0.3)', 
+                backgroundColor: 'rgba(10,10,10,0.9)', 
+                border: '1px solid rgba(255,255,255,0.1)', 
                 borderRadius: '8px',
                 fontFamily: 'Orbitron',
-                color: '#fff'
+                color: '#fff',
+                padding: '12px'
               }}
-              itemStyle={{ color: '#fff' }}
-              labelStyle={{ color: '#00ffff', marginBottom: '4px' }}
+              itemStyle={{ color: '#00ffff', fontSize: '14px' }}
+              labelStyle={{ color: '#fff', marginBottom: '8px', fontSize: '14px', textAlign: 'center' }}
+              formatter={(value: number) => [`${value.toFixed(2)}`, 'value ']}
             />
             <Bar 
               dataKey="value" 
