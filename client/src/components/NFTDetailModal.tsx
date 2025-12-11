@@ -104,7 +104,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-6xl w-full h-[95vh] p-0 gap-0 bg-black/95 border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl">
+      <DialogContent className="w-screen h-[100dvh] md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
@@ -175,9 +175,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-14 w-14 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] z-50 group"
+                        className="absolute top-4 right-4 h-16 w-16 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.8)] z-50 group"
                     >
-                        <X size={32} className="group-hover:scale-110 transition-transform group-hover:text-red-400" />
+                        <X size={40} className="group-hover:scale-110 transition-transform group-hover:text-red-400" />
                     </Button>
                 </DialogClose>
             </div>

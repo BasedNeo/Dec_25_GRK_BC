@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
-  Flame, Zap, History, MessageCircle, TrendingUp
+  Flame, Zap, History, MessageCircle, TrendingUp, Loader2
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -497,17 +497,7 @@ export function EscrowMarketplace() {
                     </Select>
                 </div>
                 
-                {/* Advanced Filters */}
-                <div className="flex items-center space-x-2 pt-6">
-                    <Button 
-                        variant={highStrengthFilter ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setHighStrengthFilter(!highStrengthFilter)}
-                        className={highStrengthFilter ? "bg-primary text-black" : "border-white/20"}
-                    >
-                        {highStrengthFilter ? "Strength > 8 (Active)" : "Filter: Strength > 8"}
-                    </Button>
-                </div>
+                {/* Advanced Filters removed to use main Search Bar logic */}
               </Card>
             </motion.div>
           )}

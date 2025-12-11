@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavbarProps {
   activeTab: string;
@@ -21,6 +22,7 @@ import { useTokenPrice } from "@/hooks/useTokenPrice";
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { toast } = useToast();
   const { address, isConnected: wagmiConnected } = useAccount();
   const { isPaused, togglePause } = useSecurity();
   const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
@@ -28,6 +30,32 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   // Price Data
   const { data: priceData } = useTokenPrice();
   
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (!deferredPrompt) {
+        toast({ title: "Install Not Available", description: "Your browser might not support PWA installation or it's already installed." });
+        return;
+    }
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        trackEvent('pwa_install_accepted', 'Engagement', 'Navbar');
+      }
+      setDeferredPrompt(null);
+    });
+  };
+
   // Badge State
   const [badges, setBadges] = useState<{topVoter: boolean, eliteSeller: boolean}>({ topVoter: false, eliteSeller: false });
 
@@ -121,10 +149,17 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </span>
             </div>
 
-            {/* PWA Install Button (Mock) */}
-            <Button variant="ghost" size="sm" className="ml-2 text-[10px] text-muted-foreground hover:text-white border border-transparent hover:border-white/20">
-                INSTALL APP
-            </Button>
+            {/* PWA Install Button */}
+            {deferredPrompt && (
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleInstallClick}
+                    className="ml-2 text-[10px] text-muted-foreground hover:text-white border border-transparent hover:border-white/20 animate-pulse"
+                >
+                    INSTALL APP
+                </Button>
+            )}
 
             {isAdmin && (
                 <Button 

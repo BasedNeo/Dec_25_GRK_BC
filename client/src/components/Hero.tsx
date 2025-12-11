@@ -30,7 +30,7 @@ export function Hero() {
   const rounded = useTransform(count, Math.round);
 
   // Fetch Real Guardian #300
-  const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "300" });
+  const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, false, { search: "300" });
   const heroGuardian = searchData?.pages[0]?.nfts[0];
   
   // Calculate Backing Value
