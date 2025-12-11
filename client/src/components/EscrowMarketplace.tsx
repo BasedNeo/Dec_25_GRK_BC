@@ -41,6 +41,14 @@ export function EscrowMarketplace() {
   const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<MarketItem | null>(null);
+  const [offerItem, setOfferItem] = useState<MarketItem | null>(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+
+  // Mock Received Offers (for Seller Dashboard)
+  const [receivedOffers, setReceivedOffers] = useState([
+      { id: 1, nftId: 300, nftName: "Guardian #300", offerer: "0x71C...9A21", amount: 450, time: "2 hours ago", status: "pending" },
+      { id: 2, nftId: 1245, nftName: "Guardian #1245", offerer: "0xA4F...B299", amount: 1200, time: "1 day ago", status: "pending" }
+  ]);
 
   // Load saved searches on mount
   useEffect(() => {
@@ -213,6 +221,60 @@ export function EscrowMarketplace() {
   };
 
   // --- Actions ---
+  const handleOffer = (item: MarketItem) => {
+      setOfferItem(item);
+      setShowOfferModal(true);
+  };
+
+  const submitOffer = (amount: number, duration: string) => {
+      setShowOfferModal(false);
+      setIsSubmitting(true);
+      
+      toast({
+          title: "Submitting Offer",
+          description: "Signing transaction...",
+          className: "bg-black border-primary text-primary font-orbitron"
+      });
+
+      setTimeout(() => {
+          setIsSubmitting(false);
+          toast({
+              title: "Offer Submitted",
+              description: `You offered ${amount} $BASED for ${offerItem?.name}. Valid for ${duration}.`,
+              className: "bg-black border-green-500 text-green-500 font-orbitron"
+          });
+          // Analytics
+          trackEvent('nft_offer', 'Marketplace', `Item #${offerItem?.id}`, amount);
+      }, 1500);
+  };
+
+  const handleAcceptOffer = (offerId: number) => {
+      toast({
+          title: "Accepting Offer",
+          description: "Transferring asset to buyer...",
+          className: "bg-black border-accent text-accent font-orbitron"
+      });
+      
+      setTimeout(() => {
+          setReceivedOffers(prev => prev.filter(o => o.id !== offerId));
+          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
+          toast({
+              title: "Offer Accepted",
+              description: "Asset transferred. Funds (minus 1% fee) added to your wallet.",
+              className: "bg-black border-green-500 text-green-500 font-orbitron"
+          });
+      }, 2000);
+  };
+
+  const handleRejectOffer = (offerId: number) => {
+      setReceivedOffers(prev => prev.filter(o => o.id !== offerId));
+      toast({
+          title: "Offer Rejected",
+          description: "The offer has been declined.",
+          variant: "destructive"
+      });
+  };
+
   const handleBiometricAuth = async () => {
     // Mock WebAuthn
     try {
@@ -534,6 +596,14 @@ export function EscrowMarketplace() {
                 <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron">
                     <Wallet size={14} className="mr-2" /> SELL (INVENTORY)
                 </TabsTrigger>
+                <TabsTrigger value="offers" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron relative">
+                    <MessageCircle size={14} className="mr-2" /> OFFERS
+                    {receivedOffers.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-black text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                            {receivedOffers.length}
+                        </span>
+                    )}
+                </TabsTrigger>
             </TabsList>
             
             <TabsContent value="buy" className="space-y-8">
@@ -545,7 +615,15 @@ export function EscrowMarketplace() {
                         'grid-cols-6'
                     }`}>
                         {displayedItems.map((item) => (
-                            <MarketCard key={item.id} item={item} onBuy={() => handleBuy(item)} onClick={() => setSelectedNFT(item)} isAdmin={isAdmin} onCancel={() => handleAdminCancel(item)} />
+                            <MarketCard 
+                                key={item.id} 
+                                item={item} 
+                                onBuy={() => handleBuy(item)} 
+                                onOffer={() => handleOffer(item)}
+                                onClick={() => setSelectedNFT(item)} 
+                                isAdmin={isAdmin} 
+                                onCancel={() => handleAdminCancel(item)} 
+                            />
                         ))}
                     </div>
                 ) : (
@@ -593,7 +671,7 @@ export function EscrowMarketplace() {
                         'grid-cols-6'
                     }`}>
                         {displayedItems.map((item) => (
-                            <MarketCard key={item.id} item={item} onBuy={() => {}} onClick={() => setSelectedNFT(item)} isOwner={true} />
+                            <MarketCard key={item.id} item={item} onBuy={() => {}} onOffer={() => handleOffer(item)} onClick={() => setSelectedNFT(item)} isOwner={true} />
                         ))}
                      </div>
                 ) : (
@@ -604,6 +682,53 @@ export function EscrowMarketplace() {
                     </div>
                 )}
             </TabsContent>
+
+            <TabsContent value="offers">
+                 {!isConnected ? (
+                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                        <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
+                        <h3 className="text-xl font-orbitron text-white mb-2">CONNECT WALLET</h3>
+                        <p className="text-muted-foreground mb-6">Connect to view offers on your Guardians.</p>
+                        <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90">CONNECT NOW</Button>
+                     </div>
+                 ) : (
+                     <div className="space-y-4">
+                         {receivedOffers.length > 0 ? receivedOffers.map(offer => (
+                             <Card key={offer.id} className="p-6 bg-white/5 border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                                 <div className="flex items-center gap-4">
+                                     <div className="w-16 h-16 bg-secondary/20 rounded-lg overflow-hidden relative">
+                                        {/* Placeholder Image for Offer Item */}
+                                        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">IMG</div>
+                                     </div>
+                                     <div>
+                                         <h4 className="text-lg font-orbitron text-white">{offer.nftName}</h4>
+                                         <p className="text-xs text-muted-foreground font-mono">Offer from {offer.offerer}</p>
+                                         <div className="flex items-center gap-2 mt-1">
+                                             <Badge variant="outline" className="border-accent text-accent">{offer.amount} $BASED</Badge>
+                                             <span className="text-[10px] text-muted-foreground">{offer.time}</span>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 
+                                 <div className="flex gap-2 w-full md:w-auto">
+                                     <Button variant="outline" className="flex-1 md:flex-none border-red-500/50 text-red-500 hover:bg-red-500/10" onClick={() => handleRejectOffer(offer.id)}>
+                                         REJECT
+                                     </Button>
+                                     <Button className="flex-1 md:flex-none bg-green-500 text-black hover:bg-green-600" onClick={() => handleAcceptOffer(offer.id)}>
+                                         ACCEPT OFFER
+                                     </Button>
+                                 </div>
+                             </Card>
+                         )) : (
+                            <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl">
+                                <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
+                                <h3 className="text-xl font-orbitron text-white mb-2">NO ACTIVE OFFERS</h3>
+                                <p className="text-muted-foreground">You haven't received any offers yet.</p>
+                            </div>
+                         )}
+                     </div>
+                 )}
+            </TabsContent>
         </Tabs>
 
       </div>
@@ -613,6 +738,14 @@ export function EscrowMarketplace() {
         isOpen={!!selectedNFT} 
         onClose={() => setSelectedNFT(null)} 
         nft={selectedNFT} 
+      />
+
+      {/* Offer Modal */}
+      <OfferModal 
+        isOpen={showOfferModal} 
+        onClose={() => setShowOfferModal(false)} 
+        item={offerItem} 
+        onSubmit={submitOffer}
       />
 
       {/* Biometric Modal */}
@@ -646,8 +779,9 @@ export function EscrowMarketplace() {
 }
 
 // Helper Card Component
-function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, onCancel }: { item: MarketItem, onBuy: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void }) {
+function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
+    const hasPrice = item.price && item.price > 0;
     
     return (
         <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 group cursor-pointer relative" onClick={onClick}>
@@ -672,7 +806,7 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
             {/* Details */}
             <div className="p-4 space-y-4">
                 <div className="flex justify-between items-center min-h-[3rem]">
-                    {item.price && item.price > 0 ? (
+                    {hasPrice ? (
                         <div className="flex flex-col">
                             <span className="text-[10px] text-muted-foreground uppercase">Price</span>
                             <span className="text-lg font-bold text-primary font-mono">{item.price} $BASED</span>
@@ -680,6 +814,7 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
                     ) : (
                         <div className="flex flex-col justify-center">
                             <span className="text-[10px] text-muted-foreground uppercase italic">Taking Offers</span>
+                            <span className="text-sm font-bold text-white font-mono">--</span>
                         </div>
                     )}
                 </div>
@@ -690,9 +825,20 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
                             List / Delist
                         </Button>
                     ) : (
-                        <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold" onClick={onBuy}>
-                            {item.price && item.price > 0 ? "BUY NOW" : "OFFER"}
-                        </Button>
+                        <>
+                            {hasPrice && (
+                                <Button className="flex-1 bg-primary text-black hover:bg-primary/90 font-bold px-2" onClick={onBuy}>
+                                    BUY
+                                </Button>
+                            )}
+                            <Button 
+                                className={`flex-1 ${!hasPrice ? 'w-full bg-primary text-black' : 'bg-transparent border border-primary/50 text-primary hover:bg-primary/10'} font-bold px-2`} 
+                                onClick={onOffer}
+                                variant={!hasPrice ? 'default' : 'outline'}
+                            >
+                                OFFER
+                            </Button>
+                        </>
                     )}
                     
                     {isAdmin && !isOwner && (
@@ -703,5 +849,88 @@ function MarketCard({ item, onBuy, onClick, isOwner = false, isAdmin = false, on
                 </div>
             </div>
         </Card>
+    );
+}
+
+// Offer Modal Component
+function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
+    const [amount, setAmount] = useState<number>(0);
+    const [duration, setDuration] = useState("1 week");
+    
+    // Reset when item changes
+    useEffect(() => {
+        if (item) {
+            setAmount(item.price ? Math.floor(item.price * 0.9) : 100);
+        }
+    }, [item]);
+
+    if (!item) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="bg-black border-white/10 text-white sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
+                    <DialogDescription>
+                        Set your price for <span className="text-primary font-bold">{item.name}</span>.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 py-4">
+                    {/* Amount Input */}
+                    <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground font-mono">OFFER AMOUNT ($BASED)</Label>
+                        <div className="flex gap-2">
+                             <Input 
+                                type="number" 
+                                value={amount} 
+                                onChange={(e) => setAmount(Number(e.target.value))}
+                                className="bg-white/5 border-white/10 text-white font-mono text-lg"
+                             />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Balance: 42,000 $BASED</span>
+                            <span>Floor: 420 $BASED</span>
+                        </div>
+                    </div>
+
+                    {/* Duration Select */}
+                    <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground font-mono">OFFER DURATION</Label>
+                        <Select value={duration} onValueChange={setDuration}>
+                            <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="1 day">1 Day</SelectItem>
+                                <SelectItem value="3 days">3 Days</SelectItem>
+                                <SelectItem value="1 week">1 Week</SelectItem>
+                                <SelectItem value="1 month">1 Month</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Gas Estimate */}
+                    <div className="p-3 rounded bg-white/5 border border-white/10 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Flame size={14} className="text-orange-500" />
+                            <span className="text-xs text-muted-foreground">Est. Gas Fee</span>
+                        </div>
+                        <span className="text-xs font-mono text-white">~0.002 ETH</span>
+                    </div>
+                    
+                    <p className="text-[10px] text-muted-foreground text-center">
+                        Offers are non-binding until accepted by the seller. Funds will be held in escrow upon acceptance.
+                    </p>
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                    <Button variant="ghost" onClick={onClose} className="flex-1">CANCEL</Button>
+                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 bg-primary text-black hover:bg-primary/90 font-bold font-orbitron">
+                        SUBMIT OFFER
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
