@@ -362,27 +362,14 @@ export function PoolTracker() {
             </div>
 
             {/* Stat Averages Chart */}
-            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80">
+            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80 flex items-center justify-center flex-col gap-4 text-center">
                  <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
                     <Database size={14} /> AVERAGE STATS (ALL 3732)
                  </div>
-                 <div className="pt-8 h-full w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={statData}>
-                            <XAxis dataKey="name" stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
-                            <RechartsTooltip 
-                                cursor={{fill: 'transparent'}}
-                                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px' }}
-                                itemStyle={{ color: '#00ffff', fontFamily: 'monospace' }}
-                            />
-                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                {statData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00ffff' : '#bf00ff'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                 <Database className="text-white/20" size={48} />
+                 <div className="space-y-1">
+                    <p className="text-white font-orbitron text-lg tracking-wide">Agent Arena Data</p>
+                    <p className="text-primary font-mono text-sm animate-pulse">COMING SOON</p>
                  </div>
             </div>
           </div>
