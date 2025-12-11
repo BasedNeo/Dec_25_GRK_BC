@@ -108,7 +108,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               <img 
                 src={rocketLogo}
                 alt="Based Guardians Rocket" 
-                className="h-16 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
+                className="h-12 w-auto object-contain mild-shake relative z-10 mix-blend-screen"
               />
               {/* Smoke Particles */}
               <div className="smoke-particle smoke-1 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
@@ -121,8 +121,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </Badge>
             )}
             <div className="flex items-center gap-2">
-                <div className="bg-primary/10 border border-primary/50 px-3 py-1 rounded text-[10px] font-orbitron text-primary tracking-widest flex items-center gap-2 shadow-[0_0_10px_rgba(0,255,255,0.2)]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                <div className="bg-primary/10 border border-primary/50 px-2 py-0.5 rounded text-[9px] font-orbitron text-primary tracking-widest flex items-center gap-2 shadow-[0_0_10px_rgba(0,255,255,0.2)]">
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse"></span>
                     AGENT ARENA STATS - COMING SOON
                 </div>
             </div>
