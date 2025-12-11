@@ -25,6 +25,12 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   if (!nft) return null;
 
+  // Safe Sanitize Helper
+  const safeSanitize = (content: string | undefined | null) => {
+    if (typeof content !== 'string') return '';
+    return DOMPurify.sanitize(content);
+  };
+
   useEffect(() => {
     if (isOpen && nft) {
       // Trigger confetti for rare items
@@ -137,7 +143,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20">
                 <div className="pr-16">
                     <h2 className="text-2xl md:text-5xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
-                        {DOMPurify.sanitize(nft.name)}
+                        {safeSanitize(nft.name)}
                     </h2>
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="border-primary/50 text-primary font-mono text-[10px]">
@@ -193,7 +199,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <div className="grid grid-cols-2 gap-3">
                             {nft.traits.filter(t => ['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
                                 <div key={i} className="bg-white/5 border border-white/5 rounded p-3 flex justify-between items-center group hover:border-primary/30 transition-colors">
-                                    <span className="text-xs text-muted-foreground font-mono uppercase">{DOMPurify.sanitize(trait.type)}</span>
+                                    <span className="text-xs text-muted-foreground font-mono uppercase">{safeSanitize(trait.type)}</span>
                                     <div className="flex items-center gap-2">
                                         <div className="h-1.5 w-16 bg-white/10 rounded-full overflow-hidden">
                                             <div 
@@ -201,7 +207,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                                 style={{ width: `${Math.min(parseInt(trait.value) * 10, 100)}%` }}
                                             />
                                         </div>
-                                        <span className="text-sm font-bold text-white">{DOMPurify.sanitize(trait.value)}</span>
+                                        <span className="text-sm font-bold text-white">{safeSanitize(trait.value)}</span>
                                     </div>
                                 </div>
                             ))}
@@ -227,12 +233,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                 <AccordionItem key={i} value={`item-${i}`} className="border-white/10">
                                     <AccordionTrigger className="text-xs hover:text-primary py-2 font-mono uppercase text-muted-foreground">
                                         <div className="flex justify-between w-full pr-4">
-                                            <span>{DOMPurify.sanitize(trait.type)}</span>
-                                            <span className="text-white font-bold">{DOMPurify.sanitize(trait.value).substring(0, 15)}{trait.value.length > 15 ? '...' : ''}</span>
+                                            <span>{safeSanitize(trait.type)}</span>
+                                            <span className="text-white font-bold">
+                                                {safeSanitize(trait.value).substring(0, 15)}
+                                                {trait.value && trait.value.length > 15 ? '...' : ''}
+                                            </span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="text-sm text-white font-medium whitespace-pre-wrap bg-white/5 p-3 rounded">
-                                        {DOMPurify.sanitize(trait.value)}
+                                        {safeSanitize(trait.value)}
                                         <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
                                             <Badge variant="outline" className="text-[10px] border-white/20 text-muted-foreground">
                                                 Rarity Impact: +{(Math.random() * 5).toFixed(1)}%
