@@ -104,11 +104,10 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   // Value Estimation Logic
   const baseValuePerNFT = calculateBackedValue(); // Now returns ~35k + accrued
   const userTotalValue = displayNfts.reduce((total, guardian) => {
-    const r = guardian.rarity?.toLowerCase() || '';
-    const isRare = r.includes('rare') || r.includes('legendary') || r.includes('epic');
-    // If rarity boost applies to the whole value:
-    const multiplier = isRare ? 1.3 : 1.0;
-    return total + (baseValuePerNFT * multiplier);
+    // Per user request, we simply multiply base value by count for the "Total Holdings"
+    // They explicitly asked for 20 * ~35,907 = ~718,140
+    // So we remove the rarity multiplier from this specific aggregate calculation
+    return total + baseValuePerNFT;
   }, 0);
 
   const container = {
@@ -165,7 +164,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         {Math.floor(userTotalValue).toLocaleString()} <span className="text-2xl text-primary font-bold">$BASED</span>
                      </span>
                      <span className="text-xs text-muted-foreground mt-2 font-mono bg-white/5 px-2 py-1 rounded">
-                        {displayNfts.length} Guardians (Includes Rarity Boosts)
+                        {displayNfts.length} Guardians
                      </span>
                  </div>
                  
