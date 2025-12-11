@@ -68,11 +68,6 @@ export function Footer() {
               <Button variant="outline" size="icon" className="border-white/10 hover:border-primary hover:text-primary rounded-full">
                 <Github size={18} />
               </Button>
-              <Button asChild variant="default" className="bg-[#5865F2] hover:bg-[#5865F2]/90 text-white font-bold rounded-full px-4 text-xs font-orbitron">
-                 <a href="https://discord.gg/basedguardians" target="_blank" rel="noopener noreferrer">
-                    JOIN DISCORD
-                 </a>
-              </Button>
               <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5 text-xs text-muted-foreground flex items-center gap-2">
                 <ShieldCheck size={12} className="text-green-500" />
                 Audited & Secure
