@@ -21,30 +21,30 @@ export const MOCK_GUARDANS_COUNT = 3732;
 
 // Rarity Levels & Multipliers
 export const RARITY_CONFIG: Record<string, { weight: number, multiplier: number, color: string }> = {
-  'Rarest-Legendary': { weight: 0.034, multiplier: 0.40, color: 'text-cyan-400 border-cyan-400/50 bg-cyan-950/50' },
-  'Very Rare': { weight: 0.05, multiplier: 0.35, color: 'text-purple-400 border-purple-400/50 bg-purple-950/50' },
-  'More Rare': { weight: 0.08, multiplier: 0.30, color: 'text-amber-400 border-amber-400/50 bg-amber-950/50' }, // Gold
-  'Rare': { weight: 0.12, multiplier: 0.25, color: 'text-yellow-400 border-yellow-400/50 bg-yellow-950/50' },
-  'Less Rare': { weight: 0.15, multiplier: 0.20, color: 'text-blue-400 border-blue-400/50 bg-blue-950/50' },
-  'Less Common': { weight: 0.18, multiplier: 0.10, color: 'text-green-400 border-green-400/50 bg-green-950/50' },
-  'Common': { weight: 0.231, multiplier: 0.05, color: 'text-white border-white/50 bg-zinc-900/50' },
-  'Most Common': { weight: 0.155, multiplier: 0.00, color: 'text-gray-400 border-gray-400/50 bg-zinc-950/50' }
+  'Rarest-Legendary': { weight: 0.034, multiplier: 0.40, color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' },
+  'Very Rare': { weight: 0.017, multiplier: 0.35, color: 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' },
+  'More Rare': { weight: 0.121, multiplier: 0.30, color: 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]' }, // Gold
+  'Rare': { weight: 0.172, multiplier: 0.25, color: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]' }, // Yellow
+  'Less Rare': { weight: 0.052, multiplier: 0.20, color: 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(96,165,250,0.3)]' },
+  'Less Common': { weight: 0.224, multiplier: 0.10, color: 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(74,222,128,0.3)]' },
+  'Common': { weight: 0.224, multiplier: 0.05, color: 'bg-white/10 text-white border-white/20' },
+  'Most Common': { weight: 0.155, multiplier: 0.00, color: 'bg-gray-500/10 text-gray-400 border-gray-500/20' }
 };
 
 // Deterministic mock data generator for 20 items (or more if needed)
 export const generateMockGuardian = (id: number): Guardian => {
   // Deterministic rarity distribution based on ID
   let rarity = 'Most Common';
-  const mod = id % 100;
+  const mod = id % 1000; // Use 1000 for finer grain
   
-  if (mod < 3) rarity = 'Rarest-Legendary';      // ~3%
-  else if (mod < 8) rarity = 'Very Rare';        // ~5%
-  else if (mod < 16) rarity = 'More Rare';       // ~8%
-  else if (mod < 28) rarity = 'Rare';            // ~12%
-  else if (mod < 43) rarity = 'Less Rare';       // ~15%
-  else if (mod < 61) rarity = 'Less Common';     // ~18%
-  else if (mod < 84) rarity = 'Common';          // ~23%
-  else rarity = 'Most Common';                   // ~16%
+  if (mod < 34) rarity = 'Rarest-Legendary';       // 3.4%
+  else if (mod < 51) rarity = 'Very Rare';         // 3.4 + 1.7 = 5.1% -> 51
+  else if (mod < 172) rarity = 'More Rare';        // 5.1 + 12.1 = 17.2% -> 172
+  else if (mod < 344) rarity = 'Rare';             // 17.2 + 17.2 = 34.4% -> 344
+  else if (mod < 396) rarity = 'Less Rare';        // 34.4 + 5.2 = 39.6% -> 396
+  else if (mod < 620) rarity = 'Less Common';      // 39.6 + 22.4 = 62.0% -> 620
+  else if (mod < 844) rarity = 'Common';           // 62.0 + 22.4 = 84.4% -> 844
+  else rarity = 'Most Common';                     // Remainder ~15.6%
 
   return {
     id,

@@ -32,15 +32,14 @@ export function Hero() {
   
   // Default Rarity Data Structure
   const [rarityStats, setRarityStats] = useState([
-    { name: 'Most Common', value: 922, color: '#3b82f6', minted: 0 },
-    { name: 'Common', value: 1216, color: '#60a5fa', minted: 0 },
-    { name: 'Less Common', value: 661, color: '#2dd4bf', minted: 0 },
-    { name: 'Less Rare', value: 329, color: '#34d399', minted: 0 },
-    { name: 'Rare', value: 504, color: '#a855f7', minted: 0 },
-    { name: 'Very Rare', value: 28, color: '#d946ef', minted: 0 },
-    { name: 'Most Rare', value: 14, color: '#ec4899', minted: 0 },
-    { name: 'Rarest', value: 37, color: '#f43f5e', minted: 0 },
-    { name: 'Legendary', value: 21, color: '#eab308', minted: 0 },
+    { name: 'Rarest-Legendary', value: 127, color: '#22d3ee', minted: 0 }, // 3.4% (Cyan)
+    { name: 'Very Rare', value: 63, color: '#c084fc', minted: 0 }, // 1.7% (Purple)
+    { name: 'More Rare', value: 452, color: '#fbbf24', minted: 0 }, // 12.1% (Gold/Amber)
+    { name: 'Rare', value: 642, color: '#facc15', minted: 0 }, // 17.2% (Yellow)
+    { name: 'Less Rare', value: 194, color: '#60a5fa', minted: 0 }, // 5.2% (Blue)
+    { name: 'Less Common', value: 836, color: '#4ade80', minted: 0 }, // 22.4% (Green)
+    { name: 'Common', value: 836, color: '#ffffff', minted: 0 }, // 22.4% (White)
+    { name: 'Most Common', value: 582, color: '#9ca3af', minted: 0 }, // 15.5% (Gray)
   ]);
 
   // Live Rarity Sync Logic
@@ -91,8 +90,9 @@ export function Hero() {
         mintedGuardians.forEach(g => {
             // Normalize rarity strings if needed
             let r = g.rarity || 'Common';
-            // Map specific naming variations if CSV differs from Display
-            if (r === 'Rarest (1/1s)') r = 'Rarest'; 
+            // Normalize old/variant names to new schema if needed
+            if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
+            if (r === 'Rarest') r = 'More Rare'; // Remap old Rarest to More Rare if found
             
             counts[r] = (counts[r] || 0) + 1;
         });
@@ -211,9 +211,18 @@ export function Hero() {
 
   // Rarity Badge Color Logic
   const getRarityColor = (rarity: string) => {
-      if (rarity?.includes('Legendary') || rarity?.includes('Rarest')) return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
-      if (rarity?.includes('Epic')) return 'bg-pink-500/20 text-pink-400 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.3)]';
-      if (rarity?.includes('Rare')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
+      // Use exact matches first matching the new system
+      if (rarity === 'Rarest-Legendary') return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
+      if (rarity === 'Very Rare') return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
+      if (rarity === 'More Rare') return 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]';
+      if (rarity === 'Rare') return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]';
+      if (rarity === 'Less Rare') return 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(96,165,250,0.3)]';
+      if (rarity === 'Less Common') return 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(74,222,128,0.3)]';
+      if (rarity === 'Common') return 'bg-white/10 text-white border-white/20';
+      if (rarity === 'Most Common') return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+
+      // Fallback loose matching
+      if (rarity?.includes('Legendary')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
       return 'bg-black/40 text-gray-300 border-white/10';
   };
 

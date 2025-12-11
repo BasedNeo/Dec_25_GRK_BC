@@ -63,12 +63,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   if (!nft) return null;
 
   // Rarity Multiplier for Display
-  const isRareItem = ['Rare', 'Epic', 'Legendary', 'Rarest', 'Most Rare', 'Very Rare'].includes(nft.rarity || '') || nft.rarity?.includes('Rare') || nft.rarity?.includes('Legendary');
+  const isRareItem = ['More Rare', 'Very Rare', 'Rarest-Legendary', 'Rare', 'Less Rare'].includes(nft.rarity || '');
   
   // Calculate Boosted Value
   // Base formula: 51% mint share + emissions
   // Boost: +30% on the total value for rare items
-  const displayValue = Math.floor(backedValue * (isRareItem ? 1.3 : 1.0));
+  // Note: We use calculateBackedValue which now has the exact multiplier logic, so we can just use that if we pass rarity
+  // But for this display variable, let's use the explicit logic from mockData if available
+  const currentBacked = calculateBackedValue(nft.rarity || 'Common');
+  const displayValue = currentBacked;
 
   const handleCopyTraits = () => {
     if (!nft.traits) return;
@@ -110,10 +113,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   // Determine rarity color
   const getRarityColor = (rarity: string) => {
-    switch (rarity?.toLowerCase()) {
-      case 'legendary': return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]';
-      case 'epic': return 'text-purple-400 border-purple-400/50 bg-purple-400/10 shadow-[0_0_15px_rgba(192,132,252,0.2)]';
-      case 'rare': return 'text-cyan-400 border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,211,238,0.2)]';
+    switch (rarity) {
+      case 'Rarest-Legendary': return 'text-cyan-400 border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,211,238,0.2)]';
+      case 'Very Rare': return 'text-purple-400 border-purple-400/50 bg-purple-400/10 shadow-[0_0_15px_rgba(192,132,252,0.2)]';
+      case 'More Rare': return 'text-amber-400 border-amber-400/50 bg-amber-400/10 shadow-[0_0_15px_rgba(251,191,36,0.2)]';
+      case 'Rare': return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]';
+      case 'Less Rare': return 'text-blue-400 border-blue-400/50 bg-blue-400/10 shadow-[0_0_15px_rgba(96,165,250,0.2)]';
+      case 'Less Common': return 'text-green-400 border-green-400/50 bg-green-400/10 shadow-[0_0_15px_rgba(74,222,128,0.2)]';
+      case 'Common': return 'text-white border-white/50 bg-white/10';
+      case 'Most Common': return 'text-gray-400 border-gray-400/50 bg-gray-400/10';
       default: return 'text-slate-400 border-slate-400/50 bg-slate-400/10';
     }
   };
@@ -211,7 +219,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                             Includes 51% Mint Share + Daily Emissions
-                            {isRareItem && <span className="text-green-400 ml-1">(+30% Rarity Boost Active)</span>}
+                            {isRareItem && <span className="text-green-400 ml-1">(Rarity Boost Active)</span>}
                             <div className="mt-1 text-primary/70">Boosted Value: {displayValue.toLocaleString()} $BASED</div>
                         </div>
                     </div>

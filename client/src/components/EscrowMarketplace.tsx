@@ -197,7 +197,7 @@ export function EscrowMarketplace() {
   const suggestedFilters = useMemo(() => {
     return [
         { label: "High Strength", action: () => applySearch("Strength >= 8") },
-        { label: "Legendary Only", action: () => setRarityFilter("legendary") },
+        { label: "Rarest-Legendary", action: () => setRarityFilter("Rarest-Legendary") },
         { label: "Based Frog", action: () => { 
             setTraitTypeFilter("Character Type");
             setTimeout(() => setTraitValueFilter("Based Frog"), 0);

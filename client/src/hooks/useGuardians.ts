@@ -140,7 +140,16 @@ export function useGuardians(
 
              // 4. Sorting
              if (filters.sortBy) {
-                 const rarityScore: Record<string, number> = { 'Legendary': 3, 'Epic': 2.5, 'Rare': 2, 'Common': 1 };
+                 const rarityScore: Record<string, number> = { 
+                   'Rarest-Legendary': 8, 
+                   'Very Rare': 7, 
+                   'More Rare': 6, 
+                   'Rare': 5, 
+                   'Less Rare': 4, 
+                   'Less Common': 3, 
+                   'Common': 2, 
+                   'Most Common': 1 
+                 };
                  allGuardians.sort((a, b) => {
                      switch (filters.sortBy) {
                         case 'price-asc': return (a.price || 0) - (b.price || 0);
