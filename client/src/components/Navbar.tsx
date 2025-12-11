@@ -96,10 +96,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
-    { id: 'mint', label: 'HOME' },
-    { id: 'gallery', label: 'PORTFOLIO' },
-    { id: 'voting', label: 'VOTING' }, // Will add ID to the button in the map
-    { id: 'escrow', label: 'SERIES' },
+    { id: 'mint', label: 'MINT' },
+    { id: 'gallery', label: 'GALLERY' },
+    { id: 'voting', label: 'DAO' }, 
+    { id: 'escrow', label: 'SALES' },
     { id: 'pool', label: 'POOL' },
   ];
 
@@ -127,11 +127,20 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
                 </Badge>
             )}
+            <Badge variant="outline" className="hidden md:flex border-primary/20 text-primary/50 text-[10px] tracking-widest font-mono ml-[-10px] mt-[-20px] rotate-12">
+                BETA
+            </Badge>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-2">
-            {navItems.map((item) => (
+            {[
+              { id: 'mint', label: 'MINT' },
+              { id: 'gallery', label: 'GALLERY' },
+              { id: 'voting', label: 'DAO' }, 
+              { id: 'escrow', label: 'SALES' },
+              { id: 'pool', label: 'POOL' },
+            ].map((item) => (
               <button
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}

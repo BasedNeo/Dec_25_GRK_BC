@@ -133,7 +133,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
         {/* Header & Value Summary */}
         <div className="flex flex-col items-center mb-12 space-y-6">
           <div className="text-center relative">
-            <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter uppercase relative z-10">
+            <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter uppercase relative z-10 text-center mx-auto">
                 YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span>
             </h2>
              {/* Center Glow Effect */}
@@ -327,9 +327,15 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Values</SelectItem>
-                            {traitTypeFilter !== "all" && Array.from(availableTraits[traitTypeFilter] || []).sort().map(val => (
-                                <SelectItem key={val} value={val}>{val}</SelectItem>
-                            ))}
+                            {traitTypeFilter !== "all" && (() => {
+                                const values = Array.from(availableTraits[traitTypeFilter] || []);
+                                if (traitTypeFilter === "Character Type" && !values.includes("Based Creature")) {
+                                    values.push("Based Creature");
+                                }
+                                return values.sort().map(val => (
+                                    <SelectItem key={val} value={val}>{val}</SelectItem>
+                                ));
+                            })()}
                         </SelectContent>
                     </Select>
                 </div>

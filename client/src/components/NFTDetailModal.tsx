@@ -191,9 +191,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-12 w-12 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500 shadow-lg z-50 group"
+                        className="absolute top-4 right-4 h-14 w-14 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] z-50 group"
                     >
-                        <X size={24} className="group-hover:scale-110 transition-transform group-hover:text-red-400" />
+                        <X size={32} className="group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
                     </Button>
                 </DialogClose>
             </div>

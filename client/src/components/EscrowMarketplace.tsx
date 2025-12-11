@@ -574,9 +574,15 @@ export function EscrowMarketplace() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Values</SelectItem>
-                            {traitTypeFilter !== "all" && Array.from(availableTraits[traitTypeFilter] || []).sort().map(val => (
-                                <SelectItem key={val} value={val}>{val}</SelectItem>
-                            ))}
+                            {traitTypeFilter !== "all" && (() => {
+                                const values = Array.from(availableTraits[traitTypeFilter] || []);
+                                if (traitTypeFilter === "Character Type" && !values.includes("Based Creature")) {
+                                    values.push("Based Creature");
+                                }
+                                return values.sort().map(val => (
+                                    <SelectItem key={val} value={val}>{val}</SelectItem>
+                                ));
+                            })()}
                         </SelectContent>
                     </Select>
                 </div>

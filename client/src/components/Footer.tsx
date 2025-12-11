@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart } from "lucide-react";
+import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart, Disc } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
 
@@ -96,6 +96,16 @@ export function Footer() {
               </a>
               <a href="#" className="hover:text-white transition-colors">Privacy</a>
               <a href="#" className="hover:text-white transition-colors">Smart Contracts</a>
+            </div>
+
+            {/* Discord CTA */}
+            <div className="pt-4">
+                <Button 
+                    className="bg-[#5865F2] hover:bg-[#4752C4] text-white font-orbitron tracking-wider w-full sm:w-auto cyber-button shadow-[0_0_15px_rgba(88,101,242,0.4)]"
+                    onClick={() => window.open('https://discord.gg/basedguardians', '_blank')}
+                >
+                    <Disc size={18} className="mr-2" /> JOIN DISCORD COMMUNITY
+                </Button>
             </div>
             
             <p className="text-xs text-muted-foreground mt-2 font-mono">
