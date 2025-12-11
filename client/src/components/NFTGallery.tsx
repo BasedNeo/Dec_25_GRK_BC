@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS, calculateBackedValue } from "@/lib/mockData";
+import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -284,10 +284,9 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Rarities</SelectItem>
-                            <SelectItem value="common">Common</SelectItem>
-                            <SelectItem value="rare">Rare</SelectItem>
-                            <SelectItem value="epic">Epic</SelectItem>
-                            <SelectItem value="legendary">Legendary</SelectItem>
+                            {Object.keys(RARITY_CONFIG).map((rarity) => (
+                                <SelectItem key={rarity} value={rarity}>{rarity}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -456,8 +455,14 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
       );
   }
 
-  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity;
-  const isCommon = !rarityTrait || rarityTrait === 'Common' || rarityTrait === 'common';
+  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
+  
+  // Find config, handle casing or partial matches if needed, but exact match is preferred
+  const rarityConfig = RARITY_CONFIG[rarityTrait] || RARITY_CONFIG['Common'];
+  const isCommon = rarityTrait === 'Common' || rarityTrait === 'Most Common';
+
+  // Calculate Value with Rarity Boost
+  const backedValue = calculateBackedValue(rarityTrait);
 
   return (
     <Card 
@@ -482,48 +487,44 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
            </div>
         )}
         
-        {!isCommon && (
-            <div className="absolute top-2 right-2 z-20">
-            <Badge className={`backdrop-blur-md border shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
-                rarityTrait?.includes('Legendary') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
-                rarityTrait?.includes('Epic') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
-                rarityTrait?.includes('Rare') ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
-                'bg-black/40 text-gray-300 border-white/10'
-            } font-mono text-[10px] uppercase`}>
+        {/* Rarity Badge */}
+        <div className="absolute top-2 right-2 z-20">
+            <Badge className={`backdrop-blur-md border shadow-[0_0_15px_rgba(0,0,0,0.5)] ${rarityConfig.color}`}>
                 {rarityTrait}
             </Badge>
+        </div>
+
+        {/* Quick Stats Overlay (Hover) */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-20 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+            <div className="flex justify-between items-center text-xs font-mono text-white mb-1">
+                <span>Backed Value:</span>
+                <span className="text-cyan-400 font-bold">{backedValue.toLocaleString()} $BASED</span>
             </div>
-        )}
+            {rarityConfig.multiplier > 0 && (
+                <div className="flex justify-end text-[10px] text-green-400 font-mono">
+                    +{rarityConfig.multiplier * 100}% Boost Active
+                </div>
+            )}
+        </div>
       </div>
-      
-      <div className="p-4 flex-1 flex flex-col">
-        <h4 className="text-lg text-white mb-1 font-orbitron">{guardian.name}</h4>
-        <p className="text-[10px] text-muted-foreground font-mono mb-4">TOKEN ID: #{guardian.id}</p>
+
+      <div className="p-4 flex flex-col flex-grow bg-black/40 backdrop-blur-sm">
+        <div className="flex justify-between items-start mb-2">
+            <div>
+                <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{guardian.name}</h3>
+                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">ID: {guardian.id}</p>
+            </div>
+        </div>
         
-        <div className="mt-auto">
-             <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="traits" className="border-white/10">
-                    <AccordionTrigger className="text-xs py-2 text-muted-foreground hover:text-white font-mono uppercase">
-                        View Attributes ({guardian.traits?.length || 0})
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <div className="space-y-2 pt-2">
-                          {guardian.traits && guardian.traits.slice(0, 5).map((trait, i) => (
-                            <div key={i} className="flex justify-between text-[10px] border-b border-white/5 pb-1 last:border-0 last:pb-0">
-                              <span className="text-muted-foreground/70">{trait.type}</span>
-                              <span className="text-primary font-medium truncate ml-2 text-right max-w-[60%]">{trait.value}</span>
-                            </div>
-                          ))}
-                          {(!guardian.traits || guardian.traits.length === 0) && (
-                              <div className="text-xs text-muted-foreground italic">No traits found</div>
-                          )}
-                          {guardian.traits && guardian.traits.length > 5 && (
-                              <div className="text-[10px] text-muted-foreground text-center pt-1">+ {guardian.traits.length - 5} more</div>
-                          )}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-             </Accordion>
+        <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
+             <div className="flex flex-col">
+                 <span className="text-[9px] text-muted-foreground uppercase">Value</span>
+                 <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
+             </div>
+             <div className="flex flex-col items-end">
+                 <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
+                 <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
+             </div>
         </div>
       </div>
     </Card>

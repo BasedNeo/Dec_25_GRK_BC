@@ -19,16 +19,32 @@ export interface Guardian {
 
 export const MOCK_GUARDANS_COUNT = 3732;
 
+// Rarity Levels & Multipliers
+export const RARITY_CONFIG: Record<string, { weight: number, multiplier: number, color: string }> = {
+  'Rarest-Legendary': { weight: 0.034, multiplier: 0.40, color: 'text-cyan-400 border-cyan-400/50 bg-cyan-950/50' },
+  'Very Rare': { weight: 0.05, multiplier: 0.35, color: 'text-purple-400 border-purple-400/50 bg-purple-950/50' },
+  'More Rare': { weight: 0.08, multiplier: 0.30, color: 'text-amber-400 border-amber-400/50 bg-amber-950/50' }, // Gold
+  'Rare': { weight: 0.12, multiplier: 0.25, color: 'text-yellow-400 border-yellow-400/50 bg-yellow-950/50' },
+  'Less Rare': { weight: 0.15, multiplier: 0.20, color: 'text-blue-400 border-blue-400/50 bg-blue-950/50' },
+  'Less Common': { weight: 0.18, multiplier: 0.10, color: 'text-green-400 border-green-400/50 bg-green-950/50' },
+  'Common': { weight: 0.231, multiplier: 0.05, color: 'text-white border-white/50 bg-zinc-900/50' },
+  'Most Common': { weight: 0.155, multiplier: 0.00, color: 'text-gray-400 border-gray-400/50 bg-zinc-950/50' }
+};
+
 // Deterministic mock data generator for 20 items (or more if needed)
 export const generateMockGuardian = (id: number): Guardian => {
-  const isRare = id % 10 === 0;
-  const isEpic = id % 50 === 0;
-  const isLegendary = id % 100 === 0;
+  // Deterministic rarity distribution based on ID
+  let rarity = 'Most Common';
+  const mod = id % 100;
   
-  let rarity = 'Common';
-  if (isLegendary) rarity = 'Legendary';
-  else if (isEpic) rarity = 'Epic';
-  else if (isRare) rarity = 'Rare';
+  if (mod < 3) rarity = 'Rarest-Legendary';      // ~3%
+  else if (mod < 8) rarity = 'Very Rare';        // ~5%
+  else if (mod < 16) rarity = 'More Rare';       // ~8%
+  else if (mod < 28) rarity = 'Rare';            // ~12%
+  else if (mod < 43) rarity = 'Less Rare';       // ~15%
+  else if (mod < 61) rarity = 'Less Common';     // ~18%
+  else if (mod < 84) rarity = 'Common';          // ~23%
+  else rarity = 'Most Common';                   // ~16%
 
   return {
     id,
@@ -36,9 +52,10 @@ export const generateMockGuardian = (id: number): Guardian => {
     image: `https://ipfs.io/ipfs/bafybeig5g3p5n7j5q5n7j5q5n7j5q5n7j5q5n7j5q/image/${id}.png`, // Using IPFS pattern
     rarity,
     traits: [
-      { type: 'Background', value: isRare ? 'Cyber Void' : 'Industrial' },
-      { type: 'Armor', value: isEpic ? 'Quantum Plate' : 'Standard Kevlar' },
-      { type: 'Weapon', value: isLegendary ? 'Plasma Railgun' : 'Pulse Rifle' },
+      { type: 'Rarity Level', value: rarity },
+      { type: 'Background', value: rarity.includes('Rare') ? 'Cyber Void' : 'Industrial' },
+      { type: 'Armor', value: rarity.includes('Legendary') ? 'Quantum Plate' : 'Standard Kevlar' },
+      { type: 'Weapon', value: rarity.includes('Legendary') ? 'Plasma Railgun' : 'Pulse Rifle' },
       { type: 'Strength', value: String(Math.floor(Math.random() * 10) + 1) },
       { type: 'Speed', value: String(Math.floor(Math.random() * 10) + 1) },
       { type: 'Intelligence', value: String(Math.floor(Math.random() * 10) + 1) },
@@ -127,7 +144,7 @@ export const calculateEmissions = () => {
   return Math.floor(daysSinceGenesis * EMISSION_RATE_DAILY);
 };
 
-export const calculateBackedValue = () => {
+export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
   // 1. Base per-NFT from mints: 51% of 69,420
   const mintShare = 35404.2; // Hardcoded to prevent any constant multiplication issues
   
@@ -142,8 +159,13 @@ export const calculateBackedValue = () => {
   
   const accruedEmissions = dailyEmissionPerNft * daysSinceGenesis;
   
-  // Should be approx 35,404 + (Days * 1.34)
-  return Math.floor(mintShare + accruedEmissions);
+  // 3. Apply Rarity Multiplier to Emissions ONLY
+  // Default to 0 boost if rarity not found
+  const multiplier = RARITY_CONFIG[rarityLevel]?.multiplier || 0;
+  const boostedEmissions = accruedEmissions * (1 + multiplier);
+  
+  // Should be approx 35,404 + (Days * 1.34 * Boost)
+  return Math.floor(mintShare + boostedEmissions);
 };
 
 // Pool Balance = (Minted * Price * 0.51) + Emissions
