@@ -88,7 +88,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const navItems = [
     { id: 'mint', label: 'HOME' },
-    { id: 'gallery', label: 'GALLERY' },
+    { id: 'gallery', label: 'PORTFOLIO' },
     { id: 'voting', label: 'DAO' }, // Will add ID to the button in the map
     { id: 'escrow', label: 'SERIES' },
     { id: 'pool', label: 'POOL' },
