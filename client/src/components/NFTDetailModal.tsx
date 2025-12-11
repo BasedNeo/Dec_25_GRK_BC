@@ -23,8 +23,6 @@ interface NFTDetailModalProps {
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
 
-  if (!nft) return null;
-
   // Safe Sanitize Helper
   const safeSanitize = (content: string | undefined | null) => {
     if (typeof content !== 'string') return '';
@@ -45,6 +43,8 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       }
     }
   }, [isOpen, nft]);
+
+  if (!nft) return null;
 
   // Value Calculation
   const MOCK_POOL_BALANCE = 5000000; 
