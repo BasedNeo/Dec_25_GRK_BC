@@ -176,7 +176,9 @@ export function PoolTracker() {
 
   const updateData = async () => {
       setLoading(true);
-      await Promise.all([pollSubnet(), pollPoolWallet(), fetchPriceHistory()]);
+      // We moved pollSubnet to its own interval, so we remove it from here to respect the 4h timer
+      // But we call it initially in useEffect.
+      await Promise.all([pollPoolWallet(), fetchPriceHistory()]);
       
       // Update Mint Count
       const supply = await fetchTotalSupply();
@@ -192,13 +194,24 @@ export function PoolTracker() {
   };
 
   useEffect(() => {
+    // Initial Load
     updateData();
+    pollSubnet(); // Initial Subnet Poll
 
-    const interval = setInterval(() => {
+    // Fast Poll (Mints & Price) - 5 minutes
+    const fastInterval = setInterval(() => {
         updateData();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    // Slow Poll (Subnet Emissions) - 4 hours
+    const slowInterval = setInterval(() => {
+        pollSubnet();
+    }, 4 * 60 * 60 * 1000);
+
+    return () => {
+        clearInterval(fastInterval);
+        clearInterval(slowInterval);
+    };
   }, [pollSubnet, pollPoolWallet, fetchPriceHistory]); 
 
   // Halving Logic
@@ -293,20 +306,28 @@ export function PoolTracker() {
           
           <h2 className="text-sm font-mono text-muted-foreground uppercase tracking-[0.2em] mb-4">Community Treasury</h2>
           
-          <div className="text-5xl md:text-7xl font-black text-white mb-2 font-orbitron text-glow">
-            {livePoolBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            <span className="text-2xl md:text-4xl text-primary ml-4">$BASED</span>
+          <div className="flex flex-col items-center justify-center mb-6">
+            <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow">
+                {(mintRevenue + poolShare).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+            <div className="text-2xl md:text-4xl text-primary font-bold mt-2 font-orbitron tracking-widest text-center">
+                $BASED
+            </div>
           </div>
           
           {/* Breakdown Section */}
-          <div className="flex flex-col gap-2 mb-10 text-sm font-mono text-muted-foreground/80 max-w-2xl mx-auto bg-black/40 p-4 rounded-lg border border-white/5">
-              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span>From Mints (51% of 69,420 × {mintedCount || 6}):</span>
-                  <span className="text-white">~{mintRevenue.toLocaleString()} $BASED</span>
+          <div className="flex flex-col gap-3 mb-10 text-sm font-mono text-cyan-400/90 max-w-xl mx-auto bg-black/60 p-6 rounded-xl border border-white/10 shadow-lg backdrop-blur-md">
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-muted-foreground">From Mints (51% of 69,420 × {mintedCount || 6}):</span>
+                  <span className="font-bold">~{mintRevenue.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})} $BASED</span>
               </div>
-              <div className="flex justify-between items-center pt-1">
-                  <span>Passive Emissions (non-staking):</span>
-                  <span className="text-cyan-400">~{poolShare.toLocaleString(undefined, {maximumFractionDigits: 0})} $BASED</span>
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-muted-foreground">Passive Emissions (10% of Subnet):</span>
+                  <span className="font-bold">~{poolShare.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 opacity-75">
+                  <span className="text-muted-foreground flex items-center gap-2">Staking Emissions: <span className="text-[10px] bg-primary/10 text-primary px-1 rounded">SOON</span></span>
+                  <span className="font-bold">0 $BASED</span>
               </div>
           </div>
           
