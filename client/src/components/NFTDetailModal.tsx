@@ -58,29 +58,8 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     }
   }, [isOpen, nft]);
 
-  // Chart Data Preparation
-  const chartData = useMemo(() => {
-    if (!nft || !nft.traits) return [];
-    
-    // Extract standard stats or generate mock ones for the visual if missing
-    // We try to find specific traits, or fallback to random/hash based values for the chart visual
-    const getTraitValue = (name: string) => {
-        const t = nft.traits.find(tr => tr.type === name);
-        if (t) return parseInt(t.value) || 5;
-        // Deterministic fallback based on ID for consistency if missing
-        return (nft.id * name.length) % 10 + 1;
-    };
-
-    return [
-        { subject: 'Strength', A: getTraitValue('Strength'), fullMark: 10 },
-        { subject: 'Agility', A: getTraitValue('Agility') || getTraitValue('Speed'), fullMark: 10 },
-        { subject: 'Intellect', A: getTraitValue('Intelligence') || getTraitValue('Intellect'), fullMark: 10 },
-        { subject: 'Tech', A: getTraitValue('Tech') || (nft.id % 10) + 1, fullMark: 10 },
-        { subject: 'Charisma', A: getTraitValue('Charisma') || ((nft.id * 2) % 10) + 1, fullMark: 10 },
-        { subject: 'Luck', A: getTraitValue('Luck') || ((nft.id * 3) % 10) + 1, fullMark: 10 },
-    ];
-  }, [nft]);
-
+  // Chart Data Preparation (Removed as per request to switch back to card view for stats)
+  
   if (!nft) return null;
 
   // Rarity Multiplier for Display
@@ -230,34 +209,6 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <div className="p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-[10px] text-yellow-500/70 font-mono flex gap-2 items-start whitespace-pre-wrap">
                         <Info size={14} className="mt-0.5 shrink-0" />
                         <span>Metadata is fetched directly from on-chain/IPFS sources. Rarity and values are estimates only.</span>
-                    </div>
-
-                    {/* Radar Chart (Recharts) */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                        <h3 className="text-sm font-orbitron text-white mb-3 flex items-center">
-                            <BarChart3 size={14} className="mr-2 text-primary" /> GUARDIAN METRICS
-                        </h3>
-                        <div className="h-[200px] w-full flex justify-center items-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-                                    <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 10, fontFamily: 'monospace' }} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
-                                    <Radar
-                                        name="Stats"
-                                        dataKey="A"
-                                        stroke="#00ffff"
-                                        strokeWidth={2}
-                                        fill="#00ffff"
-                                        fillOpacity={0.2}
-                                    />
-                                    <RechartsTooltip 
-                                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px' }}
-                                        itemStyle={{ color: '#00ffff', fontSize: '12px', fontFamily: 'monospace' }}
-                                    />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
                     </div>
 
                     <Separator className="bg-white/10" />
