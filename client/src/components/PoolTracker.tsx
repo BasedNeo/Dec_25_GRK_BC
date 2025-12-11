@@ -163,10 +163,10 @@ export function PoolTracker() {
              <div className="flex items-start gap-3 text-left">
                 <Info className="text-primary shrink-0 mt-1" size={18} />
                 <div>
-                    <p className="text-sm text-white font-bold mb-1">Baseline Emissions (non-staking)</p>
+                    <p className="text-sm text-white font-bold mb-1">Passive Emissions (non-staking)</p>
                     <p className="text-xs text-muted-foreground">
                         Subnet emissions from <span className="text-white font-mono">{SUBNET_ADDRESS.slice(0,6)}...</span> flow into this community pool over time.
-                        <br/><span className="text-[10px] text-primary/70 mt-1 block">Current Rate: 5,000 BASED/day (Halving to 2,500 mid-Dec)</span>
+                        <br/><span className="text-[10px] text-primary/70 mt-1 block">Current Rate Est. ~5,000 BASED/day (Halving forecast late Dec 2,500 BASED/day)</span>
                     </p>
                 </div>
              </div>
