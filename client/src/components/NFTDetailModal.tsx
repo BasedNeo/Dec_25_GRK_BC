@@ -40,6 +40,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     }
   }, [isOpen, nft]);
 
+  // Value Calculation
+  const MOCK_POOL_BALANCE = 5000000; 
+  const TOTAL_SUPPLY = 3732;
+  const baseValue = Math.floor(MOCK_POOL_BALANCE / TOTAL_SUPPLY);
+  const isRareItem = ['Rare', 'Epic', 'Legendary'].includes(nft.rarity || '');
+  const backedValue = Math.floor(baseValue * (isRareItem ? 1.3 : 1.0));
+
   const handleCopyTraits = () => {
     const text = nft.traits.map(t => `${t.type}: ${t.value}`).join('\n');
     navigator.clipboard.writeText(text);
@@ -139,6 +146,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <Badge variant="outline" className="border-white/20 text-muted-foreground font-mono text-[10px]">
                             BASED L1
                         </Badge>
+                        {/* Backed Value Display (Premium Feature) */}
+                        <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
+                            <Activity size={12} className="text-green-400" />
+                            <span className="text-[10px] text-green-400 font-mono font-bold tracking-wider">
+                                BACKED BY: {backedValue.toLocaleString()} $BASED {isRareItem && <span className="text-white/70 ml-1">(+30% BOOST)</span>}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 

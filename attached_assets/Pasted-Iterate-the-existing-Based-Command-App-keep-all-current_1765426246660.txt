@@ -1,0 +1,27 @@
+Iterate the existing Based Command App — keep all current design, tabs, mint, wallet, chain (BasedAI L1 V1), and functionality. Focus ONLY on these final commercial upgrades for a world-class DApp. No rate limiting. No experimental features. Use proven patterns from OpenSea, Blur, and Magic Eden.
+
+1. **Full 3732 NFT Metadata Loading**  
+   Load ALL 3732 Guardians with batched IPFS fetches + infinite scroll + fallback to uploaded CSV. Never show placeholders. Ensure every NFT shows full 13+ attributes (Character Type, Rarity Level, Biological Type, Role, Likes to Do, Flying Style, Speed, Agility, Intellect, Strength, Special Meta, etc.).
+
+2. **OpenSea-Level Search & Filters**  
+   Upgrade Sales tab search: exact NFT # first, fuzzy attribute search (e.g. “high strength” finds Strength ≥8), filters for Character Type (“Based Frog” / “Based Guardian” / “Based Creature”), Rarity, and any trait. Instant results with debounce. Mobile: collapsible filter panel.
+
+3. **Premium NFT Modal**  
+   On NFT click → full-screen modal with large image, all 13+ traits in expandable accordion (long descriptions wrap fully), rarity badge, copy buttons, “Backed by X $BASED” value with +30% rare boost. Mobile: swipe between NFTs, full-screen.
+
+4. **Dynamic Rarity Badge on Previews**  
+   Top-right translucent badge on every NFT preview using Rarity Level (cyan for Rare, purple for Epic/Legendary, blank for Common).
+
+5. **UI Polish**  
+   Make “X” close button larger, red on hover, glowing, centered top-right. Add click-outside + swipe-down on mobile. Center “YOUR BATTALION” text. Add total backed-by value summary card above gallery.
+
+6. **Video Optimization**  
+   Compress hero video to <1MB and lazy-load (only after scroll). Mobile: auto-play off.
+
+7. **Commercial Essentials**  
+   Add Google Analytics 4 (VITE_GA_ID) tracking every connect/mint/vote/sale/search. Add feedback form in footer. Add share buttons (X + Discord with dynamic text). Make all explorer links open in new tab. Add PWA install button + red “BETA” ribbon top-right.
+
+8. **Final Production Readiness**  
+   Make 100% Vercel deploy ready (no Replit-specific code, production build script, HTTPS). Lighthouse score 98+. Cross-device perfection (mobile/desktop). No errors.
+
+Keep cyberpunk theme. Secure, fast, mobile-perfect. Test with 3732 NFTs and real wallet connect. This is the final commercial version — make it legendary.
