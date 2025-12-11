@@ -196,34 +196,37 @@ export function Hero() {
               />
             </div>
 
-            {/* Rarity Distribution Chart (Pie) */}
-            <div className="mb-6 h-64 w-full relative">
-                 <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground pointer-events-none text-center leading-tight z-10">
-                     RARITY<br/>DISTRIBUTION
+            {/* Rarity Distribution Bars */}
+            <div className="mb-6 w-full space-y-3 pr-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                 <div className="text-xs text-muted-foreground font-orbitron mb-2 tracking-widest text-center border-b border-white/10 pb-2">
+                     RARITY LEVELS
                  </div>
-                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={rarityData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={2}
-                            dataKey="value"
-                            stroke="none"
-                        >
-                            {rarityData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                        </Pie>
-                        <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#000', borderColor: '#333', fontSize: '12px', fontFamily: 'Orbitron' }}
-                            itemStyle={{ color: '#fff' }}
-                            formatter={(value: number) => [`${value} items`, 'Count']}
-                        />
-                    </PieChart>
-                 </ResponsiveContainer>
+                 {rarityData.map((item, index) => {
+                    // Proportional minted count logic
+                    const mintedCount = Math.floor((displayCount / TOTAL_SUPPLY) * item.value);
+                    // Ensure at least 0
+                    const safeMinted = Math.max(0, mintedCount);
+                    // Percentage for width
+                    const percent = Math.min(100, (safeMinted / item.value) * 100);
+                    
+                    return (
+                        <div key={index} className="space-y-1 group">
+                            <div className="flex justify-between text-[10px] uppercase font-mono text-muted-foreground group-hover:text-white transition-colors">
+                                <span style={{ color: item.color }}>{item.name}</span>
+                                <span>{safeMinted} / {item.value}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${percent}%` }}
+                                    transition={{ duration: 1.5, delay: index * 0.05 }}
+                                    className="h-full rounded-full shadow-[0_0_10px_currentColor]"
+                                    style={{ backgroundColor: item.color, color: item.color }}
+                                />
+                            </div>
+                        </div>
+                    );
+                 })}
             </div>
 
             <div className="flex justify-between items-center mb-8">
