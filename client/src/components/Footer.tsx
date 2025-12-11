@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Send, MessageSquare, ShieldCheck, Twitter, Github } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
-import logo from "@/assets/logo.png";
 
 import { useSecurity } from "@/context/SecurityContext";
 
@@ -135,9 +134,9 @@ export function Footer() {
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">
             <div className="flex items-center mb-4">
-               {/* Logo */}
-               <div className="w-8 h-8 rounded-full flex items-center justify-center mr-2 overflow-hidden bg-white/5">
-                 <img src={logo} alt="Based Guardians Logo" className="w-full h-full object-cover" />
+               {/* Logo placeholder */}
+               <div className="w-8 h-8 border border-white/10 rounded-full flex items-center justify-center mr-2 bg-white/5">
+                 <span className="text-[8px]">LOGO</span>
                </div>
                BASED GUARDIANS v1.0
             </div>

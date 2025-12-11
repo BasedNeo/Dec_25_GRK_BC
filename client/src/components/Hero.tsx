@@ -8,7 +8,6 @@ import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALAN
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
-import flagBg from "@/assets/flag1.png";
 
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
@@ -117,20 +116,8 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Parallax Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-          <motion.div 
-            style={{ y }} 
-            className="absolute inset-0 w-full h-[120%]"
-          >
-             <img 
-                src={flagBg} 
-                alt="Based Guardians Flag" 
-                className="w-full h-full object-cover opacity-40 mix-blend-screen" 
-             />
-             <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/50 to-background" />
-          </motion.div>
-      </div>
+      {/* Background Elements - Replaced with SpaceBackground in App.tsx */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)] z-0" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
