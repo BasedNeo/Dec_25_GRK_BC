@@ -3,16 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc } from "lucide-react";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3 } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
 import DOMPurify from 'dompurify';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -43,6 +44,29 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       }
     }
   }, [isOpen, nft]);
+
+  // Chart Data Preparation
+  const chartData = useMemo(() => {
+    if (!nft) return [];
+    
+    // Extract standard stats or generate mock ones for the visual if missing
+    // We try to find specific traits, or fallback to random/hash based values for the chart visual
+    const getTraitValue = (name: string) => {
+        const t = nft.traits.find(tr => tr.type === name);
+        if (t) return parseInt(t.value) || 5;
+        // Deterministic fallback based on ID for consistency
+        return (nft.id * name.length) % 10 + 1;
+    };
+
+    return [
+        { subject: 'Strength', A: getTraitValue('Strength'), fullMark: 10 },
+        { subject: 'Agility', A: getTraitValue('Agility') || getTraitValue('Speed'), fullMark: 10 },
+        { subject: 'Intellect', A: getTraitValue('Intelligence') || getTraitValue('Intellect'), fullMark: 10 },
+        { subject: 'Tech', A: getTraitValue('Tech') || (nft.id % 10) + 1, fullMark: 10 },
+        { subject: 'Charisma', A: getTraitValue('Charisma') || ((nft.id * 2) % 10) + 1, fullMark: 10 },
+        { subject: 'Luck', A: getTraitValue('Luck') || ((nft.id * 3) % 10) + 1, fullMark: 10 },
+    ];
+  }, [nft]);
 
   if (!nft) return null;
 
@@ -104,12 +128,16 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-screen h-[100dvh] md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl">
+      {/* 
+          Mobile: fixed inset-0 (full screen), z-50
+          Desktop: md:w-full md:h-[95vh] etc.
+      */}
+      <DialogContent className="fixed inset-0 w-screen h-[100dvh] md:relative md:w-full md:h-[95vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[100]">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
         {/* Left Side: Image */}
-        <div className="relative w-full md:w-1/2 h-1/3 md:h-full bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group">
+        <div className="relative w-full md:w-1/2 h-1/3 md:h-full bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group shrink-0">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
             
@@ -138,9 +166,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         </div>
 
         {/* Right Side: Details */}
-        <div className="w-full md:w-1/2 flex flex-col h-2/3 md:h-full bg-card/50 relative">
+        <div className="w-full md:w-1/2 flex flex-col h-2/3 md:h-full bg-card/50 relative flex-1">
             {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20">
+            <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
                 <div className="pr-16">
                     <h2 className="text-2xl md:text-5xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
                         {safeSanitize(nft.name)}
@@ -159,12 +187,12 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                     <div className="flex items-center gap-2 ml-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full cursor-help">
                                         <Activity size={12} className="text-green-400" />
                                         <span className="text-[10px] text-green-400 font-mono font-bold tracking-wider">
-                                            BACKED BY: {backedValue.toLocaleString()} $BASED {isRareItem && <span className="text-white/70 ml-1">(+30% BOOST)</span>}
+                                            BACKED BY: {backedValue.toLocaleString()} $BASED
                                         </span>
                                     </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="bg-black border-green-500 text-green-400 font-mono text-xs max-w-[200px]">
-                                    <p>This NFT is backed by {backedValue.toLocaleString()} $BASED in the community treasury.{isRareItem ? " Includes a 30% rarity multiplier." : ""}</p>
+                                    <p>This NFT is backed by {backedValue.toLocaleString()} $BASED in the community treasury.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -175,9 +203,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-16 w-16 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.8)] z-50 group"
+                        className="absolute top-4 right-4 h-14 w-14 md:h-16 md:w-16 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.8)] z-50 group"
                     >
-                        <X size={40} className="group-hover:scale-110 transition-transform group-hover:text-red-400" />
+                        <X size={32} className="md:w-10 md:h-10 group-hover:scale-110 transition-transform group-hover:text-red-400" />
                     </Button>
                 </DialogClose>
             </div>
@@ -191,26 +219,31 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <span>Metadata is fetched directly from on-chain/IPFS sources. Rarity and values are estimates only.</span>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div>
+                    {/* Radar Chart (Recharts) - Restoring the "Charts" view */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                         <h3 className="text-sm font-orbitron text-white mb-3 flex items-center">
-                            <Activity size={14} className="mr-2 text-primary" /> BASE STATS
+                            <BarChart3 size={14} className="mr-2 text-primary" /> GUARDIAN METRICS
                         </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            {nft.traits.filter(t => ['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
-                                <div key={i} className="bg-white/5 border border-white/5 rounded p-3 flex justify-between items-center group hover:border-primary/30 transition-colors">
-                                    <span className="text-xs text-muted-foreground font-mono uppercase">{safeSanitize(trait.type)}</span>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-1.5 w-16 bg-white/10 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full bg-primary" 
-                                                style={{ width: `${Math.min(parseInt(trait.value) * 10, 100)}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-sm font-bold text-white">{safeSanitize(trait.value)}</span>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="h-[200px] w-full flex justify-center items-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+                                    <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 10, fontFamily: 'monospace' }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                                    <Radar
+                                        name="Stats"
+                                        dataKey="A"
+                                        stroke="#00ffff"
+                                        strokeWidth={2}
+                                        fill="#00ffff"
+                                        fillOpacity={0.2}
+                                    />
+                                    <RechartsTooltip 
+                                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid #333', borderRadius: '4px' }}
+                                        itemStyle={{ color: '#00ffff', fontSize: '12px', fontFamily: 'monospace' }}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
@@ -229,7 +262,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         </div>
                         
                         <Accordion type="single" collapsible className="w-full">
-                            {nft.traits.filter(t => !['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
+                            {nft.traits.map((trait, i) => (
                                 <AccordionItem key={i} value={`item-${i}`} className="border-white/10">
                                     <AccordionTrigger className="text-xs hover:text-primary py-2 font-mono uppercase text-muted-foreground">
                                         <div className="flex justify-between w-full pr-4">
@@ -262,7 +295,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             </ScrollArea>
 
             {/* Footer Actions */}
-            <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto">
+            <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0">
                 <div className="grid grid-cols-4 gap-3">
                      <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
                         <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
