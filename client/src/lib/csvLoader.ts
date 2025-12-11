@@ -40,6 +40,12 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                         const rarityTrait = traits.find(t => t.type === 'Rarity Level');
                         if (rarityTrait) rarity = rarityTrait.value;
 
+                        // LIVE CONTRACT STATE OVERRIDES (To match Explorer/Chart)
+                        const id = index + 1;
+                        if ([1282, 3002, 149].includes(id)) rarity = 'Rare';
+                        else if (id === 183) rarity = 'Common';
+                        else if ([1059, 1166].includes(id)) rarity = 'Most Common';
+
                     } catch (e) {
                         // Fallback: try manual cleanup if standard parse fails
                         try {
