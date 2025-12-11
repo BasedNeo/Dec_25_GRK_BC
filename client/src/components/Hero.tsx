@@ -108,6 +108,7 @@ export function Hero() {
             loop 
             muted 
             playsInline 
+            preload="none"
             className="w-full h-full object-cover opacity-80"
           />
           <img src="/hero.jpg" alt="Hero Background" className="w-full h-full object-cover opacity-20 absolute inset-0 mix-blend-overlay" />

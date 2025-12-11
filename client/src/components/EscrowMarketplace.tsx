@@ -258,6 +258,14 @@ export function EscrowMarketplace() {
             // Filter for "Character Type" = "Based Frog"
             setTraitTypeFilter("Character Type");
             setTimeout(() => setTraitValueFilter("Based Frog"), 0);
+        }},
+        { label: "Based Guardian", action: () => { 
+            setTraitTypeFilter("Character Type");
+            setTimeout(() => setTraitValueFilter("Based Guardian"), 0);
+        }},
+        { label: "Based Creature", action: () => { 
+            setTraitTypeFilter("Character Type");
+            setTimeout(() => setTraitValueFilter("Based Creature"), 0);
         }}
     ];
   }, []);

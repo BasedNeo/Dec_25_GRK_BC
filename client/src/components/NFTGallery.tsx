@@ -133,26 +133,39 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   };
 
   return (
-    <section id="gallery" className="py-20 bg-black/50 border-t border-white/5">
+    <section id="gallery" className="py-20 border-t border-white/5 relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-8">
-          <div>
-            <h2 className="text-3xl md:text-4xl text-white mb-2 text-center">YOUR <span className="text-primary">BATTALION</span></h2>
-            <p className="text-muted-foreground font-rajdhani text-center">Manage your Guardians and view their traits.</p>
+        
+        {/* Header & Value Summary */}
+        <div className="flex flex-col items-center mb-12 space-y-6">
+          <div className="text-center">
+            <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter">YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span></h2>
+            <p className="text-muted-foreground font-rajdhani text-lg">Manage your Guardians and view their traits.</p>
           </div>
-          
-          <div className="flex flex-col items-center md:items-end gap-2 mt-4 md:mt-0 w-full md:w-auto">
-             {/* Total Value Summary */}
-             {isConnected && nfts.length > 0 && (
-                 <div className="text-xs font-mono text-primary mb-2">
-                     TOTAL VALUE: ≈ {userTotalValue.toLocaleString()} $BASED
+
+          {isConnected && nfts.length > 0 && (
+             <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-4 flex items-center gap-6 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
+                 <div className="flex flex-col items-center border-r border-white/10 pr-6">
+                     <span className="text-xs text-muted-foreground font-mono">TOTAL VALUE</span>
+                     <span className="text-2xl font-orbitron text-white">≈ {Math.floor(userTotalValue).toLocaleString()} <span className="text-primary text-sm">$BASED</span></span>
                  </div>
-             )}
+                 <div className="flex flex-col items-center pl-2">
+                     <span className="text-xs text-muted-foreground font-mono">BACKING</span>
+                     <span className="text-sm font-mono text-green-400 flex items-center gap-1">
+                        <TrendingUp size={12} /> +{Math.floor(baseValuePerNFT).toLocaleString()} / NFT
+                     </span>
+                 </div>
+             </Card>
+          )}
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+          <div className="w-full">
             {isConnected && (
-               <div className="flex flex-col gap-4 w-full md:items-end">
+               <div className="flex flex-col gap-4 w-full">
                  
-                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 w-full md:w-64">
+                 <div className="flex flex-col sm:flex-row gap-2 w-full justify-center md:justify-between">
+                    <div className="relative flex-1 w-full md:max-w-md">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                        <Input 
                          placeholder="Search ID or Traits..." 
@@ -163,9 +176,9 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                        />
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full md:w-auto">
                          <Select value={sortBy} onValueChange={setSortBy}>
-                             <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white">
+                             <SelectTrigger className="w-full md:w-[180px] bg-white/5 border-white/10 text-white">
                                <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
                                <SelectValue placeholder="Sort By" />
                              </SelectTrigger>
@@ -187,10 +200,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     </div>
                  </div>
 
-                 <div className="flex items-center justify-between md:justify-end gap-2 w-full">
-                    <div className="px-4 py-2 bg-primary/5 border border-primary/20 rounded text-xs font-mono text-primary/80">
-                        Backed by {Math.floor(baseValuePerNFT).toLocaleString()} $BASED per NFT
-                    </div>
+                 <div className="flex items-center justify-center md:justify-end gap-2 w-full">
                     <Button 
                         variant="ghost" 
                         size="sm" 
@@ -403,6 +413,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
 
   // Get Rarity for Badge
   const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level')?.value || guardian.rarity;
+  const isCommon = !rarityTrait || rarityTrait === 'Common' || rarityTrait === 'common';
 
   return (
     <Card 
@@ -425,16 +436,20 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
              <span className="mb-2">No Image</span>
            </div>
         )}
-        <div className="absolute top-2 right-2 z-20">
-          <Badge className={`backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
-             rarityTrait?.includes('Legendary') ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : 
-             rarityTrait?.includes('Epic') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
-             rarityTrait?.includes('Rare') ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
-             'bg-black/40 text-gray-300'
-          } font-mono text-[10px] uppercase`}>
-            {rarityTrait || 'Common'}
-          </Badge>
-        </div>
+        
+        {/* Dynamic Rarity Badge */}
+        {!isCommon && (
+            <div className="absolute top-2 right-2 z-20">
+            <Badge className={`backdrop-blur-md border shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
+                rarityTrait?.includes('Legendary') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
+                rarityTrait?.includes('Epic') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 
+                rarityTrait?.includes('Rare') ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
+                'bg-black/40 text-gray-300 border-white/10'
+            } font-mono text-[10px] uppercase`}>
+                {rarityTrait}
+            </Badge>
+            </div>
+        )}
       </div>
       
       <div className="p-4 flex-1 flex flex-col">

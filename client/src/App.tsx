@@ -12,6 +12,7 @@ import { SecurityProvider } from "@/context/SecurityContext";
 import { initAnalytics } from "@/lib/analytics";
 import { useEffect } from "react";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
+import { SpaceBackground } from "@/components/SpaceBackground";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function App() {
         })}>
           <SecurityProvider>
             <TooltipProvider>
+              <SpaceBackground />
               <Router />
               <DisclaimerModal />
               <Toaster />

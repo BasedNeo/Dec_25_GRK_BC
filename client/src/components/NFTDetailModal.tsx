@@ -1,9 +1,9 @@
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter } from "lucide-react";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
 import DOMPurify from 'dompurify';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { toast } from "@/hooks/use-toast";
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -68,6 +70,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
 
+  const handleDiscordShare = () => {
+      // Mock Discord Share (usually just copies link or opens Discord web)
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+  };
+
   // Determine rarity color
   const getRarityColor = (rarity: string) => {
     switch (rarity?.toLowerCase()) {
@@ -82,10 +91,12 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[90vw] md:max-w-[80vw] lg:max-w-5xl w-full h-[95vh] md:h-auto md:max-h-[90vh] p-0 gap-0 bg-black/95 border-white/10 overflow-hidden flex flex-col md:flex-row">
+      <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-6xl w-full h-[95vh] p-0 gap-0 bg-black/95 border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl">
+        <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
+        <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
         {/* Left Side: Image */}
-        <div className="relative w-full md:w-1/2 h-1/2 md:h-auto bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group">
+        <div className="relative w-full md:w-1/2 h-1/3 md:h-full bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
             
@@ -93,7 +104,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.5 }}
-                className="relative z-10 w-full max-w-sm aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
+                className="relative z-10 w-full max-w-md aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
             >
                 <img 
                     src={nft.image} 
@@ -114,11 +125,11 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         </div>
 
         {/* Right Side: Details */}
-        <div className="w-full md:w-1/2 flex flex-col h-1/2 md:h-full bg-card/50">
+        <div className="w-full md:w-1/2 flex flex-col h-2/3 md:h-full bg-card/50 relative">
             {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-start relative">
-                <div className="pr-12">
-                    <h2 className="text-2xl md:text-4xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
+            <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20">
+                <div className="pr-16">
+                    <h2 className="text-2xl md:text-5xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
                         {DOMPurify.sanitize(nft.name)}
                     </h2>
                     <div className="flex flex-wrap items-center gap-2">
@@ -135,9 +146,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-12 w-12 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-lg hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] z-50"
+                        className="absolute top-4 right-4 h-12 w-12 text-muted-foreground hover:text-white bg-black/50 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/50 shadow-lg hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] z-50 group"
                     >
-                        <X size={28} />
+                        <X size={28} className="group-hover:scale-110 transition-transform" />
                     </Button>
                 </DialogClose>
             </div>
@@ -176,7 +187,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
                     <Separator className="bg-white/10" />
 
-                    {/* Detailed Attributes */}
+                    {/* Detailed Attributes (Accordion) */}
                     <div>
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="text-sm font-orbitron text-white flex items-center">
@@ -187,41 +198,52 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                 {copied ? "COPIED" : "COPY ALL"}
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-
+                        
+                        <Accordion type="single" collapsible className="w-full">
                             {nft.traits.filter(t => !['Strength', 'Speed', 'Agility', 'Intellect'].includes(t.type)).map((trait, i) => (
-                                <TooltipProvider key={i}>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="flex flex-col p-2 rounded hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-help">
-                                                <span className="text-[10px] text-muted-foreground font-mono uppercase mb-0.5">{DOMPurify.sanitize(trait.type)}</span>
-                                                <span className="text-sm text-white font-medium break-words whitespace-pre-wrap">{DOMPurify.sanitize(trait.value)}</span>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="bg-black border-primary text-primary font-mono text-xs">
-                                            <p>{trait.type}: {trait.value}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">Rarity Impact: +{(Math.random() * 5).toFixed(1)}%</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <AccordionItem key={i} value={`item-${i}`} className="border-white/10">
+                                    <AccordionTrigger className="text-xs hover:text-primary py-2 font-mono uppercase text-muted-foreground">
+                                        <div className="flex justify-between w-full pr-4">
+                                            <span>{DOMPurify.sanitize(trait.type)}</span>
+                                            <span className="text-white font-bold">{DOMPurify.sanitize(trait.value).substring(0, 15)}{trait.value.length > 15 ? '...' : ''}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="text-sm text-white font-medium whitespace-pre-wrap bg-white/5 p-3 rounded">
+                                        {DOMPurify.sanitize(trait.value)}
+                                        <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
+                                            <Badge variant="outline" className="text-[10px] border-white/20 text-muted-foreground">
+                                                Rarity Impact: +{(Math.random() * 5).toFixed(1)}%
+                                            </Badge>
+                                            <Button size="sm" variant="ghost" className="h-5 text-[10px]" onClick={() => {
+                                                navigator.clipboard.writeText(trait.value);
+                                                toast({ description: "Trait value copied" });
+                                            }}>
+                                                Copy
+                                            </Button>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
                             ))}
-                        </div>
+                        </Accordion>
                     </div>
                 </div>
             </ScrollArea>
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                      <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
-                        <Twitter size={14} className="mr-2" /> TWEET
+                        <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
+                     </Button>
+                     <Button variant="outline" onClick={handleDiscordShare} className="border-white/10 hover:bg-[#5865F2]/20 hover:text-[#5865F2] hover:border-[#5865F2]/50 text-xs font-mono">
+                        <Disc size={14} className="mr-2" /> <span className="hidden sm:inline">DISCORD</span>
                      </Button>
                      <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
-                        <Share2 size={14} className="mr-2" /> SHARE
+                        <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
                      </Button>
                      <Button variant="default" asChild className="bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
-                        <a href={`https://explorer.bf1337.org/token/${import.meta.env.VITE_NFT_CONTRACT || "0x..."}?a=${nft.id}`} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink size={14} className="mr-2" /> EXPLORER
+                        <a href={`https://explorer.bf1337.org/address/${import.meta.env.VITE_NFT_CONTRACT || "0x..."}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink size={14} className="mr-2" /> <span className="hidden sm:inline">EXPLORER</span>
                         </a>
                      </Button>
                 </div>
