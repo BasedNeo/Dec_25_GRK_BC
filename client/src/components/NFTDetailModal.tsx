@@ -194,20 +194,6 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <Badge variant="outline" className="border-white/20 text-muted-foreground font-mono text-[10px]">
                             BASED L1
                         </Badge>
-                    {/* Premium Backed Value Display */}
-                    <div className="mt-4 p-4 bg-gradient-to-r from-green-500/10 to-transparent border-l-4 border-green-500 rounded-r-lg">
-                        <div className="text-[10px] text-green-400 font-mono font-bold tracking-wider uppercase mb-1 flex items-center">
-                            <TrendingUp size={12} className="mr-2" /> Backed Value
-                        </div>
-                        <div className="text-3xl font-orbitron text-white text-glow">
-                            {displayValue.toLocaleString()} <span className="text-lg text-primary">$BASED</span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-1 font-mono">
-                            Includes 51% Mint Share + Daily Emissions
-                            {isRareItem && <span className="text-green-400 ml-1">(+30% Rarity Boost Active)</span>}
-                            <div className="mt-1 text-primary/70">Boosted Value: {displayValue.toLocaleString()} $BASED</div>
-                        </div>
-                    </div>
                     </div>
                 </div>
                 
@@ -225,6 +211,21 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             {/* Scrollable Attributes */}
             <ScrollArea className="flex-1 p-6">
                 <div className="space-y-6">
+                    {/* Premium Backed Value Display (Scrollable) */}
+                    <div className="p-4 bg-gradient-to-r from-green-500/10 to-transparent border-l-4 border-green-500 rounded-r-lg">
+                        <div className="text-[10px] text-green-400 font-mono font-bold tracking-wider uppercase mb-1 flex items-center">
+                            <TrendingUp size={12} className="mr-2" /> Backed Value
+                        </div>
+                        <div className="text-3xl font-orbitron text-white text-glow">
+                            {displayValue.toLocaleString()} <span className="text-lg text-primary">$BASED</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                            Includes 51% Mint Share + Daily Emissions
+                            {isRareItem && <span className="text-green-400 ml-1">(+30% Rarity Boost Active)</span>}
+                            <div className="mt-1 text-primary/70">Boosted Value: {displayValue.toLocaleString()} $BASED</div>
+                        </div>
+                    </div>
+
                     {/* Description / Disclaimer */}
                     <div className="p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-[10px] text-yellow-500/70 font-mono flex gap-2 items-start whitespace-pre-wrap">
                         <Info size={14} className="mt-0.5 shrink-0" />
