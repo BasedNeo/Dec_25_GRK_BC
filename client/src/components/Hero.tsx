@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
-import { Minus, Plus, Zap, CheckCircle, Fingerprint } from "lucide-react";
-import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY } from "@/lib/mockData";
+import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp } from "lucide-react";
+import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE } from "@/lib/mockData";
 import { NFT_SYMBOL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
@@ -13,6 +13,7 @@ import flagBg from "@/assets/flag1.png";
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
+import { useGuardians } from "@/hooks/useGuardians";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -28,6 +29,13 @@ export function Hero() {
   // Supply Counter Animation
   const count = useMotionValue(0);
   const rounded = useTransform(count, Math.round);
+
+  // Fetch Real Guardian #300
+  const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "300" });
+  const heroGuardian = searchData?.pages[0]?.nfts[0];
+  
+  // Calculate Backing Value
+  const backingValue = Math.floor(MOCK_POOL_BALANCE / TOTAL_SUPPLY).toLocaleString();
 
   useEffect(() => {
     const animation = animate(count, MINTED_COUNT, { duration: 2, ease: "easeOut" });
@@ -91,6 +99,14 @@ export function Hero() {
 
   const increment = () => setMintQuantity(prev => Math.min(prev + 1, 10));
   const decrement = () => setMintQuantity(prev => Math.max(prev - 1, 1));
+
+  // Rarity Badge Color Logic
+  const getRarityColor = (rarity: string) => {
+      if (rarity?.includes('Legendary')) return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
+      if (rarity?.includes('Epic')) return 'bg-pink-500/20 text-pink-400 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.3)]';
+      if (rarity?.includes('Rare')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
+      return 'bg-black/40 text-gray-300 border-white/10';
+  };
 
   return (
     <section id="hero" className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden">
@@ -220,22 +236,39 @@ export function Hero() {
             {/* Main Image Card */}
             <Card className="absolute inset-8 bg-black border-primary/30 overflow-hidden shadow-[0_0_50px_rgba(0,255,255,0.15)] group">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/80 z-10" />
-              <img 
-                src={MOCK_GUARDIANS[0].image} 
-                alt="Guardian Preview" 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
               
-              <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                <Badge className="mb-2 bg-primary/20 text-primary hover:bg-primary/30 border-none">
-                  LEGENDARY
-                </Badge>
-                <h3 className="text-2xl font-orbitron text-white mb-1">Guardian #0042</h3>
-                <div className="flex items-center space-x-2 text-sm text-gray-400">
-                  <CheckCircle size={14} className="text-primary" />
-                  <span>Verified Contract</span>
+              {heroGuardian ? (
+                <>
+                    <img 
+                        src={heroGuardian.image} 
+                        alt={heroGuardian.name} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    
+                    {/* Top Right: Rarity & Backing */}
+                    <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+                        <Badge className={`backdrop-blur-md border ${getRarityColor(heroGuardian.rarity || 'Common')} font-mono text-[10px] uppercase`}>
+                            {heroGuardian.rarity || 'Common'}
+                        </Badge>
+                        <div className="bg-black/60 backdrop-blur-sm border border-white/10 px-2 py-1 rounded text-[10px] text-green-400 font-mono flex items-center gap-1">
+                            <TrendingUp size={10} />
+                            BACKED: {backingValue} $BASED
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+                        <h3 className="text-2xl font-orbitron text-white mb-1">{heroGuardian.name}</h3>
+                        <div className="flex items-center space-x-2 text-sm text-gray-400">
+                        <CheckCircle size={14} className="text-primary" />
+                        <span>Verified Contract</span>
+                        </div>
+                    </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-black/50">
+                    <span className="text-primary animate-pulse font-orbitron">LOADING DATA...</span>
                 </div>
-              </div>
+              )}
             </Card>
           </div>
         </motion.div>
