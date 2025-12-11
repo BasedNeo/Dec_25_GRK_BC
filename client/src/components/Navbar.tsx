@@ -104,12 +104,16 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             className="flex-shrink-0 cursor-pointer group flex items-center gap-4"
             onClick={() => onTabChange('mint')}
           >
-            <div className="relative">
+            <div className="relative group">
               <img 
                 src={rocketLogo}
                 alt="Based Guardians Rocket" 
-                className="h-10 w-auto object-contain glitch-hover"
+                className="h-10 w-auto object-contain mild-shake relative z-10"
               />
+              {/* Smoke Particles */}
+              <div className="smoke-particle smoke-1 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
+              <div className="smoke-particle smoke-2 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
+              <div className="smoke-particle smoke-3 group-hover:opacity-100 opacity-50 transition-opacity duration-300"></div>
             </div>
             {isPaused && (
                 <Badge variant="destructive" className="animate-pulse border-red-500 bg-red-900/50 text-red-500">
