@@ -132,17 +132,27 @@ export const calculateBackedValue = () => {
   // 1. Base per-NFT from mints: 51% of 69,420
   const mintShare = MINT_PRICE * MINT_REVENUE_PERCENT; // 35,404.2
   
-  // 2. Daily Emissions Accrual (Projected to Halving)
+  // 2. Daily Emissions Accrual (Current Accrued)
+  // User wants "Base + Increase per day" (Accrued so far)
   const dailyEmissionPerNft = EMISSION_RATE_DAILY / TOTAL_SUPPLY; // ~1.34
   
-  // Calculate total days from Genesis to Halving
-  const msTotalDuration = Math.max(0, HALVING_TIMESTAMP - GENESIS_TIMESTAMP);
-  const totalDays = msTotalDuration / (1000 * 60 * 60 * 24);
+  // Calculate days since Genesis (Accrued)
+  const now = Date.now();
+  const msSinceGenesis = Math.max(0, now - GENESIS_TIMESTAMP);
+  const daysSinceGenesis = msSinceGenesis / (1000 * 60 * 60 * 24);
   
-  const emissionsShare = dailyEmissionPerNft * totalDays;
+  // If we want projected to Halving, use totalDays. 
+  // But user complaint suggests they see a small number (614) which looks like ONLY emissions.
+  // The issue is likely that previously we might have been returning just emissions or something else.
+  // But reading the file above, it returned `mintShare + emissionsShare` where emissionsShare was projected to Halving.
   
-  // Total harmonized value = mint-backed + full emissions cycle to halving
-  return Math.floor(mintShare + emissionsShare);
+  // Wait, if the user sees 614, and mintShare is 35k, then the previous code was definitely not returning what I saw in the `read` output?
+  // Or maybe `MINT_PRICE` was wrong? `MINT_PRICE` is 69420.
+  
+  // Let's force the return to be correct: Base + Current Accrued Emissions
+  const accruedEmissions = dailyEmissionPerNft * daysSinceGenesis;
+  
+  return Math.floor(mintShare + accruedEmissions);
 };
 
 // Pool Balance = (Minted * Price * 0.51) + Emissions

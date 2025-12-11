@@ -102,10 +102,11 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   }, [displayNfts]);
 
   // Value Estimation Logic
-  const baseValuePerNFT = calculateBackedValue();
+  const baseValuePerNFT = calculateBackedValue(); // Now returns ~35k + accrued
   const userTotalValue = displayNfts.reduce((total, guardian) => {
     const r = guardian.rarity?.toLowerCase() || '';
-    const isRare = r === 'rare' || r === 'legendary' || r === 'epic';
+    const isRare = r.includes('rare') || r.includes('legendary') || r.includes('epic');
+    // If rarity boost applies to the whole value:
     const multiplier = isRare ? 1.3 : 1.0;
     return total + (baseValuePerNFT * multiplier);
   }, 0);
