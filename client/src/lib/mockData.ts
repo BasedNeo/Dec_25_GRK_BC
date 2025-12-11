@@ -68,12 +68,12 @@ export const MOCK_GUARDIANS: Guardian[] = Array.from({ length: 20 }, (_, i) => g
 export const MOCK_PROPOSALS: Proposal[] = [
   {
     id: 1,
-    title: "Initiative: Neon Streets Expansion",
-    description: "Allocate 50,000 $BASED to acquire virtual land in the Neon District for the community hub.",
-    type: 'binary',
+    title: "Proposal: Traditional Website vs. App Development",
+    description: "Should we create a traditional website or put those resources into further developing this app?",
+    type: 'multiple',
     options: [
-        { id: 'yes', label: 'For', votes: 1500 },
-        { id: 'no', label: 'Against', votes: 200 },
+        { id: 'for', label: 'For', votes: 1500 },
+        { id: 'against', label: 'Against', votes: 200 },
         { id: 'abstain', label: 'Abstain', votes: 50 }
     ],
     status: 'Active',
@@ -82,8 +82,8 @@ export const MOCK_PROPOSALS: Proposal[] = [
   },
   {
     id: 2,
-    title: "Grant: Cyber-Artist Fund",
-    description: "Establish a 10,000 $BASED grant program for community artists to create lore-accurate artwork.",
+    title: "Feature Request: Offers & Listings in Series",
+    description: "Add the ability to make offers in the 'Series' section and the ability to set a price to sell NFTs.",
     type: 'binary',
     options: [
         { id: 'yes', label: 'For', votes: 890 },
@@ -96,18 +96,17 @@ export const MOCK_PROPOSALS: Proposal[] = [
   },
   {
     id: 3,
-    title: "Protocol Upgrade: Staking V2",
-    description: "Upgrade the staking contract to allow for variable lock-up periods with boosted APY.",
-    type: 'multiple',
+    title: "Timeline Adjustment: Postpone Launch",
+    description: "Wait to launch the App until April.",
+    type: 'binary',
     options: [
-        { id: 'a', label: 'Option A: 30 Days (10% APY)', votes: 300 },
-        { id: 'b', label: 'Option B: 60 Days (15% APY)', votes: 1200 },
-        { id: 'c', label: 'Option C: 90 Days (20% APY)', votes: 50 },
-        { id: 'd', label: 'Option D: No Change', votes: 20 }
+        { id: 'yes', label: 'For', votes: 300 },
+        { id: 'no', label: 'Against', votes: 1200 },
+        { id: 'abstain', label: 'Abstain', votes: 50 }
     ],
     status: 'Rejected',
     endTime: "2025-11-15T12:00:00Z",
-    totalVotes: 1570
+    totalVotes: 1550
   }
 ];
 
