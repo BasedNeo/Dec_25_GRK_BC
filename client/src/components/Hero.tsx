@@ -13,8 +13,6 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 
-import flagVideo from '@assets/FlagVideo1_1765424361045.mp4';
-
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
@@ -101,16 +99,6 @@ export function Hero() {
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10" />
-          <video 
-            src={flagVideo} 
-            poster="/hero.jpg"
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            preload="none"
-            className="w-full h-full object-cover opacity-80"
-          />
           <img src="/hero.jpg" alt="Hero Background" className="w-full h-full object-cover opacity-20 absolute inset-0 mix-blend-overlay" />
       </div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.05)_0%,transparent_70%)] z-0" />
