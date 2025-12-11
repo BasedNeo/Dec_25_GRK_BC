@@ -148,7 +148,7 @@ export function Hero() {
 
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-sm text-muted-foreground font-mono">SUPPLY</span>
+              <span className="text-sm text-muted-foreground font-mono">MINTED</span>
               <span className="text-xl font-orbitron text-primary text-glow">
                   <motion.span>{rounded}</motion.span> / {TOTAL_SUPPLY}
               </span>
