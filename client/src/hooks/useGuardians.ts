@@ -35,8 +35,19 @@ export function useGuardians(
              if (filters.search) {
                  const term = filters.search.trim();
                  
-                 // A. Numeric Range Search (e.g. "Strength >= 8")
-                 const rangeMatch = term.match(/^([a-zA-Z\s]+)\s*(>=|>|<=|<|=)\s*(\d+)$/i);
+                 // A. Numeric Range Search (e.g. "Strength >= 8" or "high strength")
+                 let processedTerm = term;
+                 
+                 // Keyword mapping for fuzzy numeric queries
+                 if (term.toLowerCase().includes('high') || term.toLowerCase().includes('strong') || term.toLowerCase().includes('fast')) {
+                     // Map "high strength" -> "Strength >= 8"
+                     if (term.toLowerCase().includes('strength')) processedTerm = "Strength >= 8";
+                     else if (term.toLowerCase().includes('speed')) processedTerm = "Speed >= 8";
+                     else if (term.toLowerCase().includes('intellect')) processedTerm = "Intelligence >= 8";
+                     // Default "high" to sorting or generic high stats? Let's assume Strength for now if generic
+                 }
+
+                 const rangeMatch = processedTerm.match(/^([a-zA-Z\s]+)\s*(>=|>|<=|<|=)\s*(\d+)$/i);
                  if (rangeMatch) {
                      const [_, traitName, operator, valueStr] = rangeMatch;
                      const value = parseInt(valueStr);

@@ -157,6 +157,8 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                                <SelectValue placeholder="Sort By" />
                              </SelectTrigger>
                              <SelectContent>
+                               <SelectItem value="price-asc">Floor Price: Low to High</SelectItem>
+                               <SelectItem value="price-desc">Price: High to Low</SelectItem>
                                <SelectItem value="id-asc">ID: Low to High</SelectItem>
                                <SelectItem value="id-desc">ID: High to Low</SelectItem>
                                <SelectItem value="rarity-desc">Rarity: High to Low</SelectItem>
@@ -420,6 +422,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
           <img 
             src={imgSrc} 
             alt={guardian.name} 
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             onError={() => {
                 // Fallback to placeholder or show error state

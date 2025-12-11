@@ -30,17 +30,17 @@ export function OnboardingTour() {
   const steps = [
     {
       title: "WELCOME TO BASED GUARDIANS",
-      desc: "Connect your wallet to begin your journey in the Based Universe.",
-      target: "top-right", // Abstract position
+      desc: "Connect your wallet to begin your journey in the Based Universe. Your gateway to the first fully on-chain cyberpunk world.",
+      target: "top-right", 
     },
     {
-      title: "MINT YOUR GUARDIAN",
-      desc: "Secure your unique NFT from the Genesis Series 01 collection.",
+      title: "MINT & GALLERY",
+      desc: "Mint your unique Guardian from the Genesis collection and view your battalion in the Gallery tab with advanced filters.",
       target: "center",
     },
     {
-      title: "JOIN THE DAO",
-      desc: "Cast votes and shape the future of the protocol.",
+      title: "DAO & ECONOMY",
+      desc: "Participate in governance (DAO), trade on the Marketplace, and track the Community Pool. You are in control.",
       target: "top-center",
     }
   ];
