@@ -36,10 +36,14 @@ export default function TermsOfService() {
                     By accessing or using the Based Command App (the “App”), you agree to these Terms of Service. If you do not agree, do not use the App.
                 </p>
 
+                <p>
+                    The App is operated by Based Guardians (the “Company,” “we,” “us,” or “our”). These Terms form a legal agreement between you and the Company.
+                </p>
+
                 <section className="space-y-2">
                     <h3 className="text-white font-bold text-lg">1. Nature of the App</h3>
                     <p>
-                        The App is a user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. It provides viewing of NFT metadata, community pool tracking, advisory voting, and marketplace features. The App is in beta and provided “as is” and “as available.”
+                        The App is a non-custodial, decentralized user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. It enables viewing of NFT metadata, community pool tracking, advisory voting, and marketplace features. The App is in beta and provided “as is” and “as available,” with no warranties.
                     </p>
                 </section>
 
@@ -88,7 +92,7 @@ export default function TermsOfService() {
                 <section className="space-y-2">
                     <h3 className="text-white font-bold text-lg">8. Governing Law</h3>
                     <p>
-                        These Terms are governed by the laws of Delaware, without regard to conflict of law principles.
+                        These Terms are governed by the laws of the State of Oregon, without regard to conflict of law principles. Any disputes shall be resolved in the courts of Oregon.
                     </p>
                 </section>
 
