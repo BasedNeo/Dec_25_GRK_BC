@@ -1,20 +1,25 @@
 {
-  "name": "Based Guardians",
-  "short_name": "BGUARD",
+  "name": "Based Guardians Dashboard",
+  "short_name": "BasedGuardians",
+  "description": "Live dashboard for Based Guardians NFT collection",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#00ffff",
+  "background_color": "#0a0a0f",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/favicon.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["finance", "entertainment"]
 }
