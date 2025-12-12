@@ -153,6 +153,15 @@ export function Footer() {
            >
              Terms of Service
            </a>
+           <span className="text-white/20 mx-2 hidden md:inline">|</span>
+           <a 
+             href="/privacy" 
+             target="_blank" 
+             rel="noopener noreferrer" 
+             className="text-white hover:text-primary whitespace-nowrap ml-2 md:ml-0"
+           >
+             Privacy Policy
+           </a>
         </div>
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">

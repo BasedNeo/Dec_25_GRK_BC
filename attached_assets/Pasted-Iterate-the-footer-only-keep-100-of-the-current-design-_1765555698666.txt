@@ -1,0 +1,55 @@
+Iterate the footer only — keep 100% of the current design, layout, colors, fonts, and all existing elements intact.
+
+Add a "Privacy Policy" link next to "Terms of Service" (small white text, right-aligned).
+
+Link to a new static page /privacy with this exact content:
+
+**Privacy Policy**
+
+**Effective Date: December 12, 2025**
+
+Based Command App (the "App") is a decentralized application (DApp) providing a user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. We, Based Guardians (the "Company," "we," "us," or "our"), are committed to protecting your privacy while acknowledging the inherent risks of blockchain technology. This Privacy Policy explains our data practices and is governed by U.S. law (Delaware). By using the App, you consent to these practices and accept all risks.
+
+This policy is designed with caution, drawing from industry standards like OpenSea (which emphasizes non-custodial access and no data storage), Blur (focusing on public blockchain queries without personal tracking), and Magic Eden (highlighting wallet-only interactions with clear disclaimers on volatility). Like these platforms, we collect minimal data and disclaim liability for blockchain risks.
+
+1. **Information We Collect**  
+   The App is fully non-custodial and does not collect, store, or process any personal data. We access only:  
+   - **Public Blockchain Data**: Your wallet address and on-chain information (e.g., NFT ownership, balances, transaction history) via public RPC providers (e.g., BasedAI nodes). This data is immutable and visible to anyone on the blockchain.  
+   - **No Personal Information**: No emails, IP addresses, names, device IDs, or identifiable data is collected. No cookies or tracking pixels are used.
+
+   If you opt-in to optional features (e.g., Google Analytics via VITE_GA_ID), anonymized usage data (e.g., page views, without wallet association) may be shared with third parties for improvement purposes only.
+
+2. **How We Use Information**  
+   Public on-chain data is used solely to:  
+   - Display your NFT holdings, traits, rarity, and estimated values.  
+   - Enable voting, marketplace listings, and pool tracking.  
+   - Provide on-chain functionality (e.g., minting via Aftermint.trade links, offers, trades).  
+
+   We do not use data for marketing, profiling, or sale. All interactions are read-only or wallet-signed; we never hold funds or keys. Like Blur's policy, we disclaim any responsibility for on-chain actions.
+
+3. **Third-Party Services**  
+   The App relies on external providers for core functionality:  
+   - Wallet Providers (e.g., MetaMask, Rabby, Trust): Their policies govern connections. We access only public data.  
+   - Blockchain Networks (BasedAI, ETH for subnet): Public explorers (e.g., explorer.bf1337.org, Etherscan) display all data.  
+   - Optional Analytics (Google Analytics): Anonymized aggregate data (no IP or wallet tracking) to optimize UX. You can opt-out via browser settings.  
+   - Embedding Services (Vimeo for videos): Their policies apply; we embed without tracking.
+
+   We do not share data with advertisers. If Based Labs infrastructure changes, features may be affected, but we disclaim liability for external dependencies (as in OpenSea's policy).
+
+4. **Data Security & Retention**  
+   - **Security Measures**: The App uses HTTPS, input sanitization (DOMPurify), and read-only blockchain queries. No data is stored on our servers.  
+   - **Retention**: Public blockchain data is permanent; we retain no copies. Analytics data (if enabled) is aggregated and deleted after 14 months.  
+   - **Risks**: Blockchain is public and irreversible. You are solely responsible for wallet security. We disclaim liability for hacks, losses, or third-party failures (e.g., RPC downtime).
+
+5. **Children's Privacy**  
+   The App is not intended for individuals under 18. We do not knowingly collect data from children. If we discover such data, it will be deleted immediately.
+
+6. **Changes to This Policy**  
+   We may update this Privacy Policy. Continued use constitutes acceptance.
+
+7. **Contact Us**  
+   For privacy questions, contact us via X @based_guardians or Discord.
+
+By using the App, you acknowledge these risks and agree to this Policy. We err on caution: No guarantees, no liability for blockchain volatility or external dependencies.
+
+Make the link open in new tab. Mobile: Text wraps. No errors.
