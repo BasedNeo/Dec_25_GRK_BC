@@ -391,9 +391,16 @@ export function NFTGallery({}: NFTGalleryProps) {
         ) : (
           <>
             {isLoading && !displayNfts.length && !useMockData ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              </div>
+               <div className={`grid gap-6 transition-all duration-300 ${
+                    gridCols === 1 ? 'grid-cols-1' : 
+                    gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                    gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                  }`}>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                      <GuardianCardSkeleton key={i} />
+                  ))}
+               </div>
             ) : displayNfts.length === 0 ? (
                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
                  <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
@@ -450,6 +457,25 @@ export function NFTGallery({}: NFTGalleryProps) {
         nft={selectedNFT} 
       />
     </section>
+  );
+}
+
+function GuardianCardSkeleton() {
+  return (
+    <Card className="bg-card border-white/5 overflow-hidden h-full flex flex-col">
+      <div className="relative aspect-square bg-white/5 animate-pulse" />
+      <div className="p-4 space-y-3 flex-grow bg-white/[0.02]">
+        <div className="flex justify-between items-center">
+            <div className="h-4 w-16 bg-white/10 rounded animate-pulse" />
+            <div className="h-5 w-20 bg-white/10 rounded-full animate-pulse" />
+        </div>
+        <div className="h-6 w-3/4 bg-white/10 rounded animate-pulse" />
+        <div className="pt-2 mt-auto border-t border-white/5 flex justify-between">
+             <div className="h-3 w-1/3 bg-white/5 rounded animate-pulse" />
+             <div className="h-3 w-1/4 bg-white/5 rounded animate-pulse" />
+        </div>
+      </div>
+    </Card>
   );
 }
 
