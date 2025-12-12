@@ -369,3 +369,150 @@
   font-weight: 700;
   color: #22c55e;
 }
+
+/* --- Modal Styles (New) --- */
+.nft-modal-content {
+  background: #1a1a2e;
+  border-radius: 20px;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #2a2a4a;
+}
+
+@media (max-width: 768px) {
+  .nft-modal-content {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+}
+
+.modal-image {
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-details {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #1a1a2e;
+  overflow-y: auto;
+}
+
+.modal-details h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  margin: 0;
+  color: white;
+}
+
+.modal-subtitle {
+  color: #888;
+  margin: 0;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.modal-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  margin: 0 0 8px 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+}
+
+.owner-link {
+  color: #6366f1;
+  text-decoration: none;
+  font-family: monospace;
+}
+
+.price-display {
+  font-size: 20px;
+  font-weight: 700;
+  color: #22c55e;
+  margin: 0;
+  font-family: monospace;
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.attribute-item {
+  background: #0f0f1a;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2a2a4a;
+}
+
+.attribute-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.attribute-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.btn-offer-large, .btn-buy-large {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-offer-large {
+  background: transparent;
+  border: 2px solid #6366f1;
+  color: #6366f1;
+}
+
+.btn-offer-large:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.btn-buy-large {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  color: white;
+}
+
+.btn-buy-large:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}

@@ -1,0 +1,270 @@
+Fix the NFT detail modal. When clicking an NFT card, the detail popup shows a blank page instead of the NFT information.
+
+DIAGNOSE THE ISSUE:
+1. Check if the modal element exists in the HTML
+2. Check if the modal display is being toggled correctly
+3. Check if the data is being passed to the modal
+4. Check for JavaScript errors in the console
+
+COMPLETE WORKING MODAL IMPLEMENTATION:
+
+HTML (add at end of body):
+<div id="nftModal" class="modal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeNftModal()">&times;</button>
+    <div class="modal-body">
+      <div class="modal-image">
+        <img id="modalImage" src="" alt="NFT" />
+      </div>
+      <div class="modal-details">
+        <h2 id="modalTitle">Loading...</h2>
+        <p id="modalSubtitle" class="modal-subtitle"></p>
+        
+        <div class="modal-section">
+          <h4>Owner</h4>
+          <a id="modalOwner" href="#" target="_blank" class="owner-link"></a>
+        </div>
+        
+        <div class="modal-section">
+          <h4>Price</h4>
+          <p id="modalPrice" class="price-display">69,420 $BASED</p>
+        </div>
+        
+        <div class="modal-section">
+          <h4>Attributes</h4>
+          <div id="modalAttributes" class="attributes-grid">
+            <!-- Attributes will be inserted here -->
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button class="btn-offer-large">Make Offer</button>
+          <button class="btn-buy-large">Buy Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+CSS:
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 20px;
+}
+
+.modal.active {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.modal-content {
+  background: #1a1a2e;
+  border-radius: 20px;
+  max-width: 900px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #2a2a4a;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.modal-close:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.modal-image {
+  aspect-ratio: 1/1;
+  overflow: hidden;
+}
+
+.modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-details {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-details h2 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.modal-subtitle {
+  color: #888;
+  margin: 0;
+}
+
+.modal-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+
+.owner-link {
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.price-display {
+  font-size: 20px;
+  font-weight: 700;
+  color: #22c55e;
+  margin: 0;
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.attribute-item {
+  background: #0f0f1a;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2a2a4a;
+}
+
+.attribute-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.attribute-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.btn-offer-large, .btn-buy-large {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-offer-large {
+  background: transparent;
+  border: 2px solid #6366f1;
+  color: #6366f1;
+}
+
+.btn-buy-large {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  color: white;
+}
+
+JAVASCRIPT:
+function openNftModal(tokenId, name, image, owner, attributes) {
+  const modal = document.getElementById('nftModal');
+  
+  // Set image
+  document.getElementById('modalImage').src = image;
+  
+  // Set title
+  document.getElementById('modalTitle').textContent = name || 'Based Guardian #' + tokenId;
+  document.getElementById('modalSubtitle').textContent = 'Token ID: ' + tokenId;
+  
+  // Set owner
+  const ownerEl = document.getElementById('modalOwner');
+  const shortOwner = owner.substring(0, 6) + '...' + owner.substring(owner.length - 4);
+  ownerEl.textContent = shortOwner;
+  ownerEl.href = 'https://explorer.bf1337.org/address/' + owner;
+  
+  // Set attributes
+  const attrContainer = document.getElementById('modalAttributes');
+  attrContainer.innerHTML = '';
+  
+  if (attributes && attributes.length > 0) {
+    attributes.forEach(attr => {
+      const div = document.createElement('div');
+      div.className = 'attribute-item';
+      div.innerHTML = `
+        <div class="attribute-type">${attr.trait_type}</div>
+        <div class="attribute-value">${attr.value}</div>
+      `;
+      attrContainer.appendChild(div);
+    });
+  } else {
+    attrContainer.innerHTML = '<p style="color:#666;">No attributes available</p>';
+  }
+  
+  // Show modal
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeNftModal() {
+  const modal = document.getElementById('nftModal');
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function closeModal(event) {
+  if (event.target.classList.contains('modal')) {
+    closeNftModal();
+  }
+}
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeNftModal();
+});
+
+UPDATE YOUR NFT CARD CLICK HANDLER:
+When creating NFT cards, add onclick that passes all the data:
+
+onclick="openNftModal(${tokenId}, '${name}', '${image}', '${owner}', ${JSON.stringify(attributes)})"
+
+Make sure to properly escape the JSON for attributes.
