@@ -912,6 +912,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                                 <SelectItem value="3 days">3 Days</SelectItem>
                                 <SelectItem value="1 week">1 Week</SelectItem>
                                 <SelectItem value="1 month">1 Month</SelectItem>
+                                <SelectItem value="3 months">3 Months</SelectItem>
+                                <SelectItem value="indefinitely">Indefinitely</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
