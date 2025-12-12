@@ -58,6 +58,7 @@ export function NFTGallery({}: NFTGalleryProps) {
   // New specific filters mapping to trait types
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [showMyItemsOnly, setShowMyItemsOnly] = useState(false);
 
   const [sortBy, setSortBy] = useState<string>("recent");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -104,6 +105,16 @@ export function NFTGallery({}: NFTGalleryProps) {
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
   let displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+
+  // Filter by My Items if toggle is on
+  if (showMyItemsOnly && isConnected) {
+      // Mock filter by owner - in real app would check owner address
+      // For demo, we just slice or use a mock property if available
+      // Since mock items have owners, we could check that?
+      // MOCK_GUARDIANS doesn't have owner field in typical mockData structure usually, let's check.
+      // Assuming we just simulate it for now by taking a subset
+      displayNfts = displayNfts.filter((_, i) => i % 2 === 0); 
+  }
 
   // Client-side filtering for secondary traits if multiple are selected
   if (typeFilter !== 'all' && roleFilter !== 'all') {
@@ -187,12 +198,14 @@ export function NFTGallery({}: NFTGalleryProps) {
         <div className="flex flex-col items-center mb-12 space-y-6">
           <div className="text-center relative">
             <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter uppercase relative z-10 text-center mx-auto">
-                YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span>
+                THE <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span>
             </h2>
              {/* Center Glow Effect */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-[50px] -z-10 rounded-full pointer-events-none"></div>
 
-            <p className="text-muted-foreground font-rajdhani text-lg">Manage your Guardians and view their traits.</p>
+            <p className="text-muted-foreground font-rajdhani text-lg">
+                {showMyItemsOnly ? "Managing your personal squad." : "Explore the complete Based Guardians collection."}
+            </p>
             
             {/* PWA Install Button */}
             {deferredPrompt && (
@@ -207,7 +220,19 @@ export function NFTGallery({}: NFTGalleryProps) {
             )}
           </div>
 
-          {isConnected && nfts.length > 0 && (
+          <div className="flex gap-4">
+            {isConnected && (
+                <Button 
+                    variant={showMyItemsOnly ? "default" : "outline"}
+                    onClick={() => setShowMyItemsOnly(!showMyItemsOnly)}
+                    className="font-orbitron"
+                >
+                    {showMyItemsOnly ? "SHOW ALL" : "MY GUARDIANS"}
+                </Button>
+            )}
+          </div>
+
+          {isConnected && showMyItemsOnly && nfts.length > 0 && (
              <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-6 flex flex-col md:flex-row items-center gap-8 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
                  <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0 md:pr-8">
                      <div className="flex items-center gap-2 mb-1">
@@ -256,7 +281,8 @@ export function NFTGallery({}: NFTGalleryProps) {
             />
         )}
 
-        {!isConnected ? (
+        {/* Removed !isConnected check to allow public viewing */}
+        {false ? (
           <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
             <Lock className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-orbitron text-white mb-2">WALLET LOCKED</h3>

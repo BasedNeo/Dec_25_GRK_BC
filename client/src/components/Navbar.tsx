@@ -119,9 +119,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const navItems = [
     { id: 'universe', label: 'UNIVERSE' },
     { id: 'mint', label: 'MINT' },
-    { id: 'gallery', label: 'PORTFOLIO' },
+    { id: 'gallery', label: 'COLLECTION' },
     { id: 'voting', label: 'VOTING' }, 
-    { id: 'escrow', label: 'COLLECTION' },
+    { id: 'escrow', label: 'MARKETPLACE' },
     { id: 'pool', label: 'POOL' },
   ];
 
@@ -159,9 +159,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             {[
               { id: 'universe', label: 'UNIVERSE' },
               { id: 'mint', label: 'MINT' },
-              { id: 'gallery', label: 'PORTFOLIO' },
+              { id: 'gallery', label: 'COLLECTION' },
               { id: 'voting', label: 'VOTING' }, 
-              { id: 'escrow', label: 'COLLECTION' },
+              { id: 'escrow', label: 'MARKETPLACE' },
               { id: 'pool', label: 'POOL' },
             ].map((item) => (
               <button
