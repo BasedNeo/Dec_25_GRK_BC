@@ -1,0 +1,35 @@
+Iterate the existing Based Command App — keep 100% of the current cyberpunk design, colors, fonts, animations, tabs, mint, wallet, and all existing functionality completely untouched.
+
+Add a new tab called "Universe" (place it first in the tab bar, left of Mint) as a rich, lore-driven overview page with zero overlap from other tabs:
+
+**Hero Section** (full-width, subtle parallax deep-space background with slow-moving stars and faint nebula — low CPU, non-distracting):
+- Large neon-cyan heading: The Based Universe
+- Subheading (purple): 3,732 Guardians · BasedAI Chain · Emissions · Advisory Governance
+- Full lore paragraph (white, readable, perfect line-height, wraps naturally):
+  "Deep in the Giga Brain Galaxy, where digital rivers carve paths through infinite darkness, the Based Guardians rise as cunning wardens of code's sacred flame. Born from neon tempests, these 1,776 heroic Guardians, 1,319 resilient Frogs, and 636 fierce Creatures battle FUD pirates across 1,024 Brain-Planets. Stake your Guardian to a BasedAI Brain for $BASED emissions — Legendary rarities unlock higher yields and Race-to-Base privileges. From a father-daughter vision blending 1980s retro-fantasy with AI, blockchain, and humanitarian missions, this is your story. 'Stay vigilant. Stay powerful. Stay Based.'"
+- Two centered cyan CTA buttons: "Connect Wallet" (RainbowKit) and "Mint Now" (links to Mint tab)
+
+**Timeline Section** (vertical on mobile, horizontal on desktop, cyan glowing timeline dots):
+- Mint Phase — Live now
+- Emissions Halving — December 31, 2025
+- Staking Launch — Q1 2026
+- Race-to-Base Events — Monthly from January 2026
+- Full Marketplace — Q1 2026
+
+**Features Grid** (4 cards, cyan neon borders, responsive 1-col mobile / 4-col desktop):
+1. Humanitarian Horizon — Icon: glowing heart → "Missions Beyond the Chain" (copy about real-world impact & community giving)
+2. Galactic Storytelling — Icon: open book with stars → "Co-Create the Epic" (copy about evolving lore & holder-driven narrative)
+3. Infinite Possibilities — Icon: expanding universe → "Evolve with the Cosmos" (copy about future upgrades & endless growth)
+4. Guardian Exchange — Icon: exchange arrows → "Trade Legends" (copy about secure marketplace, 1% fee to pool)
+
+**Footer** (thin cyan bar, centered):
+© 2025 Based Guardians · Twitter @based_guardians · Powered by BasedAI
+CTA links: Connect Wallet · Mint Now
+
+Mobile-first: stacked layout, swipe-friendly, touch buttons.  
+Add loading spinner on tab load.  
+Add red "BETA" ribbon top-right.  
+PWA install prompt on mobile.  
+No duplicate data from Mint/Gallery/DAO/Sales/Pool tabs.
+
+Keep exact cyberpunk neon theme. No errors. Test on desktop and mobile phone emulation.

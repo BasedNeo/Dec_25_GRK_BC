@@ -5,6 +5,7 @@ import { ValueEstimation } from "@/components/ValueEstimation";
 import { VotingDAO } from "@/components/VotingDAO";
 import { PoolTracker } from "@/components/PoolTracker";
 import { EscrowMarketplace } from "@/components/EscrowMarketplace";
+import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
 import { useAccount } from "wagmi";
 import { useState } from "react";
@@ -14,7 +15,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState("mint");
+  const [activeTab, setActiveTab] = useState("universe");
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
@@ -23,6 +24,18 @@ export default function Home() {
       
       <main className="pt-20 min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
+          {activeTab === "universe" && (
+            <motion.div
+              key="universe"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <UniverseTab onMintClick={() => setActiveTab("mint")} />
+            </motion.div>
+          )}
+
           {activeTab === "mint" && (
             <motion.div
               key="mint"
@@ -89,7 +102,7 @@ export default function Home() {
         </AnimatePresence>
       </main>
 
-      <Footer />
+      {activeTab !== "universe" && <Footer />}
     </div>
   );
 }

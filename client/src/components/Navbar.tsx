@@ -96,6 +96,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
+    { id: 'universe', label: 'UNIVERSE' },
     { id: 'mint', label: 'MINT' },
     { id: 'gallery', label: 'PORTFOLIO' },
     { id: 'voting', label: 'VOTING' }, 
@@ -127,7 +128,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
                 </Badge>
             )}
-            <Badge variant="outline" className="hidden md:flex border-primary/20 text-primary/50 text-[10px] tracking-widest font-mono ml-[-10px] mt-[-20px] rotate-12">
+            <Badge variant="outline" className="hidden md:flex border-red-500/50 text-red-500 text-[10px] tracking-widest font-mono ml-[-10px] mt-[-20px] rotate-12 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
                 BETA
             </Badge>
           </div>
@@ -135,6 +136,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-2">
             {[
+              { id: 'universe', label: 'UNIVERSE' },
               { id: 'mint', label: 'MINT' },
               { id: 'gallery', label: 'PORTFOLIO' },
               { id: 'voting', label: 'VOTING' }, 
