@@ -14,6 +14,7 @@ import { trackEvent } from "@/lib/analytics";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { FilterBar } from "./FilterBar";
+import "./NFTGalleryGrid.css";
 
 interface NFTGalleryProps {}
 
