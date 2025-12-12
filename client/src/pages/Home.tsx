@@ -8,7 +8,7 @@ import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
 import { useAccount } from "wagmi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -16,6 +16,11 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("universe");
+
+  // Scroll to top on tab change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
