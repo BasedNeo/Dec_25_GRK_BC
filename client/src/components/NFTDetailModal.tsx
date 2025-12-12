@@ -4,7 +4,7 @@ import { MarketItem } from "@/lib/marketplaceData";
 import { X } from "lucide-react";
 import DOMPurify from 'dompurify';
 import { useState, useEffect } from "react";
-import './NFTGalleryGrid.css';
+import './NFTGallery.css';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
