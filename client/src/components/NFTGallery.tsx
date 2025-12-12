@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
 import { useAccount } from "wagmi";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -66,7 +67,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("id-asc");
-  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 4);
+  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
 
   // Pass filters to hook for server-side (CSV-side) filtering
   const { 
@@ -82,6 +83,27 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
       traitValue: traitValueFilter,
       sortBy
   });
+
+  // Infinite Scroll Observer
+  const observerTarget = useRef(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+           fetchNextPage();
+           // Track scroll load event
+           trackEvent('scroll_load_batch', 'Engagement', 'NFT Gallery');
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
@@ -398,7 +420,7 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                     gridCols === 1 ? 'grid-cols-1' : 
                     gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
                     gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
-                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
                   }`}
                 >
                   {displayNfts.map((guardian, idx) => (
@@ -408,22 +430,20 @@ export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }:
                   ))}
                 </motion.div>
 
-                {/* Load More Button */}
-                {hasNextPage && !useMockData && (
-                  <div className="flex justify-center mt-12">
-                    <Button 
-                      onClick={() => fetchNextPage()} 
-                      disabled={isFetchingNextPage}
-                      className="bg-secondary/50 hover:bg-secondary text-white font-orbitron tracking-widest min-w-[200px]"
-                    >
-                      {isFetchingNextPage ? (
-                        <>LOADING <Loader2 className="ml-2 h-4 w-4 animate-spin" /></>
-                      ) : (
-                        "LOAD MORE"
-                      )}
-                    </Button>
-                  </div>
-                )}
+                {/* Infinite Scroll Trigger & Loader */}
+                <div ref={observerTarget} className="flex flex-col items-center justify-center py-12 w-full">
+                  {isFetchingNextPage && (
+                     <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                        <span className="text-xs font-mono text-cyan-400 animate-pulse">LOADING NEURAL LINK...</span>
+                     </div>
+                  )}
+                  {!hasNextPage && !isFetchingNextPage && displayNfts.length > 0 && (
+                     <div className="text-xs font-mono text-muted-foreground border border-white/10 px-4 py-2 rounded-full mt-4">
+                        END OF COLLECTION
+                     </div>
+                  )}
+                </div>
               </>
             )}
           </>

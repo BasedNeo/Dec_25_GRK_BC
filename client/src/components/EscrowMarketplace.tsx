@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,7 @@ export function EscrowMarketplace() {
   const [sortBy, setSortBy] = useState<string>("price-asc");
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV for indexing
-  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 4);
+  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
   
   // Commercial Search: Attribute Filters
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
@@ -220,6 +220,26 @@ export function EscrowMarketplace() {
   const loadMore = () => {
     fetchNextPage();
   };
+
+  // Infinite Scroll Observer
+  const observerTarget = useRef(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+           fetchNextPage();
+           trackEvent('scroll_load_batch', 'Engagement', 'Marketplace');
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // --- Actions ---
   const handleOffer = (item: MarketItem) => {
@@ -615,24 +635,41 @@ export function EscrowMarketplace() {
             
             <TabsContent value="buy" className="space-y-8">
                 {displayedItems.length > 0 ? (
-                    <div className={`grid gap-6 transition-all duration-300 ${
-                        gridCols === 1 ? 'grid-cols-1' : 
-                        gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
-                        gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
-                        'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
-                    }`}>
-                        {displayedItems.map((item) => (
-                            <MarketCard 
-                                key={item.id} 
-                                item={item} 
-                                onBuy={() => handleBuy(item)} 
-                                onOffer={() => handleOffer(item)}
-                                onClick={() => setSelectedNFT(item)} 
-                                isAdmin={isAdmin} 
-                                onCancel={() => handleAdminCancel(item)} 
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <div className={`grid gap-6 transition-all duration-300 ${
+                            gridCols === 1 ? 'grid-cols-1' : 
+                            gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                            gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                            'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                        }`}>
+                            {displayedItems.map((item) => (
+                                <MarketCard 
+                                    key={item.id} 
+                                    item={item} 
+                                    onBuy={() => handleBuy(item)} 
+                                    onOffer={() => handleOffer(item)}
+                                    onClick={() => setSelectedNFT(item)} 
+                                    isAdmin={isAdmin} 
+                                    onCancel={() => handleAdminCancel(item)} 
+                                />
+                            ))}
+                        </div>
+
+                        {/* Infinite Scroll Trigger & Loader */}
+                        <div ref={observerTarget} className="flex flex-col items-center justify-center py-12 w-full">
+                           {isFetchingNextPage && (
+                             <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                                <span className="text-xs font-mono text-cyan-400 animate-pulse">LOADING NEURAL LINK...</span>
+                             </div>
+                           )}
+                           {!hasNextPage && !isFetchingNextPage && displayedItems.length > 0 && (
+                             <div className="text-xs font-mono text-muted-foreground border border-white/10 px-4 py-2 rounded-full mt-4">
+                                END OF COLLECTION
+                             </div>
+                           )}
+                        </div>
+                    </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl">
                         <ShoppingBag className="w-16 h-16 text-muted-foreground mb-4" />
@@ -644,22 +681,7 @@ export function EscrowMarketplace() {
                     </div>
                 )}
                 
-                {/* Load More Button */}
-                {hasNextPage && (
-                  <div className="flex justify-center mt-12">
-                    <Button 
-                      onClick={() => fetchNextPage()} 
-                      disabled={isFetchingNextPage}
-                      className="bg-secondary/50 hover:bg-secondary text-white font-orbitron tracking-widest min-w-[200px]"
-                    >
-                      {isFetchingNextPage ? (
-                        <>LOADING <Loader2 className="ml-2 h-4 w-4 animate-spin" /></>
-                      ) : (
-                        "LOAD MORE LISTINGS"
-                      )}
-                    </Button>
-                  </div>
-                )}
+                {/* Legacy Load More hidden */}
             </TabsContent>
             
             <TabsContent value="inventory">

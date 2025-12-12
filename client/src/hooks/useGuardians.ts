@@ -165,7 +165,7 @@ export function useGuardians(
 
              // Pagination logic
              const startId = typeof pageParam === 'number' ? pageParam : 1;
-             const pageSize = 20;
+             const pageSize = 100; // Updated to 100 for batching
              const startIndex = startId - 1;
              const endIndex = startIndex + pageSize;
              
@@ -198,7 +198,7 @@ export function useGuardians(
             const csvNfts = await loadGuardiansFromCSV();
             // Simulate pagination on CSV data
             const startId = typeof pageParam === 'number' ? pageParam : 1;
-            const pageSize = 20; // Use smaller page size for CSV fallback to match standard behavior
+            const pageSize = 100; // Match IPFS batch size
             const startIndex = startId - 1;
             const endIndex = startIndex + pageSize;
             const nfts = csvNfts.slice(startIndex, endIndex);
@@ -212,6 +212,6 @@ export function useGuardians(
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: true,
-    staleTime: 1000 * 60 * 60, // 1 hour cache
+    staleTime: 60000, // 60s stale time as requested
   });
 }

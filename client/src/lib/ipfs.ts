@@ -2,8 +2,8 @@ import DOMPurify from 'dompurify';
 import { IPFS_ROOT } from './constants';
 import { Guardian } from './mockData';
 
-export const BATCH_SIZE = 20; // Increased batch size for speed
-export const PAGE_SIZE = 50; // Items per "Load More"
+export const BATCH_SIZE = 20; // Concurrent requests
+export const PAGE_SIZE = 100; // Items per "Load More" / Infinite Scroll batch
 
 export async function fetchGuardianMetadata(id: number): Promise<Guardian> {
   try {
