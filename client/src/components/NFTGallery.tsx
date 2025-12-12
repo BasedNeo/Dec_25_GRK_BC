@@ -535,7 +535,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         
         <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
              <div className="flex flex-col">
-                 <span className="text-[9px] text-muted-foreground uppercase">Value</span>
+                 <span className="text-[9px] text-muted-foreground uppercase">Backed Based</span>
                  <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
              </div>
              <div className="flex flex-col items-end">
