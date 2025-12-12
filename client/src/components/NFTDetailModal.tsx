@@ -3,6 +3,7 @@ import { Guardian } from "@/lib/mockData";
 import { MarketItem } from "@/lib/marketplaceData";
 import { X } from "lucide-react";
 import DOMPurify from 'dompurify';
+import { useState, useEffect } from "react";
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -10,7 +11,50 @@ interface NFTDetailModalProps {
   nft: Guardian | MarketItem | null;
 }
 
+interface Attribute {
+  trait_type: string;
+  value: string;
+}
+
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
+  const [loadingAttributes, setLoadingAttributes] = useState(false);
+
+  useEffect(() => {
+    if (nft && isOpen) {
+      const fetchAttributes = async () => {
+        setLoadingAttributes(true);
+        try {
+          // If the NFT already has traits (from mock data), use them first as fallback
+          if (nft.traits && nft.traits.length > 0) {
+            setAttributes(nft.traits.map((t: any) => ({ trait_type: t.type, value: t.value })));
+          }
+
+          // Fetch full metadata from IPFS
+          const metadataUrl = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/' + nft.id + '.json';
+          const response = await fetch(metadataUrl);
+          if (response.ok) {
+            const metadata = await response.json();
+            if (metadata.attributes && Array.isArray(metadata.attributes)) {
+              setAttributes(metadata.attributes);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching metadata:", error);
+          // Fallback to mock traits if fetch fails and we haven't set them yet
+          if ((!attributes || attributes.length === 0) && nft.traits) {
+             setAttributes(nft.traits.map((t: any) => ({ trait_type: t.type, value: t.value })));
+          }
+        } finally {
+          setLoadingAttributes(false);
+        }
+      };
+
+      fetchAttributes();
+    } else {
+      setAttributes([]);
+    }
+  }, [nft, isOpen]);
   
   if (!nft) return null;
 
@@ -69,17 +113,22 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 </div>
                 
                 <div className="modal-section">
-                <h4>Attributes</h4>
+                <h4>Attributes {loadingAttributes && <span className="text-xs text-muted-foreground animate-pulse">(Loading...)</span>}</h4>
                 <div id="modalAttributes" className="attributes-grid">
-                    {nft.traits && nft.traits.length > 0 ? (
-                        nft.traits.map((attr, index) => (
-                            <div key={index} className="attribute-item">
-                                <div className="attribute-type">{safeSanitize(attr.type)}</div>
-                                <div className="attribute-value">{safeSanitize(attr.value)}</div>
-                            </div>
-                        ))
+                    {attributes && attributes.length > 0 ? (
+                        attributes.map((attr, index) => {
+                            const isRarity = attr.trait_type === 'Rarity Level';
+                            return (
+                                <div key={index} className={`attribute-item ${isRarity ? 'attribute-rarity' : ''}`}>
+                                    <div className="attribute-type">{safeSanitize(attr.trait_type)}</div>
+                                    <div className="attribute-value">{safeSanitize(attr.value)}</div>
+                                </div>
+                            );
+                        })
                     ) : (
-                        <p style={{color:'#666', gridColumn: 'span 2'}}>No attributes available</p>
+                        <p style={{color:'#666', gridColumn: 'span 2'}}>
+                            {loadingAttributes ? 'Loading attributes...' : 'No attributes available'}
+                        </p>
                     )}
                 </div>
                 </div>

@@ -479,6 +479,16 @@
   word-break: break-word;
 }
 
+/* Rarity Highlight */
+.attribute-rarity {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.attribute-rarity .attribute-value {
+  color: #6366f1;
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
