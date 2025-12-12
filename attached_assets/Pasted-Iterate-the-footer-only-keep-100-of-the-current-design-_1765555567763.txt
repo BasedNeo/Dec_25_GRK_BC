@@ -1,0 +1,43 @@
+Iterate the footer only — keep 100% of the current design, layout, colors, fonts, and all existing elements intact. Do NOT change or add anything else.
+
+Add a "Terms of Service" link in the footer (small white text, right-aligned, next to the copyright). Link to a new static page /terms with this exact content:
+
+**Terms of Service**
+
+**Last Updated: December 12, 2025**
+
+By accessing or using the Based Command App (the “App”), you agree to these Terms of Service. If you do not agree, do not use the App.
+
+1. **Nature of the App**  
+   The App is a user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. It provides viewing of NFT metadata, community pool tracking, advisory voting, and marketplace features. The App is in beta and provided “as is” and “as available.”
+
+2. **No Financial Advice**  
+   Nothing in the App constitutes financial, investment, or legal advice. All displayed values (including “backed by” estimates and emissions) are approximations and may be inaccurate. Cryptocurrency and NFT values are volatile. You may lose all invested value.
+
+3. **Dependency on Third-Party Infrastructure**  
+   Certain features (including staking and full emissions) depend on the release and performance of Based Labs infrastructure. We make no guarantees regarding timelines, functionality, or availability of such infrastructure. Delays or changes by Based Labs may affect the App’s features.
+
+4. **Advisory Voting**  
+   Voting is advisory only. Results do not bind any decisions. The admin retains full discretion over all project actions.
+
+5. **Risk Acknowledgment**  
+   Use of blockchain applications involves significant risk. You are solely responsible for your wallet security, transactions, and compliance with applicable laws. We are not liable for lost funds, hacks, network failures, or regulatory actions.
+
+6. **Limitation of Liability**  
+   To the fullest extent permitted by law, the Company, its affiliates, and contributors shall not be liable for any direct, indirect, incidental, consequential, or punitive damages arising from your use of the App. Total liability is limited to $100 USD.
+
+7. **Indemnification**  
+   You agree to indemnify and hold harmless the Company from any claims arising from your use of the App or violation of these Terms.
+
+8. **Governing Law**  
+   These Terms are governed by the laws of Delaware, without regard to conflict of law principles.
+
+9. **Changes to Terms**  
+   We may update these Terms at any time. Continued use constitutes acceptance.
+
+10. **Contact**  
+    For questions, contact us via X @based_guardians or Discord.
+
+By using the App, you acknowledge these risks and agree to these Terms.
+
+Make the link open in new tab. Mobile: Text wraps. No errors.

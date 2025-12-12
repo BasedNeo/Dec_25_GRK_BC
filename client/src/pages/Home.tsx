@@ -58,7 +58,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery isConnected={isConnected} onConnect={() => {}} />
+              <NFTGallery />
             </motion.div>
           )}
 
