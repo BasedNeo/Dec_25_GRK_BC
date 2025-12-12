@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
-  Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid
+  Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid, Info
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { generateMarketplaceData, MarketItem } from "@/lib/marketplaceData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -862,6 +863,10 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
 function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
     const [amount, setAmount] = useState<number>(0);
     const [duration, setDuration] = useState("1 week");
+    const { isConnected } = useAccount();
+    const chainId = useChainId();
+    const { switchChain } = useSwitchChain();
+    const { toast } = useToast();
     
     // Reset when item changes
     useEffect(() => {
@@ -870,12 +875,32 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
         }
     }, [item]);
 
+    // Check chain on open
+    useEffect(() => {
+        if (isOpen && isConnected && chainId !== 32323) {
+            toast({
+                title: "Wrong Network",
+                description: "This marketplace is on BasedAI (Chain ID 32323). Please switch.",
+                action: (
+                    <Button 
+                        size="sm" 
+                        onClick={() => switchChain({ chainId: 32323 })}
+                        className="bg-primary text-black hover:bg-primary/90"
+                    >
+                        Switch to BasedAI
+                    </Button>
+                ),
+                duration: 6000,
+            });
+        }
+    }, [isOpen, isConnected, chainId, switchChain, toast]);
+
     if (!item) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-black border-white/10 text-white sm:max-w-md">
-                <DialogHeader>
+            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto">
+                <DialogHeader className="pt-8 sm:pt-0">
                     <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
                     <DialogDescription>
                         Set your price for <span className="text-primary font-bold">{item.name}</span>.
@@ -922,19 +947,34 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                     <div className="p-3 rounded bg-white/5 border border-white/10 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <Flame size={14} className="text-orange-500" />
-                            <span className="text-xs text-muted-foreground">Est. Gas Fee</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 cursor-help group">
+                                            <span className="text-xs text-muted-foreground group-hover:text-white transition-colors border-b border-dotted border-muted-foreground/50">Est. Gas Fee</span>
+                                            <Info size={10} className="text-muted-foreground group-hover:text-white transition-colors" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-black border-white/20 text-white text-xs max-w-[200px]">
+                                        <p>Gas paid in $BASED (BasedAI native token)</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
-                        <span className="text-xs font-mono text-white">~0.002 ETH</span>
+                        <div className="text-right">
+                            <span className="text-xs font-mono text-white block">~0.002 $BASED</span>
+                            <span className="text-[10px] text-muted-foreground block whitespace-nowrap">(on BasedAI chain)</span>
+                        </div>
                     </div>
                     
-                    <p className="text-[10px] text-muted-foreground text-center">
+                    <p className="text-[10px] text-muted-foreground text-center px-4">
                         Offers are non-binding until accepted by the seller. Funds will be held in escrow upon acceptance.
                     </p>
                 </div>
 
-                <DialogFooter className="flex gap-2">
-                    <Button variant="ghost" onClick={onClose} className="flex-1">CANCEL</Button>
-                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 bg-primary text-black hover:bg-primary/90 font-bold font-orbitron">
+                <DialogFooter className="flex gap-2 sm:gap-2 flex-col sm:flex-row pb-6 sm:pb-0">
+                    <Button variant="ghost" onClick={onClose} className="flex-1 w-full">CANCEL</Button>
+                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 w-full bg-primary text-black hover:bg-primary/90 font-bold font-orbitron">
                         SUBMIT OFFER
                     </Button>
                 </DialogFooter>
