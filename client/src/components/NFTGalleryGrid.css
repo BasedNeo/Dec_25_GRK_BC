@@ -6,16 +6,6 @@
   --ngg-text-primary: #ffffff;
   --ngg-text-secondary: #9ca3af;
   --ngg-accent: #6366f1;
-  
-  /* Rarity Colors */
-  --rarity-legendary-bg: linear-gradient(135deg, #ffd700, #ff6b00);
-  --rarity-very-rare-bg: #7c3aed;
-  --rarity-rarest-bg: #dc2626;
-  --rarity-rare-bg: #f59e0b;
-  --rarity-less-rare-bg: #3b82f6;
-  --rarity-less-common-bg: #22c55e;
-  --rarity-common-bg: #6b7280;
-  --rarity-most-common-bg: #374151;
 }
 
 .ngg-container {
@@ -96,38 +86,30 @@
   gap: 8px;
 }
 
-/* Rarity Badge */
-.ngg-rarity-badge {
+/* Rarity Badge - UPDATED */
+.rarity-badge {
   position: absolute;
   top: 12px;
-  left: 12px;
+  right: 12px;
+  z-index: 10;
   padding: 4px 10px;
   border-radius: 6px;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: white;
-  z-index: 2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
-.rarity-legendary .ngg-rarity-badge { background: var(--rarity-legendary-bg); color: black; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
-.rarity-very-rare .ngg-rarity-badge { background: var(--rarity-very-rare-bg); box-shadow: 0 0 10px rgba(124, 58, 237, 0.4); }
-.rarity-rarest .ngg-rarity-badge { background: var(--rarity-rarest-bg); }
-.rarity-rare .ngg-rarity-badge { background: var(--rarity-rare-bg); color: black; }
-.rarity-less-rare .ngg-rarity-badge { background: var(--rarity-less-rare-bg); }
-.rarity-less-common .ngg-rarity-badge { background: var(--rarity-less-common-bg); }
-.rarity-common .ngg-rarity-badge { background: var(--rarity-common-bg); }
-.rarity-most-common .ngg-rarity-badge { background: var(--rarity-most-common-bg); }
-
-/* Card Border Tint on Hover */
-.ngg-card.rarity-legendary:hover { border-color: #ffd700; box-shadow: 0 12px 30px rgba(255, 215, 0, 0.2); }
-.ngg-card.rarity-very-rare:hover { border-color: #7c3aed; box-shadow: 0 12px 30px rgba(124, 58, 237, 0.2); }
-.ngg-card.rarity-rarest:hover { border-color: #dc2626; box-shadow: 0 12px 30px rgba(220, 38, 38, 0.2); }
+/* Rarity colors */
+.rarity-legendary { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
+.rarity-very-rare { background: #7c3aed; color: #fff; }
+.rarity-rarest { background: #dc2626; color: #fff; }
+.rarity-rare { background: #f59e0b; color: #000; }
+.rarity-less-rare { background: #3b82f6; color: #fff; }
+.rarity-less-common { background: #22c55e; color: #fff; }
+.rarity-common { background: #6b7280; color: #fff; }
+.rarity-most-common { background: #374151; color: #fff; }
 
 /* Favorite Button */
 .ngg-fav-btn {

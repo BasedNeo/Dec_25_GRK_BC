@@ -372,11 +372,25 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
 
   const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
   
+  // Rarity Class Helper
+  const getRarityClass = (rarity: string) => {
+    const r = rarity?.toLowerCase() || '';
+    if (r.includes('legendary')) return 'rarity-legendary';
+    if (r.includes('very rare')) return 'rarity-very-rare';
+    if (r.includes('rarest')) return 'rarity-rarest';
+    if (r === 'rare') return 'rarity-rare';
+    if (r.includes('less rare')) return 'rarity-less-rare';
+    if (r.includes('less common')) return 'rarity-less-common';
+    return 'rarity-common';
+  };
+  const rarityClass = getRarityClass(rarityTrait);
+  
+  // Legacy glowColor for List view (kept for compatibility)
   const glowColor = useMemo(() => {
-     if (rarityTrait.includes('Legendary')) return '#fbbf24'; // Gold
-     if (rarityTrait.includes('Very Rare')) return '#c084fc'; // Purple
-     if (rarityTrait.includes('More Rare')) return '#f59e0b'; // Amber
-     return 'rgba(34, 211, 238, 0.5)'; // Default Cyan
+     if (rarityTrait.includes('Legendary')) return '#fbbf24'; 
+     if (rarityTrait.includes('Very Rare')) return '#c084fc';
+     if (rarityTrait.includes('More Rare')) return '#f59e0b';
+     return 'rgba(34, 211, 238, 0.5)';
   }, [rarityTrait]);
 
   if (viewMode === 'list') {
@@ -392,7 +406,7 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
                 <h4 className="font-orbitron text-sm text-white truncate">{guardian.name}</h4>
                 <div className="flex gap-2 text-xs text-muted-foreground">
                     <span>#{guardian.id}</span>
-                    <span style={{ color: glowColor }}>{rarityTrait}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${rarityClass.replace('rarity-', 'text-')}`}>{rarityTrait}</span>
                 </div>
             </div>
             <div className="hidden sm:flex gap-2">
@@ -427,18 +441,10 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
           onError={() => setImgSrc("https://placehold.co/400x400/1e1e1e/FFF?text=Image+Unavailable")}
         />
         
-        <div className="absolute top-2 right-2 z-20">
-           <Badge 
-             className="font-mono text-[10px] backdrop-blur-md border-0"
-             style={{ 
-               backgroundColor: `${glowColor}20`, 
-               color: glowColor,
-               boxShadow: `0 0 10px ${glowColor}40`
-             }}
-           >
-             {rarityTrait}
-           </Badge>
-        </div>
+        {/* Rarity Badge - Top Right Overlay */}
+        <span className={`rarity-badge ${rarityClass}`}>
+            {rarityTrait}
+        </span>
       </div>
 
       <div className="p-4 pb-5 flex flex-col flex-grow relative z-20">

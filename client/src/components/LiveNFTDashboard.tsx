@@ -14,16 +14,16 @@ interface RecentMint {
   owner: string;
 }
 
-// Rarity Color Mapping (Kept for Recent Mints cards)
-const getRarityColor = (rarity: string) => {
+// Rarity Color Mapping Helper
+const getRarityClass = (rarity: string) => {
   const r = rarity?.toLowerCase() || '';
-  if (r.includes('legendary')) return 'from-yellow-300 via-amber-500 to-yellow-600 text-white border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.4)]'; // Gold
-  if (r.includes('very rare')) return 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]';
-  if (r.includes('rarest')) return 'bg-red-500/20 text-red-300 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
-  if (r === 'rare') return 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]';
-  if (r.includes('less rare')) return 'bg-blue-500/20 text-blue-300 border-blue-500/50';
-  if (r.includes('less common')) return 'bg-green-500/20 text-green-300 border-green-500/50';
-  return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+  if (r.includes('legendary')) return 'rarity-legendary';
+  if (r.includes('very rare')) return 'rarity-very-rare';
+  if (r.includes('rarest')) return 'rarity-rarest';
+  if (r === 'rare') return 'rarity-rare';
+  if (r.includes('less rare')) return 'rarity-less-rare';
+  if (r.includes('less common')) return 'rarity-less-common';
+  return 'rarity-common';
 };
 
 export function LiveNFTDashboard() {
@@ -45,6 +45,7 @@ export function LiveNFTDashboard() {
       setRefreshing(false);
     }
   }, []);
+
 
   // Initial Fetch & Interval
   useEffect(() => {
@@ -101,7 +102,7 @@ export function LiveNFTDashboard() {
 }
 
 function MintCard({ mint }: { mint: RecentMint }) {
-    const rarityColorClass = getRarityColor(mint.rarity);
+    const rarityClass = getRarityClass(mint.rarity);
     const isLegendary = mint.rarity?.toLowerCase().includes('legendary');
 
     return (
@@ -115,6 +116,11 @@ function MintCard({ mint }: { mint: RecentMint }) {
                     loading="lazy"
                  />
                  
+                 {/* Rarity Badge - Top Right Overlay */}
+                 <span className={`rarity-badge ${rarityClass}`}>
+                    {mint.rarity}
+                 </span>
+
                  {/* Overlay Gradient */}
                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
@@ -125,11 +131,6 @@ function MintCard({ mint }: { mint: RecentMint }) {
             </div>
 
             <div className="p-3 pb-5">
-                <div className="mb-2">
-                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${rarityColorClass} ${isLegendary ? 'animate-pulse' : ''} backdrop-blur-md`}>
-                        {mint.rarity}
-                    </Badge>
-                </div>
                 <h4 className="text-xs font-bold text-white font-orbitron truncate mb-1">{mint.name}</h4>
                 <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono">
                     <span>Owner:</span>
