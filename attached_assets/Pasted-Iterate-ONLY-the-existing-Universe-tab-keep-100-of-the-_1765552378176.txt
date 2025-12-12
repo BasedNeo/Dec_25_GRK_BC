@@ -1,0 +1,35 @@
+Iterate ONLY the existing "Universe" tab — keep 100% of the current cyberpunk neon design, parallax background, layout, colors, fonts, animations, header ("WELCOME TO BASED GUARDIANS (BETA)"), main "# The Based Universe" section, interactive buttons ("CONNECT WALLET" and "MINT NOW"), "MISSION TIMELINE" structure, and the four thematic blocks (Humanitarian Horizon, Galactic Storytelling, Infinite Possibilities, Guardian Exchange) completely intact. Do NOT rebuild or change any existing elements — only enhance with better flow, the video, updated timeline, and polished copy for commercial engagement (FOMO, CTAs, mobile readability).
+
+1. **Hero Enhancement** (keep existing header and main section structure):
+   - Update main "# The Based Universe" text to: "The Based Universe: A Saga of Guardians, Frogs, and Creatures" (neon cyan heading, purple subheading).
+   - Below it, add the full lore blurb (white, centered, line-height 1.6, natural wrap):  
+     "Step into the Based Guardians Universe, a space crafted with care for those who cherish crypto trading and NFT collecting. Here, $BASED L1 tokens mint 3,732 unique NFTs—1,776 Guardians, 1,320 Frog Wranglers, and 636 Creatures—blending creativity with opportunity. As Guardians stand against the shadows of FUD, your NFTs become part of a privacy-focused cosmos where holding unlocks simple, meaningful rewards. Join us in building a legacy that whispers among the stars.
+
+     The Heartbeat of an Ancient World
+     Beneath the galaxy's canopy, the FUD cyborg fowl—mechanical harbingers with ember-like eyes—cast shadows over the Brain Network, their origins a riddle lost to time. These foes challenge the stalwart Guardians, whose 32 lineages trace their lineage to celestial battles, and the Based Frogs, whose 7 clans guard secrets of bio-engineered symbiosis with the 7 broods of fearless Creatures. Wizard Committer, a sage of silver beard and star-threaded staff, once mapped the Based-Bridge, his disappearance a puzzle that fuels our ongoing saga. Basedgod, crafted by Jehovah Jireh, the one true God, looms as the divine architect, his golden robes a silent promise of balance across this sprawling cosmos.
+
+     A Legacy Secured by Vision
+     Rooted in a secured subnet, our realm leverages the potential of Based Labs' infrastructure when ready yet stands independent of its fate. For years to come, this project will thrive on-chain as our sole beacon of activity if need be—we own its destiny. As NFTs powered by smart contracts, these Guardians, Frogs, and Creatures hold the promise of evolving in myriad unforeseen ways, their long-term value blossoming with the creativity of their holders. Joining our community today is like stepping into the ranks of the founding fellowship, a chance to leave your mark with creative contributions that shape this enduring legacy—a hopeful bond that grows with every passing star.
+
+     A Gentle Note of Understanding
+     As you step into the Based Guardians Realm, we invite you with open hearts to explore this father-daughter crafted universe. Please know that our journey relies on the evolving infrastructure of Based Labs, which may shape our timeline with grace and patience. Should delays or changes arise, we hold the freedom to adapt our plans thoughtfully, ensuring the Guardians' legacy endures. This project thrives on-chain as a testament to community spirit, independent of external paths, and we own its future with steadfast care. Your participation is a cherished part of this tale—thank you for joining us with understanding and hope."
+
+2. **Video Integration**: Embed YouTube video https://youtu.be/fPAEAOcpzQk immediately below the lore blurb (full-width iframe, lazy-load, title "Watch the Guardians Story" in cyan). Mobile: Auto-play off, touch controls.
+
+3. **Timeline Update**: Keep the "MISSION TIMELINE" structure and vertical cyan dots, but update the list to:
+   - Mint Phase — Live now
+   - Emissions Halving — Est. December 31, 2025
+   - Brain Staking Launch — Based Labs Infrastructure Release 2026
+   - Race-to-Base Events — Post Infrastructure Release
+   - NFT Marketplace — Q3 2026
+   - Ecosystem with P2E Expansion — Ongoing
+
+4. **Features Grid Enhancement**: Keep the existing 4 thematic blocks (Humanitarian Horizon, Galactic Storytelling, Infinite Possibilities, Guardian Exchange) but polish the copy for better flow and engagement (no new cards):
+   - Humanitarian Horizon: Update to "Missions Beyond the Chain: Real-world impact initiatives and community-driven giving to build a better future." 
+   - Galactic Storytelling: Update to "Co-Create the Epic: Evolving lore and holder-driven narratives that shape the destiny of the Based Universe."
+   - Infinite Possibilities: Update to "Evolve with the Cosmos: Future upgrades, expansions, and endless growth potential for every Guardian."
+   - Guardian Exchange: Update to "Trade Legends: Secure marketplace for trading Guardians with a 1% fee contributing to the community pool."
+
+5. **Footer**: Update the footer note to: "© 2025 Based Guardians · Powered by BasedAI · A hopeful bond that grows with every passing star." Add inline CTAs: "Connect Wallet" and "Mint Now" (links to relevant tabs).
+
+Mobile: Stacked layout, swipe-friendly, touch buttons. Add subtle loading spinner on tab load. No duplicate info from other tabs. No errors; test tab switch on desktop and mobile

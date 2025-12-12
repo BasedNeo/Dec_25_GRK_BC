@@ -62,7 +62,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-lg md:text-xl font-mono text-purple-400 tracking-wider uppercase"
           >
-            A Father-Daughter Saga of Guardians, Frogs, and Creatures
+            A Saga of Guardians, Frogs, and Creatures
           </motion.h2>
 
           <motion.div 
@@ -77,7 +77,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
             
             <h3 className="text-xl font-orbitron text-cyan-400 pt-4">The Heartbeat of an Ancient World</h3>
             <p>
-              Beneath the galaxy’s canopy, the FUD cyborg fowl—mechanical harbingers with ember-like eyes—cast shadows over the Brain Network, their origins a riddle lost to time. These foes challenge the stalwart Guardians, whose 32 lineages trace their lineage to celestial battles, and the Based Frogs, whose 7 clans guard secrets of bio-engineered symbiosis with the 7 broods of Creatures. Wizard Committer, a sage of silver beard and star-threaded staff, once mapped the Based-Bridge, his ancient code now serving as the backbone of our defense.
+              Beneath the galaxy’s canopy, the FUD cyborg fowl—mechanical harbingers with ember-like eyes—cast shadows over the Brain Network, their origins a riddle lost to time. These foes challenge the stalwart Guardians, whose 32 lineages trace their lineage to celestial battles, and the Based Frogs, whose 7 clans guard secrets of bio-engineered symbiosis with the 7 broods of fearless Creatures. Wizard Committer, a sage of silver beard and star-threaded staff, once mapped the Based-Bridge, his ancient code now serving as the backbone of our defense.
             </p>
 
             <h3 className="text-xl font-orbitron text-cyan-400 pt-4">A Legacy Secured by Vision</h3>
@@ -89,7 +89,53 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
             <p>
               As you step into the Based Guardians Realm, we invite you with open hearts to explore this father-daughter crafted universe. Please know that our journey relies on the evolving infrastructure of Based Labs, which may shape our timeline with grace and patience. Should delays or changes arise, we hold the freedom to adapt our plans thoughtfully, ensuring the Guardians’ legacy endures. This project thrives on-chain as a testament to community spirit, independent of external paths, and we welcome you to walk this road with us.
             </p>
+
+            {/* Video Integration */}
+            <div className="pt-8 pb-4">
+               <h3 className="text-xl font-orbitron text-cyan-400 mb-4 text-center">Watch the Guardians Story</h3>
+               <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+                   <iframe 
+                       width="100%" 
+                       height="100%" 
+                       src="https://www.youtube.com/embed/fPAEAOcpzQk?rel=0" 
+                       title="Watch the Guardians Story" 
+                       frameBorder="0" 
+                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                       allowFullScreen
+                       loading="lazy"
+                   ></iframe>
+               </div>
+            </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-20 bg-gradient-to-b from-black to-indigo-950/20">
+        <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                    { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future." },
+                    { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe." },
+                    { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian." },
+                    { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool." },
+                ].map((feature, idx) => (
+                    <motion.div 
+                        key={idx}
+                        whileHover={{ y: -5 }}
+                        className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group"
+                    >
+                        <div className="w-12 h-12 rounded-full bg-cyan-900/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
+                            <feature.icon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-200" />
+                        </div>
+                        <h4 className="text-lg font-bold text-white mb-1 font-orbitron">{feature.title}</h4>
+                        <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">{feature.sub}</p>
+                        <p className="text-sm text-gray-400 leading-relaxed">
+                            {feature.desc}
+                        </p>
+                    </motion.div>
+                ))}
+            </div>
         </div>
       </section>
 
@@ -167,8 +213,16 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
 
       {/* Footer */}
       <footer className="py-4 border-t border-cyan-500/30 bg-black text-center">
-        <div className="max-w-4xl mx-auto px-4 text-xs font-mono text-cyan-500/60">
+        <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono text-cyan-500/60">
             <p>© 2025 Based Guardians · Powered by BasedAI · A hopeful bond that grows with every passing star.</p>
+            <div className="flex items-center gap-6">
+                <ConnectButton.Custom>
+                    {({ openConnectModal }) => (
+                        <button onClick={openConnectModal} className="hover:text-cyan-400 transition-colors">Connect Wallet</button>
+                    )}
+                </ConnectButton.Custom>
+                <button onClick={onMintClick} className="hover:text-cyan-400 transition-colors">Mint Now</button>
+            </div>
         </div>
       </footer>
     </div>
