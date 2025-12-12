@@ -59,78 +59,30 @@ export function Hero() {
         // 2. Get Baseline Data (Full Collection)
         const allGuardians = await loadGuardiansFromCSV();
         
-        // 3. Slice/Select currently minted subset
-        let mintedGuardians: Guardian[] = [];
+        // 3. Update State - Use CSV data for initial stats approximation
+        // We skip the heavy IPFS fetching for rarity stats here to improve performance
+        // and rely on the MintedNFTsTable to fetch its own data for the table view.
         
-        // Commercial Viable Method: Check for specific known minted IDs from contract state if supply matches
-        // This ensures the frontend syncs exactly with the known deployment state for the demo
-        if (activeSupply === 6) {
-             const knownIds = [1282, 3002, 149, 183, 1059, 1166];
-             // We map manually to preserve order of minting (assumed order) or just by ID
-             // Let's assume the order in the array is the mint order for the table
-             mintedGuardians = knownIds.map(id => {
-                 const found = allGuardians.find(g => g.id === id);
-                 return found ? {...found} : { id, name: `Guardian #${id}`, rarity: 'Common', traits: [], image: '', owner: '0x...' } as Guardian;
-             });
-        } else {
-             // Standard sequential logic for other states
-             mintedGuardians = allGuardians.slice(0, activeSupply).map(g => ({...g}));
-        }
+        // Use a subset of CSV corresponding to current supply for stats
+        const relevantGuardians = allGuardians.slice(0, activeSupply);
         
-        // 4. Update last N minted from IPFS (Live Check)
-        // We fetch metadata for ALL currently minted items to ensure the table is accurate
-        // For efficiency in a real app we might only fetch the last few, but for < 10 items we fetch all
-        const idsToFetch = mintedGuardians.map(g => g.id);
-        
-        await Promise.all(idsToFetch.map(async (id, index) => {
-            try {
-                const res = await fetch(`https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dvrjfalfyu52y/${id}.json`);
-                const json = await res.json();
-                const rarityAttr = json.attributes.find((t:any) => t.trait_type === 'Rarity Level' || t.trait_type === 'Rarity');
-                const bioAttr = json.attributes.find((t:any) => t.trait_type === 'Biological Type' || t.trait_type === 'Character Type');
-                const name = json.name || `Guardian #${id}`;
-                
-                if (mintedGuardians[index]) {
-                    if (rarityAttr) mintedGuardians[index].rarity = rarityAttr.value;
-                    mintedGuardians[index].name = name;
-                    
-                    // Update traits if needed
-                    if (!mintedGuardians[index].traits) mintedGuardians[index].traits = [];
-                    if (bioAttr) {
-                         const traitIdx = mintedGuardians[index].traits.findIndex(t => t.type === 'Biological Type' || t.type === 'Character Type');
-                         if (traitIdx >= 0) mintedGuardians[index].traits[traitIdx].value = bioAttr.value;
-                         else mintedGuardians[index].traits.push({ type: 'Biological Type', value: bioAttr.value });
-                    }
-
-                    // Mock owner for demo
-                    if (id === 3002) mintedGuardians[index].owner = 'Your wallet';
-                    else if (id === 149) mintedGuardians[index].owner = 'Test wallet';
-                    else mintedGuardians[index].owner = `0x${id.toString(16).padStart(40, '0')}`; // Random-ish address
-                }
-            } catch (e) {
-                console.warn(`Failed to fetch IPFS for #${id}`, e);
-            }
-        }));
-        
-        // 5. Aggregate Counts
         const counts: Record<string, number> = {};
-        mintedGuardians.forEach(g => {
-            // Normalize rarity strings if needed
+        relevantGuardians.forEach(g => {
             let r = g.rarity || 'Common';
-            // Normalize old/variant names to new schema if needed
             if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
-            if (r === 'Rarest') r = 'More Rare'; // Remap old Rarest to More Rare if found
-            
+            if (r === 'Rarest') r = 'More Rare';
             counts[r] = (counts[r] || 0) + 1;
         });
-        
-        // 6. Update State
+
         setRarityStats(prev => prev.map(item => ({
             ...item,
             minted: counts[item.name] || 0
         })));
+        
         setClassifiedCount(activeSupply);
-        setMintedList(mintedGuardians);
+        // mintedList is no longer needed for the table, but we can keep it if other logic used it. 
+        // For now, we just won't update it with heavy IPFS data.
+        // setMintedList(mintedGuardians); 
         
     } catch (e) {
         console.error("Rarity Sync Failed", e);
@@ -361,8 +313,6 @@ export function Hero() {
 
             {/* Minted NFTs Table */}
             <MintedNFTsTable 
-                mintedGuardians={mintedList} 
-                loading={isUpdatingRarity} 
                 totalMinted={currentSupply}
             />
 
