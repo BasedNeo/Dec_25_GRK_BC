@@ -3,6 +3,7 @@ import { ExternalLink, Heart, Box } from 'lucide-react';
 import './NFTGalleryGrid.css';
 import { getExplorerUrl } from '../lib/contractService';
 import { NFTDetailModal } from './NFTDetailModal';
+import { soundManager } from '../lib/SoundManager';
 
 export interface NFTToken {
   tokenId: number;
@@ -33,6 +34,7 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
 
   const toggleFavorite = (e: React.MouseEvent, tokenId: number) => {
     e.stopPropagation();
+    soundManager.play('click');
     setFavorites(prev => {
       const newFavs = prev.includes(tokenId) 
         ? prev.filter(id => id !== tokenId)
@@ -43,6 +45,7 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
   };
 
   const handleCardClick = (token: NFTToken) => {
+    soundManager.play('click');
     setSelectedToken(token);
   };
 
@@ -130,7 +133,11 @@ function NFTCard({ token, isFavorite, onToggleFavorite, onClick }: { token: NFTT
   const role = token.role || token.attributes?.['Role'] || 'Unknown';
 
   return (
-    <div className={`ngg-card ${rarityClass}`} onClick={onClick}>
+    <div 
+      className={`ngg-card ${rarityClass}`} 
+      onClick={onClick}
+      onMouseEnter={() => soundManager.play('hover')}
+    >
       <div className="ngg-image-container">
         {/* Rarity Badge */}
         <div className={`ngg-rarity-badge ${rarityClass}`}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ExternalLink, PauseCircle, PlayCircle, Zap } from 'lucide-react';
 import { getRecentMints, getExplorerUrl, getCollectionStats } from '../lib/contractService';
+import { soundManager } from '../lib/SoundManager';
 import './LiveActivityFeed.css';
 
 interface ActivityItem {
@@ -17,7 +18,6 @@ export function LiveActivityFeed() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [totalMinted, setTotalMinted] = useState<number>(0);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(false); // Default off
   const listRef = useRef<HTMLDivElement>(null);
   
   // Initial fetch
@@ -89,7 +89,7 @@ export function LiveActivityFeed() {
             return updated;
           });
           
-          if (isSoundEnabled) playDing();
+          soundManager.play('notification');
         }
         
         setTotalMinted(currentTotal);
@@ -97,12 +97,6 @@ export function LiveActivityFeed() {
     } catch (err) {
       console.error("Poll error", err);
     }
-  };
-
-  const playDing = () => {
-    const audio = new Audio('/assets/sounds/ding.mp3'); // Assuming file exists or fails silently
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
