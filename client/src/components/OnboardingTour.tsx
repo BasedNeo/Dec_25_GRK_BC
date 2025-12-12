@@ -19,12 +19,6 @@ export function OnboardingTour() {
   const handleComplete = () => {
     localStorage.setItem("bguard_tour_seen_v1", "true");
     setIsVisible(false);
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#00ffff', '#bf00ff']
-    });
   };
 
   const steps = [
@@ -58,22 +52,6 @@ export function OnboardingTour() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
             onClick={() => setIsVisible(false)}
         />
-
-        {/* Highlight Spotlights (Mocking positions) */}
-        {step === 0 && (
-            <motion.div 
-                layoutId="spotlight"
-                className="absolute top-4 right-4 w-48 h-16 border-2 border-primary shadow-[0_0_50px_rgba(0,255,255,0.5)] rounded-lg bg-transparent z-[101]"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            />
-        )}
-        {step === 2 && (
-            <motion.div 
-                layoutId="spotlight"
-                className="absolute top-4 left-1/2 -translate-x-1/2 w-64 h-16 border-2 border-primary shadow-[0_0_50px_rgba(0,255,255,0.5)] rounded-lg bg-transparent z-[101]"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            />
-        )}
 
         {/* Tour Card */}
         <motion.div
