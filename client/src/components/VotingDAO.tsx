@@ -111,7 +111,7 @@ export function VotingDAO({}: VotingDAOProps) {
             <h2 className="text-3xl md:text-4xl text-white mb-4">COUNCIL <span className="text-accent">DECISIONS</span></h2>
             <p className="text-muted-foreground font-rajdhani max-w-2xl">
               Shape the future of the Based Guardians. 1 NFT = 1 Vote. 
-              <span className="block mt-1 text-primary text-sm font-semibold">Advisory DAO — Votes are advisory, final decision by admin.</span>
+              <span className="block mt-1 text-primary text-sm font-semibold">Advisory DAO — Votes decide action.</span>
             </p>
           </div>
           
