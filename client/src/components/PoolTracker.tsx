@@ -49,8 +49,32 @@ export function PoolTracker() {
   const [subnetBalance, setSubnetBalance] = useState<number>(0);
   const [dailyPassive, setDailyPassive] = useState<number>(1.34); // Default to target
   const [poolShare, setPoolShare] = useState<number>(0);
+  const [displayedPoolShare, setDisplayedPoolShare] = useState<number>(0);
   const [livePoolBalance, setLivePoolBalance] = useState<number>(0);
   const [mintRevenue, setMintRevenue] = useState<number>(0);
+
+  // Sync displayed share when actual poll updates
+  useEffect(() => {
+    setDisplayedPoolShare(poolShare);
+  }, [poolShare]);
+
+  // Live Ticker for Passive Emissions
+  // "give the Passive Emission values feel live"
+  useEffect(() => {
+    if (dailyPassive <= 0) return;
+
+    // Calculate emissions per second
+    // Total Daily Emissions = Total Supply * Daily Per NFT
+    // 3732 * 1.34 = ~5000.88 $BASED / Day
+    const totalDailyEmissions = TOTAL_SUPPLY * dailyPassive;
+    const emissionsPerSecond = totalDailyEmissions / 86400;
+
+    const interval = setInterval(() => {
+        setDisplayedPoolShare(prev => prev + emissionsPerSecond);
+    }, 1000); // Update every second for "live" feel
+
+    return () => clearInterval(interval);
+  }, [dailyPassive]);
 
   // Poll Subnet Logic (ETH Mainnet)
   const pollSubnet = useCallback(async () => {
@@ -308,7 +332,7 @@ export function PoolTracker() {
           
           <div className="flex flex-col items-center justify-center mb-6">
             <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow">
-                {(mintRevenue + poolShare).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                {(mintRevenue + displayedPoolShare).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
             </div>
             <div className="text-2xl md:text-4xl text-primary font-bold mt-2 font-orbitron tracking-widest text-center">
                 $BASED
@@ -323,7 +347,7 @@ export function PoolTracker() {
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2">
                   <span className="text-muted-foreground">Passive Emissions (Subnet/Brain):</span>
-                  <span className="font-bold">~{poolShare.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED</span>
+                  <span className="font-bold">~{displayedPoolShare.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})} $BASED</span>
               </div>
               <div className="flex justify-between items-center pt-1 opacity-75">
                   <span className="text-muted-foreground flex items-center gap-2">Staking Emissions: <span className="text-[10px] bg-primary/10 text-primary px-1 rounded">SOON</span></span>
