@@ -23,7 +23,11 @@ export default function Home() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black relative">
+      <div className="animated-cyber-bg">
+        <div className="cyber-grid-plane"></div>
+        <div className="cyber-particles"></div>
+      </div>
       <OnboardingTour />
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
       
