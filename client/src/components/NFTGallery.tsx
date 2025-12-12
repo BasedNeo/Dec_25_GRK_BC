@@ -468,9 +468,14 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
         </div>
         
         {/* Price & Owner Info */}
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono mb-2">
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono mb-1">
             <span>Owner: <span className="text-primary">0x12...34</span></span>
-            <span>Price: <span className="text-white font-bold">69,420 $BASED</span></span>
+        </div>
+
+        {/* Price Display */}
+        <div className="card-price">
+            <span className="price-label">Price</span>
+            <span className="price-value">69,420 $BASED</span>
         </div>
       </div>
 
