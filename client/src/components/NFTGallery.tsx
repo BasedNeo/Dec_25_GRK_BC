@@ -455,6 +455,35 @@ export function NFTGallery({}: NFTGalleryProps) {
 
 function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
   const [imgSrc, setImgSrc] = useState(guardian.image);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const card = cardRef.current;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calculate rotation: center is 0, edges are max rotation
+    // Max rotation +/- 10 degrees
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const rotateX = ((y - centerY) / centerY) * -10; // Invert Y for tilt
+    const rotateY = ((x - centerX) / centerX) * 10;
+    
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+    card.style.boxShadow = `0 0 20px rgba(0, 255, 255, 0.4)`;
+    card.style.zIndex = '10';
+  };
+
+  const handleMouseLeave = () => {
+    if (!cardRef.current) return;
+    const card = cardRef.current;
+    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+    card.style.boxShadow = 'none';
+    card.style.zIndex = '1';
+  };
 
   if (guardian.isError) {
       return (
@@ -479,6 +508,12 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
   const backedValue = calculateBackedValue(rarityTrait);
 
   return (
+    <div
+        ref={cardRef}
+        className="h-full transition-all duration-200 ease-out will-change-transform"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+    >
     <Card 
         className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
         onClick={onClick}
@@ -542,5 +577,6 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         </div>
       </div>
     </Card>
+    </div>
   );
 }
