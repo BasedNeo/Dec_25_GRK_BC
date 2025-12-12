@@ -2,22 +2,18 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
+import { Lock, Loader2, TrendingUp, Download } from "lucide-react";
+import { Guardian, MOCK_GUARDIANS, calculateBackedValue } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
 
 import { NFTDetailModal } from "./NFTDetailModal";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { FilterBar } from "./FilterBar";
 
 interface NFTGalleryProps {}
 
@@ -26,7 +22,6 @@ export function NFTGallery({}: NFTGalleryProps) {
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV Data for speed & completeness
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // PWA Install Prompt
@@ -58,12 +53,19 @@ export function NFTGallery({}: NFTGalleryProps) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
-  const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id-asc");
-  const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
+  
+  // New specific filters mapping to trait types
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
 
-  // Pass filters to hook for server-side (CSV-side) filtering
+  const [sortBy, setSortBy] = useState<string>("recent");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Pass filters to hook. We map the specific filters to the generic traitType/traitValue expected by the hook.
+  // Prioritize Type, then Role for server-side filtering if hook only supports one.
+  const traitType = typeFilter !== 'all' ? 'Biological Type' : (roleFilter !== 'all' ? 'Role' : 'all');
+  const traitValue = typeFilter !== 'all' ? typeFilter : (roleFilter !== 'all' ? roleFilter : 'all');
+
   const { 
     data, 
     isLoading, 
@@ -73,8 +75,8 @@ export function NFTGallery({}: NFTGalleryProps) {
   } = useGuardians(useMockData, useCsvData, {
       search: debouncedSearch,
       rarity: rarityFilter,
-      traitType: traitTypeFilter,
-      traitValue: traitValueFilter,
+      traitType,
+      traitValue,
       sortBy
   });
 
@@ -85,7 +87,6 @@ export function NFTGallery({}: NFTGalleryProps) {
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
            fetchNextPage();
-           // Track scroll load event
            trackEvent('scroll_load_batch', 'Engagement', 'NFT Gallery');
         }
       },
@@ -101,12 +102,22 @@ export function NFTGallery({}: NFTGalleryProps) {
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
-  const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+  let displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
 
-  // Extract Traits
+  // Client-side filtering for secondary traits if multiple are selected
+  if (typeFilter !== 'all' && roleFilter !== 'all') {
+    displayNfts = displayNfts.filter(nft => {
+      // We already filtered by Type in the hook (prioritized above), so filter by Role here
+      // Or if the hook returned matches for Type, we ensure Role also matches
+      const hasType = nft.traits?.some((t: any) => t.type === 'Biological Type' && t.value === typeFilter);
+      const hasRole = nft.traits?.some((t: any) => t.type === 'Role' && t.value === roleFilter);
+      return hasType && hasRole;
+    });
+  }
+
+  // Extract Traits for FilterBar
   const availableTraits = useMemo(() => {
       const traits: Record<string, Set<string>> = {};
-      
       if (displayNfts.length > 0) {
         displayNfts.forEach(item => {
             item.traits?.forEach((t: any) => {
@@ -119,11 +130,8 @@ export function NFTGallery({}: NFTGalleryProps) {
   }, [displayNfts]);
 
   // Value Estimation Logic
-  const baseValuePerNFT = calculateBackedValue(); // Now returns ~35k + accrued
+  const baseValuePerNFT = calculateBackedValue(); 
   const userTotalValue = displayNfts.reduce((total, guardian) => {
-    // Per user request, we simply multiply base value by count for the "Total Holdings"
-    // They explicitly asked for 20 * ~35,907 = ~718,140
-    // So we remove the rarity multiplier from this specific aggregate calculation
     return total + baseValuePerNFT;
   }, 0);
 
@@ -141,6 +149,34 @@ export function NFTGallery({}: NFTGalleryProps) {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
+
+  const handleClearAll = () => {
+    setSearch("");
+    setRarityFilter("all");
+    setTypeFilter("all");
+    setRoleFilter("all");
+    setSortBy("recent");
+  };
+
+  // Sync URL Params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('rarity')) setRarityFilter(params.get('rarity')!);
+    if (params.get('type')) setTypeFilter(params.get('type')!);
+    if (params.get('role')) setRoleFilter(params.get('role')!);
+    if (params.get('sort')) setSortBy(params.get('sort')!);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (rarityFilter !== 'all') params.set('rarity', rarityFilter);
+    if (typeFilter !== 'all') params.set('type', typeFilter);
+    if (roleFilter !== 'all') params.set('role', roleFilter);
+    if (sortBy !== 'recent') params.set('sort', sortBy);
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [rarityFilter, typeFilter, roleFilter, sortBy]);
 
   return (
     <section id="gallery" className="py-20 border-t border-white/5 relative z-10">
@@ -198,182 +234,25 @@ export function NFTGallery({}: NFTGalleryProps) {
           )}
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
-          <div className="w-full">
-            {isConnected && (
-               <div className="flex flex-col gap-4 w-full">
-                 
-                 <div className="flex flex-col sm:flex-row gap-2 w-full justify-center md:justify-between">
-                    <div className="relative flex-1 w-full md:max-w-md">
-                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                       <Input 
-                         placeholder="Search ID (e.g. 3000), Name, or 'Strength >= 8'..." 
-                         className="pl-9 bg-white/5 border-white/10 text-white focus:border-primary/50 w-full"
-                         value={search}
-                         onChange={(e) => setSearch(e.target.value)}
-                         type="text"
-                       />
-                    </div>
-                    
-                    <div className="flex gap-2 w-full md:w-auto items-center">
-                           {/* Grid Toggle */}
-                           <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10 h-10 mr-2">
-                              <span className="text-[10px] text-muted-foreground font-mono px-2 hidden xl:inline">VIEW:</span>
-                              {[1, 2, 4, 6].map((cols) => (
-                                <Button
-                                  key={cols}
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setGridCols(cols)}
-                                  className={`w-8 h-8 ${gridCols === cols ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-muted-foreground hover:text-white'}`}
-                                  title={`${cols}-wide view`}
-                                >
-                                  {cols === 1 && <Square size={14} />}
-                                  {cols === 2 && <LayoutGrid size={14} />}
-                                  {cols === 4 && <Grid3x3 size={14} />}
-                                  {cols === 6 && <Grid size={14} />}
-                                </Button>
-                              ))}
-                           </div>
-
-                         <Select value={sortBy} onValueChange={setSortBy}>
-                             <SelectTrigger className="w-full md:w-[180px] bg-white/5 border-white/10 text-white">
-                               <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
-                               <SelectValue placeholder="Sort By" />
-                             </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="price-asc">Floor Price: Low to High</SelectItem>
-                               <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                               <SelectItem value="id-asc">ID: Low to High</SelectItem>
-                               <SelectItem value="id-desc">ID: High to Low</SelectItem>
-                               <SelectItem value="rarity-desc">Rarity: High to Low</SelectItem>
-                               <SelectItem value="rarity-asc">Rarity: Low to High</SelectItem>
-                             </SelectContent>
-                           </Select>
-                           
-                           <Button 
-                             variant="outline" 
-                             onClick={() => setShowFilters(!showFilters)}
-                             className={`border-white/20 ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
-                           >
-                             <Filter size={14} />
-                           </Button>
-                    </div>
-                 </div>
-
-                 <div className="flex items-center justify-center md:justify-end gap-2 w-full">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setUseCsvData(!useCsvData)}
-                        className={`text-[10px] h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
-                    >
-                        {useCsvData ? "Using Local CSV Data (Fast)" : "Switch to CSV"}
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => { setUseMockData(!useMockData); setUseCsvData(false); }}
-                        className="text-[10px] h-6 text-muted-foreground hover:text-white"
-                    >
-                        {useMockData ? "Switch to Real" : "View Demo Data"}
-                    </Button>
-                 </div>
-               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Filters Panel */}
-        {showFilters && isConnected && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              className="overflow-hidden mb-8"
-            >
-              <Card className="p-4 bg-white/5 border-white/10 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-mono text-muted-foreground">RARITY</Label>
-                  <Select value={rarityFilter} onValueChange={setRarityFilter}>
-                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
-                            <SelectValue placeholder="All Rarities" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Rarities</SelectItem>
-                            {Object.keys(RARITY_CONFIG).map((rarity) => (
-                                <SelectItem key={rarity} value={rarity}>{rarity}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE TYPE</Label>
-                    <Select value={traitTypeFilter} onValueChange={(v) => { setTraitTypeFilter(v); setTraitValueFilter("all"); }}>
-                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
-                            <SelectValue placeholder="Select Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Attributes</SelectItem>
-                            {Object.keys(availableTraits).length > 0 ? 
-                                Object.keys(availableTraits).sort().map(type => (
-                                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                                )) : (
-                                    <>
-                                        <SelectItem value="Character Type">Character Type</SelectItem>
-                                        <SelectItem value="Strength">Strength</SelectItem>
-                                        <SelectItem value="Speed">Speed</SelectItem>
-                                    </>
-                                )
-                            }
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE VALUE</Label>
-                    <Select 
-                        value={traitValueFilter} 
-                        onValueChange={setTraitValueFilter}
-                        disabled={traitTypeFilter === "all"}
-                    >
-                        <SelectTrigger className="bg-black/50 border-white/10 text-white">
-                            <SelectValue placeholder="Select Value" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Values</SelectItem>
-                            {traitTypeFilter !== "all" && (() => {
-                                const values = Array.from(availableTraits[traitTypeFilter] || []);
-                                if (traitTypeFilter === "Character Type" && !values.includes("Based Creature")) {
-                                    values.push("Based Creature");
-                                }
-                                return values.sort().map(val => (
-                                    <SelectItem key={val} value={val}>{val}</SelectItem>
-                                ));
-                            })()}
-                        </SelectContent>
-                    </Select>
-                </div>
-                
-                {/* Character Type Shortcuts */}
-                <div className="col-span-1 md:col-span-3 pt-4 border-t border-white/5 flex gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground mr-2 py-1">QUICK FILTERS:</span>
-                    {['Based Frog', 'Based Guardian', 'Based Creature'].map(type => (
-                        <Badge 
-                            key={type}
-                            variant="outline" 
-                            className="cursor-pointer hover:bg-primary/20 hover:text-primary hover:border-primary/50 transition-colors"
-                            onClick={() => {
-                                setTraitTypeFilter("Character Type");
-                                setTraitValueFilter(type);
-                            }}
-                        >
-                            {type}
-                        </Badge>
-                    ))}
-                </div>
-              </Card>
-            </motion.div>
+        {isConnected && (
+            <FilterBar 
+                search={search}
+                onSearchChange={setSearch}
+                rarity={rarityFilter}
+                onRarityChange={setRarityFilter}
+                type={typeFilter}
+                onTypeChange={setTypeFilter}
+                role={roleFilter}
+                onRoleChange={setRoleFilter}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                totalItems={nfts.length || 0}
+                showingItems={displayNfts.length || 0}
+                availableTraits={availableTraits}
+                onClearAll={handleClearAll}
+            />
         )}
 
         {!isConnected ? (
@@ -392,41 +271,38 @@ export function NFTGallery({}: NFTGalleryProps) {
           <>
             {isLoading && !displayNfts.length && !useMockData ? (
                <div className={`grid gap-6 transition-all duration-300 ${
-                    gridCols === 1 ? 'grid-cols-1' : 
-                    gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
-                    gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
-                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                    viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
                   }`}>
                   {Array.from({ length: 12 }).map((_, i) => (
-                      <GuardianCardSkeleton key={i} />
+                      <GuardianCardSkeleton key={i} viewMode={viewMode} />
                   ))}
                </div>
             ) : displayNfts.length === 0 ? (
                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
                  <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
                  <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
-                 <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
+                 <Button onClick={handleClearAll} variant="outline">
                     Clear Filters
                  </Button>
                </div>
             ) : (
               <>
-                {/* Unified Grid (Replaces separate Desktop Grid and Mobile Carousel) */}
                 <motion.div 
                   variants={container}
                   initial="hidden"
                   whileInView="show"
                   viewport={{ once: true }}
                   className={`grid gap-6 transition-all duration-300 ${
-                    gridCols === 1 ? 'grid-cols-1' : 
-                    gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
-                    gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
-                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                    viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
                   }`}
                 >
                   {displayNfts.map((guardian, idx) => (
                     <motion.div key={`${guardian.id}-${idx}`} variants={item}>
-                      <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} />
+                      <GuardianCard 
+                        guardian={guardian} 
+                        onClick={() => setSelectedNFT(guardian)} 
+                        viewMode={viewMode}
+                      />
                     </motion.div>
                   ))}
                 </motion.div>
@@ -460,7 +336,18 @@ export function NFTGallery({}: NFTGalleryProps) {
   );
 }
 
-function GuardianCardSkeleton() {
+function GuardianCardSkeleton({ viewMode }: { viewMode: 'grid' | 'list' }) {
+  if (viewMode === 'list') {
+      return (
+        <Card className="bg-card border-white/5 p-4 flex gap-4 items-center">
+            <div className="h-12 w-12 bg-white/5 rounded animate-pulse" />
+            <div className="space-y-2 flex-1">
+                <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
+                <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
+            </div>
+        </Card>
+      )
+  }
   return (
     <Card className="bg-card border-white/5 overflow-hidden h-full flex flex-col">
       <div className="relative aspect-square bg-white/5 animate-pulse" />
@@ -479,7 +366,7 @@ function GuardianCardSkeleton() {
   );
 }
 
-function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
+function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onClick: () => void, viewMode: 'grid' | 'list' }) {
   const [imgSrc, setImgSrc] = useState(guardian.image);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -489,130 +376,91 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
      if (rarityTrait.includes('Legendary')) return '#fbbf24'; // Gold
      if (rarityTrait.includes('Very Rare')) return '#c084fc'; // Purple
      if (rarityTrait.includes('More Rare')) return '#f59e0b'; // Amber
-     if (rarityTrait === 'Rare') return '#facc15'; // Yellow
-     if (rarityTrait.includes('Less Rare')) return '#60a5fa'; // Blue
-     if (rarityTrait === 'Less Common') return '#4ade80'; // Green
-     return 'rgba(255, 255, 255, 0.1)';
+     return 'rgba(34, 211, 238, 0.5)'; // Default Cyan
   }, [rarityTrait]);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const card = cardRef.current;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Calculate rotation: center is 0, edges are max rotation
-    // Max rotation +/- 10 degrees
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    
-    const rotateX = ((y - centerY) / centerY) * -10; // Invert Y for tilt
-    const rotateY = ((x - centerX) / centerX) * 10;
-    
-    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
-    card.style.boxShadow = `0 0 30px ${glowColor}`;
-    card.style.zIndex = '10';
-    card.style.borderColor = glowColor;
-  };
-
-  const handleMouseLeave = () => {
-    if (!cardRef.current) return;
-    const card = cardRef.current;
-    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-    card.style.boxShadow = '';
-    card.style.zIndex = '1';
-    card.style.borderColor = '';
-  };
-
-  if (guardian.isError) {
+  if (viewMode === 'list') {
       return (
-        <Card className="bg-red-950/20 border-red-500/20 h-full flex flex-col items-center justify-center p-6 text-center">
-             <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-             <h4 className="text-white font-bold mb-2">Metadata Error</h4>
-             <p className="text-xs text-muted-foreground mb-4">Could not fetch data for #{guardian.id}</p>
-             <Button variant="outline" size="sm" onClick={() => {}} className="border-red-500/50 text-red-500 hover:bg-red-500/10">
-                 <RefreshCw size={14} className="mr-2" /> Retry
-             </Button>
+        <Card 
+            className="group bg-black/40 border-white/10 hover:border-primary/50 transition-all cursor-pointer flex items-center p-3 gap-4"
+            onClick={onClick}
+        >
+            <div className="h-12 w-12 rounded-md overflow-hidden shrink-0">
+                <img src={imgSrc} alt={guardian.name} className="h-full w-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-orbitron text-sm text-white truncate">{guardian.name}</h4>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                    <span>#{guardian.id}</span>
+                    <span style={{ color: glowColor }}>{rarityTrait}</span>
+                </div>
+            </div>
+            <div className="hidden sm:flex gap-2">
+                {guardian.traits?.slice(0, 3).map((t, i) => (
+                    <Badge key={i} variant="outline" className="text-[10px] border-white/10 text-muted-foreground">
+                        {t.value}
+                    </Badge>
+                ))}
+            </div>
         </Card>
       );
   }
 
-  // Find config, handle casing or partial matches if needed, but exact match is preferred
-  const rarityConfig = RARITY_CONFIG[rarityTrait] || RARITY_CONFIG['Common'];
-  const backedValue = calculateBackedValue(rarityTrait);
-
   return (
-    <div
-        ref={cardRef}
-        className="h-full transition-all duration-200 ease-out will-change-transform glow-animated rounded-xl"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{ '--glow-color': glowColor } as React.CSSProperties}
-    >
     <Card 
-        className="bg-card border-white/10 overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer"
-        onClick={onClick}
+      ref={cardRef}
+      className="group relative bg-black/40 border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 cursor-pointer h-full flex flex-col"
+      onClick={onClick}
+      style={{
+        boxShadow: `0 0 0 1px rgba(255,255,255,0.05)`
+      }}
     >
-      <div className="relative aspect-square overflow-hidden bg-secondary/20">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        {imgSrc ? (
-          <img 
-            src={imgSrc} 
-            alt={guardian.name} 
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={() => {
-                // Fallback
-            }} 
-          />
-        ) : (
-           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-             <span className="mb-2">No Image</span>
-           </div>
-        )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+      
+      {/* Image Container */}
+      <div className="relative aspect-square overflow-hidden bg-black/50">
+        <img 
+          src={imgSrc} 
+          alt={guardian.name} 
+          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+          loading="lazy"
+          onError={() => setImgSrc("https://placehold.co/400x400/1e1e1e/FFF?text=Image+Unavailable")}
+        />
         
-        {/* Rarity Badge */}
         <div className="absolute top-2 right-2 z-20">
-            <Badge className={`backdrop-blur-md border shadow-[0_0_15px_rgba(0,0,0,0.5)] ${rarityConfig.color}`}>
-                {rarityTrait}
-            </Badge>
+           <Badge 
+             className="font-mono text-[10px] backdrop-blur-md border-0"
+             style={{ 
+               backgroundColor: `${glowColor}20`, 
+               color: glowColor,
+               boxShadow: `0 0 10px ${glowColor}40`
+             }}
+           >
+             {rarityTrait}
+           </Badge>
+        </div>
+      </div>
+
+      <div className="p-4 flex flex-col flex-grow relative z-20">
+        <div className="flex justify-between items-start mb-2">
+           <h3 className="font-orbitron font-bold text-white text-sm truncate pr-2 group-hover:text-primary transition-colors">
+             {guardian.name}
+           </h3>
+           <span className="font-mono text-xs text-muted-foreground">#{guardian.id}</span>
         </div>
 
-        {/* Quick Stats Overlay (Hover) */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-20 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <div className="flex justify-between items-center text-xs font-mono text-white mb-1">
-                <span>Backed Value:</span>
-                <span className="text-cyan-400 font-bold">{backedValue.toLocaleString()} $BASED</span>
-            </div>
-            {rarityConfig.multiplier > 0 && (
-                <div className="flex justify-end text-[10px] text-green-400 font-mono">
-                    +{rarityConfig.multiplier * 100}% Boost Active
-                </div>
+        {/* Traits Preview */}
+        <div className="flex flex-wrap gap-1 mt-auto">
+            {guardian.traits?.slice(0, 2).map((trait, i) => (
+                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground border border-white/5 truncate max-w-[100%]">
+                    {trait.value}
+                </span>
+            ))}
+            {(guardian.traits?.length || 0) > 2 && (
+                <span className="text-[10px] px-1.5 py-0.5 text-muted-foreground">+{ (guardian.traits?.length || 0) - 2 }</span>
             )}
         </div>
       </div>
-
-      <div className="p-4 flex flex-col flex-grow bg-black/40 backdrop-blur-sm">
-        <div className="flex justify-between items-start mb-2">
-            <div>
-                <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{guardian.name}</h3>
-                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">ID: {guardian.id}</p>
-            </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
-             <div className="flex flex-col">
-                 <span className="text-[9px] text-muted-foreground uppercase">Backed Based</span>
-                 <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
-             </div>
-             <div className="flex flex-col items-end">
-                 <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
-                 <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
-             </div>
-        </div>
-      </div>
     </Card>
-    </div>
   );
 }
