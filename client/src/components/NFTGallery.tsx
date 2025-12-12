@@ -423,7 +423,7 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
   return (
     <Card 
       ref={cardRef}
-      className="group relative bg-black/40 border-white/10 hover:border-primary/50 transition-all duration-300 cursor-pointer flex flex-col"
+      className="group relative bg-black/40 border-white/10 hover:border-primary/50 transition-all duration-300 cursor-pointer flex flex-col h-full min-h-0"
       onClick={onClick}
       style={{
         boxShadow: `0 0 0 1px rgba(255,255,255,0.05)`
