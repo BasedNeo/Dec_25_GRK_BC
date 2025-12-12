@@ -483,6 +483,18 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
   const [imgSrc, setImgSrc] = useState(guardian.image);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
+  
+  const glowColor = useMemo(() => {
+     if (rarityTrait.includes('Legendary')) return '#fbbf24'; // Gold
+     if (rarityTrait.includes('Very Rare')) return '#c084fc'; // Purple
+     if (rarityTrait.includes('More Rare')) return '#f59e0b'; // Amber
+     if (rarityTrait === 'Rare') return '#facc15'; // Yellow
+     if (rarityTrait.includes('Less Rare')) return '#60a5fa'; // Blue
+     if (rarityTrait === 'Less Common') return '#4ade80'; // Green
+     return 'rgba(255, 255, 255, 0.1)';
+  }, [rarityTrait]);
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
     const card = cardRef.current;
@@ -499,16 +511,18 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
     const rotateY = ((x - centerX) / centerX) * 10;
     
     card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
-    card.style.boxShadow = `0 0 20px rgba(0, 255, 255, 0.4)`;
+    card.style.boxShadow = `0 0 30px ${glowColor}`;
     card.style.zIndex = '10';
+    card.style.borderColor = glowColor;
   };
 
   const handleMouseLeave = () => {
     if (!cardRef.current) return;
     const card = cardRef.current;
     card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-    card.style.boxShadow = 'none';
+    card.style.boxShadow = '';
     card.style.zIndex = '1';
+    card.style.borderColor = '';
   };
 
   if (guardian.isError) {
@@ -524,24 +538,20 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
       );
   }
 
-  const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
-  
   // Find config, handle casing or partial matches if needed, but exact match is preferred
   const rarityConfig = RARITY_CONFIG[rarityTrait] || RARITY_CONFIG['Common'];
-  const isCommon = rarityTrait === 'Common' || rarityTrait === 'Most Common';
-
-  // Calculate Value with Rarity Boost
   const backedValue = calculateBackedValue(rarityTrait);
 
   return (
     <div
         ref={cardRef}
-        className="h-full transition-all duration-200 ease-out will-change-transform"
+        className="h-full transition-all duration-200 ease-out will-change-transform glow-animated rounded-xl"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        style={{ '--glow-color': glowColor } as React.CSSProperties}
     >
     <Card 
-        className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
+        className="bg-card border-white/10 overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer"
         onClick={onClick}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">

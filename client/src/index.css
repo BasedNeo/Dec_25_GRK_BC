@@ -237,3 +237,18 @@ h1, h2, h3, h4, h5, h6 {
   0% { background-position: 0 0; }
   100% { background-position: 90px 90px; }
 }
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px var(--glow-color, rgba(0,255,255,0.2)), inset 0 0 2px var(--glow-color, rgba(0,255,255,0.1)); 
+    border-color: var(--glow-color, rgba(0,255,255,0.3));
+  }
+  50% { 
+    box-shadow: 0 0 20px var(--glow-color, rgba(0,255,255,0.5)), inset 0 0 5px var(--glow-color, rgba(0,255,255,0.2)); 
+    border-color: var(--glow-color, rgba(0,255,255,0.6));
+  }
+}
+
+.glow-animated {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
