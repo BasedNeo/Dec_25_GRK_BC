@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ExternalLink, Heart, Box } from 'lucide-react';
 import './NFTGalleryGrid.css';
 import { getExplorerUrl } from '../lib/contractService';
+import { NFTDetailModal } from './NFTDetailModal';
 
 export interface NFTToken {
   tokenId: number;
@@ -27,6 +28,7 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
     return saved ? JSON.parse(saved) : [];
   });
   
+  const [selectedToken, setSelectedToken] = useState<NFTToken | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
 
   const toggleFavorite = (e: React.MouseEvent, tokenId: number) => {
@@ -38,6 +40,10 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
       localStorage.setItem('nft_favorites', JSON.stringify(newFavs));
       return newFavs;
     });
+  };
+
+  const handleCardClick = (token: NFTToken) => {
+    setSelectedToken(token);
   };
 
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
@@ -92,6 +98,7 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
             token={token} 
             isFavorite={favorites.includes(token.tokenId)}
             onToggleFavorite={toggleFavorite}
+            onClick={() => handleCardClick(token)}
           />
         ))}
         {isLoading && Array.from({ length: 4 }).map((_, i) => (
@@ -100,11 +107,18 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
       </div>
       {/* Infinite scroll target */}
       <div ref={observerTarget} className="ngg-observer-target" />
+
+      {/* Detail Modal */}
+      <NFTDetailModal 
+        token={selectedToken} 
+        isOpen={!!selectedToken} 
+        onClose={() => setSelectedToken(null)} 
+      />
     </div>
   );
 }
 
-function NFTCard({ token, isFavorite, onToggleFavorite }: { token: NFTToken, isFavorite: boolean, onToggleFavorite: (e: React.MouseEvent, id: number) => void }) {
+function NFTCard({ token, isFavorite, onToggleFavorite, onClick }: { token: NFTToken, isFavorite: boolean, onToggleFavorite: (e: React.MouseEvent, id: number) => void, onClick: () => void }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -116,7 +130,7 @@ function NFTCard({ token, isFavorite, onToggleFavorite }: { token: NFTToken, isF
   const role = token.role || token.attributes?.['Role'] || 'Unknown';
 
   return (
-    <div className={`ngg-card ${rarityClass}`}>
+    <div className={`ngg-card ${rarityClass}`} onClick={onClick}>
       <div className="ngg-image-container">
         {/* Rarity Badge */}
         <div className={`ngg-rarity-badge ${rarityClass}`}>
