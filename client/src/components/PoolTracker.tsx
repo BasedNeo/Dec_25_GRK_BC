@@ -447,7 +447,7 @@ export function PoolTracker() {
                     rel="noopener noreferrer" 
                     className="inline-flex items-center text-white hover:text-primary transition-colors border-b border-white/20 hover:border-primary pb-1 font-mono text-xs"
                   >
-                    {SUBNET_ADDRESS}
+                    {`${SUBNET_ADDRESS.slice(0, 4)}....`}
                     <ArrowUpRight size={12} className="ml-2" />
                   </a>
               </div>
