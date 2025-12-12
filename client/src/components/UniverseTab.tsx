@@ -95,14 +95,14 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                <h3 className="text-xl font-orbitron text-cyan-400 mb-4 text-center">Join the Ranks</h3>
                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
                    <iframe 
+                       src="https://player.vimeo.com/video/1145979392?color=00FFFF&byline=0&portrait=0&title=0&badge=0&autopause=0&player_id=0&app_id=58479" 
                        width="100%" 
                        height="100%" 
-                       src="https://www.youtube.com/embed/fPAEAOcpzQk?modestbranding=1&showinfo=0&rel=0&controls=1&iv_load_policy=3&autoplay=0" 
-                       title="Join the Ranks" 
                        frameBorder="0" 
-                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                       allow="autoplay; fullscreen; picture-in-picture" 
                        allowFullScreen
                        loading="lazy"
+                       title="Join the Ranks"
                    ></iframe>
                </div>
             </div>
