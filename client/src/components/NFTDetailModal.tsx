@@ -32,12 +32,29 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
           }
 
           // Fetch full metadata from IPFS
-          const metadataUrl = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/' + nft.id + '.json';
-          const response = await fetch(metadataUrl);
-          if (response.ok) {
+          const ipfsHash = 'bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y';
+          const primaryUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/${ipfsHash}/${nft.id}.json`;
+          
+          try {
+            const response = await fetch(primaryUrl);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
             const metadata = await response.json();
             if (metadata.attributes && Array.isArray(metadata.attributes)) {
               setAttributes(metadata.attributes);
+            }
+          } catch (primaryError) {
+            console.warn("Primary IPFS gateway failed, trying fallback...", primaryError);
+            
+            // Fallback to public gateway
+            const fallbackUrl = `https://ipfs.io/ipfs/${ipfsHash}/${nft.id}.json`;
+            const response = await fetch(fallbackUrl);
+            
+            if (response.ok) {
+                const metadata = await response.json();
+                if (metadata.attributes && Array.isArray(metadata.attributes)) {
+                  setAttributes(metadata.attributes);
+                }
             }
           }
         } catch (error) {
