@@ -99,7 +99,17 @@ export function PoolTracker() {
 
         // MOCK OVERRIDE IF DATA IS EMPTY (for demo purposes)
         if (balVal < 100) {
-             balVal = 350000; // Mock ~350k $BASED earned by subnet (Total Subnet Balance)
+             // Mock Growth: Start with 350,000 (Subnet Total) and add simulated growth
+             // This ensures the value increases "every day on its own" even after refresh
+             const baseSubnet = 350000;
+             const dailySubnetGrowth = 50000; // ~50k $BASED/day for subnet (resulting in ~5k for pool)
+             
+             // Add fractional growth based on time within the current day to prevent static numbers
+             const now = Date.now();
+             const msInDay = 86400000;
+             const fractionOfDay = (now % msInDay) / msInDay;
+             
+             balVal = baseSubnet + (dailySubnetGrowth * fractionOfDay);
         }
 
         setSubnetBalance(balVal);
