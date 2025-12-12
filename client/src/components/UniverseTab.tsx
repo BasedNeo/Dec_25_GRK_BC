@@ -97,7 +97,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                    <iframe 
                        width="100%" 
                        height="100%" 
-                       src="https://www.youtube.com/embed/fPAEAOcpzQk?autoplay=0&modestbranding=1&rel=0&showinfo=0&controls=1" 
+                       src="https://www.youtube.com/embed/fPAEAOcpzQk?modestbranding=1&showinfo=0&rel=0&controls=1&iv_load_policy=3&autoplay=0" 
                        title="Join the Ranks" 
                        frameBorder="0" 
                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
