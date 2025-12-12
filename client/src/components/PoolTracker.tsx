@@ -318,7 +318,7 @@ export function PoolTracker() {
           {/* Breakdown Section */}
           <div className="flex flex-col gap-3 mb-10 text-sm font-mono text-cyan-400/90 max-w-xl mx-auto bg-black/60 p-6 rounded-xl border border-white/10 shadow-lg backdrop-blur-md">
               <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-muted-foreground">From Mints (51% of 69,420 × {mintedCount || 6}):</span>
+                  <span className="text-muted-foreground">From NFT Mints:</span>
                   <span className="font-bold">~{mintRevenue.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})} $BASED</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2">
