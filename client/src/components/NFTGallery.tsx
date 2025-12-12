@@ -19,12 +19,9 @@ import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-interface NFTGalleryProps {
-  isConnected: boolean; // Kept for legacy
-  onConnect: () => void; // Kept for legacy
-}
+interface NFTGalleryProps {}
 
-export function NFTGallery({ isConnected: _isConnected, onConnect: _onConnect }: NFTGalleryProps) {
+export function NFTGallery({}: NFTGalleryProps) {
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);

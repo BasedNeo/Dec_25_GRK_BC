@@ -23,7 +23,17 @@ export async function fetchGuardianMetadata(id: number): Promise<Guardian> {
     }
 
     if (!res || !res.ok) throw new Error(`Failed to fetch ${id}`);
-    const data = await res.json();
+    
+    // Clone response to read text if JSON fails
+    const clone = res.clone();
+    let data;
+    try {
+        data = await res.json();
+    } catch (e) {
+        const text = await clone.text();
+        console.error(`IPFS Response for #${id} is not JSON:`, text.substring(0, 100));
+        throw new Error(`Invalid JSON response for #${id}`);
+    }
 
     // Sanitize fields
     const cleanName = DOMPurify.sanitize(data.name || `Guardian #${id}`);
