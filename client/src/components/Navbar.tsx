@@ -97,9 +97,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const navItems = [
     { id: 'mint', label: 'MINT' },
-    { id: 'gallery', label: 'GALLERY' },
-    { id: 'voting', label: 'DAO' }, 
-    { id: 'escrow', label: 'SALES' },
+    { id: 'gallery', label: 'PORTFOLIO' },
+    { id: 'voting', label: 'VOTING' }, 
+    { id: 'escrow', label: 'COLLECTION' },
     { id: 'pool', label: 'POOL' },
   ];
 
@@ -136,9 +136,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           <div className="hidden md:flex items-center space-x-2">
             {[
               { id: 'mint', label: 'MINT' },
-              { id: 'gallery', label: 'GALLERY' },
-              { id: 'voting', label: 'DAO' }, 
-              { id: 'escrow', label: 'SALES' },
+              { id: 'gallery', label: 'PORTFOLIO' },
+              { id: 'voting', label: 'VOTING' }, 
+              { id: 'escrow', label: 'COLLECTION' },
               { id: 'pool', label: 'POOL' },
             ].map((item) => (
               <button
