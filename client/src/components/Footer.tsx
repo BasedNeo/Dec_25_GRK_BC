@@ -141,7 +141,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono flex flex-col md:flex-row justify-between items-center gap-2">
+        <div className="mb-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-xs text-yellow-500/60 font-mono flex flex-col md:flex-row justify-between items-center gap-2 relative z-10">
            <span className="text-center md:text-left">
              Values are estimates based on community pool; actual market value may differ (e.g., from Aftermint.trade). Not financial advice. © 2025 Based Guardians
            </span>
