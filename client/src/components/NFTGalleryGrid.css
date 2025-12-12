@@ -156,6 +156,8 @@
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ngg-header {

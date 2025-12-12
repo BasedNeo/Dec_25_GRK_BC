@@ -14,6 +14,7 @@ export interface NFTToken {
   biologicalType?: string;
   role?: string;
   attributes?: Record<string, string>;
+  price?: number;
 }
 
 interface NFTGalleryGridProps {
@@ -113,7 +114,21 @@ export function NFTGalleryGrid({ tokens, isLoading = false, onLoadMore, hasMore 
 
       {/* Detail Modal */}
       <NFTDetailModal 
-        token={selectedToken} 
+        nft={selectedToken ? {
+            id: selectedToken.tokenId,
+            name: selectedToken.name,
+            image: selectedToken.image,
+            traits: [
+                { type: 'Rarity', value: selectedToken.rarity },
+                ...(selectedToken.biologicalType ? [{ type: 'Biological Type', value: selectedToken.biologicalType }] : []),
+                ...(selectedToken.role ? [{ type: 'Role', value: selectedToken.role }] : []),
+                ...(selectedToken.attributes ? Object.entries(selectedToken.attributes).map(([k, v]) => ({ type: k, value: v })) : [])
+            ],
+            price: selectedToken.price,
+            isListed: true,
+            rarity: selectedToken.rarity,
+            owner: selectedToken.owner
+        } as any : null} 
         isOpen={!!selectedToken} 
         onClose={() => setSelectedToken(null)} 
       />
@@ -131,6 +146,9 @@ function NFTCard({ token, isFavorite, onToggleFavorite, onClick }: { token: NFTT
   // Extract traits for pills (fallback to attributes if props missing)
   const bioType = token.biologicalType || token.attributes?.['Biological Type'] || 'Unknown';
   const role = token.role || token.attributes?.['Role'] || 'Unknown';
+  
+  // Mock price if missing for display
+  const displayPrice = token.price || (100 + (token.tokenId % 500)); 
 
   return (
     <div 
@@ -183,6 +201,36 @@ function NFTCard({ token, isFavorite, onToggleFavorite, onClick }: { token: NFTT
         <div className="ngg-traits">
            <span className="ngg-trait-pill">{bioType}</span>
            <span className="ngg-trait-pill">{role}</span>
+        </div>
+
+        {/* Price Section */}
+        <div className="card-price">
+            <span className="price-label">Price</span>
+            <span className="price-value">{displayPrice} $BASED</span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="card-actions">
+            <button 
+              className="btn-buy" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                soundManager.play('click');
+                // Future: Implement buy logic
+              }}
+            >
+              BUY
+            </button>
+            <button 
+              className="btn-offer" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                soundManager.play('click');
+                // Future: Implement offer logic
+              }}
+            >
+              OFFER
+            </button>
         </div>
 
         <div className="ngg-footer">
