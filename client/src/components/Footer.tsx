@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart, Disc } from "lucide-react";
+import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart, Disc, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { useSecurity } from "@/context/SecurityContext";
 
@@ -15,6 +17,8 @@ export function Footer() {
   const [feedback, setFeedback] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,14 +91,13 @@ export function Footer() {
             </div>
 
             <div className="flex gap-6 text-sm text-muted-foreground font-mono">
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); toast({ title: "Terms of Service", description: "This is a placeholder for legal terms." }); }}
-                className="hover:text-white transition-colors"
+              <button 
+                onClick={() => setIsTermsOpen(true)}
+                className="hover:text-white transition-colors cursor-pointer"
               >
                 Terms
-              </a>
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
+              </button>
+              <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-white transition-colors cursor-pointer">Privacy</button>
               <a href="#" className="hover:text-white transition-colors">Smart Contracts</a>
             </div>
 
@@ -145,23 +148,21 @@ export function Footer() {
            <span className="text-center md:text-left">
              Values are estimates based on community pool; actual market value may differ (e.g., from Aftermint.trade). Not financial advice. © 2025 Based Guardians
            </span>
-           <a 
-             href="/terms" 
-             target="_blank" 
-             rel="noopener noreferrer" 
-             className="text-white hover:text-primary whitespace-nowrap ml-2"
-           >
-             Terms of Service
-           </a>
-           <span className="text-white/20 mx-2 hidden md:inline">|</span>
-           <a 
-             href="/privacy" 
-             target="_blank" 
-             rel="noopener noreferrer" 
-             className="text-white hover:text-primary whitespace-nowrap ml-2 md:ml-0"
-           >
-             Privacy Policy
-           </a>
+           <div className="flex items-center">
+             <button 
+               onClick={() => setIsTermsOpen(true)}
+               className="text-white hover:text-primary whitespace-nowrap ml-2 cursor-pointer"
+             >
+               Terms of Service
+             </button>
+             <span className="text-white/20 mx-2 hidden md:inline">|</span>
+             <button 
+               onClick={() => setIsPrivacyOpen(true)}
+               className="text-white hover:text-primary whitespace-nowrap ml-2 md:ml-0 cursor-pointer"
+             >
+               Privacy Policy
+             </button>
+           </div>
         </div>
 
         <div className="text-center pt-8 border-t border-white/5 text-xs text-muted-foreground/40 font-mono flex flex-col items-center">
@@ -176,6 +177,199 @@ export function Footer() {
             </div>
         </div>
       </div>
+
+      {/* Terms Modal */}
+      <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-6 border-b border-white/10 flex flex-row items-center justify-between">
+                <div>
+                    <DialogTitle className="text-2xl font-orbitron">TERMS OF SERVICE</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">Last Updated: December 12, 2025</DialogDescription>
+                </div>
+                {/* Close button is automatically added by DialogContent, but we can ensure standard X icon is there or styling matches */}
+            </DialogHeader>
+            <ScrollArea className="flex-1 p-6">
+                <div className="prose prose-invert max-w-none space-y-6 text-sm md:text-base text-gray-300">
+                    <p>
+                        By accessing or using the Based Command App (the “App”), you agree to these Terms of Service. If you do not agree, do not use the App.
+                    </p>
+                    <p>
+                        The App is operated by Based Guardians (the “Company,” “we,” “us,” or “our”). These Terms form a legal agreement between you and the Company.
+                    </p>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">1. Nature of the App</h3>
+                        <p>
+                            The App is a non-custodial, decentralized user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. It enables viewing of NFT metadata, community pool tracking, advisory voting, and marketplace features. The App is in beta and provided “as is” and “as available,” with no warranties.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">2. No Financial Advice</h3>
+                        <p>
+                            Nothing in the App constitutes financial, investment, or legal advice. All displayed values (including “backed by” estimates and emissions) are approximations and may be inaccurate. Cryptocurrency and NFT values are volatile. You may lose all invested value.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">3. Dependency on Third-Party Infrastructure</h3>
+                        <p>
+                            Certain features (including staking and full emissions) depend on the release and performance of Based Labs infrastructure. We make no guarantees regarding timelines, functionality, or availability of such infrastructure. Delays or changes by Based Labs may affect the App’s features.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">4. Advisory Voting</h3>
+                        <p>
+                            Voting is advisory only. Results do not bind any decisions. The admin retains full discretion over all project actions.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">5. Risk Acknowledgment</h3>
+                        <p>
+                            Use of blockchain applications involves significant risk. You are solely responsible for your wallet security, transactions, and compliance with applicable laws. We are not liable for lost funds, hacks, network failures, or regulatory actions.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">6. Limitation of Liability</h3>
+                        <p>
+                            To the fullest extent permitted by law, the Company, its affiliates, and contributors shall not be liable for any direct, indirect, incidental, consequential, or punitive damages arising from your use of the App. Total liability is limited to $100 USD.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">7. Indemnification</h3>
+                        <p>
+                            You agree to indemnify and hold harmless the Company from any claims arising from your use of the App or violation of these Terms.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">8. Governing Law</h3>
+                        <p>
+                            These Terms are governed by the laws of the State of Oregon, without regard to conflict of law principles. Any disputes shall be resolved in the courts of Oregon.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">9. Changes to Terms</h3>
+                        <p>
+                            We may update these Terms at any time. Continued use constitutes acceptance.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">10. Contact</h3>
+                        <p>
+                            For questions, contact us via X @based_guardians or Discord.
+                        </p>
+                    </section>
+
+                    <p className="pt-4 border-t border-white/10 text-muted-foreground italic">
+                        By using the App, you acknowledge these risks and agree to these Terms.
+                    </p>
+                </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Privacy Modal */}
+      <Dialog open={isPrivacyOpen} onOpenChange={setIsPrivacyOpen}>
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-6 border-b border-white/10">
+                <DialogTitle className="text-2xl font-orbitron">PRIVACY POLICY</DialogTitle>
+                <DialogDescription className="text-muted-foreground">Effective Date: December 12, 2025</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 p-6">
+                <div className="prose prose-invert max-w-none space-y-6 text-sm md:text-base text-gray-300">
+                    <p>
+                        Based Command App (the "App") is a decentralized application (DApp) providing a user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. We, Based Guardians (the "Company," "we," "us," or "our"), are committed to protecting your privacy while acknowledging the inherent risks of blockchain technology. This Privacy Policy explains our data practices and is governed by U.S. law (Delaware). By using the App, you consent to these practices.
+                    </p>
+                    
+                    <p>
+                        This policy is designed with caution, drawing from industry standards like OpenSea (which emphasizes non-custodial access and no data storage), Blur (focusing on public blockchain queries without personal tracking), and Magic Eden (highlighting wallet-only interactions with clear disclaimers on volatility). Like these platforms, we collect minimal data and disclaim liability for blockchain risks.
+                    </p>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">1. Information We Collect</h3>
+                        <p>
+                            The App is fully non-custodial and does not collect, store, or process any personal data. We access only:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li><strong>Public Blockchain Data</strong>: Your wallet address and on-chain information (e.g., NFT ownership, balances, transaction history) via public RPC providers (e.g., BasedAI nodes). This data is immutable and visible to anyone on the blockchain.</li>
+                            <li><strong>No Personal Information</strong>: No emails, IP addresses, names, device IDs, or identifiable data is collected. No cookies or tracking pixels are used.</li>
+                        </ul>
+                        <p>
+                            If you opt-in to optional features (e.g., Google Analytics via VITE_GA_ID), anonymized usage data (e.g., page views, without wallet association) may be shared with third parties for improvement purposes only.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">2. How We Use Information</h3>
+                        <p>Public on-chain data is used solely to:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Display your NFT holdings, traits, rarity, and estimated values.</li>
+                            <li>Enable voting, marketplace listings, and pool tracking.</li>
+                            <li>Provide on-chain functionality (e.g., minting via Aftermint.trade links, offers, trades).</li>
+                        </ul>
+                        <p>
+                            We do not use data for marketing, profiling, or sale. All interactions are read-only or wallet-signed; we never hold funds or keys. Like Blur's policy, we disclaim any responsibility for on-chain actions.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">3. Third-Party Services</h3>
+                        <p>The App relies on external providers for core functionality:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Wallet Providers (e.g., MetaMask, Rabby, Trust): Their policies govern connections. We access only public data.</li>
+                            <li>Blockchain Networks (BasedAI, ETH for subnet): Public explorers (e.g., explorer.bf1337.org, Etherscan) display all data.</li>
+                            <li>Optional Analytics (Google Analytics): Anonymized aggregate data (no IP or wallet tracking) to optimize UX. You can opt-out via browser settings.</li>
+                            <li>Embedding Services (Vimeo for videos): Their policies apply; we embed without tracking.</li>
+                        </ul>
+                        <p>
+                            We do not share data with advertisers. If Based Labs infrastructure changes, features may be affected, but we disclaim liability for external dependencies (as in OpenSea's policy).
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">4. Data Security & Retention</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li><strong>Security Measures</strong>: The App uses HTTPS, input sanitization (DOMPurify), and read-only blockchain queries. No data is stored on our servers.</li>
+                            <li><strong>Retention</strong>: Public blockchain data is permanent; we retain no copies. Analytics data (if enabled) is aggregated and deleted after 14 months.</li>
+                            <li><strong>Risks</strong>: Blockchain is public and irreversible. You are solely responsible for wallet security. We disclaim liability for hacks, losses, or third-party failures (e.g., RPC downtime).</li>
+                        </ul>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">5. Children's Privacy</h3>
+                        <p>
+                            The App is not intended for individuals under 18. We do not knowingly collect data from children. If we discover such data, it will be deleted immediately.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">6. Changes to This Policy</h3>
+                        <p>
+                            We may update this Privacy Policy. Continued use constitutes acceptance.
+                        </p>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h3 className="text-white font-bold text-lg">7. Contact Us</h3>
+                        <p>
+                            For questions, contact us via X @based_guardians or Discord.
+                        </p>
+                    </section>
+
+                    <p className="pt-4 border-t border-white/10 text-muted-foreground italic">
+                        By using the App, you acknowledge these risks and agree to this Policy. We err on caution: No guarantees, no liability for blockchain volatility or external dependencies.
+                    </p>
+                </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </footer>
   );
 }
