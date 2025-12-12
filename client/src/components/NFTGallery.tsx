@@ -472,8 +472,10 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono mb-1">
             <span>Owner: <span className="text-primary">0x12...34</span></span>
         </div>
+      </div>
 
-        {/* Price Display */}
+      {/* Price Display - Moved outside overflow container */}
+      <div className="px-4 pb-2 relative z-20">
         <div className="card-price">
             <span className="price-label">Price</span>
             <span className="price-value">69,420 $BASED</span>
