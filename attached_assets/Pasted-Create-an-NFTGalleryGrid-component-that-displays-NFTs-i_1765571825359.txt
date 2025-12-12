@@ -1,0 +1,72 @@
+Create an NFTGalleryGrid component that displays NFTs in a responsive masonry-style grid, similar to OpenSea's collection view.
+
+GRID SPECIFICATIONS:
+- Desktop: 4 columns, 24px gap
+- Tablet: 3 columns, 20px gap  
+- Mobile: 2 columns, 16px gap
+- Use CSS Grid with auto-fill and minmax(250px, 1fr)
+
+INDIVIDUAL NFT CARD STRUCTURE:
+┌─────────────────────────────────┐
+│ ┌─────────────────────────────┐ │
+│ │                             │ │
+│ │         NFT IMAGE           │ │
+│ │       (1:1 aspect)          │ │
+│ │                             │ │
+│ │  [Rarity Badge]      [♡]   │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│  Based Guardian #1234           │
+│  Neonstrike Hackers             │
+│                                 │
+│  ┌─────────┐  ┌─────────────┐  │
+│  │ 🦊 Fox  │  │ 🎭 Hacker   │  │
+│  └─────────┘  └─────────────┘  │
+│                                 │
+│  Owner: 0x1234...5678      [↗] │
+└─────────────────────────────────┘
+
+RARITY BADGE STYLING (position: absolute, top-left of image):
+- "Rarest-Legendary": background: linear-gradient(135deg, #ffd700, #ff6b00), color: black, add sparkle animation
+- "Very Rare": background: #7c3aed, add subtle pulse glow
+- "Rarest": background: #dc2626
+- "Rare": background: #f59e0b, color: black
+- "Less Rare": background: #3b82f6
+- "Less Common": background: #22c55e
+- "Common": background: #6b7280
+- "Most Common": background: #374151
+
+CARD STYLING:
+- Background: #1a1a2e with 1px border #2a2a4a
+- Border-radius: 16px
+- Overflow: hidden
+- Box-shadow: 0 4px 20px rgba(0,0,0,0.3)
+
+HOVER EFFECTS:
+- Transform: translateY(-8px) scale(1.02)
+- Box-shadow increases and adds color tint matching rarity
+- Image zooms slightly (transform: scale(1.05))
+- Favorite heart appears with fade-in
+- Transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)
+
+IMAGE HANDLING:
+- Use loading="lazy" attribute
+- Show low-res blur placeholder while loading
+- Fallback image if IPFS fails
+- 1:1 aspect ratio maintained with aspect-ratio CSS
+
+CLICK BEHAVIOR:
+- Clicking card opens modal with full NFT details (implement later)
+- Owner link opens explorer in new tab
+- Favorite heart toggles state (localStorage)
+
+DATA:
+- Accept 'tokens' array prop from parent
+- Each token: { tokenId, name, image, owner, rarity, biologicalType, role }
+- Show "No NFTs to display" empty state if array empty
+- Support infinite scroll (load 12 more when near bottom)
+
+LOADING STATE:
+- Show 12 skeleton cards matching exact card dimensions
+- Skeleton has shimmer animation
+- Skeleton maintains layout to prevent shift
