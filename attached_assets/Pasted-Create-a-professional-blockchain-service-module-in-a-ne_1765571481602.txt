@@ -1,0 +1,71 @@
+Create a professional blockchain service module in a new file called contractService.js that connects to an EVM-compatible blockchain.
+
+NETWORK CONFIGURATION:
+const CONFIG = {
+  contractAddress: "0xaE51dc5fD1499A129f8654963560f9340773ad59",
+  rpcUrl: "https://mainnet.basedaibridge.com/rpc//",
+  chainId: 32323,
+  explorerUrl: "https://explorer.bf1337.org",
+  metadataBaseUrl: "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/"
+};
+
+CONTRACT ABI (as array of function signatures):
+[
+  "function totalMinted() view returns (uint256)",
+  "function MAX_SUPPLY() view returns (uint256)",
+  "function MINT_PRICE() view returns (uint256)",
+  "function publicMintEnabled() view returns (bool)",
+  "function revealed() view returns (bool)",
+  "function paused() view returns (bool)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function tokenByIndex(uint256 index) view returns (uint256)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function tokenURI(uint256 tokenId) view returns (string)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
+]
+
+IMPLEMENT THESE METHODS:
+
+1. initializeProvider() - Creates ethers.JsonRpcProvider, handles connection errors
+
+2. async getCollectionStats() - Returns object with:
+   - totalMinted (number)
+   - maxSupply (number)  
+   - remaining (calculated)
+   - percentMinted (2 decimal places)
+   - mintPriceWei (bigint)
+   - mintPriceFormatted (string: "69,420 $BASED")
+   - isPublicMintActive (boolean)
+   - isRevealed (boolean)
+   - isPaused (boolean)
+   - contractAddress (string)
+
+3. async getRecentMints(count = 12) - Returns array of recent tokens:
+   - Iterate from (totalMinted - 1) down to (totalMinted - count)
+   - For each: get tokenId via tokenByIndex, owner via ownerOf
+   - Fetch metadata from IPFS URL: metadataBaseUrl + tokenId + ".json"
+   - Parse and return: { tokenId, owner, name, image, description, attributes, rarity }
+   - Extract rarity from attributes array where trait_type contains "Rarity"
+
+4. async getTokenDetails(tokenId) - Returns full token data:
+   - owner, tokenURI, all metadata, all attributes parsed into key-value object
+
+5. async getOwnerTokens(address) - Returns array of tokenIds owned by address
+
+6. formatAddress(address) - Returns "0x1234...5678" format
+
+7. getExplorerUrl(type, value) - Returns explorer link for 'address', 'token', or 'tx'
+
+IMPLEMENT CACHING:
+- Cache stats for 15 seconds
+- Cache metadata permanently (it doesn't change)
+- Use Map() for cache storage
+
+ERROR HANDLING:
+- Wrap all contract calls in try-catch
+- Return { success: false, error: message } on failure
+- Implement 3 retry attempts with exponential backoff for RPC calls
+- Log errors to console with timestamps
+
+Export as ES6 module with named exports.
+Use ethers.js version 6 syntax (JsonRpcProvider, formatEther, etc.)
