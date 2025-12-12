@@ -322,7 +322,7 @@ export function PoolTracker() {
                   <span className="font-bold">~{mintRevenue.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})} $BASED</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-muted-foreground">Passive Emissions (10% of Subnet):</span>
+                  <span className="text-muted-foreground">Passive Emissions (Subnet/Brain):</span>
                   <span className="font-bold">~{poolShare.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED</span>
               </div>
               <div className="flex justify-between items-center pt-1 opacity-75">
