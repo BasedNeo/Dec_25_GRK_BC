@@ -153,7 +153,7 @@ export function Footer() {
                 <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
                 OPERATIONAL ON BASED L1 ({CHAIN_ID})
                 <span className="mx-2 text-white/20">|</span>
-                <span className="text-green-500 font-bold">Data synced from CSV</span>
+                <span className="text-green-500 font-bold">Data synced from IPFS</span>
             </div>
         </div>
       </div>
