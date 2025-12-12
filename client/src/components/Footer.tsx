@@ -7,7 +7,6 @@ import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart, Disc, X } fro
 import { trackEvent } from "@/lib/analytics";
 import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { useSecurity } from "@/context/SecurityContext";
 
@@ -180,7 +179,7 @@ export function Footer() {
 
       {/* Terms Modal */}
       <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
-        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 border-b border-white/10 flex flex-row items-center justify-between">
                 <div>
                     <DialogTitle className="text-2xl font-orbitron">TERMS OF SERVICE</DialogTitle>
@@ -188,7 +187,7 @@ export function Footer() {
                 </div>
                 {/* Close button is automatically added by DialogContent, but we can ensure standard X icon is there or styling matches */}
             </DialogHeader>
-            <ScrollArea className="flex-1 p-6">
+            <div className="flex-1 p-6 overflow-y-auto">
                 <div className="prose prose-invert max-w-none space-y-6 text-sm md:text-base text-gray-300">
                     <p>
                         By accessing or using the Based Command App (the “App”), you agree to these Terms of Service. If you do not agree, do not use the App.
@@ -271,18 +270,18 @@ export function Footer() {
                         By using the App, you acknowledge these risks and agree to these Terms.
                     </p>
                 </div>
-            </ScrollArea>
+            </div>
         </DialogContent>
       </Dialog>
 
       {/* Privacy Modal */}
       <Dialog open={isPrivacyOpen} onOpenChange={setIsPrivacyOpen}>
-        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 border-b border-white/10">
                 <DialogTitle className="text-2xl font-orbitron">PRIVACY POLICY</DialogTitle>
                 <DialogDescription className="text-muted-foreground">Effective Date: December 12, 2025</DialogDescription>
             </DialogHeader>
-            <ScrollArea className="flex-1 p-6">
+            <div className="flex-1 p-6 overflow-y-auto">
                 <div className="prose prose-invert max-w-none space-y-6 text-sm md:text-base text-gray-300">
                     <p>
                         Based Command App (the "App") is a decentralized application (DApp) providing a user interface for interacting with the Based Guardians NFT collection on the BasedAI blockchain. We, Based Guardians (the "Company," "we," "us," or "our"), are committed to protecting your privacy while acknowledging the inherent risks of blockchain technology. This Privacy Policy explains our data practices and is governed by U.S. law (Delaware). By using the App, you consent to these practices.
@@ -367,7 +366,7 @@ export function Footer() {
                         By using the App, you acknowledge these risks and agree to this Policy. We err on caution: No guarantees, no liability for blockchain volatility or external dependencies.
                     </p>
                 </div>
-            </ScrollArea>
+            </div>
         </DialogContent>
       </Dialog>
     </footer>
