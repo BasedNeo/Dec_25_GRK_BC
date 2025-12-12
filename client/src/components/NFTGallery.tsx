@@ -456,7 +456,7 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
         </div>
 
         {/* Traits Preview */}
-        <div className="flex flex-wrap gap-1 mt-auto">
+        <div className="flex flex-wrap gap-1 mb-3">
             {guardian.traits?.slice(0, 2).map((trait, i) => (
                 <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground border border-white/5 truncate max-w-[100%]">
                     {trait.value}
@@ -466,6 +466,28 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
                 <span className="text-[10px] px-1.5 py-0.5 text-muted-foreground">+{ (guardian.traits?.length || 0) - 2 }</span>
             )}
         </div>
+        
+        {/* Price & Owner Info */}
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono mb-2">
+            <span>Owner: <span className="text-primary">0x12...34</span></span>
+            <span>Price: <span className="text-white font-bold">69,420 $BASED</span></span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+          <button 
+            className="btn-offer" 
+            onClick={() => alert(`Offer feature coming soon for #${guardian.id}`)}
+          >
+            Make Offer
+          </button>
+          <button 
+            className="btn-buy" 
+            onClick={() => alert(`Buy feature coming soon for #${guardian.id}`)}
+          >
+            Buy Now
+          </button>
       </div>
     </Card>
   );
