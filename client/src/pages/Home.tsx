@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
 
+import { LiveMintFeed } from "@/components/LiveMintFeed";
+
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("universe");
@@ -29,6 +31,7 @@ export default function Home() {
         <div className="cyber-particles"></div>
       </div>
       <OnboardingTour />
+      {activeTab === 'mint' && <LiveMintFeed />}
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
       
       <main className="pt-20 min-h-screen flex flex-col">
