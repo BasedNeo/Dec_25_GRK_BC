@@ -311,6 +311,8 @@
   padding: 12px 16px;
   border-top: 1px solid #2a2a4a;
   margin-top: auto;
+  position: relative;
+  z-index: 30;
 }
 
 .btn-offer {

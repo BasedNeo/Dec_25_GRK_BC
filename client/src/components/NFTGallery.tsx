@@ -448,7 +448,7 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
         </span>
       </div>
 
-      <div className="p-4 pb-5 flex flex-col flex-grow relative z-20">
+      <div className="p-4 pb-5 flex flex-col flex-grow relative z-20 min-h-0 overflow-hidden">
         <div className="flex justify-between items-start mb-2">
            <h3 className="font-orbitron font-bold text-white text-sm truncate pr-2 group-hover:text-primary transition-colors">
              {guardian.name}
