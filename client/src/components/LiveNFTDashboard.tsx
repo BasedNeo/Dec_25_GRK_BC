@@ -105,8 +105,8 @@ function MintCard({ mint }: { mint: RecentMint }) {
     const isLegendary = mint.rarity?.toLowerCase().includes('legendary');
 
     return (
-        <Card className="bg-black/60 border-white/10 overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-            <div className="relative aspect-square bg-secondary/20 overflow-hidden">
+        <Card className="bg-black/60 border-white/10 group hover:-translate-y-1 transition-transform duration-300 flex flex-col">
+            <div className="relative aspect-square bg-secondary/20 overflow-hidden rounded-t-xl">
                  {/* Image */}
                  <img 
                     src={mint.image} 
@@ -124,7 +124,7 @@ function MintCard({ mint }: { mint: RecentMint }) {
                  </div>
             </div>
 
-            <div className="p-3">
+            <div className="p-3 pb-5">
                 <div className="mb-2">
                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${rarityColorClass} ${isLegendary ? 'animate-pulse' : ''} backdrop-blur-md`}>
                         {mint.rarity}

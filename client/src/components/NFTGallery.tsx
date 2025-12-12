@@ -409,16 +409,16 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
   return (
     <Card 
       ref={cardRef}
-      className="group relative bg-black/40 border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 cursor-pointer h-full flex flex-col"
+      className="group relative bg-black/40 border-white/10 hover:border-primary/50 transition-all duration-300 cursor-pointer flex flex-col"
       onClick={onClick}
       style={{
         boxShadow: `0 0 0 1px rgba(255,255,255,0.05)`
       }}
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-t-xl" />
       
       {/* Image Container */}
-      <div className="relative aspect-square overflow-hidden bg-black/50">
+      <div className="relative aspect-square overflow-hidden bg-black/50 rounded-t-xl">
         <img 
           src={imgSrc} 
           alt={guardian.name} 
@@ -441,7 +441,7 @@ function GuardianCard({ guardian, onClick, viewMode }: { guardian: Guardian, onC
         </div>
       </div>
 
-      <div className="p-4 flex flex-col flex-grow relative z-20">
+      <div className="p-4 pb-5 flex flex-col flex-grow relative z-20">
         <div className="flex justify-between items-start mb-2">
            <h3 className="font-orbitron font-bold text-white text-sm truncate pr-2 group-hover:text-primary transition-colors">
              {guardian.name}
