@@ -204,7 +204,7 @@ export function NFTGallery({}: NFTGalleryProps) {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-[50px] -z-10 rounded-full pointer-events-none"></div>
 
             <p className="text-muted-foreground font-rajdhani text-lg">
-                {showMyItemsOnly ? "Managing your personal squad." : "Explore the complete Based Guardians collection."}
+                Explore the complete Based Guardians collection.
             </p>
             
             {/* PWA Install Button */}
@@ -220,19 +220,7 @@ export function NFTGallery({}: NFTGalleryProps) {
             )}
           </div>
 
-          <div className="flex gap-4">
-            {isConnected && (
-                <Button 
-                    variant={showMyItemsOnly ? "default" : "outline"}
-                    onClick={() => setShowMyItemsOnly(!showMyItemsOnly)}
-                    className="font-orbitron"
-                >
-                    {showMyItemsOnly ? "SHOW ALL" : "MY GUARDIANS"}
-                </Button>
-            )}
-          </div>
-
-          {isConnected && showMyItemsOnly && nfts.length > 0 && (
+          {isConnected && nfts.length > 0 && (
              <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-6 flex flex-col md:flex-row items-center gap-8 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
                  <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0 md:pr-8">
                      <div className="flex items-center gap-2 mb-1">
@@ -281,8 +269,8 @@ export function NFTGallery({}: NFTGalleryProps) {
             />
         )}
 
-        {/* Removed !isConnected check to allow public viewing */}
-        {false ? (
+        {/* Wallet Locked View - Restored */}
+        {!isConnected ? (
           <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
             <Lock className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-orbitron text-white mb-2">WALLET LOCKED</h3>

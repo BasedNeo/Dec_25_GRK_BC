@@ -763,11 +763,13 @@ export function EscrowMarketplace() {
       </div>
       
       {/* Modals */}
+      <div className="z-[100] relative">
       <NFTDetailModal 
         isOpen={!!selectedNFT} 
         onClose={() => setSelectedNFT(null)} 
         nft={selectedNFT} 
       />
+      </div>
 
       {/* Offer Modal */}
       <OfferModal 
@@ -779,7 +781,7 @@ export function EscrowMarketplace() {
 
       {/* Biometric Modal */}
       <Dialog open={showBiometricModal} onOpenChange={setShowBiometricModal}>
-        <DialogContent className="bg-black border-white/10 text-white sm:max-w-md">
+        <DialogContent className="z-[100] bg-black border-white/10 text-white sm:max-w-md">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 font-orbitron">
                     <Fingerprint className="text-accent" /> Biometric Authentication
@@ -920,8 +922,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
     if (!item) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto">
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="z-[100] bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto">
                 <DialogHeader className="pt-8 sm:pt-0">
                     <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
                     <DialogDescription>

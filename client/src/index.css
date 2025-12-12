@@ -105,6 +105,10 @@ h1, h2, h3, h4, h5, h6 {
   background: hsl(var(--primary));
 }
 
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Glitch Effect Utility */
 @keyframes glitch {
   0% { transform: translate(0) }

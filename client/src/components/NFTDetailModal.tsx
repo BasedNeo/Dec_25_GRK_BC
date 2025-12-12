@@ -87,7 +87,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[900px] w-full p-0 gap-0 border-none bg-transparent shadow-none [&>button]:hidden">
+      <DialogContent className="z-[100] max-w-[900px] w-full p-0 gap-0 border-none bg-transparent shadow-none [&>button]:hidden">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         

@@ -35,7 +35,7 @@ export default function Home() {
       {activeTab === 'mint' && <LiveMintFeed />}
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
       
-      <main className="pt-20 min-h-screen flex flex-col">
+      <main className="pt-20 flex-grow flex flex-col">
         <AnimatePresence mode="wait">
           {activeTab === "universe" && (
             <motion.div
