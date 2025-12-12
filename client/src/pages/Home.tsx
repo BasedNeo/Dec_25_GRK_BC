@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
 
+import { LiveNFTDashboard } from "@/components/LiveNFTDashboard";
 import { LiveMintFeed } from "@/components/LiveMintFeed";
 
 export default function Home() {
@@ -55,9 +56,9 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
+              className="container mx-auto px-4 py-8"
             >
-              <Hero />
-              <ValueEstimation />
+              <LiveNFTDashboard />
             </motion.div>
           )}
 
