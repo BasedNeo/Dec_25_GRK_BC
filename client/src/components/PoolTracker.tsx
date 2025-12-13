@@ -113,17 +113,18 @@ export function PoolTracker() {
 
         // MOCK OVERRIDE IF DATA IS EMPTY (for demo purposes)
         if (balVal < 100) {
-             // Mock Growth: Start with 350,000 (Subnet Total) and add simulated growth
-             // This ensures the value increases "every day on its own" even after refresh
-             const baseSubnet = 350000;
-             const dailySubnetGrowth = 50000; // ~50k $BASED/day for subnet (resulting in ~5k for pool)
-             
-             // Add fractional growth based on time within the current day to prevent static numbers
+             // Mock Growth: Continuous growth that never resets
+             // Fixed start date: Jan 1, 2024
+             const START_DATE = new Date('2024-01-01').getTime();
              const now = Date.now();
-             const msInDay = 86400000;
-             const fractionOfDay = (now % msInDay) / msInDay;
+             const msPerDay = 86400000;
+             const daysPassed = (now - START_DATE) / msPerDay;
              
-             balVal = baseSubnet + (dailySubnetGrowth * fractionOfDay);
+             const baseSubnet = 350000;
+             const dailySubnetGrowth = 50000; // ~50k $BASED/day for subnet
+             
+             // balVal = Base + (Daily * DaysPassed)
+             balVal = baseSubnet + (dailySubnetGrowth * daysPassed);
         }
 
         setSubnetBalance(balVal);
