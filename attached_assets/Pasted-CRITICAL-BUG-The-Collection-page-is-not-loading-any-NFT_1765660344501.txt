@@ -1,0 +1,76 @@
+CRITICAL BUG: The Collection page is not loading any NFTs. Fix this immediately.
+
+## Problem
+The NFT collection grid shows nothing or shows a loading state that never completes.
+
+## Root Cause Investigation
+Add debugging to identify the issue:
+1. Check if ethers.js library is loaded
+2. Check if RPC connection works
+3. Check if contract calls succeed
+4. Check if the DOM container exists
+
+## Contract Details (USE EXACTLY)
+- Contract Address: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+- RPC URL: https://mainnet.basedaibridge.com/rpc/
+- Chain ID: 32323
+- Total NFTs in collection: 3732
+- Currently minted: approximately 6 NFTs
+
+## Metadata
+Base URI: https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/
+
+To get metadata for token #5: [BASE_URI]5.json
+
+## Required Contract Functions
+Use ethers.js v6 syntax:
+
+const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+
+const abi = [
+  'function totalMinted() view returns (uint256)',
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function tokenByIndex(uint256 index) view returns (uint256)'
+];
+
+const contract = new ethers.Contract('0xaE51dc5fD1499A129f8654963560f9340773ad59', abi, provider);## Fix Requirements
+
+1. Ensure ethers.js is loaded in HTML BEFORE any app scripts:
+   <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
+
+2. On Collection page load, call the contract:
+   - Get totalMinted() to know how many NFTs exist
+   - Loop through tokenByIndex(0) to tokenByIndex(totalMinted - 1)
+   - For each token, get ownerOf(tokenId)
+   - Fetch metadata from IPFS using the base URI + tokenId + .json
+
+3. Show loading skeleton while fetching
+
+4. Display each NFT as a card with:
+   - Image from metadata
+   - Name from metadata
+   - Token ID
+   - Owner address (shortened)
+   - Rarity badge from metadata attributes
+
+5. Add console.log statements to debug:
+   console.log('Initializing contract...');
+   console.log('Total minted:', totalMinted);
+   console.log('Fetching token', i);
+   console.log('NFTs loaded:', nfts.length);
+
+6. Add error handling that shows a visible error message on the page if something fails
+
+7. If the NFT grid container doesn't exist, log an error identifying what selector you're looking for
+
+## Test After Fix
+- The Collection page should show 6 NFT cards
+- Each card should have an image, name, and owner
+- Console should show no errors
+- Console should show the debug logs confirming data was fetched
+
+## Do NOT
+- Do not use placeholder/mock data
+- Do not skip the contract connection
+- Do not assume the RPC works - verify it
+- Do not leave the page blank if there's an error - show the error to the user

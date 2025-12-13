@@ -50,6 +50,12 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [offerItem, setOfferItem] = useState<MarketItem | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
 
+  // --- CRITICAL FIX: Direct Contract Fetching State ---
+  const [directNFTs, setDirectNFTs] = useState<MarketItem[]>([]);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [directError, setDirectError] = useState<string | null>(null);
+  const [contractStats, setContractStats] = useState<{totalMinted: number} | null>(null);
+
   // Mock Received Offers (for Seller Dashboard)
   const [receivedOffers, setReceivedOffers] = useState([
       { id: 1, nftId: 300, nftName: "Guardian #300", offerer: "0x71C...9A21", amount: 450, time: "2 hours ago", status: "pending" },
@@ -104,6 +110,129 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
 
+  // --- DIRECT Ethers.js FETCHING LOGIC (Per User Request) ---
+  useEffect(() => {
+    // Only run this if we are NOT using CSV mode (Live Mode)
+    if (useCsvData) return;
+
+    const fetchDirectly = async () => {
+        setDirectLoading(true);
+        setDirectError(null);
+        setDirectNFTs([]);
+
+        console.log('Initializing contract connection...');
+        
+        try {
+            // Check if ethers is loaded
+            // @ts-ignore
+            if (typeof window.ethers === 'undefined') {
+                throw new Error("ethers.js not loaded");
+            }
+
+            // @ts-ignore
+            const provider = new window.ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+            const CONTRACT_ADDRESS = '0xaE51dc5fD1499A129f8654963560f9340773ad59';
+            
+            const abi = [
+                'function totalMinted() view returns (uint256)',
+                'function ownerOf(uint256 tokenId) view returns (address)',
+                'function tokenByIndex(uint256 index) view returns (uint256)',
+                'function tokenURI(uint256 tokenId) view returns (string)'
+            ];
+
+            // @ts-ignore
+            const contract = new window.ethers.Contract(CONTRACT_ADDRESS, abi, provider);
+
+            // 1. Get Total Minted
+            const totalMintedBig = await contract.totalMinted();
+            const totalMinted = Number(totalMintedBig);
+            console.log('Total minted:', totalMinted);
+            setContractStats({ totalMinted });
+
+            if (totalMinted === 0) {
+                setDirectLoading(false);
+                return;
+            }
+
+            // 2. Fetch NFTs (Newest First)
+            const fetchedNFTs: MarketItem[] = [];
+            const batchSize = 20;
+            // Fetch last 20 or all if less than 20
+            const startIndex = Math.max(0, totalMinted - batchSize);
+            
+            console.log(`Fetching tokens from index ${totalMinted - 1} down to ${startIndex}`);
+
+            for (let i = totalMinted - 1; i >= startIndex; i--) {
+                try {
+                    console.log('Fetching token at index', i);
+                    const tokenIdBig = await contract.tokenByIndex(i);
+                    const tokenId = Number(tokenIdBig);
+                    
+                    const owner = await contract.ownerOf(tokenId);
+                    const uri = await contract.tokenURI(tokenId);
+                    
+                    // Metadata
+                    let metadata = { name: `Guardian #${tokenId}`, image: '', attributes: [] };
+                    let metadataUrl = uri;
+                    
+                    // Fix IPFS URL
+                    if (uri.startsWith('ipfs://')) {
+                        metadataUrl = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                    } else if (!uri.startsWith('http')) {
+                        metadataUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/${tokenId}.json`;
+                    }
+
+                    try {
+                        const res = await fetch(metadataUrl);
+                        if (res.ok) {
+                            metadata = await res.json();
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch metadata for #${tokenId}`);
+                    }
+
+                    // Fix Image URL
+                    let imageUrl = metadata.image || '';
+                    if (imageUrl.startsWith('ipfs://')) {
+                        imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                    }
+
+                    // Rarity
+                    // @ts-ignore
+                    const rarity = metadata.attributes?.find(a => a.trait_type === 'Rarity')?.value || 'Common';
+
+                    fetchedNFTs.push({
+                        id: tokenId,
+                        name: metadata.name || `Guardian #${tokenId}`,
+                        image: imageUrl,
+                        // @ts-ignore
+                        traits: metadata.attributes?.map(a => ({ type: a.trait_type, value: a.value })) || [],
+                        rarity: rarity,
+                        owner: owner,
+                        isListed: true, // Assume listed for display
+                        price: 0,
+                        currency: '$BASED'
+                    });
+
+                } catch (err) {
+                    console.error(`Failed to fetch token at index ${i}`, err);
+                }
+            }
+
+            console.log('NFTs loaded:', fetchedNFTs.length);
+            setDirectNFTs(fetchedNFTs);
+
+        } catch (error: any) {
+            console.error("Critical Fetch Error:", error);
+            setDirectError(error.message || "Failed to load collection");
+        } finally {
+            setDirectLoading(false);
+        }
+    };
+
+    fetchDirectly();
+  }, [useCsvData]); // Re-run if toggling CSV mode
+
   // Use infinite query for data with server-side (hook-side) filtering
   const { 
     data, 
@@ -120,6 +249,11 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   }); 
 
   const allItems = useMemo(() => {
+     // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
+     if (!useCsvData) {
+         return directNFTs;
+     }
+
      if (!data) return [];
      // Flatten pages and add mock price/listing status for the marketplace demo
      return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
@@ -130,7 +264,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
         currency: '$BASED',
         owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
      })) as unknown as MarketItem[];
-  }, [data]);
+  }, [data, directNFTs, useCsvData]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
@@ -223,7 +357,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const displayedItems = filteredItems; 
   
   const loadMore = () => {
-    fetchNextPage();
+    if (useCsvData) fetchNextPage();
   };
 
   // Infinite Scroll Observer
@@ -392,6 +526,8 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+             {directLoading && <div className="text-cyan-400 animate-pulse flex items-center"><Loader2 className="animate-spin mr-2"/> Loading Live Data...</div>}
+             {directError && <div className="text-red-500 text-xs bg-red-900/20 p-2 rounded border border-red-500/50">Error: {directError}</div>}
              <div className="relative flex-1 w-full md:w-64 transition-all duration-300">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                <Input 
