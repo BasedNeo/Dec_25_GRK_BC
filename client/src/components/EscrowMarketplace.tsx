@@ -32,6 +32,7 @@ import { useGuardians } from "@/hooks/useGuardians";
 import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
 import { NFTDetailModal } from "./NFTDetailModal";
+import { BuyButton } from "./BuyButton";
 
 export function EscrowMarketplace() {
   const { isConnected, address } = useAccount();
@@ -863,9 +864,12 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     ) : (
                         <>
                             {hasPrice && (
-                                <Button className="flex-1 btn-cyber-gradient" onClick={onBuy}>
-                                    BUY
-                                </Button>
+                                <BuyButton 
+                                    tokenId={item.id}
+                                    price={item.price}
+                                    className="flex-1"
+                                    onBuy={() => onBuy()}
+                                />
                             )}
                             <Button 
                                 className={`flex-1 ${!hasPrice ? 'w-full bg-primary text-black' : 'bg-transparent border border-primary/50 text-primary hover:bg-primary/10'} font-bold px-2`} 

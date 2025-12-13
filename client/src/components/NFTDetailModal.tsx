@@ -18,7 +18,7 @@ import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { Security } from "@/lib/security";
 import { getRarityClass } from "@/lib/utils";
-import { NFTImage } from "./NFTImage";
+import { BuyButton } from "./BuyButton";
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -320,9 +320,18 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                          </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <Button className="flex-1 sm:w-32 btn-cyber-gradient buy-now-btn">
-                            BUY NOW
-                        </Button>
+                        <BuyButton 
+                            tokenId={nft.id} 
+                            price={69420} 
+                            className="flex-1 sm:w-32"
+                            onBuy={(id, price) => {
+                                toast({ 
+                                    title: "Purchase Initiated", 
+                                    description: `Connecting to Escrow for Guardian #${id}...`,
+                                    className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+                                });
+                            }}
+                        />
                         <Button variant="outline" className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider">
                             MAKE OFFER
                         </Button>

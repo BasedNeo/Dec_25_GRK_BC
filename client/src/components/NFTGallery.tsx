@@ -541,6 +541,7 @@ export function NFTGallery({
 }
 
 import { NFTImage } from "./NFTImage";
+import { BuyButton } from "./BuyButton";
 
 function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
   if (guardian.isError) {
@@ -631,6 +632,26 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
                  <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
                  <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
              </div>
+             
+             {/* Buy Button for Listed Items */}
+             {guardian.isListed && guardian.price && (
+                <div className="col-span-2 mt-2">
+                    <BuyButton 
+                        tokenId={guardian.id}
+                        price={guardian.price}
+                        size="small"
+                        className="w-full h-8 text-xs"
+                        compact
+                        onBuy={(id, price) => {
+                            toast({ 
+                                title: "Purchase Initiated", 
+                                description: `Buying Guardian #${id} for ${price} $BASED`,
+                                className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+                            });
+                        }}
+                    />
+                </div>
+             )}
         </div>
       </div>
     </Card>
