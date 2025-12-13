@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
-const TOKEN_ID = "basedai";
+const TOKEN_ID = "ethereum";
 
 interface PriceData {
-  usd: number;
+  ethPrice: number;
+  basedL1Price: number;
   change: number;
 }
 
@@ -26,12 +27,13 @@ export function useTokenPrice() {
       const data = await res.json();
       const tokenData = data[TOKEN_ID];
       
-      // Calculate L1 Price = ETH Price / 1000
       const ethPrice = tokenData?.usd || 0;
-      const l1Price = ethPrice / 1000;
+      // Based L1 Price is 1000:1 of ETH (ETH Price / 1000)
+      const basedL1Price = ethPrice / 1000;
       
       return {
-        usd: l1Price,
+        ethPrice,
+        basedL1Price,
         change: tokenData?.usd_24h_change || 0
       };
     },

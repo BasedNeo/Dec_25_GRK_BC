@@ -168,18 +168,29 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                {/* Price Badge */}
                <div 
                  id="priceBadge"
-                 className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/40 backdrop-blur-md transition-colors ${
+                 className={`hidden lg:flex items-center gap-4 px-4 py-1.5 rounded-full border border-white/10 bg-black/40 backdrop-blur-md transition-colors ${
                  priceData ? (priceData.change >= 0 ? 'border-green-500/20' : 'border-red-500/20') : ''
                }`}>
-                  <span className="text-xs text-muted-foreground font-mono">$BASED (L1):</span>
-                  <span id="basedPrice" className="text-sm font-bold text-white font-mono">
-                    {priceData ? `$${priceData.usd.toFixed(4)}` : "..."}
-                  </span>
-                  {priceData && (
-                    <span id="priceChange" className={`text-xs font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(2)}%
-                    </span>
-                  )}
+                  {/* ETH Price */}
+                  <div className="flex items-center gap-2 border-r border-white/10 pr-4">
+                      <span className="text-xs text-muted-foreground font-mono">ETH:</span>
+                      <span className="text-sm font-bold text-white font-mono">
+                        {priceData ? `$${priceData.ethPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : "..."}
+                      </span>
+                  </div>
+                  
+                  {/* BASED L1 Price */}
+                  <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-mono">$BASED:</span>
+                      <span className="text-sm font-bold text-white font-mono">
+                        {priceData ? `$${priceData.basedL1Price.toFixed(4)}` : "..."}
+                      </span>
+                      {priceData && (
+                        <span className={`text-xs font-bold font-mono ml-1 ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(2)}%
+                        </span>
+                      )}
+                  </div>
                </div>
             </div>
 
