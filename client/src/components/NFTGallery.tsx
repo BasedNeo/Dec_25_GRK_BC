@@ -24,6 +24,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 interface NFTGalleryProps {
   title?: string;
   subtitle?: string;
+  filterByOwner?: boolean; // New prop to filter by connected wallet
 }
 
 function GuardianCardSkeleton() {
@@ -54,9 +55,10 @@ function GuardianCardSkeleton() {
 
 export function NFTGallery({ 
   title = "YOUR BATTALION",
-  subtitle = "Manage your Guardians and view their traits."
+  subtitle = "Manage your Guardians and view their traits.",
+  filterByOwner = false
 }: NFTGalleryProps) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV Data for speed & completeness
@@ -112,7 +114,8 @@ export function NFTGallery({
       rarity: rarityFilter,
       traitType: traitTypeFilter,
       traitValue: traitValueFilter,
-      sortBy
+      sortBy,
+      owner: (filterByOwner && isConnected && address) ? address : undefined // Pass owner if filtering enabled
   });
 
   // Infinite Scroll Observer
@@ -413,8 +416,8 @@ export function NFTGallery({
             </motion.div>
         )}
 
-        {!isConnected ? (
-          // ... existing locked state
+        {!isConnected && filterByOwner ? (
+          // Locked state ONLY if we are in "My Portfolio" mode
           <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
             <Lock className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-orbitron text-white mb-2">WALLET LOCKED</h3>

@@ -62,7 +62,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery />
+              <NFTGallery filterByOwner={true} />
             </motion.div>
           )}
 
@@ -75,7 +75,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery title="GUARDIAN COLLECTION" subtitle="Explore the entire Based Guardian universe." />
+              <NFTGallery title="GUARDIAN COLLECTION" subtitle="Explore the entire Based Guardian universe." filterByOwner={false} />
             </motion.div>
           )}
 

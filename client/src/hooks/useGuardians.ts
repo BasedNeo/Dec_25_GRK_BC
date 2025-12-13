@@ -11,6 +11,7 @@ export interface GuardianFilters {
   traitType?: string;
   traitValue?: string;
   sortBy?: string;
+  owner?: string; // Add owner filter
 }
 
 export function useGuardians(
@@ -25,13 +26,14 @@ export function useGuardians(
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
       
-      // Check if we need to force CSV mode due to active filters (Search, Rarity, Traits, Sort)
+      // Check if we need to force CSV mode due to active filters (Search, Rarity, Traits, Sort, Owner)
       // IPFS mode only supports simple pagination, so we switch to CSV index for advanced queries.
       const hasActiveFilters = 
           !!filters.search || 
           (filters.rarity && filters.rarity !== 'all') || 
           (filters.traitType && filters.traitType !== 'all') || 
-          (filters.sortBy && filters.sortBy !== 'id-asc'); // Default sort is ID ASC, anything else needs CSV
+          (filters.sortBy && filters.sortBy !== 'id-asc') ||
+          !!filters.owner; // Owner filter forces CSV/Mock logic
 
       // 0. CSV DATA MODE (Explicitly requested OR Active Filters)
       if (useCsvData || hasActiveFilters) {
@@ -39,6 +41,21 @@ export function useGuardians(
              let allGuardians = await loadGuardiansFromCSV();
              
              // --- FILTERING ENGINE ---
+
+             // 0. Owner Filter (Mock Simulation)
+             if (filters.owner) {
+                 // In a real app, this would fetch from indexer or contract.
+                 // For MOCKUP: We simulate ownership by picking a deterministic subset
+                 // based on the wallet address (or just ID modulo).
+                 
+                 // If specific mock wallet (Admin), give them cool ones
+                 if (filters.owner.toLowerCase() === "0xAe543104fDBe456478E19894f7F0e01f0971c9B4".toLowerCase()) {
+                     allGuardians = allGuardians.filter(g => g.id <= 50); // Admin owns first 50
+                 } else {
+                     // Regular user: Owns items where ID % 42 == 0 (Approx 88 items)
+                     allGuardians = allGuardians.filter(g => g.id % 42 === 0);
+                 }
+             }
              
              // 1. Text Search (Advanced)
              if (filters.search) {
