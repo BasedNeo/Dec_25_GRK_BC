@@ -572,7 +572,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
 
   return (
     <Card 
-        className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
+        className="nft-card bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
         onClick={onClick}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">

@@ -138,7 +138,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       {/* 
           Using standard Dialog structure but with custom overlay/content styling for full screen mobile
       */}
-      <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[100vw] h-[100vh] md:w-[90vw] md:h-[90vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[1000] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] duration-200">
+      <DialogContent className="modal-content fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[100vw] h-[100vh] md:w-[90vw] md:h-[90vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[1000] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] duration-200">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
@@ -242,7 +242,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                                 {stats.map((stat, i) => {
                                     const val = getStatValue(stat.value);
                                     return (
-                                        <div key={i} className="bg-white/5 border border-white/10 rounded p-3">
+                                        <div key={i} className="stat-card bg-white/5 border border-white/10 rounded p-3">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">{stat.type}</span>
                                                 <span className="text-sm font-bold text-white font-orbitron">{stat.value}/10</span>

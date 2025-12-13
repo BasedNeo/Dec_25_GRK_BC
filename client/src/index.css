@@ -87,6 +87,17 @@
   }
 }
 
+@media (max-width: 640px) {
+  .stat-card { width: 100%; }
+  .nft-card { min-height: 300px; }
+  .modal-content { 
+    width: 100vw !important; 
+    height: 100vh !important; 
+    border-radius: 0 !important; 
+    max-width: none !important;
+  }
+}
+
 @keyframes glitch {
   0% { transform: translate(0) }
   20% { transform: translate(-2px, 2px) }
