@@ -1,0 +1,421 @@
+FIX: The header price feed should show BOTH the ETH price and the L1 price.
+
+═══════════════════════════════════════════════════════════════
+                     WHAT IT SHOULD LOOK LIKE
+═══════════════════════════════════════════════════════════════
+
+Display both prices in the header:
+
+┌─────────────────────────────────────────────────────────────┐
+│              🛡️ Based Guardians                             │
+│           Live Minting Dashboard                            │
+│                                                             │
+│  [🟢 BasedAI Network]                                       │
+│                                                             │
+│  💰 $BASED Price                                            │
+│  ├─ ETH: $150.00          ▲ +2.5%                          │
+│  └─ L1:  $0.1500          (1000:1)                         │
+└─────────────────────────────────────────────────────────────┘
+
+OR side-by-side:
+
+┌─────────────────────────────────────────────────────────────┐
+│  [$BASED ETH: $150.00]  [$BASED L1: $0.1500]  [▲ +2.5%]    │
+└─────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+                     PRICE RELATIONSHIP
+═══════════════════════════════════════════════════════════════
+
+L1 Price = ETH Price ÷ 1000
+
+Examples:
+| ETH Price | L1 Price |
+|-----------|----------|
+| $150.00   | $0.1500  |
+| $200.00   | $0.2000  |
+| $75.50    | $0.0755  |
+| $1000.00  | $1.0000  |
+
+═══════════════════════════════════════════════════════════════
+                     API SOURCE
+═══════════════════════════════════════════════════════════════
+
+CoinGecko API (free, no key required):
+
+GET https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true
+
+Response:
+{
+  "basedai": {
+    "usd": 150.00,
+    "usd_24h_change": 2.5
+  }
+}
+
+═══════════════════════════════════════════════════════════════
+                     HTML STRUCTURE
+═══════════════════════════════════════════════════════════════
+
+Add this in the header section:
+
+<div class="price-feed" id="priceFeed">
+  <div class="price-header">
+    <span class="price-icon">💰</span>
+    <span class="price-title">$BASED Price</span>
+    <span class="price-change" id="priceChange">--%</span>
+  </div>
+  
+  <div class="price-rows">
+    <div class="price-row">
+      <span class="price-label">ETH:</span>
+      <span class="price-value" id="ethPrice">--</span>
+    </div>
+    <div class="price-row">
+      <span class="price-label">L1:</span>
+      <span class="price-value" id="l1Price">--</span>
+      <span class="price-ratio">(1000:1)</span>
+    </div>
+  </div>
+</div>
+
+═══════════════════════════════════════════════════════════════
+                     CSS STYLING
+═══════════════════════════════════════════════════════════════
+
+.price-feed {
+  background: var(--bg-card, #1a1a25);
+  border: 1px solid var(--border, #2a2a3a);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.price-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border, #2a2a3a);
+}
+
+.price-icon {
+  font-size: 1.2rem;
+}
+
+.price-title {
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  flex: 1;
+}
+
+.price-change {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.price-change.positive {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.price-change.negative {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.price-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-label {
+  color: var(--text-secondary, #a0a0b0);
+  font-size: 0.9rem;
+  min-width: 35px;
+}
+
+.price-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent, #6366f1);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.price-ratio {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a0a0b0);
+  opacity: 0.7;
+}
+
+/* Loading state */
+.price-feed.loading .price-value {
+  opacity: 0.5;
+}
+
+/* Error state */
+.price-feed.error {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .price-feed {
+    width: 100%;
+  }
+}
+
+═══════════════════════════════════════════════════════════════
+                     JAVASCRIPT
+═══════════════════════════════════════════════════════════════
+
+class DualPriceFeed {
+  constructor() {
+    this.apiUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true';
+    this.L1_RATIO = 1000;
+    this.updateInterval = 60000; // 60 seconds
+    this.init();
+  }
+
+  async init() {
+    await this.fetchPrice();
+    setInterval(() => this.fetchPrice(), this.updateInterval);
+  }
+
+  async fetchPrice() {
+    const container = document.getElementById('priceFeed');
+    const ethPriceEl = document.getElementById('ethPrice');
+    const l1PriceEl = document.getElementById('l1Price');
+    const changeEl = document.getElementById('priceChange');
+    
+    if (!ethPriceEl || !l1PriceEl) {
+      console.warn('Price elements not found');
+      return;
+    }
+    
+    try {
+      container?.classList.add('loading');
+      container?.classList.remove('error');
+      
+      const response = await fetch(this.apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.basedai && data.basedai.usd !== undefined) {
+        const ethPrice = data.basedai.usd;
+        const l1Price = ethPrice / this.L1_RATIO;
+        const change24h = data.basedai.usd_24h_change || 0;
+        
+        // ═══════════════════════════════════════
+        // UPDATE ETH PRICE
+        // ═══════════════════════════════════════
+        ethPriceEl.textContent = this.formatPrice(ethPrice, 'eth');
+        
+        // ═══════════════════════════════════════
+        // UPDATE L1 PRICE (ETH ÷ 1000)
+        // ═══════════════════════════════════════
+        l1PriceEl.textContent = this.formatPrice(l1Price, 'l1');
+        
+        // ═══════════════════════════════════════
+        // UPDATE 24H CHANGE
+        // ═══════════════════════════════════════
+        const isPositive = change24h >= 0;
+        const arrow = isPositive ? '▲' : '▼';
+        changeEl.textContent = `${arrow} ${Math.abs(change24h).toFixed(2)}%`;
+        changeEl.className = `price-change ${isPositive ? 'positive' : 'negative'}`;
+        
+        // Cache for fallback
+        this.cachePrice(ethPrice, l1Price, change24h);
+        
+        console.log(`$BASED Prices - ETH: $${ethPrice.toFixed(2)} | L1: $${l1Price.toFixed(4)}`);
+        
+      } else {
+        throw new Error('Invalid API response');
+      }
+      
+    } catch (error) {
+      console.error('Price fetch failed:', error);
+      container?.classList.add('error');
+      
+      // Try cached data
+      const cached = this.getCachedPrice();
+      if (cached) {
+        ethPriceEl.textContent = this.formatPrice(cached.ethPrice, 'eth');
+        l1PriceEl.textContent = this.formatPrice(cached.l1Price, 'l1');
+        changeEl.textContent = '(cached)';
+        changeEl.className = 'price-change';
+      } else {
+        ethPriceEl.textContent = '--';
+        l1PriceEl.textContent = '--';
+        changeEl.textContent = 'unavailable';
+        changeEl.className = 'price-change';
+      }
+      
+    } finally {
+      container?.classList.remove('loading');
+    }
+  }
+
+  formatPrice(price, type) {
+    if (type === 'eth') {
+      // ETH price - show 2 decimal places
+      if (price >= 1000) {
+        return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      return `$${price.toFixed(2)}`;
+    } else {
+      // L1 price - show more decimals since it's smaller
+      if (price >= 100) {
+        return `$${price.toFixed(2)}`;
+      } else if (price >= 1) {
+        return `$${price.toFixed(4)}`;
+      } else if (price >= 0.01) {
+        return `$${price.toFixed(4)}`;
+      } else {
+        return `$${price.toFixed(6)}`;
+      }
+    }
+  }
+
+  cachePrice(ethPrice, l1Price, change) {
+    try {
+      localStorage.setItem('based_dual_price', JSON.stringify({
+        ethPrice,
+        l1Price,
+        change,
+        timestamp: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  getCachedPrice() {
+    try {
+      const cached = localStorage.getItem('based_dual_price');
+      if (cached) {
+        const data = JSON.parse(cached);
+        // Use cache if less than 5 minutes old
+        if (Date.now() - data.timestamp < 300000) {
+          return data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  new DualPriceFeed();
+});
+
+═══════════════════════════════════════════════════════════════
+                     ALTERNATIVE COMPACT LAYOUT
+═══════════════════════════════════════════════════════════════
+
+If you prefer badges side-by-side:
+
+HTML:
+<div class="price-badges">
+  <div class="price-badge eth">
+    <span class="badge-label">ETH $BASED:</span>
+    <span class="badge-value" id="ethPrice">--</span>
+  </div>
+  <div class="price-badge l1">
+    <span class="badge-label">L1 $BASED:</span>
+    <span class="badge-value" id="l1Price">--</span>
+  </div>
+  <div class="price-badge change" id="priceChangeBadge">
+    <span id="priceChange">--%</span>
+  </div>
+</div>
+
+CSS:
+.price-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-card, #1a1a25);
+  padding: 0.5rem 0.75rem;
+  border-radius: 2rem;
+  border: 1px solid var(--border, #2a2a3a);
+  font-size: 0.85rem;
+}
+
+.badge-label {
+  color: var(--text-secondary, #a0a0b0);
+}
+
+.badge-value {
+  font-weight: 600;
+  color: var(--accent, #6366f1);
+}
+
+.price-badge.change.positive {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.price-badge.change.negative {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+═══════════════════════════════════════════════════════════════
+                     EXAMPLE OUTPUT
+═══════════════════════════════════════════════════════════════
+
+If CoinGecko returns { "basedai": { "usd": 156.78, "usd_24h_change": 3.45 } }
+
+Display shows:
+┌──────────────────────────────┐
+│  💰 $BASED Price    ▲ +3.45% │
+│  ──────────────────────────  │
+│  ETH:  $156.78               │
+│  L1:   $0.1568   (1000:1)    │
+└──────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+                     TESTING
+═══════════════════════════════════════════════════════════════
+
+□ Both ETH and L1 prices display
+□ L1 price is exactly ETH price ÷ 1000
+□ 24h change shows with correct color (green/red)
+□ Updates every 60 seconds
+□ Falls back to cached data on error
+□ Console logs both prices for debugging
+
+═══════════════════════════════════════════════════════════════
+                     DON'T CHANGE
+═══════════════════════════════════════════════════════════════
+
+- Other header elements
+- Network badge styling
+- Overall app layout
+
+Just restore the dual price feed display.
