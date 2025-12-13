@@ -179,18 +179,26 @@
 }
 
 @media (max-width: 768px) {
-  .price-feed-container {
+  .price-feed-container, 
+  .price-feed, 
+  .price-container, 
+  [class*="price"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    flex-wrap: wrap;
   }
 }
 
 @media (max-width: 480px) {
-  .price-feed-container {
+  .price-feed-container,
+  .price-feed, 
+  .price-container, 
+  [class*="price"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    flex-wrap: wrap;
   }
 }
 

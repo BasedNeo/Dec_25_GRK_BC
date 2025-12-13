@@ -164,7 +164,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               </button>
             ))}
             
-            <div className="flex items-center gap-2 ml-4 price-feed-container">
+            <div className="flex items-center gap-2 ml-4 price-feed-container flex-shrink-0">
                {/* Unified Price Feed - Visible on ALL screens */}
                <div 
                  id="priceBadge"
