@@ -618,7 +618,7 @@ export function EscrowMarketplace() {
         {/* Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             <TabsList className="bg-white/5 border-white/10 p-1">
-                <TabsTrigger value="buy" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron text-[#6cff61]">
+                <TabsTrigger value="buy" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron text-[#6cff61] bg-black/50 border border-white/10 hover:bg-white/5">
                     <ShoppingBag size={14} className="mr-2" /> BUY NOW
                 </TabsTrigger>
                 <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron">
@@ -872,7 +872,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                 />
                             )}
                             <Button 
-                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full bg-primary text-black hover:bg-primary/90' : 'bg-black border border-[#00ffff] text-[#00ffff] hover:bg-[#00ffff]/10'} font-bold px-2 h-8`} 
+                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full bg-[#00ffff] text-black hover:bg-[#00ffff]/90' : 'bg-black border border-[#00ffff] text-[#00ffff] hover:bg-[#00ffff]/10'} font-bold px-2 h-8`} 
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOffer();

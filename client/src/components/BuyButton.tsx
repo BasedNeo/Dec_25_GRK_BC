@@ -69,14 +69,7 @@ export function BuyButton({
         {!compact && <span className="uppercase tracking-wide">BUY</span>}
         {compact && <ShoppingBag size={14} />}
         
-        {price && (
-            <>
-                <div className="h-3 w-px bg-white/30 mx-0.5" />
-                <span className={cn("font-mono font-bold", compact ? "text-xs" : "")}>
-                    {Number(price).toLocaleString()}
-                </span>
-            </>
-        )}
+        {/* Price display removed from button as requested */}
       </div>
     </Button>
   );
