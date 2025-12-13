@@ -90,7 +90,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareText = `Check out my Based Guardian #${nft.id}! Rarity: ${nft.rarity} #BasedGuardians #BasedAI`;
+  const shareText = `Check out Based Guardian #${nft.id} - ${nft.rarity}! 🛡️\n${window.location.href}`;
   const shareUrl = window.location.href;
 
   const handleShare = async () => {
@@ -103,14 +103,16 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             }); 
           } catch(e) {}
       } else {
-          navigator.clipboard.writeText(shareUrl);
+          navigator.clipboard.writeText(shareText);
           setCopied(true);
+          toast({ description: "Share link copied to clipboard" });
           setTimeout(() => setCopied(false), 2000);
       }
   };
 
   const handleTwitterShare = () => {
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+      const text = `Check out Based Guardian #${nft.id} - ${nft.rarity}! 🛡️`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
 
 
