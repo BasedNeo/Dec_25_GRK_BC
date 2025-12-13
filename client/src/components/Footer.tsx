@@ -63,8 +63,8 @@ export function Footer() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" className="border-white/10 hover:border-primary hover:text-primary rounded-full">
-                <a href={TWITTER_URL} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="border-white/10 hover:border-primary hover:text-primary rounded-full flex items-center justify-center">
+                <a href={TWITTER_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-full h-full">
                     <Twitter size={18} />
                 </a>
               </Button>
