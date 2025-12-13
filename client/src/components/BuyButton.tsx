@@ -26,7 +26,7 @@ export function BuyButton({
 }: BuyButtonProps) {
   
   const handleBuyClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    // REMOVED e.stopPropagation() to allow event delegation
     if (onBuy && price) {
         onBuy(tokenId, price);
     }
@@ -55,6 +55,9 @@ export function BuyButton({
       )}
       onClick={handleBuyClick}
       disabled={!price}
+      data-token-id={tokenId}
+      data-price={price}
+      data-action="buy"
       {...props}
     >
       {/* Glow effect for primary */}

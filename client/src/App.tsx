@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { SpaceBackground } from "@/components/SpaceBackground";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function App() {
               <Router />
               <DisclaimerModal />
               <OnboardingTour />
+              <GlobalBuyListener />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>
