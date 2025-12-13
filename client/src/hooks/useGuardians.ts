@@ -16,6 +16,7 @@ export interface GuardianFilters {
   traitValue?: string;
   sortBy?: string;
   owner?: string; // Add owner filter
+  startOffset?: number; // Starting offset for pagination (e.g., 299 to start at #300)
 }
 
 export function useGuardians(
@@ -27,7 +28,7 @@ export function useGuardians(
 
   return useInfiniteQuery({
     queryKey: ['nfts', address, useMockData, useCsvData, filters],
-    initialPageParam: 0, // Start at index 0
+    initialPageParam: filters.startOffset ?? 0, // Start at specified offset or 0
     queryFn: async ({ pageParam = 0 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
       const startIndex = typeof pageParam === 'number' ? pageParam : 0;
       const cacheKey = `${CACHE_KEYS.NFT_METADATA}_${startIndex}_${JSON.stringify(filters)}`;

@@ -103,7 +103,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id-desc"); // Default to Newest First (Live Chain compatible)
+  const [sortBy, setSortBy] = useState<string>("id-asc"); // Default to ID ascending, starting at #300
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV (true) for reliability
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
@@ -289,7 +289,8 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
       rarity: rarityFilter,
       traitType: traitTypeFilter,
       traitValue: traitValueFilter,
-      sortBy
+      sortBy,
+      startOffset: 299 // Start at NFT #300
   }); 
 
   const allItems = useMemo(() => {
