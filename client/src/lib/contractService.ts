@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { RPC_URL, NFT_CONTRACT, IPFS_ROOT, CHAIN_ID } from './constants';
+import { CacheService, CACHE_DURATIONS, CACHE_KEYS } from './cache';
 
 export interface NFTMetadata {
   name: string;
@@ -81,6 +82,9 @@ class ContractServiceClass {
   }
 
   async getContractStats(): Promise<ContractStats | null> {
+    const cached = CacheService.get<ContractStats>(CACHE_KEYS.CONTRACT_STATS, CACHE_DURATIONS.contractStats);
+    if (cached) return cached;
+
     try {
       const initialized = await this.initialize();
       if (!initialized || !this.contract) return null;
@@ -98,7 +102,7 @@ class ContractServiceClass {
       const mintedNum = Number(totalMinted);
       const maxNum = Number(maxSupply);
 
-      return {
+      const stats: ContractStats = {
         totalMinted: mintedNum,
         maxSupply: maxNum,
         mintPrice: ethers.formatEther(mintPrice),
@@ -108,6 +112,9 @@ class ContractServiceClass {
         remaining: maxNum - mintedNum,
         progress: ((mintedNum / maxNum) * 100).toFixed(2)
       };
+
+      CacheService.set(CACHE_KEYS.CONTRACT_STATS, stats);
+      return stats;
     } catch (error) {
       console.error('[ContractService] getContractStats failed:', error);
       return null;
