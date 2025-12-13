@@ -12,10 +12,12 @@ export function useTokenPrice() {
   return useQuery<PriceData>({
     queryKey: ["tokenPrice", TOKEN_ID],
     queryFn: async () => {
-      // Fetch directly by ID as requested
-      const res = await fetch(
-        `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`
-      );
+      // Use a CORS proxy to avoid browser restrictions
+      const targetUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
+      // Using allorigins as a reliable fallback for frontend-only demos
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      
+      const res = await fetch(proxyUrl);
       
       if (!res.ok) {
         throw new Error("Failed to fetch price");
