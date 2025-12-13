@@ -17,6 +17,7 @@ import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { SpaceBackground } from "@/components/SpaceBackground";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { GlobalBuyListener } from "@/components/GlobalBuyListener";
+import { DebugBuyButtons } from "@/components/DebugBuyButtons";
 
 function Router() {
   return (
@@ -50,6 +51,7 @@ function App() {
               <DisclaimerModal />
               <OnboardingTour />
               <GlobalBuyListener />
+              <DebugBuyButtons />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>
