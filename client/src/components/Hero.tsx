@@ -93,7 +93,7 @@ export function Hero() {
 
   useEffect(() => {
     fetchLiveRarity();
-    const interval = setInterval(fetchLiveRarity, 15 * 60 * 1000); // Poll every 15 min
+    const interval = setInterval(fetchLiveRarity, 30 * 1000); // Poll every 30 seconds
     return () => clearInterval(interval);
   }, []);
 
