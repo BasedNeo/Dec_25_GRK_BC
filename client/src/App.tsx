@@ -18,6 +18,7 @@ import { SpaceBackground } from "@/components/SpaceBackground";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 import { DebugBuyButtons } from "@/components/DebugBuyButtons";
+import { WalletWatcher } from "@/components/WalletWatcher";
 
 function Router() {
   return (
@@ -52,6 +53,7 @@ function App() {
               <OnboardingTour />
               <GlobalBuyListener />
               <DebugBuyButtons />
+              <WalletWatcher />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>
