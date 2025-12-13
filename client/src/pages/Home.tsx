@@ -13,9 +13,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
 
-import { LiveNFTDashboard } from "@/components/LiveNFTDashboard";
-import { LiveMintFeed } from "@/components/LiveMintFeed";
-
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("universe");
@@ -26,16 +23,11 @@ export default function Home() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black relative">
-      <div className="animated-cyber-bg">
-        <div className="cyber-grid-plane"></div>
-        <div className="cyber-particles"></div>
-      </div>
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
       <OnboardingTour />
-      {activeTab === 'mint' && <LiveMintFeed />}
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
       
-      <main className="pt-20 flex-grow flex flex-col">
+      <main className="pt-20 min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
           {activeTab === "universe" && (
             <motion.div
@@ -56,9 +48,9 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="container mx-auto px-4 py-8"
             >
-              <LiveNFTDashboard />
+              <Hero />
+              <ValueEstimation />
             </motion.div>
           )}
 

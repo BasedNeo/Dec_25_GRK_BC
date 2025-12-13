@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, Volume2, VolumeX } from "lucide-react";
+import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
@@ -12,9 +12,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import confetti from "canvas-confetti";
 import { useToast } from "@/hooks/use-toast";
 import rocketLogo from '@assets/generated_images/neon_cyan_rocket_with_simple_flame_on_black.png';
-import { soundManager } from "@/lib/SoundManager";
-import { Slider } from "@/components/ui/slider";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface NavbarProps {
   activeTab: string;
@@ -29,27 +26,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isShaking, setIsShaking] = useState(false);
   const { toast } = useToast();
   const { address, isConnected: wagmiConnected } = useAccount();
-  const [soundEnabled, setSoundEnabled] = useState(soundManager.isEnabled());
-  const [volume, setVolume] = useState([soundManager.getVolume()]);
   
   const handleLogoClick = () => {
     setIsShaking(true);
-    soundManager.play('click');
     onTabChange('mint');
     setTimeout(() => setIsShaking(false), 500); // Shake for 500ms
-  };
-
-  const toggleSound = () => {
-    const newState = !soundEnabled;
-    setSoundEnabled(newState);
-    soundManager.setEnabled(newState);
-    if (newState) soundManager.play('click');
-    trackEvent('sound_toggle', 'Settings', newState ? 'enabled' : 'disabled');
-  };
-
-  const handleVolumeChange = (val: number[]) => {
-    setVolume(val);
-    soundManager.setVolume(val[0]);
   };
 
   const { isPaused, togglePause } = useSecurity();
@@ -71,7 +52,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, []);
 
   const handleInstallClick = () => {
-    soundManager.play('click');
     if (!deferredPrompt) {
         toast({ title: "Install Not Available", description: "Your browser might not support PWA installation or it's already installed." });
         return;
@@ -99,7 +79,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           origin: { y: 0.2 },
           colors: ['#00ffff', '#bf00ff', '#ffffff']
         });
-        soundManager.play('connect_wallet');
         localStorage.setItem('has_connected_before', 'true');
         trackEvent('wallet_connected_first_time', 'Engagement', 'Navbar');
       }
@@ -121,7 +100,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'mint', label: 'MINT' },
     { id: 'gallery', label: 'PORTFOLIO' },
     { id: 'voting', label: 'VOTING' }, 
-    { id: 'escrow', label: 'MARKETPLACE' },
+    { id: 'escrow', label: 'COLLECTION' },
     { id: 'pool', label: 'POOL' },
   ];
 
@@ -161,17 +140,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               { id: 'mint', label: 'MINT' },
               { id: 'gallery', label: 'PORTFOLIO' },
               { id: 'voting', label: 'VOTING' }, 
-              { id: 'escrow', label: 'MARKETPLACE' },
+              { id: 'escrow', label: 'COLLECTION' },
               { id: 'pool', label: 'POOL' },
             ].map((item) => (
               <button
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
-                onClick={() => {
-                  soundManager.play('click');
-                  onTabChange(item.id);
-                }}
-                onMouseEnter={() => soundManager.play('hover')}
+                onClick={() => onTabChange(item.id)}
                 className={`relative px-4 py-2 font-orbitron text-sm tracking-widest transition-colors ${
                   activeTab === item.id ? 'text-primary' : 'text-foreground/80 hover:text-white'
                 }`}
@@ -206,44 +181,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </Button>
             )}
 
-            {/* Sound Control */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ml-2 text-foreground/80 hover:text-white"
-                  onClick={toggleSound}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    // Just open popover via trigger - Context menu is tricky with PopoverTrigger
-                  }}
-                >
-                  {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40 bg-black/90 border-white/20 p-4">
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs text-muted-foreground font-mono mb-2">MASTER VOLUME</span>
-                  <Slider 
-                    value={volume} 
-                    max={1} 
-                    step={0.1} 
-                    onValueChange={handleVolumeChange} 
-                    className="cursor-pointer"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-
             {isAdmin && (
                 <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => {
-                        soundManager.play('click');
-                        togglePause();
-                    }}
+                    onClick={togglePause}
                     className={`ml-4 border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
                 >
                     {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
@@ -312,10 +254,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                         if (!connected) {
                           return (
                             <Button 
-                              onClick={() => {
-                                soundManager.play('click');
-                                openConnectModal();
-                              }} 
+                              onClick={openConnectModal} 
                               className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider cyber-button shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.7)] transition-all duration-300"
                             >
                               CONNECT
@@ -325,10 +264,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
                         if (chain.unsupported) {
                           return (
-                            <Button onClick={() => {
-                                soundManager.play('error');
-                                openChainModal();
-                            }} variant="destructive">
+                            <Button onClick={openChainModal} variant="destructive">
                               Wrong network
                             </Button>
                           );
@@ -337,10 +273,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                         return (
                           <div style={{ display: 'flex', gap: 12 }}>
                             <Button 
-                              onClick={() => {
-                                soundManager.play('click');
-                                openAccountModal();
-                              }} 
+                              onClick={openAccountModal} 
                               variant="outline"
                               className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-orbitron tracking-wider cyber-button"
                             >
@@ -359,10 +292,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             <button
-              onClick={() => {
-                soundManager.play('click');
-                setIsMobileMenuOpen(!isMobileMenuOpen);
-              }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-foreground hover:text-primary transition-colors"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -385,7 +315,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 <button
                   key={item.id}
                   onClick={() => {
-                    soundManager.play('click');
                     onTabChange(item.id);
                     setIsMobileMenuOpen(false);
                   }}

@@ -179,7 +179,7 @@ export function Footer() {
 
       {/* Terms Modal */}
       <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
-        <DialogContent className="z-[100] bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 border-b border-white/10 flex flex-row items-center justify-between">
                 <div>
                     <DialogTitle className="text-2xl font-orbitron">TERMS OF SERVICE</DialogTitle>
@@ -276,7 +276,7 @@ export function Footer() {
 
       {/* Privacy Modal */}
       <Dialog open={isPrivacyOpen} onOpenChange={setIsPrivacyOpen}>
-        <DialogContent className="z-[100] bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-4xl max-h-[85dvh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 border-b border-white/10">
                 <DialogTitle className="text-2xl font-orbitron">PRIVACY POLICY</DialogTitle>
                 <DialogDescription className="text-muted-foreground">Effective Date: December 12, 2025</DialogDescription>

@@ -1,10 +1,19 @@
-import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Guardian } from "@/lib/mockData";
+import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download } from "lucide-react";
+import { Guardian, calculateBackedValue } from "@/lib/mockData";
+import { motion } from "framer-motion";
+import confetti from "canvas-confetti";
+import { useEffect, useState, useMemo } from "react";
 import { MarketItem } from "@/lib/marketplaceData";
-import { X } from "lucide-react";
 import DOMPurify from 'dompurify';
-import { useState, useEffect } from "react";
-import './NFTGallery.css';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { toast } from "@/hooks/use-toast";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -12,69 +21,17 @@ interface NFTDetailModalProps {
   nft: Guardian | MarketItem | null;
 }
 
-interface Attribute {
-  trait_type: string;
-  value: string;
-}
-
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
-  const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [loadingAttributes, setLoadingAttributes] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [backedValue, setBackedValue] = useState(calculateBackedValue());
 
+  // Live Ticker for Backed Value
   useEffect(() => {
-    if (nft && isOpen) {
-      const fetchAttributes = async () => {
-        setLoadingAttributes(true);
-        try {
-          // If the NFT already has traits (from mock data), use them first as fallback
-          if (nft.traits && nft.traits.length > 0) {
-            setAttributes(nft.traits.map((t: any) => ({ trait_type: t.type, value: t.value })));
-          }
-
-          // Fetch full metadata from IPFS
-          const ipfsHash = 'bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y';
-          const primaryUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/${ipfsHash}/${nft.id}.json`;
-          
-          try {
-            const response = await fetch(primaryUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const metadata = await response.json();
-            if (metadata.attributes && Array.isArray(metadata.attributes)) {
-              setAttributes(metadata.attributes);
-            }
-          } catch (primaryError) {
-            console.warn("Primary IPFS gateway failed, trying fallback...", primaryError);
-            
-            // Fallback to public gateway
-            const fallbackUrl = `https://ipfs.io/ipfs/${ipfsHash}/${nft.id}.json`;
-            const response = await fetch(fallbackUrl);
-            
-            if (response.ok) {
-                const metadata = await response.json();
-                if (metadata.attributes && Array.isArray(metadata.attributes)) {
-                  setAttributes(metadata.attributes);
-                }
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching metadata:", error);
-          // Fallback to mock traits if fetch fails and we haven't set them yet
-          if ((!attributes || attributes.length === 0) && nft.traits) {
-             setAttributes(nft.traits.map((t: any) => ({ trait_type: t.type, value: t.value })));
-          }
-        } finally {
-          setLoadingAttributes(false);
-        }
-      };
-
-      fetchAttributes();
-    } else {
-      setAttributes([]);
-    }
-  }, [nft, isOpen]);
-  
-  if (!nft) return null;
+    const interval = setInterval(() => {
+        setBackedValue(calculateBackedValue());
+    }, 1000); // Update every second
+    return () => clearInterval(interval);
+  }, []);
 
   // Safe Sanitize Helper
   const safeSanitize = (content: string | undefined | null) => {
@@ -82,78 +39,284 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     return DOMPurify.sanitize(content);
   };
 
-  const owner = "0x1234...5678"; // Mock owner for now, as it's not always in the Guardian type
-  const price = "69,420 $BASED"; // Mock price
+  useEffect(() => {
+    if (isOpen && nft) {
+      // Trigger confetti only for Legendaries to reduce clutter
+      const isLegendary = nft.rarity?.toLowerCase().includes('legendary') || nft.rarity?.toLowerCase().includes('rarest');
+      if (isLegendary) {
+        // Use a slightly lower z-index than modal to ensure it doesn't block interactions if that was the issue
+        setTimeout(() => {
+            confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#00ffff', '#bf00ff', '#ffffff'],
+            zIndex: 100 // Lower z-index to be safe, modal is usually 50-100+
+            });
+        }, 300);
+      }
+    }
+  }, [isOpen, nft]);
+
+  // Chart Data Preparation (Removed as per request to switch back to card view for stats)
+  
+  if (!nft) return null;
+
+  // Rarity Multiplier for Display
+  const isRareItem = ['More Rare', 'Very Rare', 'Rarest-Legendary', 'Rare', 'Less Rare'].includes(nft.rarity || '');
+  
+  // Calculate Boosted Value
+  // Base formula: 51% mint share + emissions
+  // Boost: +30% on the total value for rare items
+  // Note: We use calculateBackedValue which now has the exact multiplier logic, so we can just use that if we pass rarity
+  // But for this display variable, let's use the explicit logic from mockData if available
+  const currentBacked = calculateBackedValue(nft.rarity || 'Common');
+  const displayValue = currentBacked;
+
+  const handleCopyTraits = () => {
+    if (!nft.traits) return;
+    const text = nft.traits.map(t => `${t.type}: ${t.value}`).join('\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareText = `Check out my Based Guardian #${nft.id}! Rarity: ${nft.rarity} #BasedGuardians #BasedAI`;
+  const shareUrl = window.location.href;
+
+  const handleShare = async () => {
+      if (navigator.share) {
+          try { 
+            await navigator.share({
+                title: `Based Guardian #${nft.id}`,
+                text: shareText,
+                url: shareUrl
+            }); 
+          } catch(e) {}
+      } else {
+          navigator.clipboard.writeText(shareUrl);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+      }
+  };
+
+  const handleTwitterShare = () => {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+  };
+
+
+  // Determine rarity color
+  const getRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case 'Rarest-Legendary': return 'text-cyan-400 border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,211,238,0.2)]';
+      case 'Very Rare': return 'text-purple-400 border-purple-400/50 bg-purple-400/10 shadow-[0_0_15px_rgba(192,132,252,0.2)]';
+      case 'More Rare': return 'text-amber-400 border-amber-400/50 bg-amber-400/10 shadow-[0_0_15px_rgba(251,191,36,0.2)]';
+      case 'Rare': return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]';
+      case 'Less Rare': return 'text-blue-400 border-blue-400/50 bg-blue-400/10 shadow-[0_0_15px_rgba(96,165,250,0.2)]';
+      case 'Less Common': return 'text-green-400 border-green-400/50 bg-green-400/10 shadow-[0_0_15px_rgba(74,222,128,0.2)]';
+      case 'Common': return 'text-white border-white/50 bg-white/10';
+      case 'Most Common': return 'text-gray-400 border-gray-400/50 bg-gray-400/10';
+      default: return 'text-slate-400 border-slate-400/50 bg-slate-400/10';
+    }
+  };
+
+  const rarityColorClass = getRarityColor(nft.rarity);
+
+  // Grouped Stats Logic
+  const statKeys = ['Speed', 'Agility', 'Intellect', 'Intelligence', 'Strength'];
+  const stats = nft.traits?.filter(t => statKeys.includes(t.type)) || [];
+  const otherTraits = nft.traits?.filter(t => !statKeys.includes(t.type)) || [];
+  
+  // Helper to safely parse stat value
+  const getStatValue = (val: string) => {
+    const parsed = parseInt(val);
+    return isNaN(parsed) ? 5 : parsed; // Default to 5 if not a number
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="z-[100] max-w-[900px] w-full p-0 gap-0 border-none bg-transparent shadow-none [&>button]:hidden">
+      {/* 
+          Using standard Dialog structure but with custom overlay/content styling for full screen mobile
+      */}
+      <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[100vw] h-[100vh] md:w-[90vw] md:h-[90vh] md:max-w-6xl max-w-none p-0 gap-0 bg-black/95 border-0 md:border md:border-white/10 overflow-hidden flex flex-col md:flex-row shadow-2xl rounded-none md:rounded-xl z-[150] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] duration-200">
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
-        <div className="nft-modal-content">
-            <button className="modal-close" onClick={onClose} style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '40px',
-                height: '40px',
-                background: 'rgba(255,255,255,0.1)',
-                border: 'none',
-                borderRadius: '50%',
-                color: 'white',
-                fontSize: '24px',
-                cursor: 'pointer',
-                zIndex: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }}>
-                &times;
-            </button>
-
-            <div className="modal-image">
-                <img id="modalImage" src={nft.image} alt={nft.name} />
-            </div>
+        {/* Left Side: Image */}
+        <div className="relative w-full md:w-1/2 h-1/3 md:h-full bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group shrink-0">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
             
-            <div className="modal-details">
-                <h2 id="modalTitle">{safeSanitize(nft.name)}</h2>
-                <p id="modalSubtitle" className="modal-subtitle">Token ID: {nft.id}</p>
+            <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="relative z-10 w-full max-w-md aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
+            >
+                <img 
+                    src={nft.image} 
+                    alt={nft.name} 
+                    className="w-full h-full object-cover"
+                />
                 
-                <div className="modal-section">
-                <h4>Owner</h4>
-                <a id="modalOwner" href="#" target="_blank" className="owner-link">{owner}</a>
+                {/* ID Overlay */}
+                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded text-xs font-mono text-white">
+                    #{nft.id}
+                </div>
+
+                {/* Rarity Overlay */}
+                <div className={`absolute top-4 right-4 px-3 py-1 rounded text-xs font-orbitron uppercase border backdrop-blur-md ${rarityColorClass}`}>
+                    {nft.rarity}
+                </div>
+            </motion.div>
+        </div>
+
+        {/* Right Side: Details */}
+        <div className="w-full md:w-1/2 flex flex-col h-2/3 md:h-full bg-card/50 relative flex-1">
+            {/* Header */}
+            <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
+                <div className="pr-16">
+                    <h2 className="text-2xl md:text-5xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
+                        {safeSanitize(nft.name)}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="border-primary/50 text-primary font-mono text-[10px]">
+                            <ShieldCheck size={10} className="mr-1" /> VERIFIED
+                        </Badge>
+                        <Badge variant="outline" className="border-white/20 text-muted-foreground font-mono text-[10px]">
+                            BASED L1
+                        </Badge>
+                    </div>
                 </div>
                 
-                <div className="modal-section">
-                <h4>Price</h4>
-                <p id="modalPrice" className="price-display">{price}</p>
-                </div>
-                
-                <div className="modal-section">
-                <h4>Attributes {loadingAttributes && <span className="text-xs text-muted-foreground animate-pulse">(Loading...)</span>}</h4>
-                <div id="modalAttributes" className="attributes-grid">
-                    {attributes && attributes.length > 0 ? (
-                        attributes.map((attr, index) => {
-                            const isRarity = attr.trait_type === 'Rarity Level';
-                            return (
-                                <div key={index} className={`attribute-item ${isRarity ? 'attribute-rarity' : ''}`}>
-                                    <div className="attribute-type">{safeSanitize(attr.trait_type)}</div>
-                                    <div className="attribute-value">{safeSanitize(attr.value)}</div>
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <p style={{color:'#666', gridColumn: 'span 2'}}>
-                            {loadingAttributes ? 'Loading attributes...' : 'No attributes available'}
-                        </p>
+                <DialogClose asChild>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-4 right-4 h-14 w-14 md:h-14 md:w-14 h-[80px] w-[80px] text-white hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/20 hover:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] z-50 group"
+                    >
+                        <X size={32} className="md:w-8 md:h-8 w-12 h-12 group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
+                    </Button>
+                </DialogClose>
+            </div>
+
+            {/* Scrollable Attributes */}
+            <ScrollArea className="flex-1 p-6">
+                <div className="space-y-6">
+                    {/* Premium Backed Value Display (Scrollable) */}
+                    <div className="p-4 bg-gradient-to-r from-green-500/10 to-transparent border-l-4 border-green-500 rounded-r-lg">
+                        <div className="text-[10px] text-green-400 font-mono font-bold tracking-wider uppercase mb-1 flex items-center">
+                            <TrendingUp size={12} className="mr-2" /> Backed Value
+                        </div>
+                        <div className="text-3xl font-orbitron text-white text-glow">
+                            {displayValue.toLocaleString()} <span className="text-lg text-primary">$BASED</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                            Includes 51% Mint Share + Daily Emissions
+                            {isRareItem && <span className="text-green-400 ml-1">(Rarity Boost Active)</span>}
+                            <div className="mt-1 text-primary/70">Boosted Value: {displayValue.toLocaleString()} $BASED</div>
+                        </div>
+                    </div>
+
+                    {/* Description / Disclaimer */}
+                    <div className="p-3 bg-yellow-500/5 border border-yellow-500/10 rounded text-[10px] text-yellow-500/70 font-mono flex gap-2 items-start whitespace-pre-wrap">
+                        <Info size={14} className="mt-0.5 shrink-0" />
+                        <span>Metadata is fetched directly from on-chain/IPFS sources. Rarity and values are estimates only.</span>
+                    </div>
+
+                    <Separator className="bg-white/10" />
+                    
+                    {/* Stats Group (Speed, Agility, etc.) */}
+                    {stats.length > 0 && (
+                        <div>
+                             <h3 className="text-sm font-orbitron text-white mb-3 flex items-center">
+                                <BarChart3 size={14} className="mr-2 text-primary" /> BASE STATS
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {stats.map((stat, i) => {
+                                    const val = getStatValue(stat.value);
+                                    return (
+                                        <div key={i} className="bg-white/5 border border-white/10 rounded p-3">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">{stat.type}</span>
+                                                <span className="text-sm font-bold text-white font-orbitron">{stat.value}/10</span>
+                                            </div>
+                                            {/* Green Progress Bar */}
+                                            <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${(val / 10) * 100}%` }}
+                                                    transition={{ duration: 1, delay: 0.2 }}
+                                                    className="h-full bg-green-500 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.5)]"
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <Separator className="bg-white/10 mt-6" />
+                        </div>
                     )}
+
+                    {/* Detailed Attributes (Wrapped Grid) */}
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-sm font-orbitron text-white flex items-center">
+                                <Zap size={14} className="mr-2 text-accent" /> ATTRIBUTES ({otherTraits.length || 0})
+                            </h3>
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground hover:text-white" onClick={handleCopyTraits}>
+                                {copied ? <Check size={12} className="mr-1 text-green-500" /> : <Copy size={12} className="mr-1" />}
+                                {copied ? "COPIED" : "COPY ALL"}
+                            </Button>
+                        </div>
+                        
+                        {otherTraits && otherTraits.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {otherTraits.map((trait, i) => (
+                                    <div key={i} className="bg-white/5 border border-white/10 rounded p-3 hover:border-primary/30 transition-colors group relative overflow-hidden">
+                                        <div className="text-[10px] text-muted-foreground uppercase mb-1 truncate" title={trait.type}>
+                                            {safeSanitize(trait.type)}
+                                        </div>
+                                        <div className="text-sm font-bold text-white whitespace-normal break-words leading-tight" title={trait.value}>
+                                            {safeSanitize(trait.value)}
+                                        </div>
+                                        {/* Hover Copy Button */}
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigator.clipboard.writeText(trait.value);
+                                                toast({ description: `${trait.type} copied` });
+                                            }}
+                                            className="absolute top-1 right-1 p-1 text-white/0 group-hover:text-white/50 hover:!text-primary transition-all"
+                                        >
+                                            <Copy size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 text-muted-foreground text-xs font-mono">
+                                No attributes found for this Guardian.
+                            </div>
+                        )}
+                    </div>
                 </div>
-                </div>
-                
-                <div className="modal-actions">
-                <button className="btn-offer-large" onClick={() => alert('Make Offer coming soon')}>Make Offer</button>
-                <button className="btn-buy-large" onClick={() => alert('Buy Now coming soon')}>Buy Now</button>
+            </ScrollArea>
+
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0">
+                <div className="grid grid-cols-3 gap-3">
+                     <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
+                        <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
+                     </Button>
+                     <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
+                        <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
+                     </Button>
+                     <Button variant="default" asChild className="bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
+                        <a href={`https://explorer.bf1337.org/address/${import.meta.env.VITE_NFT_CONTRACT || "0x..."}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink size={14} className="mr-2" /> <span className="hidden sm:inline">EXPLORER</span>
+                        </a>
+                     </Button>
                 </div>
             </div>
         </div>

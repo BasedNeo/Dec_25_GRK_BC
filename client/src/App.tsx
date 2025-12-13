@@ -14,7 +14,7 @@ import { SecurityProvider } from "@/context/SecurityContext";
 import { initAnalytics } from "@/lib/analytics";
 import { useEffect } from "react";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
-import { AnimatedBackground } from "@/components/AnimatedBackground"; // Updated
+import { SpaceBackground } from "@/components/SpaceBackground";
 import { OnboardingTour } from "@/components/OnboardingTour";
 
 function Router() {
@@ -44,7 +44,7 @@ function App() {
         })}>
           <SecurityProvider>
             <TooltipProvider>
-              <AnimatedBackground /> {/* Updated */}
+              <SpaceBackground />
               <Router />
               <DisclaimerModal />
               <OnboardingTour />
