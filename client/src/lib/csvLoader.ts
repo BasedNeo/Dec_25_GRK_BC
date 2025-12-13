@@ -73,6 +73,7 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                 };
               });
             
+            console.log(`Loaded ${guardians.length} guardians from CSV`);
             cachedGuardians = guardians;
             resolve(guardians);
         } catch (err) {

@@ -37,6 +37,8 @@ export const trackSearch = (searchTerm: string) => {
             event_label: searchTerm,
             anonymize_ip: true
         });
+        // Console Log for prototype verification as requested
+        console.log(`[Analytics] Search Tracked: "${searchTerm}" (Anonymized)`);
     }
 };
 
