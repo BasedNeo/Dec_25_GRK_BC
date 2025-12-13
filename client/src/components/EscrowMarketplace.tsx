@@ -618,7 +618,7 @@ export function EscrowMarketplace() {
         {/* Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             <TabsList className="bg-white/5 border-white/10 p-1">
-                <TabsTrigger value="buy" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron">
+                <TabsTrigger value="buy" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow data-[state=active]:bg-primary data-[state=active]:text-black text-[#22c55e] font-orbitron">
                     <ShoppingBag size={14} className="mr-2" /> BUY NOW
                 </TabsTrigger>
                 <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron">
