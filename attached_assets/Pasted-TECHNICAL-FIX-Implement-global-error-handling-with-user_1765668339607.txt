@@ -1,16 +1,15 @@
-import { Security } from './security';
+TECHNICAL FIX: Implement global error handling with user-friendly feedback
 
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+Create services/ErrorHandler.js:
 
-class ErrorHandlerClass {
-  private toastContainer: HTMLDivElement | null = null;
-
-  initialize(): void {
-    if (typeof document === 'undefined') return;
-    
+const ErrorHandler = {
+  toastContainer: null,
+  
+  initialize() {
+    // Create toast container if doesn't exist
     if (!this.toastContainer) {
       this.toastContainer = document.createElement('div');
-      this.toastContainer.id = 'error-toast-container';
+      this.toastContainer.id = 'toast-container';
       this.toastContainer.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -23,12 +22,12 @@ class ErrorHandlerClass {
       `;
       document.body.appendChild(this.toastContainer);
     }
-  }
-
-  toast(message: string, type: ToastType = 'info', duration: number = 5000): HTMLDivElement | null {
+  },
+  
+  // Show toast notification
+  toast(message, type = 'info', duration = 5000) {
     this.initialize();
-    if (!this.toastContainer) return null;
-
+    
     const toast = document.createElement('div');
     toast.style.cssText = `
       padding: 14px 20px;
@@ -47,50 +46,54 @@ class ErrorHandlerClass {
       gap: 10px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
-
-    const colors: Record<ToastType, string> = {
+    
+    const colors = {
       success: '#16a34a',
       error: '#dc2626',
       warning: '#d97706',
       info: '#2563eb'
     };
-
-    const icons: Record<ToastType, string> = {
+    
+    const icons = {
       success: '✓',
       error: '✕',
       warning: '⚠',
       info: 'ℹ'
     };
-
+    
     toast.style.background = colors[type] || colors.info;
-    toast.innerHTML = `<span>${icons[type]}</span><span>${Security.escapeHtml(message)}</span>`;
-
+    toast.innerHTML = `<span>${icons[type]}</span><span>${Sanitizer.escapeHtml(message)}</span>`;
+    
     toast.onclick = () => this._removeToast(toast);
-
+    
     this.toastContainer.appendChild(toast);
-
+    
+    // Animate in
     requestAnimationFrame(() => {
       toast.style.opacity = '1';
       toast.style.transform = 'translateX(0)';
     });
-
+    
+    // Auto remove
     if (duration > 0) {
       setTimeout(() => this._removeToast(toast), duration);
     }
-
+    
     return toast;
-  }
-
-  private _removeToast(toast: HTMLDivElement): void {
+  },
+  
+  _removeToast(toast) {
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(100%)';
     setTimeout(() => toast.remove(), 300);
-  }
-
-  handle(error: any, context: string = ''): string {
+  },
+  
+  // Handle errors with user-friendly messages
+  handle(error, context = '') {
     console.error(`[${context}]`, error);
-
-    const errorMessages: Record<string, string> = {
+    
+    // Map technical errors to user-friendly messages
+    const errorMessages = {
       'user rejected': 'Transaction cancelled',
       'insufficient funds': 'Insufficient funds for this transaction',
       'network': 'Network connection issue. Please check your internet.',
@@ -101,22 +104,23 @@ class ErrorHandlerClass {
       '-32603': 'Internal wallet error. Try refreshing the page.',
       'nonce': 'Transaction conflict. Please wait and try again.',
     };
-
+    
     let userMessage = 'An unexpected error occurred';
-    const errorStr = (error.message?.toLowerCase() || String(error.code || '')).toLowerCase();
-
+    const errorStr = error.message?.toLowerCase() || String(error.code);
+    
     for (const [key, msg] of Object.entries(errorMessages)) {
       if (errorStr.includes(key.toLowerCase())) {
         userMessage = msg;
         break;
       }
     }
-
+    
     this.toast(userMessage, 'error');
     return userMessage;
-  }
-
-  async wrapAsync<T>(fn: () => Promise<T>, context: string = '', showSuccess: boolean = false): Promise<T | null> {
+  },
+  
+  // Wrapper for async operations
+  async wrapAsync(fn, context = '', showSuccess = false) {
     try {
       const result = await fn();
       if (showSuccess) {
@@ -127,26 +131,18 @@ class ErrorHandlerClass {
       this.handle(error, context);
       return null;
     }
+  },
+  
+  // Loading indicator
+  showLoading(message = 'Loading...') {
+    return this.toast(message, 'info', 0); // 0 = don't auto-remove
   }
+};
 
-  showLoading(message: string = 'Loading...'): HTMLDivElement | null {
-    return this.toast(message, 'info', 0);
-  }
+window.ErrorHandler = ErrorHandler;
 
-  hideLoading(toast: HTMLDivElement | null): void {
-    if (toast) {
-      this._removeToast(toast);
-    }
-  }
-}
-
-export const ErrorHandler = new ErrorHandlerClass();
-
-if (typeof window !== 'undefined') {
-  (window as any).ErrorHandler = ErrorHandler;
-
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-    ErrorHandler.handle(event.reason, 'Unhandled');
-  });
-}
+// Global error handler for uncaught errors
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  ErrorHandler.handle(event.reason, 'Unhandled');
+});
