@@ -164,11 +164,21 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               </button>
             ))}
             
-            <div className="flex items-center gap-2 ml-4 px-2 py-1 bg-white/5 rounded border border-white/10">
-                <span className="text-[10px] text-muted-foreground font-mono flex flex-col leading-tight">
-                    <span>$BASED: ${priceData?.usd.toFixed(2) || "..."}</span>
-                    <span className="text-[8px] opacity-70">L1: ~${priceData ? (priceData.usd / 1000).toFixed(4) : "..."}</span>
-                </span>
+            <div className="flex items-center gap-2 ml-4">
+               {/* Price Badge */}
+               <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/40 backdrop-blur-md transition-colors ${
+                 priceData ? (priceData.change >= 0 ? 'border-green-500/20' : 'border-red-500/20') : ''
+               }`}>
+                  <span className="text-xs text-muted-foreground font-mono">$BASED:</span>
+                  <span className="text-sm font-bold text-white font-mono">
+                    {priceData ? `$${priceData.usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+                  </span>
+                  {priceData && (
+                    <span className={`text-xs font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(2)}%
+                    </span>
+                  )}
+               </div>
             </div>
 
             {/* PWA Install Button - Desktop */}

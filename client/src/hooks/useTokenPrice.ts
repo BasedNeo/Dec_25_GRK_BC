@@ -1,19 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 
-const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/token_price/ethereum";
-const TOKEN_ADDRESS = "0x44971abf0251958492fee97da3e5c5ada88b9185";
+const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
+const TOKEN_ID = "basedai";
 
 interface PriceData {
   usd: number;
-  eth: number;
+  change: number;
 }
 
 export function useTokenPrice() {
   return useQuery<PriceData>({
-    queryKey: ["tokenPrice", TOKEN_ADDRESS],
+    queryKey: ["tokenPrice", TOKEN_ID],
     queryFn: async () => {
+      // Fetch directly by ID as requested
       const res = await fetch(
-        `${COINGECKO_API}?contract_addresses=${TOKEN_ADDRESS}&vs_currencies=usd,eth`
+        `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`
       );
       
       if (!res.ok) {
@@ -21,12 +22,11 @@ export function useTokenPrice() {
       }
 
       const data = await res.json();
-      // CoinGecko returns object with address as key (lowercase)
-      const prices = data[TOKEN_ADDRESS.toLowerCase()];
+      const tokenData = data[TOKEN_ID];
       
       return {
-        usd: prices?.usd || 0,
-        eth: prices?.eth || 0
+        usd: tokenData?.usd || 0,
+        change: tokenData?.usd_24h_change || 0
       };
     },
     refetchInterval: 60000, // Refresh every minute

@@ -1,0 +1,293 @@
+Add a live $BASED token price feed to the header using CoinGecko API.
+
+═══════════════════════════════════════════════════════════════
+                     TOKEN INFORMATION
+═══════════════════════════════════════════════════════════════
+
+Token: BasedAI ($BASED)
+CoinGecko ID: basedai
+Contract: 0x44971abf0251958492fee97da3e5c5ada88b9185
+CoinGecko Page: https://www.coingecko.com/en/coins/basedai
+
+═══════════════════════════════════════════════════════════════
+                     API ENDPOINT
+═══════════════════════════════════════════════════════════════
+
+CoinGecko Free API (no key required):
+
+GET https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true
+
+Response format:
+{
+  "basedai": {
+    "usd": 123.45,
+    "usd_24h_change": -2.5
+  }
+}
+
+═══════════════════════════════════════════════════════════════
+                     HEADER DESIGN
+═══════════════════════════════════════════════════════════════
+
+Add price display next to or below the network badge:
+
+┌─────────────────────────────────────────────────────────────┐
+│              🛡️ Based Guardians                             │
+│           Live Minting Dashboard                            │
+│                                                             │
+│    [🟢 BasedAI Network]    [$BASED: $123.45 ▲ +2.5%]       │
+└─────────────────────────────────────────────────────────────┘
+
+Price badge styling:
+- Green arrow (▲) and text for positive 24h change
+- Red arrow (▼) and text for negative 24h change
+- Subtle background matching existing badges
+- Updates every 60 seconds
+
+═══════════════════════════════════════════════════════════════
+                     IMPLEMENTATION
+═══════════════════════════════════════════════════════════════
+
+1. HTML - Add price element in header (near network badge):
+
+<div class="price-badge" id="priceBadge">
+  <span class="price-icon">💰</span>
+  <span class="price-label">$BASED:</span>
+  <span class="price-value" id="basedPrice">--</span>
+  <span class="price-change" id="priceChange">--%</span>
+</div>
+
+2. CSS - Style the price badge:
+
+.price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+}
+
+.price-icon {
+  font-size: 1rem;
+}
+
+.price-label {
+  color: var(--text-secondary);
+}
+
+.price-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.price-change {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.price-change.positive {
+  color: #22c55e;
+}
+
+.price-change.negative {
+  color: #ef4444;
+}
+
+.price-badge.loading {
+  opacity: 0.7;
+}
+
+.price-badge.error {
+  border-color: #ef4444;
+}
+
+3. JavaScript - Fetch and update price:
+
+class PriceFeed {
+  constructor() {
+    this.apiUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true';
+    this.updateInterval = 60000; // 60 seconds
+    this.init();
+  }
+
+  async init() {
+    await this.fetchPrice();
+    setInterval(() => this.fetchPrice(), this.updateInterval);
+  }
+
+  async fetchPrice() {
+    const badge = document.getElementById('priceBadge');
+    const priceEl = document.getElementById('basedPrice');
+    const changeEl = document.getElementById('priceChange');
+    
+    if (!priceEl || !changeEl) return;
+    
+    try {
+      badge?.classList.add('loading');
+      badge?.classList.remove('error');
+      
+      const response = await fetch(this.apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.basedai) {
+        const price = data.basedai.usd;
+        const change = data.basedai.usd_24h_change;
+        
+        // Format price
+        priceEl.textContent = this.formatPrice(price);
+        
+        // Format change with arrow
+        const isPositive = change >= 0;
+        const arrow = isPositive ? '▲' : '▼';
+        changeEl.textContent = `${arrow} ${Math.abs(change).toFixed(2)}%`;
+        changeEl.className = `price-change ${isPositive ? 'positive' : 'negative'}`;
+        
+      } else {
+        throw new Error('Invalid response');
+      }
+      
+    } catch (error) {
+      console.error('Price fetch failed:', error);
+      priceEl.textContent = '--';
+      changeEl.textContent = 'unavailable';
+      changeEl.className = 'price-change';
+      badge?.classList.add('error');
+      
+    } finally {
+      badge?.classList.remove('loading');
+    }
+  }
+
+  formatPrice(price) {
+    if (price >= 1000) {
+      return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (price >= 1) {
+      return `$${price.toFixed(2)}`;
+    } else if (price >= 0.01) {
+      return `$${price.toFixed(4)}`;
+    } else {
+      return `$${price.toFixed(6)}`;
+    }
+  }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  new PriceFeed();
+});
+
+═══════════════════════════════════════════════════════════════
+                     ALTERNATIVE: BACKUP API
+═══════════════════════════════════════════════════════════════
+
+If CoinGecko rate-limits, add fallback:
+
+const API_ENDPOINTS = [
+  {
+    name: 'coingecko',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true',
+    parse: (data) => ({
+      price: data.basedai?.usd,
+      change: data.basedai?.usd_24h_change
+    })
+  },
+  {
+    name: 'coingecko-contract',
+    url: 'https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=0x44971abf0251958492fee97da3e5c5ada88b9185&vs_currencies=usd&include_24hr_change=true',
+    parse: (data) => {
+      const key = Object.keys(data)[0];
+      return {
+        price: data[key]?.usd,
+        change: data[key]?.usd_24h_change
+      };
+    }
+  }
+];
+
+async fetchPrice() {
+  for (const endpoint of API_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint.url);
+      if (response.ok) {
+        const data = await response.json();
+        const parsed = endpoint.parse(data);
+        if (parsed.price) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn(`${endpoint.name} failed, trying next...`);
+    }
+  }
+  throw new Error('All price feeds failed');
+}
+
+═══════════════════════════════════════════════════════════════
+                     RATE LIMIT HANDLING
+═══════════════════════════════════════════════════════════════
+
+CoinGecko free tier: ~10-30 calls/minute
+
+Add exponential backoff on 429 errors:
+
+let retryDelay = 60000; // Start at 1 minute
+
+async fetchWithRetry() {
+  try {
+    const response = await fetch(this.apiUrl);
+    
+    if (response.status === 429) {
+      // Rate limited - back off
+      console.warn(`Rate limited, retrying in ${retryDelay/1000}s`);
+      retryDelay = Math.min(retryDelay * 2, 300000); // Max 5 min
+      return null;
+    }
+    
+    // Success - reset delay
+    retryDelay = 60000;
+    return await response.json();
+    
+  } catch (error) {
+    return null;
+  }
+}
+
+═══════════════════════════════════════════════════════════════
+                     CSP UPDATE (if using)
+═══════════════════════════════════════════════════════════════
+
+If you have Content Security Policy, add CoinGecko:
+
+connect-src 'self' 
+  https://mainnet.basedaibridge.com 
+  https://*.mypinata.cloud 
+  https://api.coingecko.com;   ← ADD THIS
+
+═══════════════════════════════════════════════════════════════
+                     TESTING
+═══════════════════════════════════════════════════════════════
+
+1. Open browser console
+2. Should see price fetch on load
+3. Wait 60 seconds, should auto-update
+4. Disable network - should show "unavailable"
+5. Re-enable network - should recover
+
+═══════════════════════════════════════════════════════════════
+                     DON'T CHANGE
+═══════════════════════════════════════════════════════════════
+
+- Existing header layout (just add new element)
+- Existing network badge styling
+- Other dashboard components
+
+Match the existing dark theme and badge styling.
