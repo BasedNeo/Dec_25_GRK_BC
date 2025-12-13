@@ -11,19 +11,44 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { NFT_CONTRACT } from "@/lib/constants";
-import { fetchTokenByIndex, fetchTokenOwner } from "@/lib/onchain";
+import { fetchTokenByIndex, fetchTokenOwner, fetchTotalSupply } from "@/lib/onchain";
 import { fetchGuardianMetadata } from "@/lib/ipfs";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
 
 interface MintedNFTsTableProps {
-  totalMinted: number;
+  totalMinted?: number; // Optional now as we fetch internally
 }
 
 const BATCH_SIZE = 12;
 
-export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
+export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTableProps) {
+  const [liveTotal, setLiveTotal] = useState<number>(initialTotal || 0);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Sync with contract on mount
+  useEffect(() => {
+    const syncTotal = async () => {
+        try {
+            const total = await fetchTotalSupply();
+            if (total !== null) {
+                setLiveTotal(total);
+            }
+        } catch (e) {
+            console.error("Failed to fetch live total:", e);
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+    syncTotal();
+    
+    // Refresh every 30s
+    const interval = setInterval(syncTotal, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const shortenAddress = (addr?: string) => {
     if (!addr) return "Unknown";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -80,9 +105,9 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
             } as Guardian;
         } catch (e) {
             console.warn(`Error loading minted NFT at index ${index}:`, e);
-            // Fallback placeholder so we don't break the list order completely or return null
+            // Fallback placeholder
             return {
-                id: 0, // Placeholder
+                id: 0, 
                 name: "Loading Error",
                 rarity: "Common",
                 traits: [],
@@ -95,8 +120,6 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
 
     return {
         nfts: fetchedNFTs,
-        // If we reached 0, next cursor is undefined (stop)
-        // Otherwise, next cursor is endIndex - 1
         nextCursor: endIndex > 0 ? endIndex - 1 : undefined
     };
   };
@@ -109,11 +132,11 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
     status,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['mintedNFTs', totalMinted], // Re-fetch when totalMinted changes
+    queryKey: ['mintedNFTs', liveTotal], // Re-fetch when liveTotal changes
     queryFn: fetchMintedBatch,
-    initialPageParam: Math.max(0, totalMinted - 1), // Start from last index
+    initialPageParam: Math.max(0, liveTotal - 1), // Start from last index
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: totalMinted > 0,
+    enabled: liveTotal > 0,
     staleTime: 1000 * 60, // 1 min cache
   });
 
@@ -123,8 +146,8 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
     <div className="w-full mt-8 bg-black/40 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
       <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/60">
         <h3 className="font-orbitron text-white text-lg flex items-center gap-2">
-           Minted NFT Details ({totalMinted} Total)
-           {isFetchingNextPage && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
+           Minted NFT Details ({liveTotal} Total)
+           {(isFetchingNextPage || isInitializing) && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
         </h3>
         <Button 
             variant="ghost" 
@@ -137,7 +160,7 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
         </Button>
       </div>
       
-      {status === 'pending' ? (
+      {status === 'pending' || isInitializing ? (
         <div className="w-full">
             {/* Desktop Skeleton */}
             <div className="hidden md:block">
