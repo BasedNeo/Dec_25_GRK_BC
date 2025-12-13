@@ -10,24 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
-import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import rocketLogo from '@assets/generated_images/neon_cyan_rocket_with_simple_flame_on_black.png';
-
-interface NavbarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  isConnected: boolean; 
-}
-
-import { useTokenPrice } from "@/hooks/useTokenPrice";
-
-import Untitled from "@assets/Untitled.png";
+import { showToast } from "@/lib/customToast";
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast(); // Using custom toast
   const { address, isConnected: wagmiConnected } = useAccount();
   const { error: connectError } = useConnect();
   const queryClient = useQueryClient();
@@ -42,28 +30,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   useEffect(() => {
     if (blockError) {
-        toast({
-            title: "Network Unavailable",
-            description: "Unable to connect to BasedAI network.",
-            variant: "destructive",
-            action: (
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                        refetchBlock();
-                        queryClient.invalidateQueries();
-                        toast({ title: "Retrying connection...", description: "Please wait." });
-                    }}
-                    className="border-white/20 hover:bg-white/10"
-                >
-                    <RefreshCcw className="w-4 h-4 mr-2" /> Retry
-                </Button>
-            ),
-            duration: 10000,
-        });
+        showToast("Network Unavailable: Unable to connect to BasedAI network.", "error");
     }
-  }, [blockError, toast, refetchBlock, queryClient]);
+  }, [blockError]);
 
   // Wallet Connection Error Handling
   useEffect(() => {
@@ -75,13 +44,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             message = "Wallet not found. Please install a compatible wallet.";
         }
 
-        toast({
-            title: "Connection Failed",
-            description: message,
-            variant: "destructive",
-        });
+        showToast(message, "error");
     }
-  }, [connectError, toast]);
+  }, [connectError]);
 
   const handleLogoClick = () => {
     setIsShaking(true);

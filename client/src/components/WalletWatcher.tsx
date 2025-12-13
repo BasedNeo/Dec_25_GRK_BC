@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAccount, useConnect, useSwitchChain, useChainId } from 'wagmi';
-import { useToast } from "@/hooks/use-toast";
+import { showToast } from "@/lib/customToast";
 import { injected } from 'wagmi/connectors';
 
 export function WalletWatcher() {
@@ -8,7 +8,6 @@ export function WalletWatcher() {
   const { connect } = useConnect();
   const { switchChain } = useSwitchChain();
   const chainId = useChainId();
-  const { toast } = useToast();
   const isFirstMount = useRef(true);
 
   // 1. Auto-reconnect on page load if previously connected
@@ -45,18 +44,11 @@ export function WalletWatcher() {
           const handleAccountsChanged = (accounts: string[]) => {
               if (accounts.length === 0) {
                   localStorage.removeItem('connectedWallet');
-                  toast({
-                      title: "Wallet Disconnected",
-                      description: "You have been disconnected.",
-                      variant: "default"
-                  });
+                  showToast("Wallet Disconnected", "info");
               } else if (accounts[0] !== address) {
                   // Account switched
                   localStorage.setItem('connectedWallet', accounts[0]);
-                  toast({
-                      title: "Account Changed",
-                      description: `Switched to ${accounts[0].slice(0,6)}...`,
-                  });
+                  showToast(`Account Changed: ${accounts[0].slice(0,6)}...`, "info");
               }
           };
 
@@ -74,27 +66,16 @@ export function WalletWatcher() {
               }
           };
       }
-  }, [address, toast]);
+  }, [address]);
 
   // 4. Prompt for correct network
   useEffect(() => {
     if (isConnected && chainId !== 32323) {
-        toast({
-            title: "Wrong Network",
-            description: "Please switch to BasedAI Network (Chain ID 32323)",
-            variant: "destructive",
-            action: (
-                <button 
-                    onClick={() => switchChain({ chainId: 32323 })}
-                    className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded text-xs font-bold border border-white/20"
-                >
-                    Switch Network
-                </button>
-            ),
-            duration: 10000
-        });
+        showToast("Wrong Network: Please switch to BasedAI Network (Chain ID 32323)", "warning");
+        // Also try to switch automatically
+        switchChain({ chainId: 32323 });
     }
-  }, [isConnected, chainId, switchChain, toast]);
+  }, [isConnected, chainId, switchChain]);
 
   return null; // Headless component
 }
