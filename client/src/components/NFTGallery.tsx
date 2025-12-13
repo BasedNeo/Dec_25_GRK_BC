@@ -224,7 +224,11 @@ export function NFTGallery({
         <div className="flex flex-col items-center mb-12 space-y-6">
           <div className="text-center relative">
             <h2 className="text-4xl md:text-5xl text-white mb-2 font-black tracking-tighter uppercase relative z-10 text-center mx-auto">
-                YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span>
+                {title.includes("YOUR BATTALION") ? (
+                    <>YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">BATTALION</span></>
+                ) : (
+                    <>{title.split(' ').slice(0, -1).join(' ')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">{title.split(' ').pop()}</span></>
+                )}
             </h2>
              {/* Center Glow Effect */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-[50px] -z-10 rounded-full pointer-events-none"></div>
