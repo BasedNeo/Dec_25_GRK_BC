@@ -199,6 +199,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
 
             // 2. Fetch NFTs (0 to totalMinted - 1)
             const fetchedNFTs: MarketItem[] = [];
+            const PRE_REVEAL_URI = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.json";
             
             console.log(`Fetching tokens from index 0 to ${totalMinted - 1}`);
 
@@ -210,11 +211,30 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                     
                     const owner = await contract.ownerOf(tokenId);
                     
-                    // Metadata - Use explicit Base URI as requested
-                    const baseUri = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/";
-                    const metadataUrl = `${baseUri}${tokenId}.json`;
-                    
+                    // Try to fetch tokenURI, fallback to pre-reveal if needed
+                    let tokenUri = "";
+                    try {
+                        tokenUri = await contract.tokenURI(tokenId);
+                    } catch (e) {
+                        console.warn(`Failed to fetch tokenURI for #${tokenId}, using pre-reveal`);
+                        tokenUri = PRE_REVEAL_URI;
+                    }
+
+                    // Metadata Fetching
                     let metadata = { name: `Guardian #${tokenId}`, image: '', attributes: [] };
+                    
+                    // If URI is from IPFS, convert to gateway
+                    let metadataUrl = tokenUri;
+                    if (tokenUri.startsWith('ipfs://')) {
+                        metadataUrl = tokenUri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                    } else if (tokenUri === "") {
+                        // Fallback
+                        metadataUrl = PRE_REVEAL_URI;
+                    }
+
+                    // Special handling for pre-reveal check
+                    // If the contract returns the pre-reveal URI (or similar), we treat it as pre-reveal
+                    const isPreReveal = metadataUrl.includes("bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4");
 
                     try {
                         const res = await fetch(metadataUrl);
@@ -223,6 +243,12 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                         }
                     } catch (e) {
                         console.warn(`Failed to fetch metadata for #${tokenId}`);
+                        // If fetch fails, populate with basic info so it still shows up
+                        metadata = { 
+                            name: `Guardian #${tokenId}`, 
+                            image: "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png", // Assuming image matches pre-reveal pattern 
+                            attributes: [] 
+                        };
                     }
 
                     // Fix Image URL
@@ -230,10 +256,18 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                     if (imageUrl.startsWith('ipfs://')) {
                         imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
                     }
+                    
+                    // If pre-reveal, ensure image is valid
+                    if (isPreReveal && !imageUrl) {
+                        imageUrl = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png"; // Fallback placeholder
+                    }
 
-                    // Rarity
+                    // Rarity Badge Logic
                     // @ts-ignore
-                    const rarity = metadata.attributes?.find(a => a.trait_type === 'Rarity')?.value || 'Common';
+                    let rarity = metadata.attributes?.find(a => a.trait_type === 'Rarity')?.value || 'Common';
+                    if (isPreReveal) {
+                        rarity = "Pre-Reveal";
+                    }
 
                     fetchedNFTs.push({
                         id: tokenId,
@@ -551,6 +585,13 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
             <div className="text-[10px] text-green-500 font-mono mb-2 flex items-center">
                 <ShieldCheck size={10} className="mr-1" /> Contracts Audited (Slither) | ReentrancyGuard Enabled
             </div>
+            {/* PRE-REVEAL NOTICE */}
+            {!useCsvData && contractStats && contractStats.totalMinted > 0 && (
+                <div className="mb-4 p-3 bg-cyan-950/30 border border-cyan-500/30 rounded text-cyan-400 font-mono text-xs flex items-center animate-pulse">
+                    <Info size={14} className="mr-2" />
+                    Showing {contractStats.totalMinted} minted NFTs (Pre-Reveal Mode - Images will be revealed soon)
+                </div>
+            )}
             <h2 className="text-4xl text-white font-black mb-2">GUARDIAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">EXCHANGE</span></h2>
             <div className="flex gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Escrow Secured</span>
