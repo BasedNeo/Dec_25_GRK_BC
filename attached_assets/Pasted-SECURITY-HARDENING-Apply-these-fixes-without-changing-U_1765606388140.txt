@@ -1,0 +1,151 @@
+SECURITY HARDENING - Apply these fixes without changing UI:
+
+═══════════════════════════════════════════════════════════════
+1. XSS PROTECTION (CRITICAL)
+═══════════════════════════════════════════════════════════════
+
+Add at the top of app.js:
+
+// Security utilities
+const Security = {
+  escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
+  
+  sanitizeUrl(url) {
+    if (typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (trimmed.startsWith('https://') || 
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('ipfs://')) {
+      return trimmed;
+    }
+    return '';
+  },
+  
+  validateMetadata(data, tokenId) {
+    if (!data || typeof data !== 'object') {
+      return { name: `Based Guardian #${tokenId}`, image: '', attributes: [] };
+    }
+    return {
+      name: typeof data.name === 'string' ? data.name : `Based Guardian #${tokenId}`,
+      image: this.sanitizeUrl(data.image),
+      attributes: Array.isArray(data.attributes) ? data.attributes.filter(a => 
+        a && typeof a.trait_type === 'string' && a.value !== undefined
+      ) : []
+    };
+  }
+};
+
+Then use Security.escapeHtml() on ALL text from metadata:
+- metadata.name
+- All attribute values  
+- Any other external text
+
+And Security.sanitizeUrl() on:
+- metadata.image
+- Any other URLs
+
+═══════════════════════════════════════════════════════════════
+2. CSP HEADER (Add to <head>)
+═══════════════════════════════════════════════════════════════
+
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' https: ipfs: data:;
+  connect-src 'self' https://mainnet.basedaibridge.com https://*.mypinata.cloud https://*.pinata.cloud;
+  font-src 'self';
+  frame-ancestors 'none';
+  base-uri 'self';
+">
+
+═══════════════════════════════════════════════════════════════
+3. FIX RPC URL
+═══════════════════════════════════════════════════════════════
+
+Change in contract-config.js:
+FROM: rpcUrl: "https://mainnet.basedaibridge.com/rpc//"
+TO:   rpcUrl: "https://mainnet.basedaibridge.com/rpc"
+
+═══════════════════════════════════════════════════════════════
+4. RATE LIMITING
+═══════════════════════════════════════════════════════════════
+
+Add rate limiter to prevent RPC abuse:
+
+const RateLimiter = {
+  calls: [],
+  limit: 30,
+  window: 60000, // 1 minute
+  
+  check() {
+    const now = Date.now();
+    this.calls = this.calls.filter(t => now - t < this.window);
+    if (this.calls.length >= this.limit) {
+      console.warn('Rate limit reached');
+      return false;
+    }
+    this.calls.push(now);
+    return true;
+  }
+};
+
+// Before contract calls:
+if (!RateLimiter.check()) {
+  throw new Error('Please wait before refreshing');
+}
+
+═══════════════════════════════════════════════════════════════
+5. ERROR BOUNDARIES
+═══════════════════════════════════════════════════════════════
+
+Wrap data loading in error boundaries:
+
+try {
+  await loadDashboardData();
+} catch (error) {
+  console.error('Dashboard error:', error);
+  // Show user-friendly error, don't expose internals
+  showError('Unable to load data. Please refresh.');
+}
+
+Never expose error.message to users - it might contain sensitive info.
+
+═══════════════════════════════════════════════════════════════
+6. UPDATE RARITY MAP (New naming)
+═══════════════════════════════════════════════════════════════
+
+Update getRarityClass() to include new naming:
+
+const rarityMap = {
+  'Rarest-Legendary': 'rarity-legendary',
+  'Very Rare': 'rarity-very-rare',
+  'More Rare': 'rarity-more-rare',    // ← NEW (was "Rarest")
+  'Rarest': 'rarity-rarest',          // Keep for backwards compatibility
+  'Rare': 'rarity-rare',
+  'Less Rare': 'rarity-less-rare',
+  'Less Common': 'rarity-less-common',
+  'Common': 'rarity-common',
+  'Most Common': 'rarity-most-common'
+};
+
+═══════════════════════════════════════════════════════════════
+                     DO NOT CHANGE
+═══════════════════════════════════════════════════════════════
+
+- UI layout and styling
+- Card designs
+- Color scheme
+- Any visual elements
+
+Only add security hardening code.
+
+Show me your implementation plan before making changes.
