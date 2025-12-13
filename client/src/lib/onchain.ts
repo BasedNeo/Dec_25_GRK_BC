@@ -85,7 +85,30 @@ const contractABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    name: "tokenURI",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
+
+export async function fetchTokenURI(tokenId: number): Promise<string | null> {
+    try {
+        if (!NFT_CONTRACT) return null;
+        const uri = await publicClient.readContract({
+            address: NFT_CONTRACT as `0x${string}`,
+            abi: contractABI,
+            functionName: 'tokenURI',
+            args: [BigInt(tokenId)]
+        });
+        return uri as string;
+    } catch (error) {
+        console.error(`Error fetching token URI for ${tokenId}:`, error);
+        return null;
+    }
+}
 
 export async function fetchTotalSupply(): Promise<number | null> {
   try {
