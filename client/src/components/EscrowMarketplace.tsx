@@ -121,6 +121,49 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
         setDirectNFTs([]);
 
         console.log('Initializing contract connection...');
+
+        // === DEBUG SCRIPT INJECTION (PER USER REQUEST) ===
+        console.log('=== NFT LOADING DEBUG ===');
+        // @ts-ignore
+        console.log('1. Checking if ethers.js loaded:', typeof window.ethers !== 'undefined' ? '✅ YES' : '❌ NO');
+
+        // @ts-ignore
+        if (typeof window.ethers === 'undefined') {
+            console.error('FATAL: ethers.js not loaded. Add this to your HTML head:');
+            console.error('<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>');
+            setDirectError("ethers.js library not loaded in browser.");
+            setDirectLoading(false);
+            return;
+        }
+
+        const debugContractConnection = async () => {
+            try {
+                // @ts-ignore
+                const provider = new window.ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+                console.log('2. Provider created:', '✅ YES');
+                
+                const blockNumber = await provider.getBlockNumber();
+                console.log('3. Connected to blockchain, block:', blockNumber, '✅');
+                
+                // @ts-ignore
+                const contract = new window.ethers.Contract(
+                '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+                ['function totalMinted() view returns (uint256)'],
+                provider
+                );
+                
+                const totalMinted = await contract.totalMinted();
+                console.log('4. Contract connected, NFTs minted:', totalMinted.toString(), '✅');
+                return Number(totalMinted);
+            } catch (error: any) {
+                console.error('❌ ERROR:', error.message);
+                setDirectError(`Debug Connection Failed: ${error.message}`);
+                return 0;
+            }
+        };
+        // Run debug first
+        await debugContractConnection();
+        // === END DEBUG SCRIPT ===
         
         try {
             // Check if ethers is loaded
