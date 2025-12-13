@@ -575,6 +575,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
     <Card 
         className="nft-card bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
         onClick={onClick}
+        data-token-id={guardian.id}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -583,7 +584,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
             src={Security.sanitizeUrl(guardian.image)} 
             alt={guardian.name} 
             id={guardian.id}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="nft-image w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         
         {/* Rarity Badge */}
@@ -607,10 +608,10 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         </div>
       </div>
 
-      <div className="p-4 flex flex-col flex-grow bg-black/40 backdrop-blur-sm">
+      <div className="nft-info p-4 flex flex-col flex-grow bg-black/40 backdrop-blur-sm">
         <div className="flex justify-between items-start mb-2">
             <div>
-                <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{Security.escapeHtml(guardian.name)}</h3>
+                <h3 className="nft-name font-bold text-white font-orbitron tracking-wide text-sm">{Security.escapeHtml(guardian.name)}</h3>
                 <a 
                     href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}/instance/${guardian.id}`}
                     target="_blank"
@@ -635,7 +636,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
              
              {/* Buy Button for Listed Items */}
              {guardian.isListed && guardian.price && (
-                <div className="col-span-2 mt-2">
+                <div className="nft-actions col-span-2 mt-2">
                     <BuyButton 
                         tokenId={guardian.id}
                         price={guardian.price}

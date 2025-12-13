@@ -816,7 +816,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
     const hasPrice = item.price && item.price > 0;
     
     return (
-        <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 group cursor-pointer relative" onClick={onClick}>
+        <Card className="nft-card bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 group cursor-pointer relative" onClick={onClick} data-token-id={item.id}>
             {/* Image & Badges */}
             <div className="relative aspect-square bg-secondary/20 overflow-hidden">
                 <NFTImage 
@@ -841,12 +841,12 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
             </div>
             
             {/* Details */}
-            <div className="p-4 space-y-4">
+            <div className="nft-info p-4 space-y-4">
                 <div className="flex justify-between items-center min-h-[3rem]">
                     {hasPrice ? (
                         <div className="flex flex-col">
                             <span className="text-[10px] text-muted-foreground uppercase">Price</span>
-                            <span className="text-lg font-bold text-primary font-mono">{item.price} $BASED</span>
+                            <span className="text-lg font-bold text-primary font-mono" data-price={item.price}>{item.price} $BASED</span>
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center">
@@ -856,7 +856,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     )}
                 </div>
                 
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="nft-actions flex gap-2" onClick={(e) => e.stopPropagation()}>
                     {isOwner ? (
                         <Button className="w-full bg-white/10 hover:bg-white/20 text-white" variant="outline">
                             List / Delist
@@ -872,8 +872,11 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                 />
                             )}
                             <Button 
-                                className={`flex-1 ${!hasPrice ? 'w-full bg-primary text-black' : 'bg-transparent border border-primary/50 text-primary hover:bg-primary/10'} font-bold px-2`} 
-                                onClick={onOffer}
+                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full bg-primary text-black' : 'bg-transparent border border-primary/50 text-primary hover:bg-primary/10'} font-bold px-2`} 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOffer();
+                                }}
                                 variant={!hasPrice ? 'default' : 'outline'}
                             >
                                 OFFER
