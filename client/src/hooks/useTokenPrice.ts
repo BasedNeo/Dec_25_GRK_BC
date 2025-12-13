@@ -29,10 +29,14 @@ export function useTokenPrice() {
             throw new Error("BasedAI price data missing");
         }
 
-        const ethPrice = tokenData.usd;
-        // Based L1 Price is 1000:1 of ETH (ETH Price / 1000)
-        const basedL1Price = ethPrice / 1000;
+        const ethPrice = parseFloat(tokenData.usd);
         
+        // Based L1 Price is 1000:1 of ETH (ETH Price / 1000)
+        // Explicitly ensuring float division
+        const basedL1Price = ethPrice / 1000.0;
+        
+        console.log("Price Debug:", { ethPrice, basedL1Price });
+
         return {
           ethPrice,
           basedL1Price,
