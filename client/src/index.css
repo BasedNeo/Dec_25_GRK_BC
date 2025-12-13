@@ -172,6 +172,28 @@
   opacity: 1;
 }
 
+.price-feed-container {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+  .price-feed-container {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .price-feed-container {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
 vite-error-overlay,
 replit-error-modal {
   display: none !important;

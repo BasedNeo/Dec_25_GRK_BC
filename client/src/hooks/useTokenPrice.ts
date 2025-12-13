@@ -40,11 +40,10 @@ export function useTokenPrice() {
         };
       } catch (e) {
         console.warn("Price fetch failed, using mock data:", e);
-        // Fallback to mock data matching user examples ($150 range)
-        // rather than real ETH price which would be confusing
+        // Fallback to mock data matching user examples ($0.105 range)
         return {
-          ethPrice: 150.00,
-          basedL1Price: 0.1500,
+          ethPrice: 0.1052,
+          basedL1Price: 0.0001052,
           change: 2.5
         };
       }

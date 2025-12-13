@@ -164,50 +164,35 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               </button>
             ))}
             
-            <div className="flex items-center gap-2 ml-4">
-               {/* Price Badge */}
+            <div className="flex items-center gap-2 ml-4 price-feed-container">
+               {/* Unified Price Feed - Visible on ALL screens */}
                <div 
                  id="priceBadge"
-                 className={`hidden lg:flex items-center gap-0 px-0 py-0 rounded-full border border-white/10 bg-black/40 backdrop-blur-md transition-colors overflow-hidden ${
-                 priceData ? (priceData.change >= 0 ? 'border-green-500/20' : 'border-red-500/20') : ''
-               }`}>
-                  {/* BASED (ETH) */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-r border-white/10 bg-white/5">
-                      <span className="text-[10px] text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
-                      <span className="text-xs font-bold text-white font-mono">
-                        {priceData ? `$${priceData.ethPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : "..."}
-                      </span>
+                 className="flex flex-col justify-center px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[140px]"
+               >
+                  {/* Row 1: BASED (ETH) */}
+                  <div className="flex items-center justify-between gap-3 text-[10px] leading-tight">
+                      <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
+                          <span className="font-bold text-white font-mono">
+                            {priceData ? `$${priceData.ethPrice.toFixed(4)}` : "..."}
+                          </span>
+                      </div>
+                      {priceData && (
+                        <span className={`font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                           {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(1)}%
+                        </span>
+                      )}
                   </div>
                   
-                  {/* BASED (L1) */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-black/20">
-                      <span className="text-[10px] text-muted-foreground font-mono font-bold">$BASED (L1):</span>
-                      <span className="text-xs font-bold text-cyan-400 font-mono">
-                        {priceData ? `$${priceData.basedL1Price.toFixed(4)}` : "..."}
+                  {/* Row 2: BASED (L1) */}
+                  <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
+                      <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
+                      <span className="font-bold text-cyan-400 font-mono">
+                        {priceData ? `$${priceData.basedL1Price.toFixed(7)}` : "..."}
                       </span>
                   </div>
-
-                  {/* Change */}
-                  {priceData && (
-                    <div className={`px-3 py-1.5 text-[10px] font-bold font-mono border-l border-white/10 ${priceData.change >= 0 ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'}`}>
-                       {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(2)}%
-                    </div>
-                  )}
                </div>
-            </div>
-
-            {/* Mobile Price Ticker (Visible < lg) */}
-            <div className="lg:hidden flex items-center ml-auto mr-2">
-                 {priceData && (
-                   <div className="flex flex-col items-end leading-none">
-                      <span className="text-[10px] text-cyan-400 font-mono font-bold">
-                        ${priceData.basedL1Price.toFixed(4)}
-                      </span>
-                      <span className={`text-[9px] font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {priceData.change >= 0 ? '▲' : '▼'}{Math.abs(priceData.change).toFixed(1)}%
-                      </span>
-                   </div>
-                 )}
             </div>
 
             {/* PWA Install Button - Desktop */}
