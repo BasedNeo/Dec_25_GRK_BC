@@ -12,8 +12,7 @@ import { Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { NFT_CONTRACT, BLOCK_EXPLORER, IPFS_ROOT } from "@/lib/constants";
 import { fetchTokenOwner, fetchTotalSupply, fetchTokenByIndex, fetchTokenURI } from "@/lib/onchain";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 import { useState, useEffect, useCallback } from "react";
 import { getRarityClass } from "@/lib/utils";
 
@@ -38,7 +37,14 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
     setMintedNFTs([]);
     setLoadedCount(0);
     
-    const total = await fetchTotalSupply();
+    // 1. Fetch Total Supply (Cached)
+    let total = getCached<number>(CACHE_KEYS.CONTRACT_STATE + '_total', 30 * 1000);
+    
+    if (total === null) {
+         total = await fetchTotalSupply();
+         if (total !== null) setCache(CACHE_KEYS.CONTRACT_STATE + '_total', total);
+    }
+
     if (total !== null) {
         setTotalMinted(total);
         // Initial load
@@ -70,6 +76,11 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
     for (let i = startIndex; i > endIndex; i--) {
         promises.push((async (index) => {
             try {
+                // Check Cache for Metadata
+                const cacheKey = `${CACHE_KEYS.NFT_METADATA}_${index}`;
+                const cached = getCached<Guardian>(cacheKey, 5 * 60 * 1000); // 5 min cache
+                if (cached) return cached;
+
                 // 1. Get Token ID by Index
                 const tokenId = await fetchTokenByIndex(index);
                 if (tokenId === null) return null;
@@ -112,7 +123,7 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                 const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity');
                 const rarity = rarityAttr ? rarityAttr.value : 'Common';
 
-                return {
+                const guardian = {
                     id: tokenId,
                     name: metadata.name,
                     image: '', // Not strictly needed for table but good to have
@@ -121,6 +132,9 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                     owner: owner || undefined,
                     traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || []
                 } as Guardian;
+
+                setCache(cacheKey, guardian);
+                return guardian;
 
             } catch (e) {
                 console.error(`Error fetching NFT at index ${index}`, e);

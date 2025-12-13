@@ -11,6 +11,15 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
 import { showToast } from "@/lib/customToast";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTokenPrice } from "@/hooks/useTokenPrice";
+import Untitled from "@assets/Untitled.png";
+
+interface NavbarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  isConnected: boolean; 
+}
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
