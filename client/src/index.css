@@ -11,24 +11,24 @@
 @layer base {
   :root {
     --background: 0 0% 0%; /* Black background */
-    --foreground: 0 0% 88%; /* #E0E0E0 */
+    --foreground: 0 0% 100%; /* White text */
 
     --card: 0 0% 3%;
-    --card-foreground: 0 0% 88%; /* #E0E0E0 */
+    --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 3%;
-    --popover-foreground: 0 0% 88%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 180 100% 50%; /* Cyan #00ffff */
     --primary-foreground: 0 0% 0%;
 
-    --secondary: 261 45% 75%; /* #BB86FC */
+    --secondary: 270 100% 50%; /* Purple #bf00ff */
     --secondary-foreground: 0 0% 100%;
 
     --muted: 215 27.9% 16.9%;
-    --muted-foreground: 0 0% 88%; /* #E0E0E0 */
+    --muted-foreground: 217.9 10.6% 64.9%;
 
-    --accent: 261 45% 75%; /* #BB86FC */
+    --accent: 270 100% 50%; /* Purple accent */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
@@ -56,7 +56,7 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     font-family: 'Exo 2', sans-serif;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 1.6;
     font-size: 0.875rem; /* text-sm default for mobile */
   }
@@ -67,21 +67,11 @@
     }
   }
 
-  h1, h2, .tab-name, .section-title {
+  h1, h2, h3, h4, h5, h6, .font-orbitron, .tab-name {
     font-family: 'Exo 2', sans-serif;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    color: #FFFFFF;
-    text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 30px #00FFFF, 0 0 40px #00FFFF;
-    line-height: 1.2;
-  }
-
-  h3, h4, h5, h6, .subheading {
-    font-family: 'Exo 2', sans-serif;
-    font-weight: 600;
-    color: #BB86FC;
-    text-shadow: 0 0 8px #BB86FC;
+    font-weight: 700;
     letter-spacing: 0.05em;
+    line-height: 1.4;
   }
   
   /* Ensure code elements keep monospace */
@@ -117,17 +107,7 @@
 }
 
 .text-glow {
-  text-shadow: 0 0 10px #00FFFF;
-}
-
-.text-primary {
-  color: #00FFFF;
-  text-shadow: 0 0 10px #00FFFF;
-}
-
-.text-secondary {
-  color: #BB86FC;
-  text-shadow: 0 0 8px #BB86FC;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3);
 }
 
 .cyber-button {
