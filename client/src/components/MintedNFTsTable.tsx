@@ -69,10 +69,15 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
             if (id === 3002) owner = 'Your wallet';
             else if (id === 149) owner = 'Test wallet';
 
+            // Normalize rarity for UI consistency
+            let rarityValue = rarityAttr?.value || 'Common';
+            if (rarityValue === 'Rarest (1/1s)') rarityValue = 'Rarest-Legendary';
+            if (rarityValue === 'Rarest') rarityValue = 'More Rare'; // Handle legacy/alternate naming
+
             return {
                 id,
                 name: json.name || `Guardian #${id}`,
-                rarity: rarityAttr?.value || 'Common',
+                rarity: rarityValue,
                 traits: bioAttr ? [{ type: 'Biological Type', value: bioAttr.value }] : [],
                 image: json.image || '', // Not strictly needed for table but good to have
                 owner,

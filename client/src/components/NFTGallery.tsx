@@ -474,12 +474,17 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
 
   const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
   
+  // Normalize rarity string
+  let normalizedRarity = rarityTrait;
+  if (normalizedRarity === 'Rarest (1/1s)') normalizedRarity = 'Rarest-Legendary';
+  if (normalizedRarity === 'Rarest') normalizedRarity = 'More Rare';
+
   // Find config, handle casing or partial matches if needed, but exact match is preferred
-  const rarityConfig = RARITY_CONFIG[rarityTrait] || RARITY_CONFIG['Common'];
-  const isCommon = rarityTrait === 'Common' || rarityTrait === 'Most Common';
+  const rarityConfig = RARITY_CONFIG[normalizedRarity] || RARITY_CONFIG['Common'];
+  const isCommon = normalizedRarity === 'Common' || normalizedRarity === 'Most Common';
 
   // Calculate Value with Rarity Boost
-  const backedValue = calculateBackedValue(rarityTrait);
+  const backedValue = calculateBackedValue(normalizedRarity);
 
   return (
     <Card 
