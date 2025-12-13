@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --font-orbitron: 'Exo 2', sans-serif;
+  --font-display: 'Exo 2', sans-serif;
+  --font-sans: 'Rajdhani', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 @layer base {
   :root {
     --background: 0 0% 0%; /* Black background */
@@ -47,6 +55,28 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 500;
+    line-height: 1.6;
+    font-size: 0.875rem; /* text-sm default for mobile */
+  }
+
+  @media (min-width: 768px) {
+    body {
+      font-size: 1rem; /* text-base for desktop */
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-orbitron, .tab-name {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+  }
+  
+  /* Ensure code elements keep monospace */
+  code, pre, .font-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
   
   /* Mobile optimizations */
