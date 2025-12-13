@@ -131,6 +131,25 @@
   left: 100%;
 }
 
+.btn-cyber-gradient {
+  background: linear-gradient(to right, #6366f1, #a855f7); /* Indigo to Purple */
+  color: white;
+  border: none;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-cyber-gradient:hover {
+  background: linear-gradient(to right, #4f46e5, #9333ea);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.7);
+}
+
 .bg-grid-white {
   background-image: 
     linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),

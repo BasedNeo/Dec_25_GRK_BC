@@ -196,6 +196,20 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                </div>
             </div>
 
+            {/* Mobile Price Ticker (Visible < lg) */}
+            <div className="lg:hidden flex items-center ml-auto mr-2">
+                 {priceData && (
+                   <div className="flex flex-col items-end leading-none">
+                      <span className="text-[10px] text-cyan-400 font-mono font-bold">
+                        ${priceData.basedL1Price.toFixed(4)}
+                      </span>
+                      <span className={`text-[9px] font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {priceData.change >= 0 ? '▲' : '▼'}{Math.abs(priceData.change).toFixed(1)}%
+                      </span>
+                   </div>
+                 )}
+            </div>
+
             {/* PWA Install Button - Desktop */}
             {deferredPrompt && (
                 <Button 

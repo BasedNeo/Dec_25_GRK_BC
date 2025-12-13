@@ -863,7 +863,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     ) : (
                         <>
                             {hasPrice && (
-                                <Button className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 border-none font-bold px-2 shadow-[0_0_10px_rgba(99,102,241,0.3)] transition-all" onClick={onBuy}>
+                                <Button className="flex-1 btn-cyber-gradient" onClick={onBuy}>
                                     BUY
                                 </Button>
                             )}

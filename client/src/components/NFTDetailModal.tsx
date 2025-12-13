@@ -320,7 +320,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                          </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <Button className="flex-1 sm:w-32 bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 border-none font-orbitron font-bold tracking-wider shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all hover:-translate-y-0.5">
+                        <Button className="flex-1 sm:w-32 btn-cyber-gradient">
                             BUY NOW
                         </Button>
                         <Button variant="outline" className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider">
