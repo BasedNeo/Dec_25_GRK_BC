@@ -26,8 +26,12 @@ export function useTokenPrice() {
       const data = await res.json();
       const tokenData = data[TOKEN_ID];
       
+      // Calculate L1 Price = ETH Price / 1000
+      const ethPrice = tokenData?.usd || 0;
+      const l1Price = ethPrice / 1000;
+      
       return {
-        usd: tokenData?.usd || 0,
+        usd: l1Price,
         change: tokenData?.usd_24h_change || 0
       };
     },

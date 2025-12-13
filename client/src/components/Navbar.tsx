@@ -169,9 +169,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/40 backdrop-blur-md transition-colors ${
                  priceData ? (priceData.change >= 0 ? 'border-green-500/20' : 'border-red-500/20') : ''
                }`}>
-                  <span className="text-xs text-muted-foreground font-mono">$BASED:</span>
+                  <span className="text-xs text-muted-foreground font-mono">$BASED (L1):</span>
                   <span className="text-sm font-bold text-white font-mono">
-                    {priceData ? `$${priceData.usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+                    {priceData ? `$${priceData.usd.toFixed(4)}` : "..."}
                   </span>
                   {priceData && (
                     <span className={`text-xs font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>

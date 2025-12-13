@@ -1,0 +1,327 @@
+Add a live $BASED L1 price feed to the header.
+
+═══════════════════════════════════════════════════════════════
+                     IMPORTANT: PRICE CONVERSION
+═══════════════════════════════════════════════════════════════
+
+The CoinGecko price is for $BASED on Ethereum.
+The BasedAI L1 token is 1000:1 ratio.
+
+CONVERSION:
+L1 Price = ETH Price / 1000
+
+Example:
+- CoinGecko shows: $150.00 (ETH $BASED)
+- L1 Price displays: $0.15 (L1 $BASED)
+
+═══════════════════════════════════════════════════════════════
+                     TOKEN INFORMATION
+═══════════════════════════════════════════════════════════════
+
+Token: BasedAI ($BASED)
+CoinGecko ID: basedai
+ETH Contract: 0x44971abf0251958492fee97da3e5c5ada88b9185
+L1 Ratio: 1000:1 (L1 tokens are 1/1000th the ETH price)
+
+═══════════════════════════════════════════════════════════════
+                     API ENDPOINT
+═══════════════════════════════════════════════════════════════
+
+CoinGecko Free API:
+GET https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true
+
+Response:
+{
+  "basedai": {
+    "usd": 150.00,        ← ETH price
+    "usd_24h_change": 2.5
+  }
+}
+
+After conversion:
+L1 Price = 150.00 / 1000 = $0.15
+
+═══════════════════════════════════════════════════════════════
+                     HEADER DESIGN
+═══════════════════════════════════════════════════════════════
+
+Display in header near network badge:
+
+┌─────────────────────────────────────────────────────────────┐
+│              🛡️ Based Guardians                             │
+│           Live Minting Dashboard                            │
+│                                                             │
+│  [🟢 BasedAI Network]    [$BASED (L1): $0.1500 ▲ +2.5%]    │
+└─────────────────────────────────────────────────────────────┘
+
+Note: Label as "$BASED (L1)" to be clear it's L1 price
+
+═══════════════════════════════════════════════════════════════
+                     IMPLEMENTATION
+═══════════════════════════════════════════════════════════════
+
+1. HTML - Add in header section:
+
+<div class="price-badge" id="priceBadge">
+  <span class="price-icon">💰</span>
+  <span class="price-label">$BASED (L1):</span>
+  <span class="price-value" id="basedPrice">--</span>
+  <span class="price-change" id="priceChange">--%</span>
+</div>
+
+2. CSS - Style matching existing badges:
+
+.price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card, #1a1a25);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  margin-left: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--border, #2a2a3a);
+}
+
+.price-icon {
+  font-size: 1rem;
+}
+
+.price-label {
+  color: var(--text-secondary, #a0a0b0);
+  font-size: 0.85rem;
+}
+
+.price-value {
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+}
+
+.price-change {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+.price-change.positive {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.price-change.negative {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.price-badge.loading .price-value,
+.price-badge.loading .price-change {
+  opacity: 0.5;
+}
+
+3. JavaScript - Fetch, convert, and display:
+
+class BasedPriceFeed {
+  constructor() {
+    this.apiUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true';
+    this.L1_RATIO = 1000; // L1 is 1/1000th of ETH price
+    this.updateInterval = 60000; // 60 seconds
+    this.init();
+  }
+
+  async init() {
+    await this.fetchPrice();
+    setInterval(() => this.fetchPrice(), this.updateInterval);
+  }
+
+  async fetchPrice() {
+    const badge = document.getElementById('priceBadge');
+    const priceEl = document.getElementById('basedPrice');
+    const changeEl = document.getElementById('priceChange');
+    
+    if (!priceEl || !changeEl) {
+      console.warn('Price elements not found');
+      return;
+    }
+    
+    try {
+      badge?.classList.add('loading');
+      
+      const response = await fetch(this.apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.basedai && data.basedai.usd) {
+        // ═══════════════════════════════════════
+        // CONVERT TO L1 PRICE (divide by 1000)
+        // ═══════════════════════════════════════
+        const ethPrice = data.basedai.usd;
+        const l1Price = ethPrice / this.L1_RATIO;
+        const change24h = data.basedai.usd_24h_change || 0;
+        
+        // Format L1 price
+        priceEl.textContent = this.formatL1Price(l1Price);
+        
+        // Format 24h change with arrow
+        const isPositive = change24h >= 0;
+        const arrow = isPositive ? '▲' : '▼';
+        changeEl.textContent = `${arrow} ${Math.abs(change24h).toFixed(2)}%`;
+        changeEl.className = `price-change ${isPositive ? 'positive' : 'negative'}`;
+        
+        // Cache for offline/rate-limit scenarios
+        this.cachePrice(l1Price, change24h);
+        
+        console.log(`$BASED L1 Price: $${l1Price.toFixed(4)} (ETH: $${ethPrice.toFixed(2)})`);
+        
+      } else {
+        throw new Error('Invalid API response');
+      }
+      
+    } catch (error) {
+      console.error('Price fetch failed:', error);
+      
+      // Try to use cached price
+      const cached = this.getCachedPrice();
+      if (cached) {
+        priceEl.textContent = this.formatL1Price(cached.price);
+        changeEl.textContent = '(cached)';
+        changeEl.className = 'price-change';
+      } else {
+        priceEl.textContent = '--';
+        changeEl.textContent = 'unavailable';
+        changeEl.className = 'price-change';
+      }
+      
+    } finally {
+      badge?.classList.remove('loading');
+    }
+  }
+
+  formatL1Price(price) {
+    // L1 prices will be small (ETH price / 1000)
+    // So show more decimal places
+    if (price >= 100) {
+      return `$${price.toFixed(2)}`;
+    } else if (price >= 10) {
+      return `$${price.toFixed(3)}`;
+    } else if (price >= 1) {
+      return `$${price.toFixed(4)}`;
+    } else if (price >= 0.01) {
+      return `$${price.toFixed(4)}`;
+    } else if (price >= 0.0001) {
+      return `$${price.toFixed(6)}`;
+    } else {
+      return `$${price.toFixed(8)}`;
+    }
+  }
+
+  cachePrice(price, change) {
+    try {
+      localStorage.setItem('based_l1_price', JSON.stringify({
+        price,
+        change,
+        timestamp: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  getCachedPrice() {
+    try {
+      const cached = localStorage.getItem('based_l1_price');
+      if (cached) {
+        const data = JSON.parse(cached);
+        // Use cache if less than 5 minutes old
+        if (Date.now() - data.timestamp < 300000) {
+          return data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  new BasedPriceFeed();
+});
+
+═══════════════════════════════════════════════════════════════
+                     MINT COST CALCULATION (BONUS)
+═══════════════════════════════════════════════════════════════
+
+Optional: Show mint cost in USD based on L1 price
+
+MINT_PRICE = 69,420 $BASED (L1)
+
+Add to stats or near mint price:
+
+function updateMintCostUSD(l1Price) {
+  const mintPriceTokens = 69420;
+  const mintCostUSD = mintPriceTokens * l1Price;
+  
+  const mintCostEl = document.getElementById('mintCostUSD');
+  if (mintCostEl) {
+    mintCostEl.textContent = `≈ $${mintCostUSD.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })} USD`;
+  }
+}
+
+// Call after price fetch:
+updateMintCostUSD(l1Price);
+
+This shows users: "Mint Price: 69,420 $BASED ≈ $XXX.XX USD"
+
+═══════════════════════════════════════════════════════════════
+                     PRICE EXAMPLES
+═══════════════════════════════════════════════════════════════
+
+If CoinGecko shows ETH $BASED at:
+- $150.00 → L1 displays: $0.1500
+- $200.00 → L1 displays: $0.2000
+- $75.50  → L1 displays: $0.0755
+- $1000   → L1 displays: $1.0000
+
+Mint cost (69,420 tokens) at various L1 prices:
+- L1 @ $0.15 → Mint = $10,413 USD
+- L1 @ $0.10 → Mint = $6,942 USD
+- L1 @ $0.05 → Mint = $3,471 USD
+
+═══════════════════════════════════════════════════════════════
+                     CSP UPDATE (if applicable)
+═══════════════════════════════════════════════════════════════
+
+If using Content Security Policy, ensure CoinGecko is allowed:
+
+connect-src 'self' 
+  https://mainnet.basedaibridge.com 
+  https://*.mypinata.cloud 
+  https://api.coingecko.com;
+
+═══════════════════════════════════════════════════════════════
+                     DON'T CHANGE
+═══════════════════════════════════════════════════════════════
+
+- Existing header layout
+- Existing network badge
+- Other dashboard components
+- Visual theme/colors
+
+Only ADD the price badge element and its functionality.
+
+═══════════════════════════════════════════════════════════════
+                     TEST CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+□ Price displays on page load
+□ Shows L1 price (ETH price ÷ 1000)
+□ 24h change shows with correct arrow/color
+□ Auto-updates every 60 seconds
+□ Console shows: "$BASED L1 Price: $X.XXXX (ETH: $XXX.XX)"
+□ Falls back to cached price on network error
+□ Displays "unavailable" if no cache and API fails
