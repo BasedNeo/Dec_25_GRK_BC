@@ -15,10 +15,11 @@ import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
 import { fetchTotalSupply } from "@/lib/onchain";
-import { fetchGuardianMetadata } from "@/lib/ipfs";
+import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 import { AverageStatsChart } from "./AverageStatsChart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MintedNFTsTable } from "./MintedNFTsTable";
+import { RarityChart } from "./RarityChart";
 import { Guardian } from "@/lib/mockData";
 
 export function Hero() {
@@ -28,11 +29,19 @@ export function Hero() {
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
   
-  // Rarity Sync State
-  const [isUpdatingRarity, setIsUpdatingRarity] = useState(false);
-  const [classifiedCount, setClassifiedCount] = useState(0);
-  const [currentSupply, setCurrentSupply] = useState(0);
-  
+  // Shared Data State
+  const [mintedData, setMintedData] = useState<{
+    nfts: Guardian[];
+    distribution: Record<string, number>;
+    totalMinted: number;
+    isLoading: boolean;
+  }>({
+    nfts: [],
+    distribution: {},
+    totalMinted: 0,
+    isLoading: true
+  });
+
   // Default Rarity Data Structure
   const [rarityStats, setRarityStats] = useState([
     { name: 'Rarest-Legendary', value: 127, color: '#22d3ee', minted: 0 }, // 3.4% (Cyan)
@@ -48,70 +57,63 @@ export function Hero() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
 
-  // Live Rarity Sync Logic
-  const fetchLiveRarity = async () => {
-    setIsUpdatingRarity(true);
+  // Unified Fetching Logic
+  const fetchAllMintedData = async () => {
+    setMintedData(prev => ({ ...prev, isLoading: true }));
     try {
-        // 1. Get Live Supply
+        // 1. Get Live Supply from Contract
         const supply = await fetchTotalSupply();
-        // User Requirement: ONLY display actually minted NFTs. No fallback to MINTED_COUNT.
-        const activeSupply = supply !== null ? supply : 0;
+        const totalMinted = supply !== null ? supply : 0;
         
-        setCurrentSupply(activeSupply);
-        
-        // 2. Fetch Metadata for ALL Minted Tokens (or limit to a reasonable batch for perf)
-        // User requested: "Ensure total classified = minted"
-        // We will fetch all minted tokens to build accurate stats. 
-        // Note: For large collections, this should be indexed server-side, but for this mockup/MVP we fetch client-side.
-        
-        const counts: Record<string, number> = {};
-        let processed = 0;
+        // 2. Load ALL Guardians from CSV
+        const allGuardians = await loadGuardiansFromCSV();
 
-        // Create array of IDs 1 to activeSupply
-        const idsToFetch = Array.from({ length: activeSupply }, (_, i) => i + 1);
-        
-        // Fetch in batches of 20
-        const BATCH_SIZE = 20;
-        for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
-            const batch = idsToFetch.slice(i, i + BATCH_SIZE);
-            const results = await Promise.all(batch.map(id => fetchGuardianMetadata(id)));
-            
-            results.forEach(g => {
-                let r = g.rarity || 'Common';
-                if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
-                if (r === 'Rarest') r = 'More Rare';
-                if (r === 'Legendary') r = 'Rarest-Legendary';
-                if (r === 'Epic') r = 'Very Rare'; // Map standard terms if they differ
-                
-                // Map based on the 8 levels requested
-                // Most Common, Common, Less Common, Less Rare, Rare, More Rare, Very Rare, Rarest-Legendary
-                
-                counts[r] = (counts[r] || 0) + 1;
-                processed++;
-            });
-            
-            // Update progress if needed
-        }
+        // 3. Filter for Minted Only (assuming sequential IDs 1..totalMinted)
+        // In a real scenario where IDs are not sequential (burned?), we would need `fetchTokenByIndex`.
+        // But for this mockup/MVP, and standard ERC721Enumerable sequential mints, this works.
+        const mintedNfts = allGuardians.filter(g => g.id <= totalMinted);
 
-        setRarityStats(prev => prev.map(item => ({
-            ...item,
-            minted: counts[item.name] || 0
-        })));
+        // 4. Calculate Distribution
+        const distribution: Record<string, number> = {
+            "Rarest-Legendary": 0,
+            "Very Rare": 0,
+            "More Rare": 0,
+            "Rare": 0,
+            "Less Rare": 0,
+            "Less Common": 0,
+            "Common": 0,
+            "Most Common": 0
+        };
+
+        mintedNfts.forEach(nft => {
+            if (distribution[nft.rarity] !== undefined) {
+                distribution[nft.rarity]++;
+            } else {
+                // Fallback mapping if CSV has different names
+                if (nft.rarity === 'Legendary') distribution["Rarest-Legendary"]++;
+                else distribution["Common"]++;
+            }
+        });
+
+        setMintedData({
+            nfts: mintedNfts,
+            distribution,
+            totalMinted,
+            isLoading: false
+        });
         
-        setClassifiedCount(processed);
         setLastUpdated(new Date());
         setSecondsAgo(0);
-        
+
     } catch (e) {
-        console.error("Rarity Sync Failed", e);
-    } finally {
-        setIsUpdatingRarity(false);
+        console.error("Failed to fetch all minted data:", e);
+        setMintedData(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   useEffect(() => {
-    fetchLiveRarity();
-    const interval = setInterval(fetchLiveRarity, 15 * 60 * 1000); // Poll every 15 minutes
+    fetchAllMintedData();
+    const interval = setInterval(fetchAllMintedData, 15000); // Poll every 15s
     return () => clearInterval(interval);
   }, []);
 
@@ -131,9 +133,9 @@ export function Hero() {
   const rounded = useTransform(count, Math.round);
 
   useEffect(() => {
-    const animation = animate(count, currentSupply, { duration: 2, ease: "easeOut" });
+    const animation = animate(count, mintedData.totalMinted, { duration: 2, ease: "easeOut" });
     return animation.stop;
-  }, [currentSupply]);
+  }, [mintedData.totalMinted]);
 
   // Fetch Real Guardian #3000 as requested
   const { data: searchData, isLoading: isLoadingGuardian } = useGuardians(false, true, { search: "3000" });
@@ -142,18 +144,11 @@ export function Hero() {
   // Calculate Backing Value (Live)
   const [backingValue, setBackingValue] = useState(calculateBackedValue());
 
-  // Rarity Data for Chart - REMOVED (Replaced by State)
-
   useEffect(() => {
     const interval = setInterval(() => {
         setBackingValue(calculateBackedValue());
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // animate(count, MINTED_COUNT... moved to up to currentSupply
-    return () => {};
   }, []);
 
   // Smart Contract Interaction Mock:
@@ -193,22 +188,11 @@ export function Hero() {
         variant: "default",
         className: "bg-black border-primary text-primary font-orbitron",
       });
-    }, 2000);
-  };
+      
+      // Refresh Data after mint
+      fetchAllMintedData();
 
-  const handlePasskeyConnect = () => {
-      toast({
-        title: "Passkey Auth Initiated",
-        description: "Scanning for Face ID / Touch ID...",
-        className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
-      });
-      setTimeout(() => {
-          toast({
-              title: "Authentication Successful",
-              description: "Secure enclave signature verified.",
-              className: "bg-black border-green-500 text-green-500 font-orbitron",
-          });
-      }, 1500);
+    }, 2000);
   };
 
   const increment = () => setMintQuantity(prev => Math.min(prev + 1, 10));
@@ -281,65 +265,29 @@ export function Hero() {
             <div className="w-full h-2 bg-secondary rounded-full overflow-hidden mb-8">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(currentSupply / TOTAL_SUPPLY) * 100}%` }}
+                animate={{ width: `${(mintedData.totalMinted / TOTAL_SUPPLY) * 100}%` }}
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-primary to-accent"
               />
             </div>
 
-            {/* Rarity Distribution Bars */}
-            <div className="mb-6 w-full space-y-3 pr-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                 <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                     <span className="text-xs text-muted-foreground font-orbitron tracking-widest">
-                        RARITY DISTRIBUTION
-                     </span>
-                     <div className="flex items-center gap-2">
-                         {isUpdatingRarity && <Loader2 size={10} className="animate-spin text-primary" />}
-                         <span className="text-[10px] text-muted-foreground font-mono">
-                             {TOTAL_SUPPLY.toLocaleString()} TOTAL | <span className="text-white">{classifiedCount.toLocaleString()} CLASSIFIED</span>
-                         </span>
-                         <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-primary" onClick={fetchLiveRarity} disabled={isUpdatingRarity}>
-                             <RefreshCw size={10} className={isUpdatingRarity ? "animate-spin" : ""} />
-                         </Button>
-                     </div>
-                 </div>
-                 
-                 {rarityStats.map((item, index) => {
-                    // Real dynamic data from sync
-                    const safeMinted = item.minted;
-                    // Percentage for width (relative to TOTAL supply or relative to ITEM max?)
-                    // Usually bars show progress towards cap.
-                    const percent = Math.min(100, (safeMinted / item.value) * 100);
-                    
-                    return (
-                        <div key={index} className="space-y-1 group">
-                            <div className="flex justify-between text-[10px] uppercase font-mono text-muted-foreground group-hover:text-white transition-colors">
-                                <span style={{ color: item.color }}>{item.name}</span>
-                                <span>{safeMinted} / {item.value}</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${percent}%` }}
-                                    transition={{ duration: 1.5, delay: index * 0.05 }}
-                                    className="h-full rounded-full shadow-[0_0_10px_currentColor]"
-                                    style={{ backgroundColor: item.color, color: item.color }}
-                                />
-                            </div>
-                        </div>
-                    );
-                 })}
-                 
-                 {/* Disclaimer */}
-                 <div className="mt-4 pt-2 border-t border-white/5 text-[10px] text-gray-600 font-mono text-center">
-                    Live sync; rarity based on minted metadata. Estimates only.
-                    <span className="block mt-1 text-primary/40">Last updated: {secondsAgo}s ago</span>
-                 </div>
+            {/* Rarity Chart (New Component) */}
+            <RarityChart 
+                mintedCount={mintedData.nfts.length}
+                totalMinted={mintedData.totalMinted}
+                distribution={mintedData.distribution}
+            />
+            
+            <div className="mb-4 text-[10px] text-gray-600 font-mono text-center">
+                 Live sync; rarity based on minted metadata.
+                 <span className="block mt-1 text-primary/40">Last updated: {secondsAgo}s ago</span>
             </div>
 
-            {/* Minted NFTs Table */}
+            {/* Minted NFTs Table (Shared Data) */}
             <MintedNFTsTable 
-                totalMinted={currentSupply}
+                nfts={mintedData.nfts}
+                isLoading={mintedData.isLoading}
+                onRefresh={fetchAllMintedData}
             />
 
             <div className="flex justify-between items-center mb-8 pt-6">

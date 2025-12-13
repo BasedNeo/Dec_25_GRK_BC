@@ -1,0 +1,84 @@
+Add a Rarity Distribution Chart that syncs with Minted NFT Details.
+
+═══════════════════════════════════════════════════════════════
+                     SHARED DATA SOURCE
+═══════════════════════════════════════════════════════════════
+
+Create ONE function that fetches all minted NFTs and feeds BOTH components:
+
+async function fetchAllMintedData() {
+  const totalMinted = await contract.totalMinted();
+  const nfts = [];
+  const distribution = {
+    "Rarest-Legendary": 0,
+    "Very Rare": 0,
+    "More Rare": 0,        // ← Note: "More Rare" not "Rarest"
+    "Rare": 0,
+    "Less Rare": 0,
+    "Less Common": 0,
+    "Common": 0,
+    "Most Common": 0
+  };
+  
+  // Fetch in parallel
+  const promises = [];
+  for (let i = 0; i < totalMinted; i++) {
+    promises.push(fetchNFTData(i));
+  }
+  const results = await Promise.all(promises);
+  
+  results.forEach(nft => {
+    nfts.push(nft);
+    distribution[nft.rarity]++;
+  });
+  
+  return { nfts, distribution, totalMinted };
+}
+
+// Use this data for BOTH:
+// 1. Rarity Chart
+// 2. Minted NFT Details grid
+
+═══════════════════════════════════════════════════════════════
+                     RARITY CHART DESIGN
+═══════════════════════════════════════════════════════════════
+
+POSITION: Above "Recent Mints" / "Minted NFT Details"
+
+LAYOUT:
+┌─────────────────────────────────────────────────────────────┐
+│  📊 Rarity Distribution                    (6 Minted)       │
+├─────────────────────────────────────────────────────────────┤
+│  Rarest-Legendary  ████████████████          1  (16.7%)     │
+│  Very Rare         ░░░░░░░░░░░░░░░░          0  (0%)        │
+│  More Rare         ████████████████████████  2  (33.3%)     │
+│  Rare              ████████████████          1  (16.7%)     │
+│  Less Rare         ░░░░░░░░░░░░░░░░          0  (0%)        │
+│  Less Common       ████████████████          1  (16.7%)     │
+│  Common            ░░░░░░░░░░░░░░░░          0  (0%)        │
+│  Most Common       ████████████████          1  (16.7%)     │
+└─────────────────────────────────────────────────────────────┘
+
+COLORS:
+const RARITY_COLORS = {
+  "Rarest-Legendary": "linear-gradient(90deg, #ffd700, #ff8c00)",
+  "Very Rare": "#9333ea",
+  "More Rare": "#dc2626",
+  "Rare": "#f59e0b",
+  "Less Rare": "#3b82f6",
+  "Less Common": "#22c55e",
+  "Common": "#6b7280",
+  "Most Common": "#374151"
+};
+
+ANIMATION: Bars grow from 0 to full width on load (0.5s ease-out)
+
+═══════════════════════════════════════════════════════════════
+                     CRITICAL RULES
+═══════════════════════════════════════════════════════════════
+
+1. Fetch data ONCE, share between components
+2. Match rarity names EXACTLY (case-sensitive)
+3. Update both when new mint detected
+4. Don't change existing UI/card designs
+5. Match existing dark theme styling
