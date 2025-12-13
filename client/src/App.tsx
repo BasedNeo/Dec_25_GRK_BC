@@ -19,6 +19,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 import { DebugBuyButtons } from "@/components/DebugBuyButtons";
 import { WalletWatcher } from "@/components/WalletWatcher";
+import { DebugRPC } from "@/components/DebugRPC";
 
 function Router() {
   return (
@@ -54,6 +55,7 @@ function App() {
               <GlobalBuyListener />
               <DebugBuyButtons />
               <WalletWatcher />
+              <DebugRPC />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>
