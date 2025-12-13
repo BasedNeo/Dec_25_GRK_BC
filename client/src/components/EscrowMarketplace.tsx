@@ -28,6 +28,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trackEvent, trackSearch } from "@/lib/analytics";
 import { ethers } from "ethers";
+import { ContractService } from "@/lib/contractService";
 
 import { useGuardians } from "@/hooks/useGuardians";
 import Fuse from 'fuse.js';

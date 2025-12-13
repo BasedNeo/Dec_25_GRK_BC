@@ -7,6 +7,7 @@ import Fuse from 'fuse.js';
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 import { fetchTokenByIndex, fetchTokenOwner, fetchTokenURI, fetchTotalSupply } from "@/lib/onchain";
 import { IPFS_ROOT } from "@/lib/constants";
+import { ContractService } from "@/lib/contractService";
 
 export interface GuardianFilters {
   search?: string;
@@ -217,9 +218,12 @@ export function useGuardians(
       
       // 2. LIVE CHAIN MODE (Default for Collection/Minted view)
       try {
-        // Fetch Total Supply first
-        const totalMinted = await fetchTotalSupply();
-        if (totalMinted === null || totalMinted === 0) {
+        // Fetch Total Supply first - try ContractService first, fallback to viem
+        let totalMinted = await ContractService.getTotalMinted();
+        if (totalMinted === 0) {
+            totalMinted = await fetchTotalSupply() || 0;
+        }
+        if (totalMinted === 0) {
             return { nfts: [], nextCursor: undefined };
         }
 
