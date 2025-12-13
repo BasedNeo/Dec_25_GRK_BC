@@ -19,6 +19,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Security } from "@/lib/security";
 import { getRarityClass } from "@/lib/utils";
 import { BuyButton } from "./BuyButton";
+import { NFTImage } from "./NFTImage";
 
 interface NFTDetailModalProps {
   isOpen: boolean;

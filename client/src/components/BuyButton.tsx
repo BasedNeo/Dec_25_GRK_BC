@@ -39,7 +39,7 @@ export function BuyButton({
   };
 
   const variantClasses = {
-    primary: "btn-cyber-gradient text-white hover:opacity-90 border-0 shadow-[0_0_15px_rgba(0,255,255,0.3)]",
+    primary: "buy-btn btn-cyber-gradient text-white hover:opacity-90 border-0 shadow-[0_0_15px_rgba(0,255,255,0.3)]",
     secondary: "bg-white/10 text-white hover:bg-white/20 border-white/10",
     outline: "border-primary/50 text-primary hover:bg-primary/10",
     ghost: "hover:bg-white/5 text-muted-foreground hover:text-white"
@@ -48,7 +48,7 @@ export function BuyButton({
   return (
     <Button 
       className={cn(
-        "font-orbitron tracking-wider font-bold transition-all duration-300 group relative overflow-hidden",
+        "buy-btn font-orbitron tracking-wider font-bold transition-all duration-300 group relative overflow-hidden",
         sizeClasses[size],
         variantClasses[variant],
         className
