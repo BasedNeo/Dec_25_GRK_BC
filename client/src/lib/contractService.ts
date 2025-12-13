@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { RPC_URL, NFT_CONTRACT, IPFS_ROOT, CHAIN_ID } from './constants';
+import { NFT_CONTRACT, IPFS_ROOT, CHAIN_ID } from './constants';
 import { CacheService, CACHE_DURATIONS, CACHE_KEYS } from './cache';
 
 export interface NFTMetadata {
@@ -32,11 +32,15 @@ class ContractServiceClass {
   private contract: ethers.Contract | null = null;
   private isInitialized: boolean = false;
   private initPromise: Promise<boolean> | null = null;
+  private currentRpcIndex: number = 0;
 
   private config = {
     address: NFT_CONTRACT,
-    rpcUrl: RPC_URL,
     chainId: CHAIN_ID,
+    rpcUrls: [
+      'https://mainnet.basedaibridge.com/rpc',
+      'https://rpc.basedaibridge.com'
+    ],
     metadataBaseUri: IPFS_ROOT
   };
 
@@ -53,7 +57,9 @@ class ContractServiceClass {
     'function ownerOf(uint256 tokenId) view returns (address)',
     'function tokenURI(uint256 tokenId) view returns (string)',
     'function tokenByIndex(uint256 index) view returns (uint256)',
-    'function balanceOf(address owner) view returns (uint256)'
+    'function balanceOf(address owner) view returns (uint256)',
+    'function mint(uint256 quantity) payable',
+    'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
   ];
 
   async initialize(): Promise<boolean> {
@@ -61,24 +67,79 @@ class ContractServiceClass {
     
     if (this.initPromise) return this.initPromise;
 
-    this.initPromise = this._doInitialize();
+    this.initPromise = this._tryConnect();
     return this.initPromise;
   }
 
-  private async _doInitialize(): Promise<boolean> {
-    try {
-      this.provider = new ethers.JsonRpcProvider(this.config.rpcUrl);
-      this.contract = new ethers.Contract(this.config.address, this.abi, this.provider);
+  private async _tryConnect(): Promise<boolean> {
+    const maxAttempts = 3;
+    const rpcUrls = this.config.rpcUrls;
 
-      await this.provider.getBlockNumber();
-      this.isInitialized = true;
-      console.log('[ContractService] Initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('[ContractService] Initialization failed:', error);
-      this.initPromise = null;
-      return false;
+    for (let rpcIndex = 0; rpcIndex < rpcUrls.length; rpcIndex++) {
+      const rpcUrl = rpcUrls[rpcIndex];
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          console.log(`[ContractService] Connecting to ${rpcUrl} (attempt ${attempt + 1})`);
+
+          this.provider = new ethers.JsonRpcProvider(rpcUrl, {
+            chainId: this.config.chainId,
+            name: 'BasedAI'
+          });
+
+          const blockPromise = this.provider.getBlockNumber();
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Connection timeout')), 10000)
+          );
+
+          await Promise.race([blockPromise, timeoutPromise]);
+
+          this.contract = new ethers.Contract(
+            this.config.address,
+            this.abi,
+            this.provider
+          );
+
+          await this.contract.name();
+
+          this.isInitialized = true;
+          this.currentRpcIndex = rpcIndex;
+          console.log(`[ContractService] Connected successfully to ${rpcUrl}`);
+          return true;
+
+        } catch (error: any) {
+          console.warn(`[ContractService] Attempt ${attempt + 1} failed for ${rpcUrl}:`, error.message);
+          await this._delay(1000 * (attempt + 1));
+        }
+      }
     }
+
+    this.initPromise = null;
+    console.error('[ContractService] Failed to connect after all retries');
+    return false;
+  }
+
+  private _delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async callContract<T>(method: string, ...args: any[]): Promise<T> {
+    await this.initialize();
+    if (!this.contract) throw new Error('Contract not initialized');
+
+    let lastError: Error | null = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        return await this.contract[method](...args);
+      } catch (error: any) {
+        lastError = error;
+        if (error.code === 'CALL_EXCEPTION') {
+          throw error;
+        }
+        await this._delay(1000 * (i + 1));
+      }
+    }
+    throw lastError || new Error(`Contract call ${method} failed`);
   }
 
   async getContractStats(): Promise<ContractStats | null> {
@@ -91,12 +152,14 @@ class ContractServiceClass {
 
       const [totalMinted, maxSupply, mintPrice, publicMintEnabled, revealed, paused] =
         await Promise.all([
-          this.contract.totalSupply().catch(() => this.contract!.totalMinted().catch(() => BigInt(0))),
-          this.contract.MAX_SUPPLY(),
-          this.contract.MINT_PRICE(),
-          this.contract.publicMintEnabled().catch(() => true),
-          this.contract.revealed().catch(() => true),
-          this.contract.paused().catch(() => false)
+          this.callContract<bigint>('totalSupply').catch(() => 
+            this.callContract<bigint>('totalMinted').catch(() => BigInt(0))
+          ),
+          this.callContract<bigint>('MAX_SUPPLY'),
+          this.callContract<bigint>('MINT_PRICE'),
+          this.callContract<boolean>('publicMintEnabled').catch(() => true),
+          this.callContract<boolean>('revealed').catch(() => true),
+          this.callContract<boolean>('paused').catch(() => false)
         ]);
 
       const mintedNum = Number(totalMinted);
@@ -130,10 +193,10 @@ class ContractServiceClass {
 
       let totalMinted: number;
       try {
-        totalMinted = Number(await this.contract.totalSupply());
+        totalMinted = Number(await this.callContract<bigint>('totalSupply'));
       } catch {
         try {
-          totalMinted = Number(await this.contract.totalMinted());
+          totalMinted = Number(await this.callContract<bigint>('totalMinted'));
         } catch {
           return { nfts: [], total: 0, hasMore: false };
         }
@@ -152,9 +215,11 @@ class ContractServiceClass {
           batchPromises.push(this.fetchNFTByIndex(i));
         }
 
-        const results = await Promise.all(batchPromises);
+        const results = await Promise.allSettled(batchPromises);
         results.forEach(result => {
-          if (result) nfts.push(result);
+          if (result.status === 'fulfilled' && result.value) {
+            nfts.push(result.value);
+          }
         });
       }
 
@@ -169,8 +234,8 @@ class ContractServiceClass {
     try {
       if (!this.contract) return null;
 
-      const tokenId = await this.contract.tokenByIndex(index);
-      const owner = await this.contract.ownerOf(tokenId);
+      const tokenId = await this.callContract<bigint>('tokenByIndex', index);
+      const owner = await this.callContract<string>('ownerOf', tokenId);
       const metadata = await this.fetchMetadata(Number(tokenId));
 
       return {
@@ -189,7 +254,8 @@ class ContractServiceClass {
     try {
       const url = `${this.config.metadataBaseUri}${tokenId}.json`;
       const response = await fetch(url, { 
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(10000),
+        headers: { 'Accept': 'application/json' }
       });
       if (!response.ok) throw new Error('Metadata fetch failed');
       return await response.json();
@@ -204,22 +270,22 @@ class ContractServiceClass {
       const initialized = await this.initialize();
       if (!initialized || !this.contract) return [];
 
-      const balance = Number(await this.contract.balanceOf(userAddress));
+      const balance = Number(await this.callContract<bigint>('balanceOf', userAddress));
       if (balance === 0) return [];
 
       const nfts: NFTData[] = [];
 
       let totalMinted: number;
       try {
-        totalMinted = Number(await this.contract.totalSupply());
+        totalMinted = Number(await this.callContract<bigint>('totalSupply'));
       } catch {
-        totalMinted = Number(await this.contract.totalMinted());
+        totalMinted = Number(await this.callContract<bigint>('totalMinted'));
       }
 
       for (let i = 0; i < totalMinted && nfts.length < balance; i++) {
         try {
-          const tokenId = await this.contract.tokenByIndex(i);
-          const owner = await this.contract.ownerOf(tokenId);
+          const tokenId = await this.callContract<bigint>('tokenByIndex', i);
+          const owner = await this.callContract<string>('ownerOf', tokenId);
 
           if (owner.toLowerCase() === userAddress.toLowerCase()) {
             const metadata = await this.fetchMetadata(Number(tokenId));
@@ -242,7 +308,7 @@ class ContractServiceClass {
       const initialized = await this.initialize();
       if (!initialized || !this.contract) return null;
 
-      const owner = await this.contract.ownerOf(tokenId);
+      const owner = await this.callContract<string>('ownerOf', tokenId);
       return owner;
     } catch (error) {
       console.warn(`[ContractService] getTokenOwner failed for token ${tokenId}`);
@@ -256,9 +322,9 @@ class ContractServiceClass {
       if (!initialized || !this.contract) return 0;
 
       try {
-        return Number(await this.contract.totalSupply());
+        return Number(await this.callContract<bigint>('totalSupply'));
       } catch {
-        return Number(await this.contract.totalMinted());
+        return Number(await this.callContract<bigint>('totalMinted'));
       }
     } catch (error) {
       console.error('[ContractService] getTotalMinted failed:', error);
@@ -268,6 +334,10 @@ class ContractServiceClass {
 
   isReady(): boolean {
     return this.isInitialized;
+  }
+
+  getCurrentRpc(): string {
+    return this.config.rpcUrls[this.currentRpcIndex] || 'Not connected';
   }
 
   reset(): void {

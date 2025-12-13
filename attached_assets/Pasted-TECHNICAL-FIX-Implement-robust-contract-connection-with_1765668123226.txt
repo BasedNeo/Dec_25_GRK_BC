@@ -1,0 +1,232 @@
+TECHNICAL FIX: Implement robust contract connection with retry and fallback
+
+PROBLEM: If the RPC fails once, the entire app breaks silently. Commercial apps need retry logic and fallback options.
+
+NOTE: The current RPC URL has a double slash: "https://mainnet.basedaibridge.com/rpc//" 
+This should be: "https://mainnet.basedaibridge.com/rpc/"
+
+Create services/ContractService.js:
+
+const ContractService = {
+  provider: null,
+  contract: null,
+  isInitialized: false,
+  initPromise: null,
+  
+  config: {
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+    chainId: 32323,
+    // Primary and fallback RPCs
+    rpcUrls: [
+      'https://mainnet.basedaibridge.com/rpc/',
+      'https://rpc.basedaibridge.com/'  // Add fallback if available
+    ],
+    metadataBaseUri: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/',
+    explorerUrl: 'https://explorer.bf1337.org'
+  },
+  
+  abi: [
+    'function name() view returns (string)',
+    'function symbol() view returns (string)',
+    'function totalSupply() view returns (uint256)',
+    'function totalMinted() view returns (uint256)',
+    'function MAX_SUPPLY() view returns (uint256)',
+    'function MINT_PRICE() view returns (uint256)',
+    'function publicMintEnabled() view returns (bool)',
+    'function revealed() view returns (bool)',
+    'function paused() view returns (bool)',
+    'function ownerOf(uint256 tokenId) view returns (address)',
+    'function tokenURI(uint256 tokenId) view returns (string)',
+    'function tokenByIndex(uint256 index) view returns (uint256)',
+    'function balanceOf(address owner) view returns (uint256)',
+    'function mint(uint256 quantity) payable',
+    'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
+  ],
+  
+  // Singleton initialization with retry
+  async initialize() {
+    if (this.isInitialized) return true;
+    if (this.initPromise) return this.initPromise;
+    
+    this.initPromise = this._tryConnect();
+    return this.initPromise;
+  },
+  
+  async _tryConnect(attempt = 0) {
+    const maxAttempts = 3;
+    const rpcUrls = this.config.rpcUrls;
+    
+    for (let i = 0; i < rpcUrls.length; i++) {
+      const rpcUrl = rpcUrls[i];
+      
+      for (let retry = 0; retry < maxAttempts; retry++) {
+        try {
+          console.log(`[ContractService] Connecting to ${rpcUrl} (attempt ${retry + 1})`);
+          
+          this.provider = new ethers.JsonRpcProvider(rpcUrl, {
+            chainId: this.config.chainId,
+            name: 'BasedAI'
+          });
+          
+          // Test connection with timeout
+          const blockPromise = this.provider.getBlockNumber();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          );
+          
+          await Promise.race([blockPromise, timeoutPromise]);
+          
+          this.contract = new ethers.Contract(
+            this.config.address, 
+            this.abi, 
+            this.provider
+          );
+          
+          // Verify contract is accessible
+          await this.contract.name();
+          
+          this.isInitialized = true;
+          console.log(`[ContractService] Connected successfully to ${rpcUrl}`);
+          return true;
+          
+        } catch (error) {
+          console.warn(`[ContractService] Attempt ${retry + 1} failed:`, error.message);
+          await this._delay(1000 * (retry + 1)); // Exponential backoff
+        }
+      }
+    }
+    
+    this.initPromise = null;
+    throw new Error('Failed to connect to BasedAI network after all retries');
+  },
+  
+  _delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  },
+  
+  // Wrapper for contract calls with automatic retry
+  async callContract(method, ...args) {
+    await this.initialize();
+    
+    let lastError;
+    for (let i = 0; i < 3; i++) {
+      try {
+        return await this.contract[method](...args);
+      } catch (error) {
+        lastError = error;
+        if (error.code === 'CALL_EXCEPTION') {
+          throw error; // Don't retry contract reverts
+        }
+        await this._delay(1000 * (i + 1));
+      }
+    }
+    throw lastError;
+  },
+  
+  // Get all contract stats in one call
+  async getStats() {
+    await this.initialize();
+    
+    try {
+      const [totalMinted, maxSupply, mintPrice, publicMintEnabled, revealed, paused] = 
+        await Promise.all([
+          this.callContract('totalMinted'),
+          this.callContract('MAX_SUPPLY'),
+          this.callContract('MINT_PRICE'),
+          this.callContract('publicMintEnabled'),
+          this.callContract('revealed'),
+          this.callContract('paused')
+        ]);
+      
+      return {
+        totalMinted: Number(totalMinted),
+        maxSupply: Number(maxSupply),
+        mintPrice: ethers.formatEther(mintPrice),
+        mintPriceWei: mintPrice,
+        publicMintEnabled,
+        revealed,
+        paused,
+        remaining: Number(maxSupply) - Number(totalMinted),
+        progress: ((Number(totalMinted) / Number(maxSupply)) * 100).toFixed(2)
+      };
+    } catch (error) {
+      console.error('[ContractService] Failed to get stats:', error);
+      throw error;
+    }
+  },
+  
+  // Get minted NFTs with pagination
+  async getMintedNFTs(limit = 20, offset = 0) {
+    await this.initialize();
+    
+    const totalMinted = Number(await this.callContract('totalMinted'));
+    
+    if (totalMinted === 0) {
+      return { nfts: [], total: 0, hasMore: false };
+    }
+    
+    const nfts = [];
+    const start = Math.max(0, totalMinted - offset - limit);
+    const end = Math.min(totalMinted, totalMinted - offset);
+    
+    // Batch requests for better performance
+    const promises = [];
+    for (let i = end - 1; i >= start; i--) {
+      promises.push(this._fetchNFTAtIndex(i));
+    }
+    
+    const results = await Promise.allSettled(promises);
+    
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value) {
+        nfts.push(result.value);
+      }
+    });
+    
+    return {
+      nfts,
+      total: totalMinted,
+      hasMore: start > 0,
+      loaded: nfts.length
+    };
+  },
+  
+  async _fetchNFTAtIndex(index) {
+    try {
+      const tokenId = await this.callContract('tokenByIndex', index);
+      const owner = await this.callContract('ownerOf', tokenId);
+      const metadata = await this.fetchMetadata(Number(tokenId));
+      
+      return {
+        tokenId: Number(tokenId),
+        owner: Sanitizer.sanitizeAddress(owner),
+        metadata: Sanitizer.sanitizeMetadata(metadata),
+        index
+      };
+    } catch (error) {
+      console.warn(`Failed to fetch NFT at index ${index}:`, error.message);
+      return null;
+    }
+  },
+  
+  async fetchMetadata(tokenId) {
+    const url = `${this.config.metadataBaseUri}${tokenId}.json`;
+    
+    try {
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.warn(`Metadata fetch failed for token ${tokenId}:`, error.message);
+      return null;
+    }
+  }
+};
+
+window.ContractService = ContractService;
