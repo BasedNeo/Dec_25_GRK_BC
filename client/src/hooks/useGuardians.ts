@@ -5,6 +5,8 @@ import { fetchGuardiansPage, PAGE_SIZE } from "@/lib/ipfs";
 import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 import Fuse from 'fuse.js';
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
+import { fetchTokenByIndex, fetchTokenOwner, fetchTokenURI, fetchTotalSupply } from "@/lib/onchain";
+import { IPFS_ROOT } from "@/lib/constants";
 
 export interface GuardianFilters {
   search?: string;
@@ -17,32 +19,32 @@ export interface GuardianFilters {
 
 export function useGuardians(
   useMockData: boolean = false, 
-  useCsvData: boolean = true,
+  useCsvData: boolean = false, // Changed default to false to prioritize Live Chain
   filters: GuardianFilters = {}
 ) {
   const { address } = useAccount();
 
   return useInfiniteQuery({
     queryKey: ['nfts', address, useMockData, useCsvData, filters],
-    initialPageParam: 1,
-    queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
-      const startId = typeof pageParam === 'number' ? pageParam : 1;
-      const cacheKey = `${CACHE_KEYS.NFT_METADATA}_${startId}_${JSON.stringify(filters)}`;
+    initialPageParam: 0, // Start at index 0
+    queryFn: async ({ pageParam = 0 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
+      const startIndex = typeof pageParam === 'number' ? pageParam : 0;
+      const cacheKey = `${CACHE_KEYS.NFT_METADATA}_${startIndex}_${JSON.stringify(filters)}`;
       
-      // 1. Try Cache First (5 minutes validity)
-      const cached = getCached<{ nfts: Guardian[], nextCursor?: number }>(cacheKey, 5 * 60 * 1000);
+      // 1. Try Cache First (30 seconds validity as requested)
+      const cached = getCached<{ nfts: Guardian[], nextCursor?: number }>(cacheKey, 30 * 1000);
       if (cached) {
-          console.log(`Using cached NFT data for page ${startId}`);
+          console.log(`Using cached NFT data for index ${startIndex}`);
           return cached;
       }
 
       // Check if we need to force CSV mode due to active filters (Search, Rarity, Traits, Sort, Owner)
-      // IPFS mode only supports simple pagination, so we switch to CSV index for advanced queries.
+      // IPFS/Live mode only supports simple pagination, so we switch to CSV index for advanced queries.
       const hasActiveFilters = 
           !!filters.search || 
           (filters.rarity && filters.rarity !== 'all') || 
           (filters.traitType && filters.traitType !== 'all') || 
-          (filters.sortBy && filters.sortBy !== 'id-asc') ||
+          (filters.sortBy && filters.sortBy !== 'id-asc' && filters.sortBy !== 'price-asc') || // Allow default sort
           !!filters.owner; // Owner filter forces CSV/Mock logic
 
       // 0. CSV DATA MODE (Explicitly requested OR Active Filters)
@@ -191,13 +193,13 @@ export function useGuardians(
              }
 
              // Pagination logic
-             const pageSize = 100; // Updated to 100 for batching
-             const startIndex = startId - 1;
-             const endIndex = startIndex + pageSize;
+             const pageSize = 50; 
+             const index = startIndex;
+             const endIndex = index + pageSize;
              
-             const nfts = allGuardians.slice(startIndex, endIndex);
+             const nfts = allGuardians.slice(index, endIndex);
              // If we have more items after this page, next cursor is next index
-             const nextCursor = endIndex < allGuardians.length ? endIndex + 1 : undefined;
+             const nextCursor = endIndex < allGuardians.length ? endIndex : undefined;
 
              const result = { nfts, nextCursor };
              setCache(cacheKey, result);
@@ -213,36 +215,97 @@ export function useGuardians(
          return { nfts: MOCK_GUARDIANS, nextCursor: undefined };
       }
       
-      // 2. IPFS Fallback (Default Mode)
+      // 2. LIVE CHAIN MODE (Default for Collection/Minted view)
       try {
-        const nfts = await fetchGuardiansPage(startId);
-        const nextCursor = (startId + 100) <= 3732 ? startId + 100 : undefined;
+        // Fetch Total Supply first
+        const totalMinted = await fetchTotalSupply();
+        if (totalMinted === null || totalMinted === 0) {
+            return { nfts: [], nextCursor: undefined };
+        }
+
+        const pageSize = 20; // Smaller batch size for live RPC calls
+        const endIndex = Math.min(startIndex + pageSize, totalMinted);
+        
+        // Loop from tokenByIndex(startIndex) to tokenByIndex(endIndex - 1)
+        const promises = [];
+        for (let i = startIndex; i < endIndex; i++) {
+            promises.push((async (idx) => {
+                try {
+                    const tokenId = await fetchTokenByIndex(idx);
+                    if (tokenId === null) return null;
+
+                    const [owner, uri] = await Promise.all([
+                        fetchTokenOwner(tokenId),
+                        fetchTokenURI(tokenId)
+                    ]);
+
+                    // Metadata Fetching
+                    let metadataUrl = uri;
+                    if (uri && !uri.startsWith('http')) {
+                        metadataUrl = `${IPFS_ROOT}${tokenId}.json`;
+                    } else if (uri && uri.startsWith('ipfs://')) {
+                        metadataUrl = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                    } else if (!uri) {
+                        metadataUrl = `${IPFS_ROOT}${tokenId}.json`;
+                    }
+
+                    let metadata = { name: `Guardian #${tokenId}`, attributes: [] as any[] };
+                    if (metadataUrl) {
+                        try {
+                            const res = await fetch(metadataUrl);
+                            if (res.ok) metadata = await res.json();
+                        } catch(e) { /* ignore */ }
+                    }
+
+                    const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity');
+                    
+                    return {
+                        id: tokenId,
+                        name: metadata.name,
+                        image: `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeif47552u34c3r46iy3p26h7j3a7b63d333p4m4r4v3r4b6x3d3d3y/${tokenId}.png`, // Direct image link optimization
+                        rarity: rarityAttr ? rarityAttr.value : 'Common',
+                        price: 0, 
+                        owner: owner || undefined,
+                        traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || []
+                    } as Guardian;
+                } catch(e) {
+                    console.error("Error fetching token at index", idx, e);
+                    return null;
+                }
+            })(i));
+        }
+
+        const results = await Promise.all(promises);
+        const nfts = results.filter((n): n is Guardian => n !== null);
+        
+        // Next cursor is endIndex if we haven't reached totalMinted
+        const nextCursor = endIndex < totalMinted ? endIndex : undefined;
+
         const result = { nfts, nextCursor };
         setCache(cacheKey, result);
         return result;
+
       } catch (e) {
-        console.warn("IPFS fetch failed, falling back to CSV index:", e);
-        // Fallback to CSV if IPFS fails
+        console.warn("Live chain fetch failed, falling back to CSV:", e);
+        // Fallback to CSV if Live Chain fails
         try {
             const csvNfts = await loadGuardiansFromCSV();
-            // Simulate pagination on CSV data
-            const pageSize = 100; // Match IPFS batch size
-            const startIndex = startId - 1;
+            const pageSize = 50; 
             const endIndex = startIndex + pageSize;
             const nfts = csvNfts.slice(startIndex, endIndex);
-            const nextCursor = endIndex < csvNfts.length ? endIndex + 1 : undefined;
+            const nextCursor = endIndex < csvNfts.length ? endIndex : undefined;
             
             const result = { nfts, nextCursor };
             setCache(cacheKey, result);
             return result;
         } catch (csvErr) {
-            console.error("Critical: Both IPFS and CSV failed", csvErr);
+            console.error("Critical: Both Live and CSV failed", csvErr);
             return { nfts: [], nextCursor: undefined };
         }
       }
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: true,
-    staleTime: 60000, // 60s stale time as requested
+    staleTime: 30000, // 30s stale time
   });
 }
