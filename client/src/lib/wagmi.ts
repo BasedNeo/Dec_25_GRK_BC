@@ -7,10 +7,10 @@ const basedL1 = {
   name: 'Based L1 V1',
   nativeCurrency: { name: 'Based', symbol: 'BASED', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+    default: { http: ['https://mainnet.basedaibridge.com/rpc'] },
   },
   blockExplorers: {
-    default: { name: 'Based Explorer', url: 'https://explorer.bf1337.org/' },
+    default: { name: 'Based Explorer', url: 'https://explorer.bf1337.org' },
   },
 } as const satisfies Chain;
 

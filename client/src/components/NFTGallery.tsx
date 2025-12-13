@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
-import { NFT_CONTRACT } from "@/lib/constants";
+import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
+import { Security } from "@/lib/security";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -575,7 +576,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         <NFTImage 
-            src={guardian.image} 
+            src={Security.sanitizeUrl(guardian.image)} 
             alt={guardian.name} 
             id={guardian.id}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -605,9 +606,9 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
       <div className="p-4 flex flex-col flex-grow bg-black/40 backdrop-blur-sm">
         <div className="flex justify-between items-start mb-2">
             <div>
-                <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{guardian.name}</h3>
+                <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{Security.escapeHtml(guardian.name)}</h3>
                 <a 
-                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                    href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}/instance/${guardian.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}

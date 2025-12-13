@@ -3,6 +3,24 @@ import { NFT_CONTRACT } from './constants';
 import { Guardian } from './mockData';
 import { fetchGuardianMetadata } from './ipfs';
 
+// Rate Limiter
+const RateLimiter = {
+  calls: [] as number[],
+  limit: 30,
+  window: 60000, // 1 minute
+  
+  check() {
+    const now = Date.now();
+    this.calls = this.calls.filter(t => now - t < this.window);
+    if (this.calls.length >= this.limit) {
+      console.warn('Rate limit reached');
+      return false;
+    }
+    this.calls.push(now);
+    return true;
+  }
+};
+
 // --- Smart Caching System ---
 
 const metadataCache = new Map<number, Guardian>();
@@ -68,6 +86,10 @@ export async function fetchSmartMintedData() {
     totalSupply = statsCache.data;
   } else {
     try {
+        if (!RateLimiter.check()) {
+            throw new Error('Rate limit reached. Please wait before refreshing.');
+        }
+
         const supply = await withRetry(() => publicClient.readContract({
             address: NFT_CONTRACT as `0x${string}`,
             abi: ABI,

@@ -10,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
-import { NFT_CONTRACT } from "@/lib/constants";
+import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
 import { fetchTokenOwner } from "@/lib/onchain";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
+import { getRarityClass } from "@/lib/utils";
 
 interface MintedNFTsTableProps {
   nfts: Guardian[];
@@ -47,14 +48,10 @@ export function MintedNFTsTable({ nfts, isLoading, onRefresh }: MintedNFTsTableP
   };
 
   const getRarityColor = (rarity: string) => {
-      if (rarity === 'Rarest-Legendary') return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50';
-      if (rarity === 'Very Rare') return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
-      if (rarity === 'More Rare') return 'bg-amber-500/20 text-amber-400 border-amber-500/50';
-      if (rarity === 'Rare') return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50';
-      if (rarity === 'Less Rare') return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
-      if (rarity === 'Less Common') return 'bg-green-500/20 text-green-400 border-green-500/50';
-      if (rarity === 'Common') return 'bg-white/10 text-white border-white/20';
-      return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      // Map to CSS classes using centralized utility if possible, or keep local
+      // The user asked to update "getRarityClass" with new map.
+      // We'll use the utility function we are about to create in utils.ts
+      return getRarityClass(rarity);
   };
 
   // We might need to fetch owners for the current batch if not present
@@ -163,7 +160,7 @@ export function MintedNFTsTable({ nfts, isLoading, onRefresh }: MintedNFTsTableP
                             <TableRow key={`${guardian.id}-${idx}`} className="border-white/5 hover:bg-white/5 transition-colors">
                             <TableCell className="font-mono text-white">
                                 <a 
-                                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                                    href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}/instance/${guardian.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center hover:text-cyan-400 transition-colors gap-1 group"
@@ -181,7 +178,7 @@ export function MintedNFTsTable({ nfts, isLoading, onRefresh }: MintedNFTsTableP
                             <TableCell className="text-gray-400 font-mono text-xs">{bioType}</TableCell>
                             <TableCell className="text-right font-mono text-xs text-gray-500">
                                 <a 
-                                    href={`https://explorer.bf1337.org/address/${owner}`}
+                                    href={`${BLOCK_EXPLORER}/address/${owner}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-end gap-1 hover:text-cyan-400 transition-colors group"
@@ -207,7 +204,7 @@ export function MintedNFTsTable({ nfts, isLoading, onRefresh }: MintedNFTsTableP
                         <Card key={`${guardian.id}-${idx}`} className="bg-white/5 border-white/10 p-3 flex flex-col gap-2">
                              <div className="flex justify-between items-center">
                                  <a 
-                                     href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                                     href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}/instance/${guardian.id}`}
                                      target="_blank"
                                      rel="noopener noreferrer"
                                      className="font-mono text-cyan-400 font-bold flex items-center gap-1"
@@ -225,7 +222,7 @@ export function MintedNFTsTable({ nfts, isLoading, onRefresh }: MintedNFTsTableP
                              <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-white/5 pt-2 mt-1">
                                  <span className="font-mono">{bioType}</span>
                                  <a 
-                                     href={`https://explorer.bf1337.org/address/${owner}`}
+                                     href={`${BLOCK_EXPLORER}/address/${owner}`}
                                      target="_blank"
                                      rel="noopener noreferrer"
                                      className="flex items-center gap-1 hover:text-cyan-400 font-mono"

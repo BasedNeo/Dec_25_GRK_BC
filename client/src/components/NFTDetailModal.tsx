@@ -14,9 +14,10 @@ import DOMPurify from 'dompurify';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
-import { NFT_CONTRACT } from "@/lib/constants";
+import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-
+import { Security } from "@/lib/security";
+import { getRarityClass } from "@/lib/utils";
 import { NFTImage } from "./NFTImage";
 
 interface NFTDetailModalProps {
@@ -43,8 +44,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   // Safe Sanitize Helper
   const safeSanitize = (content: string | undefined | null) => {
-    if (typeof content !== 'string') return '';
-    return DOMPurify.sanitize(content);
+    return Security.escapeHtml(content);
   };
 
   useEffect(() => {
@@ -117,20 +117,10 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
   // Determine rarity color
   const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'Rarest-Legendary': return 'text-cyan-400 border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,211,238,0.2)]';
-      case 'Very Rare': return 'text-purple-400 border-purple-400/50 bg-purple-400/10 shadow-[0_0_15px_rgba(192,132,252,0.2)]';
-      case 'More Rare': return 'text-amber-400 border-amber-400/50 bg-amber-400/10 shadow-[0_0_15px_rgba(251,191,36,0.2)]';
-      case 'Rare': return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]';
-      case 'Less Rare': return 'text-blue-400 border-blue-400/50 bg-blue-400/10 shadow-[0_0_15px_rgba(96,165,250,0.2)]';
-      case 'Less Common': return 'text-green-400 border-green-400/50 bg-green-400/10 shadow-[0_0_15px_rgba(74,222,128,0.2)]';
-      case 'Common': return 'text-white border-white/50 bg-white/10';
-      case 'Most Common': return 'text-gray-400 border-gray-400/50 bg-gray-400/10';
-      default: return 'text-slate-400 border-slate-400/50 bg-slate-400/10';
-    }
+    return getRarityClass(rarity);
   };
 
-  const rarityColorClass = getRarityColor(nft.rarity);
+  const rarityColorClass = getRarityColor(nft.rarity || 'Common');
 
   // Grouped Stats Logic
   const statKeys = ['Speed', 'Agility', 'Intellect', 'Intelligence', 'Strength'];
@@ -164,7 +154,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 className="relative z-10 w-full max-w-md aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
             >
                 <NFTImage 
-                    src={nft.image} 
+                    src={Security.sanitizeUrl(nft.image)} 
                     alt={nft.name} 
                     id={nft.id}
                     className="w-full h-full object-cover transition-opacity duration-300"
@@ -172,7 +162,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 
                 {/* ID Overlay */}
                 <a 
-                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${nft.id}`}
+                    href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}/instance/${nft.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded text-xs font-mono text-white hover:text-cyan-400 hover:border-cyan-400/50 transition-colors flex items-center gap-1 z-20"
@@ -349,7 +339,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
                      </Button>
                      <Button variant="default" asChild className="bg-white/5 text-white hover:bg-white/10 text-xs font-orbitron tracking-wider cursor-pointer border border-white/10">
-                        <a href={`https://explorer.bf1337.org/address/${NFT_CONTRACT}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`${BLOCK_EXPLORER}/address/${NFT_CONTRACT}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink size={14} className="mr-2" /> <span className="hidden sm:inline">EXPLORER</span>
                         </a>
                      </Button>
