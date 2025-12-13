@@ -150,6 +150,11 @@ export const EMISSION_SCHEDULE = [
     startDate: new Date('2025-12-31T00:00:00Z').getTime(),
     dailyRate: 2500,  // 2,500 $BASED/day after first halving
     label: 'Post-Halving 1'
+  },
+  {
+    startDate: new Date('2026-06-30T00:00:00Z').getTime(),
+    dailyRate: 1250,  // Half of 2,500
+    label: 'Post-Halving 2'
   }
   // Future halvings can be added here
 ];
