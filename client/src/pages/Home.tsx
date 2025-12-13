@@ -76,7 +76,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <EscrowMarketplace />
+              <EscrowMarketplace onNavigateToMint={() => setActiveTab("mint")} />
             </motion.div>
           )}
 
