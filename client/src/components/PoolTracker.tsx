@@ -347,106 +347,113 @@ export function PoolTracker() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <div className="inline-flex items-center justify-center p-4 rounded-full bg-primary/10 text-primary mb-6 animate-pulse shadow-[0_0_20px_rgba(0,255,255,0.2)]">
-            <Database size={32} />
-          </div>
+          <h2 className="text-4xl md:text-5xl font-black text-white font-orbitron text-center mb-2 uppercase tracking-tight">
+             🏦 Community Treasury
+          </h2>
           
-          <h2 className="text-sm font-mono text-muted-foreground uppercase tracking-[0.2em] mb-4">Community Treasury</h2>
-          
-          <div className="flex flex-col items-center justify-center mb-6">
+          {/* Total Treasury Display */}
+          <div className="flex flex-col items-center justify-center mb-12 relative py-8">
+            <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
+            <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Community Treasury</span>
             <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow">
-                {(mintRevenue + displayedPoolShare).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </div>
-            <div className="text-2xl md:text-4xl text-primary font-bold mt-2 font-orbitron tracking-widest text-center">
-                $BASED
+                {(mintRevenue + displayedPoolShare).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
             </div>
           </div>
           
-          {/* Breakdown Section */}
-          <div className="flex flex-col gap-3 mb-10 text-sm font-mono text-cyan-400/90 max-w-xl mx-auto bg-black/60 p-6 rounded-xl border border-white/10 shadow-lg backdrop-blur-md">
-              <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-muted-foreground">From NFT Mints:</span>
-                  <span className="font-bold">~{mintRevenue.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})} $BASED</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-muted-foreground">Passive Emissions (Subnet/Brain):</span>
-                  <span className="font-bold">~{displayedPoolShare.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})} $BASED</span>
-              </div>
-              <div className="flex justify-between items-center pt-1 opacity-75">
-                  <span className="text-muted-foreground flex items-center gap-2">Staking Emissions: <span className="text-[10px] bg-primary/10 text-primary px-1 rounded">SOON</span></span>
-                  <span className="font-bold">0 $BASED</span>
-              </div>
+          {/* Treasury Breakdown Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 w-full max-w-6xl mx-auto">
+            
+            {/* From NFT Mint */}
+            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-lg hover:border-primary/30 transition-colors flex flex-col items-center text-center group relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500"></div>
+               <div className="w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🎨</div>
+               <h3 className="text-lg font-bold text-white font-orbitron mb-2">From NFT Mint</h3>
+               <span className="text-2xl font-mono font-bold text-pink-400 mb-1">
+                 {(mintRevenue).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED
+               </span>
+               <span className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-1 rounded">51% of mint proceeds</span>
+            </div>
+            
+            {/* Passive Emissions */}
+            <div className="bg-black/60 border border-cyan-500/30 rounded-xl p-6 backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_25px_rgba(34,211,238,0.2)] hover:border-cyan-400/50 transition-all flex flex-col items-center text-center group relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+               <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+               <h3 className="text-lg font-bold text-white font-orbitron mb-2">Passive Emissions</h3>
+               <span className="text-2xl font-mono font-bold text-cyan-400 mb-1">
+                 {(displayedPoolShare).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED
+               </span>
+               <span className="text-sm text-cyan-200 font-mono mb-2">
+                 {dailyPassive.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} $BASED/day
+               </span>
+               
+               {/* Halving Countdown */}
+               {halvingInfo.days !== null && (
+                   <div className="bg-cyan-950/40 border border-cyan-500/20 rounded px-3 py-2 mb-2 w-full">
+                       <div className="text-xs text-cyan-300 font-bold uppercase mb-1 flex items-center justify-center gap-1">
+                           <Timer size={10} /> Next Halving
+                       </div>
+                       <div className="text-sm font-mono text-white">
+                           {halvingInfo.days} days
+                       </div>
+                       {halvingInfo.nextRate && (
+                           <div className="text-[10px] text-cyan-500/70 mt-0.5">
+                               (→ {halvingInfo.nextRate.toLocaleString()}/day)
+                           </div>
+                       )}
+                   </div>
+               )}
+
+               <p className="text-[10px] text-muted-foreground mt-auto pt-2 border-t border-white/5 w-full">
+                 10% of subnet emissions since Dec 10, 2024
+               </p>
+            </div>
+            
+            {/* Staking Emissions */}
+            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-lg hover:border-green-500/30 transition-colors flex flex-col items-center text-center group relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+               <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🥩</div>
+               <h3 className="text-lg font-bold text-white font-orbitron mb-2">Staking Emissions</h3>
+               <span className="text-2xl font-mono font-bold text-green-400 mb-1">
+                 0 $BASED
+               </span>
+               <span className="text-xs text-green-500/70 font-mono bg-green-500/5 px-2 py-1 rounded border border-green-500/10 mt-1">COMING SOON</span>
+            </div>
+            
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 max-w-2xl mx-auto">
-            {/* Passive Emissions Card */}
-            <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-lg p-4 backdrop-blur-md relative overflow-hidden group">
-               <div className="absolute inset-0 bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors" />
-               <div className="flex items-start gap-3 text-left relative z-10">
-                  <Zap className="text-cyan-400 shrink-0 mt-1" size={20} />
-                  <div>
-                      <p className="text-sm text-cyan-100 font-bold mb-1 font-orbitron">Daily Passive Yield</p>
-                      <div className="text-2xl font-black text-cyan-400 font-mono tracking-tight">
-                        {dailyPassive.toFixed(2)} <span className="text-xs text-cyan-600">$BASED</span>
-                      </div>
-                      <p className="text-[10px] text-cyan-200/60 mt-1 font-mono uppercase">
-                          Per NFT (10% of Subnet Emissions)
-                      </p>
-                  </div>
-               </div>
-            </div>
-
-             {/* Halving Countdown Card */}
-            <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-4 backdrop-blur-md relative overflow-hidden group">
-               <div className="absolute inset-0 bg-purple-500/5 group-hover:bg-purple-500/10 transition-colors" />
-               <div className="flex items-start gap-3 text-left relative z-10">
-                  <Timer className="text-purple-400 shrink-0 mt-1" size={20} />
-                  <div>
-                      <p className="text-sm text-purple-100 font-bold mb-1 font-orbitron">Halving Countdown</p>
-                      <div className="text-2xl font-black text-purple-400 font-mono tracking-tight">
-                        {halvingInfo.days !== null ? halvingInfo.days : '∞'} <span className="text-xs text-purple-600">DAYS</span>
-                      </div>
-                      <p className="text-[10px] text-purple-200/60 mt-1 font-mono uppercase">
-                          {halvingInfo.nextRate 
-                            ? `Next Rate: ${halvingInfo.nextRate.toLocaleString()} $BASED/day` 
-                            : 'No scheduled halving'}
-                      </p>
-                  </div>
-               </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            {/* Emissions Chart */}
-            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80">
-                <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
-                    <TrendingUp size={14} /> BASED/USD - 7 DAY PRICE ACTION
+          {/* Subnet Info */}
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-2xl mx-auto flex flex-col md:flex-row items-center justify-center gap-6 text-sm font-mono">
+             <div className="font-bold text-white uppercase tracking-wider hidden md:block">Subnet Details</div>
+             <div className="h-4 w-px bg-white/20 hidden md:block"></div>
+             
+             <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Token:</span>
+                    <a 
+                        href="https://etherscan.io/token/0x758db5be97ddf623a501f607ff822792a8f2d8f2" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-white hover:underline transition-colors flex items-center gap-1"
+                    >
+                        View on Etherscan <ExternalLink size={10} />
+                    </a>
                 </div>
-                <div className="pt-6 h-full">
-                    {/* @ts-ignore */}
-                    <Line data={chartData} options={chartOptions} />
+                
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Brain:</span>
+                    <a 
+                        href="https://etherscan.io/address/0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-white hover:underline transition-colors flex items-center gap-1"
+                    >
+                        0xB0974...15a4 <ExternalLink size={10} />
+                    </a>
                 </div>
-            </div>
-
-            {/* Stat Averages Chart */}
-            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-2xl relative h-80 flex items-center justify-center flex-col gap-4 text-center">
-                 <div className="absolute top-4 left-6 text-xs font-mono text-primary flex items-center gap-2">
-                    <Database size={14} /> AVERAGE STATS (ALL 3732)
-                 </div>
-                 <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                 >
-                    <Brain className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" size={64} />
-                 </motion.div>
-                 <div className="space-y-1">
-                    <p className="text-white font-orbitron text-lg tracking-wide">Agent Arena Data</p>
-                    <p className="text-primary font-mono text-sm animate-pulse">COMING SOON</p>
-                 </div>
-            </div>
+             </div>
           </div>
-          
-          <div className="mb-8 flex justify-center">
+
+          <div className="mb-8 mt-6 flex justify-center">
                <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 border border-white/5 rounded-full px-3 py-1 bg-black/20">
                    <AlertTriangle size={10} className="text-yellow-500" />
                    <span>Live data; estimates may vary with network activity. Not financial advice.</span>
@@ -454,32 +461,6 @@ export function PoolTracker() {
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-6">
-              <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">Subnet Source (ETH Mainnet)</span>
-                  <a 
-                    href={`https://etherscan.io/address/${SUBNET_ADDRESS}`}
-                    target="_blank"
-                    rel="noopener noreferrer" 
-                    className="inline-flex items-center text-white hover:text-primary transition-colors border-b border-white/20 hover:border-primary pb-1 font-mono text-xs"
-                  >
-                    {`${SUBNET_ADDRESS.slice(0, 4)}....`}
-                    <ArrowUpRight size={12} className="ml-2" />
-                  </a>
-              </div>
-              
-              <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">Network Info</span>
-                  <a 
-                    href="https://www.getbased.ai/"
-                    target="_blank"
-                    rel="noopener noreferrer" 
-                    className="inline-flex items-center text-white hover:text-primary transition-colors border-b border-white/20 hover:border-primary pb-1 font-mono text-xs"
-                  >
-                    BasedAI L1
-                    <ExternalLink size={12} className="ml-2" />
-                  </a>
-              </div>
-
               <Button 
                 variant="outline" 
                 size="sm" 
