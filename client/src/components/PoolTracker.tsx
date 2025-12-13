@@ -348,7 +348,7 @@ export function PoolTracker() {
           transition={{ duration: 0.8 }}
         >
           <h2 className="text-4xl md:text-5xl font-black text-white font-orbitron text-center mb-2 uppercase tracking-tight">
-             🏦 Community Treasury
+             Community Treasury
           </h2>
           
           {/* Total Treasury Display */}
@@ -364,9 +364,7 @@ export function PoolTracker() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 w-full max-w-6xl mx-auto">
             
             {/* From NFT Mint */}
-            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-lg hover:border-primary/30 transition-colors flex flex-col items-center text-center group relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500"></div>
-               <div className="w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🎨</div>
+            <div className="bg-black/40 border border-white/10 rounded-xl p-6 flex flex-col items-center text-center">
                <h3 className="text-lg font-bold text-white font-orbitron mb-2">From NFT Mint</h3>
                <span className="text-2xl font-mono font-bold text-pink-400 mb-1">
                  {(mintRevenue).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED
@@ -375,9 +373,7 @@ export function PoolTracker() {
             </div>
             
             {/* Passive Emissions */}
-            <div className="bg-black/60 border border-cyan-500/30 rounded-xl p-6 backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_25px_rgba(34,211,238,0.2)] hover:border-cyan-400/50 transition-all flex flex-col items-center text-center group relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
-               <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+            <div className="bg-black/40 border border-cyan-500/30 rounded-xl p-6 flex flex-col items-center text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
                <h3 className="text-lg font-bold text-white font-orbitron mb-2">Passive Emissions</h3>
                <span className="text-2xl font-mono font-bold text-cyan-400 mb-1">
                  {(displayedPoolShare).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} $BASED
@@ -392,7 +388,7 @@ export function PoolTracker() {
                        <div className="text-xs text-cyan-300 font-bold uppercase mb-1 flex items-center justify-center gap-1">
                            <Timer size={10} /> Next Halving
                        </div>
-                       <div className="text-sm font-mono text-white">
+                       <div id="halving-countdown" className="text-sm font-mono text-white">
                            {halvingInfo.days} days
                        </div>
                        {halvingInfo.nextRate && (
@@ -409,9 +405,7 @@ export function PoolTracker() {
             </div>
             
             {/* Staking Emissions */}
-            <div className="bg-black/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm shadow-lg hover:border-green-500/30 transition-colors flex flex-col items-center text-center group relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
-               <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🥩</div>
+            <div className="bg-black/40 border border-white/10 rounded-xl p-6 flex flex-col items-center text-center">
                <h3 className="text-lg font-bold text-white font-orbitron mb-2">Staking Emissions</h3>
                <span className="text-2xl font-mono font-bold text-green-400 mb-1">
                  0 $BASED
