@@ -183,6 +183,25 @@
   opacity: 1;
 }
 
+/* Force visibility on ALL screen sizes */
+.price-feed-container,
+.header .price-display,
+[class*="price"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+@media (max-width: 768px) {
+  .price-feed-container {
+    display: flex !important;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+}
+
 .price-feed-container {
   display: flex !important;
   visibility: visible !important;

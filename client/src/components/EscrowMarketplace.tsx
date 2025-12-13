@@ -33,7 +33,6 @@ import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
-import { Zap } from "lucide-react";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
