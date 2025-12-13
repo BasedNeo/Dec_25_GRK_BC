@@ -400,7 +400,7 @@ export function PoolTracker() {
                )}
 
                <p className="text-[10px] text-muted-foreground mt-auto pt-2 border-t border-white/5 w-full">
-                 10% of subnet emissions since Dec 10, 2024
+                 Subnet emissions since Dec 10, 2024
                </p>
             </div>
             
