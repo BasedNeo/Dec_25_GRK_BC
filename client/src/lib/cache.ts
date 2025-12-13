@@ -14,8 +14,10 @@ export const CACHE_KEYS = {
 export const CACHE_DURATIONS = {
   contractStats: 30000,
   nftMetadata: 300000,
+  nftList: 60000,
   priceData: 60000,
-  userNFTs: 120000
+  userNFTs: 120000,
+  userBalance: 30000
 } as const;
 
 const memoryStorage = new Map<string, CacheEntry<unknown>>();
@@ -91,13 +93,55 @@ export function clearAllCache(): void {
   clearOldCache();
 }
 
+export async function withCache<T>(
+  key: string, 
+  fn: () => Promise<T>, 
+  duration: number = 30000, 
+  persistent: boolean = false
+): Promise<T | null> {
+  const cached = persistent 
+    ? getCached<T>(key, duration)
+    : getMemoryCached<T>(key, duration);
+
+  if (cached !== null) {
+    console.log(`[Cache] HIT: ${key}`);
+    return cached;
+  }
+
+  console.log(`[Cache] MISS: ${key}`);
+  const data = await fn();
+
+  if (data !== null && data !== undefined) {
+    if (persistent) {
+      setCache(key, data);
+    } else {
+      setMemoryCache(key, data);
+    }
+  }
+
+  return data;
+}
+
+export function invalidateCache(key: string): void {
+  memoryStorage.delete(key);
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
 export const CacheService = {
   get: getMemoryCached,
   set: setMemoryCache,
   getPersistent: getCached,
   setPersistent: setCache,
+  withCache,
+  invalidate: invalidateCache,
   clearOldCache,
   clearAll: clearAllCache,
   DURATIONS: CACHE_DURATIONS,
   KEYS: CACHE_KEYS
 };
+
+if (typeof window !== 'undefined') {
+  (window as any).CacheService = CacheService;
+}

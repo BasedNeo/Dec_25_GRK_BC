@@ -1,0 +1,142 @@
+TECHNICAL FIX: Implement caching to improve performance and reduce API calls
+
+Create services/CacheService.js:
+
+const CacheService = {
+  memoryCache: new Map(),
+  
+  // Default cache durations (milliseconds)
+  DURATIONS: {
+    contractStats: 30000,      // 30 seconds
+    nftMetadata: 300000,       // 5 minutes
+    nftList: 60000,            // 1 minute
+    priceData: 60000,          // 1 minute
+    userBalance: 30000,        // 30 seconds
+  },
+  
+  // Memory cache (faster, clears on refresh)
+  get(key, maxAge = 30000) {
+    const item = this.memoryCache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() - item.timestamp > maxAge) {
+      this.memoryCache.delete(key);
+      return null;
+    }
+    
+    return item.data;
+  },
+  
+  set(key, data) {
+    this.memoryCache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  },
+  
+  // Persistent cache (localStorage, survives refresh)
+  getPersistent(key, maxAge = 300000) {
+    try {
+      const raw = localStorage.getItem(`cache:${key}`);
+      if (!raw) return null;
+      
+      const item = JSON.parse(raw);
+      if (Date.now() - item.timestamp > maxAge) {
+        localStorage.removeItem(`cache:${key}`);
+        return null;
+      }
+      
+      return item.data;
+    } catch {
+      return null;
+    }
+  },
+  
+  setPersistent(key, data) {
+    try {
+      localStorage.setItem(`cache:${key}`, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      // localStorage full, clear old items
+      this.clearOldPersistent();
+      try {
+        localStorage.setItem(`cache:${key}`, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      } catch {
+        // Still full, give up
+      }
+    }
+  },
+  
+  clearOldPersistent() {
+    const cacheKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('cache:')) {
+        cacheKeys.push(key);
+      }
+    }
+    // Remove oldest half
+    cacheKeys.slice(0, Math.floor(cacheKeys.length / 2)).forEach(k => {
+      localStorage.removeItem(k);
+    });
+  },
+  
+  // Cache wrapper for async functions
+  async withCache(key, fn, duration = 30000, persistent = false) {
+    // Check cache first
+    const cached = persistent 
+      ? this.getPersistent(key, duration)
+      : this.get(key, duration);
+    
+    if (cached !== null) {
+      console.log(`[Cache] HIT: ${key}`);
+      return cached;
+    }
+    
+    console.log(`[Cache] MISS: ${key}`);
+    const data = await fn();
+    
+    if (data !== null && data !== undefined) {
+      if (persistent) {
+        this.setPersistent(key, data);
+      } else {
+        this.set(key, data);
+      }
+    }
+    
+    return data;
+  },
+  
+  // Invalidate specific key
+  invalidate(key) {
+    this.memoryCache.delete(key);
+    localStorage.removeItem(`cache:${key}`);
+  },
+  
+  // Clear all cache
+  clear() {
+    this.memoryCache.clear();
+    const cacheKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('cache:')) {
+        cacheKeys.push(key);
+      }
+    }
+    cacheKeys.forEach(k => localStorage.removeItem(k));
+  }
+};
+
+window.CacheService = CacheService;
+
+// Usage example - wrap ContractService methods:
+// const stats = await CacheService.withCache(
+//   'contractStats',
+//   () => ContractService.getStats(),
+//   CacheService.DURATIONS.contractStats
+// );
