@@ -45,6 +45,9 @@ export function Hero() {
     { name: 'Most Common', value: 582, color: '#9ca3af', minted: 0 }, // 15.5% (Gray)
   ]);
 
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
   // Live Rarity Sync Logic
   const fetchLiveRarity = async () => {
     setIsUpdatingRarity(true);
@@ -80,9 +83,8 @@ export function Hero() {
         })));
         
         setClassifiedCount(activeSupply);
-        // mintedList is no longer needed for the table, but we can keep it if other logic used it. 
-        // For now, we just won't update it with heavy IPFS data.
-        // setMintedList(mintedGuardians); 
+        setLastUpdated(new Date());
+        setSecondsAgo(0);
         
     } catch (e) {
         console.error("Rarity Sync Failed", e);
@@ -96,6 +98,13 @@ export function Hero() {
     const interval = setInterval(fetchLiveRarity, 30 * 1000); // Poll every 30 seconds
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsAgo(Math.floor((new Date().getTime() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastUpdated]);
 
   // Parallax
   const { scrollY } = useScroll();
@@ -308,6 +317,7 @@ export function Hero() {
                  {/* Disclaimer */}
                  <div className="mt-4 pt-2 border-t border-white/5 text-[10px] text-gray-600 font-mono text-center">
                     Live sync; rarity based on minted metadata. Estimates only.
+                    <span className="block mt-1 text-primary/40">Last updated: {secondsAgo}s ago</span>
                  </div>
             </div>
 
