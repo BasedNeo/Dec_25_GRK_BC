@@ -83,7 +83,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const handleInstallClick = () => {
     if (!deferredPrompt) {
-        toast({ title: "Install Not Available", description: "Your browser might not support PWA installation or it's already installed." });
+        showToast("Install Not Available: Your browser might not support PWA installation or it's already installed.", "info");
         return;
     }
     deferredPrompt.prompt();

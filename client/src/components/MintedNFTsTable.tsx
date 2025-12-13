@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { NFT_CONTRACT, BLOCK_EXPLORER, IPFS_ROOT } from "@/lib/constants";
