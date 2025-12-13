@@ -7,9 +7,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
-import { IPFS_ROOT } from "@/lib/constants";
+import { IPFS_ROOT, NFT_CONTRACT } from "@/lib/constants";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
@@ -209,7 +209,17 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
                         
                         return (
                             <TableRow key={guardian.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                            <TableCell className="font-mono text-white">#{guardian.id}</TableCell>
+                            <TableCell className="font-mono text-white">
+                                <a 
+                                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center hover:text-cyan-400 transition-colors gap-1 group"
+                                >
+                                    #{guardian.id}
+                                    <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </a>
+                            </TableCell>
                             <TableCell className="font-bold text-white font-orbitron text-xs md:text-sm">{guardian.name}</TableCell>
                             <TableCell>
                                 <Badge variant="outline" className={`${getRarityColor(guardian.rarity)} font-mono text-[10px] uppercase whitespace-nowrap`}>
@@ -218,7 +228,19 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
                             </TableCell>
                             <TableCell className="text-gray-400 font-mono text-xs">{bioType}</TableCell>
                             <TableCell className="text-right font-mono text-xs text-gray-500">
-                                {guardian.owner === 'Your wallet' ? <span className="text-green-400">Your wallet</span> : shortenAddress(guardian.owner)}
+                                {guardian.owner === 'Your wallet' ? (
+                                    <span className="text-green-400">Your wallet</span>
+                                ) : (
+                                    <a 
+                                        href={`https://explorer.bf1337.org/address/${guardian.owner}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-end gap-1 hover:text-cyan-400 transition-colors group"
+                                    >
+                                        {shortenAddress(guardian.owner)}
+                                        <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </a>
+                                )}
                             </TableCell>
                             </TableRow>
                         );
@@ -234,7 +256,15 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
                     return (
                         <Card key={guardian.id} className="bg-white/5 border-white/10 p-3 flex flex-col gap-2">
                              <div className="flex justify-between items-center">
-                                 <span className="font-mono text-cyan-400 font-bold">#{guardian.id}</span>
+                                 <a 
+                                     href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     className="font-mono text-cyan-400 font-bold flex items-center gap-1"
+                                 >
+                                    #{guardian.id}
+                                    <ExternalLink size={10} />
+                                 </a>
                                  <Badge variant="outline" className={`${getRarityColor(guardian.rarity)} font-mono text-[10px] uppercase`}>
                                     {guardian.rarity}
                                  </Badge>
@@ -244,7 +274,21 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
                              </div>
                              <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-white/5 pt-2 mt-1">
                                  <span className="font-mono">{bioType}</span>
-                                 <span className="font-mono">{guardian.owner === 'Your wallet' ? <span className="text-green-400">Your wallet</span> : shortenAddress(guardian.owner)}</span>
+                                 <span className="font-mono">
+                                    {guardian.owner === 'Your wallet' ? (
+                                        <span className="text-green-400">Your wallet</span>
+                                    ) : (
+                                        <a 
+                                            href={`https://explorer.bf1337.org/address/${guardian.owner}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 hover:text-cyan-400"
+                                        >
+                                            {shortenAddress(guardian.owner)}
+                                            <ExternalLink size={10} />
+                                        </a>
+                                    )}
+                                 </span>
                              </div>
                         </Card>
                     );

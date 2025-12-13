@@ -14,6 +14,7 @@ import DOMPurify from 'dompurify';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
+import { NFT_CONTRACT } from "@/lib/constants";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface NFTDetailModalProps {
@@ -171,9 +172,14 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 />
                 
                 {/* ID Overlay */}
-                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded text-xs font-mono text-white">
-                    #{nft.id}
-                </div>
+                <a 
+                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${nft.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded text-xs font-mono text-white hover:text-cyan-400 hover:border-cyan-400/50 transition-colors flex items-center gap-1 z-20"
+                >
+                    #{nft.id} <ExternalLink size={10} />
+                </a>
 
                 {/* Rarity Overlay */}
                 <div className={`absolute top-4 right-4 px-3 py-1 rounded text-xs font-orbitron uppercase border backdrop-blur-md ${rarityColorClass}`}>
@@ -324,7 +330,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
                      </Button>
                      <Button variant="default" asChild className="bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
-                        <a href={`https://explorer.bf1337.org/address/${import.meta.env.VITE_NFT_CONTRACT || "0x..."}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`https://explorer.bf1337.org/address/${NFT_CONTRACT}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink size={14} className="mr-2" /> <span className="hidden sm:inline">EXPLORER</span>
                         </a>
                      </Button>

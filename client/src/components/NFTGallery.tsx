@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
+import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid, ExternalLink } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
+import { NFT_CONTRACT } from "@/lib/constants";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -580,7 +581,15 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         <div className="flex justify-between items-start mb-2">
             <div>
                 <h3 className="font-bold text-white font-orbitron tracking-wide text-sm">{guardian.name}</h3>
-                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">ID: {guardian.id}</p>
+                <a 
+                    href={`https://explorer.bf1337.org/token/${NFT_CONTRACT}/instance/${guardian.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] text-muted-foreground font-mono mt-0.5 hover:text-cyan-400 transition-colors flex items-center gap-1 w-fit"
+                >
+                    ID: {guardian.id} <ExternalLink size={8} />
+                </a>
             </div>
         </div>
         

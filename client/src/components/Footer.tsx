@@ -97,7 +97,14 @@ export function Footer() {
                 Terms
               </button>
               <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-white transition-colors cursor-pointer">Privacy</button>
-              <a href="#" className="hover:text-white transition-colors">Smart Contracts</a>
+              <a 
+                href="https://explorer.bf1337.org/address/0xaE51dc5fD1499A129f8654963560f9340773ad59" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors flex items-center gap-1"
+              >
+                Smart Contracts <span className="text-[10px]">↗</span>
+              </a>
             </div>
 
             
