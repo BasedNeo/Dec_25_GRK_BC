@@ -3,8 +3,8 @@
 @theme {
   --font-orbitron: 'Exo 2', sans-serif;
   --font-display: 'Exo 2', sans-serif;
-  --font-sans: 'Rajdhani', sans-serif;
-  --font-body: 'Rajdhani', sans-serif;
+  --font-sans: 'Exo 2', sans-serif;
+  --font-body: 'Exo 2', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
@@ -55,7 +55,7 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Exo 2', sans-serif;
     font-weight: 500;
     line-height: 1.6;
     font-size: 0.875rem; /* text-sm default for mobile */
