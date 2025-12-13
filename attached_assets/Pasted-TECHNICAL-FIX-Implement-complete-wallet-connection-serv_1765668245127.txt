@@ -1,0 +1,226 @@
+TECHNICAL FIX: Implement complete wallet connection service
+
+Create services/WalletService.js:
+
+const WalletService = {
+  address: null,
+  signer: null,
+  chainId: null,
+  isConnected: false,
+  listeners: new Set(),
+  
+  REQUIRED_CHAIN: {
+    chainId: '0x7E53', // 32323 in hex
+    chainName: 'BasedAI',
+    nativeCurrency: {
+      name: 'BASED',
+      symbol: 'BASED',
+      decimals: 18
+    },
+    rpcUrls: ['https://mainnet.basedaibridge.com/rpc/'],
+    blockExplorerUrls: ['https://explorer.bf1337.org']
+  },
+  
+  // Initialize - check for existing connection
+  async initialize() {
+    if (typeof window.ethereum === 'undefined') {
+      console.log('[WalletService] No wallet detected');
+      return false;
+    }
+    
+    // Set up listeners
+    this._setupListeners();
+    
+    // Check for existing connection
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_accounts' 
+      });
+      
+      if (accounts.length > 0) {
+        await this._handleConnection(accounts[0]);
+        return true;
+      }
+    } catch (error) {
+      console.warn('[WalletService] Init check failed:', error);
+    }
+    
+    // Check localStorage for previously connected
+    const savedAddress = localStorage.getItem('wallet_address');
+    if (savedAddress) {
+      // Try to reconnect
+      try {
+        await this.connect();
+      } catch (e) {
+        localStorage.removeItem('wallet_address');
+      }
+    }
+    
+    return false;
+  },
+  
+  _setupListeners() {
+    if (!window.ethereum) return;
+    
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        this._handleDisconnection();
+      } else {
+        this._handleConnection(accounts[0]);
+      }
+    });
+    
+    window.ethereum.on('chainChanged', (chainId) => {
+      this.chainId = chainId;
+      this._notify('chainChanged', { chainId });
+      
+      if (chainId !== this.REQUIRED_CHAIN.chainId) {
+        this._notify('wrongNetwork', { 
+          current: chainId, 
+          required: this.REQUIRED_CHAIN.chainId 
+        });
+      }
+    });
+    
+    window.ethereum.on('disconnect', () => {
+      this._handleDisconnection();
+    });
+  },
+  
+  async connect() {
+    if (!window.ethereum) {
+      throw new Error('No wallet detected. Please install MetaMask or a compatible wallet.');
+    }
+    
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts'
+      });
+      
+      if (accounts.length === 0) {
+        throw new Error('No accounts returned');
+      }
+      
+      await this._handleConnection(accounts[0]);
+      await this.ensureCorrectNetwork();
+      
+      return this.address;
+      
+    } catch (error) {
+      if (error.code === 4001) {
+        throw new Error('Connection request was rejected');
+      }
+      throw error;
+    }
+  },
+  
+  async _handleConnection(address) {
+    this.address = address;
+    this.chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    this.isConnected = true;
+    
+    // Create signer for transactions
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    this.signer = await provider.getSigner();
+    
+    // Persist
+    localStorage.setItem('wallet_address', address);
+    
+    console.log('[WalletService] Connected:', this.getShortAddress());
+    this._notify('connected', { address: this.address, chainId: this.chainId });
+  },
+  
+  _handleDisconnection() {
+    this.address = null;
+    this.signer = null;
+    this.chainId = null;
+    this.isConnected = false;
+    
+    localStorage.removeItem('wallet_address');
+    
+    console.log('[WalletService] Disconnected');
+    this._notify('disconnected', {});
+  },
+  
+  disconnect() {
+    this._handleDisconnection();
+  },
+  
+  async ensureCorrectNetwork() {
+    if (!this.chainId || this.chainId === this.REQUIRED_CHAIN.chainId) {
+      return true;
+    }
+    
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: this.REQUIRED_CHAIN.chainId }]
+      });
+      return true;
+    } catch (error) {
+      if (error.code === 4902) {
+        // Chain not added, try to add it
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [this.REQUIRED_CHAIN]
+        });
+        return true;
+      }
+      throw error;
+    }
+  },
+  
+  getShortAddress() {
+    if (!this.address) return null;
+    return `${this.address.slice(0, 6)}...${this.address.slice(-4)}`;
+  },
+  
+  isOnCorrectNetwork() {
+    return this.chainId === this.REQUIRED_CHAIN.chainId;
+  },
+  
+  // Observer pattern
+  subscribe(callback) {
+    this.listeners.add(callback);
+    
+    // Immediately notify of current state
+    if (this.isConnected) {
+      callback('connected', { address: this.address, chainId: this.chainId });
+    }
+    
+    // Return unsubscribe function
+    return () => this.listeners.delete(callback);
+  },
+  
+  _notify(event, data) {
+    this.listeners.forEach(callback => {
+      try {
+        callback(event, data);
+      } catch (e) {
+        console.error('[WalletService] Listener error:', e);
+      }
+    });
+  },
+  
+  // Get connected contract for write operations
+  async getSignedContract() {
+    if (!this.signer) {
+      throw new Error('Wallet not connected');
+    }
+    
+    await this.ensureCorrectNetwork();
+    
+    return new ethers.Contract(
+      ContractService.config.address,
+      ContractService.abi,
+      this.signer
+    );
+  }
+};
+
+// Auto-initialize
+window.addEventListener('DOMContentLoaded', () => {
+  WalletService.initialize();
+});
+
+window.WalletService = WalletService;
