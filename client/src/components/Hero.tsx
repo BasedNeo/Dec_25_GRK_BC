@@ -15,7 +15,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
 import { fetchTotalSupply } from "@/lib/onchain";
-import { loadGuardiansFromCSV } from "@/lib/csvLoader";
+import { fetchGuardianMetadata } from "@/lib/ipfs";
 import { AverageStatsChart } from "./AverageStatsChart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MintedNFTsTable } from "./MintedNFTsTable";
@@ -32,7 +32,6 @@ export function Hero() {
   const [isUpdatingRarity, setIsUpdatingRarity] = useState(false);
   const [classifiedCount, setClassifiedCount] = useState(0);
   const [currentSupply, setCurrentSupply] = useState(0);
-  const [mintedList, setMintedList] = useState<Guardian[]>([]);
   
   // Default Rarity Data Structure
   const [rarityStats, setRarityStats] = useState([
@@ -60,30 +59,46 @@ export function Hero() {
         
         setCurrentSupply(activeSupply);
         
-        // 2. Get Baseline Data (Full Collection)
-        const allGuardians = await loadGuardiansFromCSV();
-        
-        // 3. Update State - Use CSV data for initial stats approximation
-        // We skip the heavy IPFS fetching for rarity stats here to improve performance
-        // and rely on the MintedNFTsTable to fetch its own data for the table view.
-        
-        // Use a subset of CSV corresponding to current supply for stats
-        const relevantGuardians = allGuardians.slice(0, activeSupply);
+        // 2. Fetch Metadata for ALL Minted Tokens (or limit to a reasonable batch for perf)
+        // User requested: "Ensure total classified = minted"
+        // We will fetch all minted tokens to build accurate stats. 
+        // Note: For large collections, this should be indexed server-side, but for this mockup/MVP we fetch client-side.
         
         const counts: Record<string, number> = {};
-        relevantGuardians.forEach(g => {
-            let r = g.rarity || 'Common';
-            if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
-            if (r === 'Rarest') r = 'More Rare';
-            counts[r] = (counts[r] || 0) + 1;
-        });
+        let processed = 0;
+
+        // Create array of IDs 1 to activeSupply
+        const idsToFetch = Array.from({ length: activeSupply }, (_, i) => i + 1);
+        
+        // Fetch in batches of 20
+        const BATCH_SIZE = 20;
+        for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
+            const batch = idsToFetch.slice(i, i + BATCH_SIZE);
+            const results = await Promise.all(batch.map(id => fetchGuardianMetadata(id)));
+            
+            results.forEach(g => {
+                let r = g.rarity || 'Common';
+                if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
+                if (r === 'Rarest') r = 'More Rare';
+                if (r === 'Legendary') r = 'Rarest-Legendary';
+                if (r === 'Epic') r = 'Very Rare'; // Map standard terms if they differ
+                
+                // Map based on the 8 levels requested
+                // Most Common, Common, Less Common, Less Rare, Rare, More Rare, Very Rare, Rarest-Legendary
+                
+                counts[r] = (counts[r] || 0) + 1;
+                processed++;
+            });
+            
+            // Update progress if needed
+        }
 
         setRarityStats(prev => prev.map(item => ({
             ...item,
             minted: counts[item.name] || 0
         })));
         
-        setClassifiedCount(activeSupply);
+        setClassifiedCount(processed);
         setLastUpdated(new Date());
         setSecondsAgo(0);
         
@@ -96,7 +111,7 @@ export function Hero() {
 
   useEffect(() => {
     fetchLiveRarity();
-    const interval = setInterval(fetchLiveRarity, 30 * 1000); // Poll every 30 seconds
+    const interval = setInterval(fetchLiveRarity, 15 * 60 * 1000); // Poll every 15 minutes
     return () => clearInterval(interval);
   }, []);
 
