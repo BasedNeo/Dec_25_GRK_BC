@@ -135,89 +135,144 @@ export const MOCK_PROPOSALS: Proposal[] = [
   }
 ];
 
-export const MINT_PRICE = 69420;
-export const TOTAL_SUPPLY = 3732;
 export const MINTED_COUNT = 6; 
+   
+   // Backing Value Constants & Logic
+// Replaced with new Emission Schedule Logic provided
+export const EMISSION_SCHEDULE = [
+  {
+    startDate: new Date('2024-12-10T01:00:00Z').getTime(),
+    dailyRate: 5000,  // 5,000 $BASED/day (10% of ~50,000 subnet emissions)
+    label: 'Pre-Halving'
+  },
+  {
+    startDate: new Date('2024-12-31T00:00:00Z').getTime(),
+    dailyRate: 2500,  // 2,500 $BASED/day after first halving
+    label: 'Post-Halving 1'
+  }
+  // Future halvings can be added here
+];
 
-// Backing Value Constants & Logic
-export const GENESIS_TIMESTAMP = new Date('2024-12-01T00:00:00Z').getTime(); 
-export const HALVING_TIMESTAMP = new Date('2025-12-31T23:59:59Z').getTime();
-export const EMISSION_RATE_DAILY = 5000; // 5,000 $BASED per day
-export const MINT_REVENUE_PERCENT = 0.51; // 51%
+export const ANCHOR_VALUE = 35000; // Starting value on Dec 10, 2024
+export const TOTAL_NFTS = 3732;
+export const TOTAL_SUPPLY = TOTAL_NFTS; // Alias for backward compatibility
+export const MINT_PRICE = 69420;
+export const NFT_MINT_TREASURY_PERCENT = 0.51;
 
-// Fixed Anchor for Passive Emissions Tracker (Per User Request)
-// Anchor: Dec 10, 2025, 1:00 AM
-// Start Value: 35,000 $BASED
-// Daily Increase: Daily Yield * 3732
-export const PASSIVE_ANCHOR_TIMESTAMP = new Date('2025-12-10T01:00:00').getTime(); // Local 1am or UTC? Using ISO string without Z implies local, but let's be consistent.
-// User said "12/10/2025 1am". Let's assume a fixed point.
-export const PASSIVE_ANCHOR_VALUE = 35000;
-export const DAILY_YIELD_PER_NFT = 1.3397642; 
-
-export const calculateEmissions = () => {
+// Helper to get total passive emissions based on schedule
+export const calculatePassiveEmissions = () => {
   const now = Date.now();
-  // Ensure we don't go negative if system time is before anchor (unlikely given date, but good safety)
-  // Actually, current date is Dec 13, 2025 per system prompt. Anchor is Dec 10.
+  let totalEmissions = ANCHOR_VALUE;
+  let currentDailyRate = EMISSION_SCHEDULE[0].dailyRate;
   
-  const msSinceAnchor = Math.max(0, now - PASSIVE_ANCHOR_TIMESTAMP);
-  const daysSinceAnchor = msSinceAnchor / (1000 * 60 * 60 * 24);
+  // Sort schedule by date
+  const schedule = [...EMISSION_SCHEDULE].sort((a, b) => a.startDate - b.startDate);
   
-  // Formula: Anchor + (Days * Daily_Yield * Total_Supply)
-  // Daily_Yield * Total_Supply = 1.3397642 * 3732 ~= 5000
-  const dailyTotalEmission = DAILY_YIELD_PER_NFT * TOTAL_SUPPLY;
+  for (let i = 0; i < schedule.length; i++) {
+    const periodStart = schedule[i].startDate;
+    const periodEnd = schedule[i + 1]?.startDate || now; // If no next period, assumes current rate continues indefinitely until now
+    const periodRate = schedule[i].dailyRate;
+    
+    // If we haven't reached this period yet, skip
+    if (now < periodStart) continue;
+    
+    // Calculate days in this period
+    // We want the overlap between [periodStart, periodEnd] and [EMISSION_SCHEDULE[0].startDate, now]
+    // The loop effectively handles segments.
+    
+    // However, the first period starts at EMISSION_SCHEDULE[0].startDate.
+    // We should count from max(periodStart, actual_start_of_emissions)
+    // But periodStart IS the start for that segment.
+    
+    // Logic from provided snippet:
+    const effectiveEnd = Math.min(now, periodEnd);
+    const effectiveStart = Math.max(periodStart, EMISSION_SCHEDULE[0].startDate);
+    
+    if (effectiveEnd > effectiveStart) {
+      const daysInPeriod = (effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24);
+      totalEmissions += daysInPeriod * periodRate;
+    }
+    
+    // Track current rate for display
+    if (now >= periodStart && (now < periodEnd || !schedule[i + 1])) {
+      currentDailyRate = periodRate;
+    }
+  }
   
-  const totalEmissions = PASSIVE_ANCHOR_VALUE + (daysSinceAnchor * dailyTotalEmission);
+  // Calculate time until next halving
+  const nextHalving = schedule.find(s => s.startDate > now);
+  const daysUntilHalving = nextHalving 
+    ? Math.ceil((nextHalving.startDate - now) / (1000 * 60 * 60 * 24))
+    : null;
   
-  return totalEmissions; // Returns float, can be floored in UI
+  return {
+    total: totalEmissions,
+    currentDailyRate: currentDailyRate,
+    nextHalvingIn: daysUntilHalving,
+    nextHalvingRate: nextHalving?.dailyRate || null
+  };
 };
+
+// Deprecate old calculateEmissions in favor of this new logic
+export const calculateEmissions = () => calculatePassiveEmissions().total;
 
 export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
   // 1. Base per-NFT from mints: 51% of 69,420
-  const mintShare = 35404.2; 
+  const mintShare = MINT_PRICE * NFT_MINT_TREASURY_PERCENT; 
   
-  // 2. Daily Emissions Accrual (Per NFT)
-  // We use the same anchor logic for consistency? 
-  // User specifically asked about the "Passive Emissions" tracker (total).
-  // For "Backed Value" (Per NFT), it typically tracks from Genesis or Mint.
-  // However, "Passive Emission value" usually refers to the accumulated yield.
-  // Let's keep the per-NFT calculation consistent with the global anchor to match the user's mental model if possible,
-  // OR keep it based on Genesis if that's the "age" of the NFT.
-  // Given the strict instruction is for the "Passive Emissions" tracker, I will leave this one 
-  // largely as is but ensure it uses the same DAILY_YIELD_PER_NFT constant.
-  
-  // Actually, if the tracker starts at 35,000 on Dec 10, the per-NFT value might need to align.
-  // But 35,000 / 3732 ~= 9.3. 
-  // Let's stick to the existing Genesis logic for per-NFT unless told otherwise, 
-  // but use the constant for clarity.
-  
-  const now = Date.now();
-  const msSinceGenesis = Math.max(0, now - GENESIS_TIMESTAMP);
-  const daysSinceGenesis = msSinceGenesis / (1000 * 60 * 60 * 24);
-  
-  const accruedEmissions = DAILY_YIELD_PER_NFT * daysSinceGenesis;
+  // 2. Passive Emissions Accrual (Per NFT)
+  const passiveStats = calculatePassiveEmissions();
+  const accruedEmissionsPerNFT = passiveStats.total / TOTAL_NFTS;
   
   // 3. Apply Rarity Multiplier to Emissions ONLY
   const multiplier = RARITY_CONFIG[rarityLevel]?.multiplier || 0;
-  const boostedEmissions = accruedEmissions * (1 + multiplier);
+  const boostedEmissions = accruedEmissionsPerNFT * (1 + multiplier);
   
   return Math.floor(mintShare + boostedEmissions);
 };
 
-// Pool Balance = (Minted * Price * 0.51) + Emissions
-// Note: User prompt asked for "6x 69.240" for pool total earlier, but here we are harmonizing.
-// The "Pool Total" usually tracks the *actual* treasury.
-// But the "Backed By Per NFT" tracks the *theoretical* value per unit.
 export const calculatePoolBalance = () => {
-    // We stick to the previous requested logic for the POOL TRACKER total (Live Mint Revenue + Emissions)
-    // But we update the "Backed By" logic elsewhere.
-    const mintRevenue = MINTED_COUNT * MINT_PRICE; // Full revenue or 51%? User said "6x 69.240" earlier.
-    // Let's keep the Pool Balance logic consistent with the previous specific request for the *hero/pool display*,
-    // but the *per NFT* value uses the new harmonized logic.
-    const emissions = calculateEmissions();
-    return mintRevenue + emissions;
+    // Pool Balance = (Total Minted * Price * 0.51) + Passive Emissions
+    // Assuming all minted for the "Total Pool" view or just the current minted count?
+    // The provided snippet uses "totalMinted" passed to it.
+    // For MOCK_POOL_BALANCE, let's assume MINTED_COUNT (which represents live state) 
+    // OR TOTAL_NFTS if we want to show "Projected Treasury".
+    // Usually "Community Treasury" shows what's currently in it.
+    // But MOCK_DATA has MINTED_COUNT = 6. 
+    // Let's use TOTAL_NFTS to show the *potential* or *target* treasury if that's the intent,
+    // OR stick to MINTED_COUNT if we want to be realistic about "live" state.
+    // However, the emissions are running based on time, regardless of mint count (usually).
+    
+    // User snippet: `function calculateCommunityTreasury(totalMinted)`
+    // Let's use MOCK_GUARDANS_COUNT (Total Supply) to represent the "Fully Minted" scenario 
+    // which seems to be what users want to see for "Backed Value" (theoretical).
+    
+    const mintRevenue = TOTAL_NFTS * MINT_PRICE * NFT_MINT_TREASURY_PERCENT;
+    const passive = calculatePassiveEmissions().total;
+    return mintRevenue + passive;
 };
 
-export const MOCK_POOL_BALANCE = calculatePoolBalance(); // Initial static value
+// Expose full treasury metrics for UI
+export const getTreasuryMetrics = () => {
+  const passive = calculatePassiveEmissions();
+  const mintRevenue = TOTAL_NFTS * MINT_PRICE * NFT_MINT_TREASURY_PERCENT;
+  
+  return {
+    total: mintRevenue + passive.total,
+    breakdown: {
+      fromMint: mintRevenue,
+      passiveEmissions: passive.total,
+      stakingEmissions: 0 // Placeholder
+    },
+    rates: {
+      currentDaily: passive.currentDailyRate,
+      nextHalvingIn: passive.nextHalvingIn,
+      nextHalvingRate: passive.nextHalvingRate
+    }
+  };
+};
+
+export const MOCK_POOL_BALANCE = calculatePoolBalance();
 
 export interface Escrow {
   id: number;

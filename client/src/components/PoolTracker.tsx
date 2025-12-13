@@ -1,4 +1,4 @@
-import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions, HALVING_TIMESTAMP, EMISSION_RATE_DAILY, TOTAL_SUPPLY } from "@/lib/mockData";
+import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions, getTreasuryMetrics, TOTAL_SUPPLY } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info, ExternalLink, Timer, Zap, Brain, AlertTriangle } from "lucide-react";
 import { Line } from "react-chartjs-2";
@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { fetchTotalSupply } from "@/lib/onchain";
 import { ethers } from "ethers";
-import { differenceInDays, format } from "date-fns";
+import { format } from "date-fns";
 import { RPC_URL, BASED_TOKEN_ETH, POOL_WALLET, BASED_TOKEN_L1 } from "@/lib/constants";
 
 import {
@@ -113,46 +113,30 @@ export function PoolTracker() {
 
         // MOCK OVERRIDE IF DATA IS EMPTY (for demo purposes)
         if (balVal < 100) {
-             // Anchor: Dec 10, 2025, 1:00 AM (Timestamp: 1765328400000)
-             // Using strict timestamp for 12/10/2025 01:00:00 UTC (approx) or Local
-             // Assuming User meant 2025 given the current date in context is Dec 13, 2025
-             const ANCHOR_DATE = new Date('2025-12-10T01:00:00').getTime();
-             const ANCHOR_AMOUNT = 35000;
-             const YIELD_PER_NFT = 1.34;
-             const TOTAL_NFTS = 3732;
-             
-             const now = Date.now();
-             const msPerDay = 86400000;
-             // Calculate precise days passed including partial days
-             const daysPassed = Math.max(0, (now - ANCHOR_DATE) / msPerDay);
-             
-             // Formula: Anchor + (DailyYield * NFTs * DaysPassed)
-             const totalEmissions = ANCHOR_AMOUNT + (YIELD_PER_NFT * TOTAL_NFTS * daysPassed);
-             
+             const metrics = getTreasuryMetrics();
              // Reverse calculate balVal because the code below does: share = balVal * 0.10
-             balVal = totalEmissions / 0.10;
+             // We want share to equal metrics.breakdown.passiveEmissions
+             balVal = metrics.breakdown.passiveEmissions / 0.10;
         }
 
         setSubnetBalance(balVal);
         
         // 3. Calculate 10% Pool Share (Total Accrued Passive Emissions)
-        const share = balVal * 0.10; // ~35,000 if using mock
+        const share = balVal * 0.10; 
         setPoolShare(share);
 
         // 4. Calculate Daily Passive per NFT
-        // User context: "passive emissions has only been acuring on for a week" (7 days)
-        // Daily Yield = (Total Pool Share / 7 Days) / 3732 NFTs
-        const daysActive = 7; 
-        const dailyPoolShare = share / daysActive; 
-        const perNft = dailyPoolShare / TOTAL_SUPPLY; 
-        setDailyPassive(perNft > 0 ? perNft : 1.34);
+        const metrics = getTreasuryMetrics();
+        const perNft = metrics.rates.currentDaily ? (metrics.rates.currentDaily / TOTAL_SUPPLY) : 1.34;
+        setDailyPassive(perNft);
 
     } catch (e) {
         console.error("Subnet Poll failed", e);
         // Fallback
-        setSubnetBalance(350000);
-        setPoolShare(35000);
-        setDailyPassive(1.34);
+        const metrics = getTreasuryMetrics();
+        setSubnetBalance(metrics.breakdown.passiveEmissions / 0.10);
+        setPoolShare(metrics.breakdown.passiveEmissions);
+        setDailyPassive(metrics.rates.currentDaily ? (metrics.rates.currentDaily / TOTAL_SUPPLY) : 1.34);
     }
   }, []);
 
@@ -270,7 +254,15 @@ export function PoolTracker() {
   }, [pollSubnet, pollPoolWallet, fetchPriceHistory]); 
 
   // Halving Logic
-  const daysToHalving = differenceInDays(new Date(HALVING_TIMESTAMP), new Date());
+  const [halvingInfo, setHalvingInfo] = useState<{days: number | null, nextRate: number | null}>({ days: null, nextRate: null });
+
+  useEffect(() => {
+    const metrics = getTreasuryMetrics();
+    setHalvingInfo({
+        days: metrics.rates.nextHalvingIn,
+        nextRate: metrics.rates.nextHalvingRate
+    });
+  }, []);
 
   // Generate Chart Data: 7-Day Price History
   const chartData = useMemo(() => {
@@ -412,10 +404,12 @@ export function PoolTracker() {
                   <div>
                       <p className="text-sm text-purple-100 font-bold mb-1 font-orbitron">Halving Countdown</p>
                       <div className="text-2xl font-black text-purple-400 font-mono tracking-tight">
-                        {daysToHalving} <span className="text-xs text-purple-600">DAYS</span>
+                        {halvingInfo.days !== null ? halvingInfo.days : '∞'} <span className="text-xs text-purple-600">DAYS</span>
                       </div>
                       <p className="text-[10px] text-purple-200/60 mt-1 font-mono uppercase">
-                          Target: Dec 31, 2025
+                          {halvingInfo.nextRate 
+                            ? `Next Rate: ${halvingInfo.nextRate.toLocaleString()} $BASED/day` 
+                            : 'No scheduled halving'}
                       </p>
                   </div>
                </div>

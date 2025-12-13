@@ -1,0 +1,168 @@
+// ============================================
+// EMISSION SCHEDULE WITH HALVINGS
+// ============================================
+
+const EMISSION_SCHEDULE = [
+  {
+    startDate: new Date('2024-12-10T01:00:00Z').getTime(),
+    dailyRate: 5000,  // 5,000 $BASED/day (10% of ~50,000 subnet emissions)
+    label: 'Pre-Halving'
+  },
+  {
+    startDate: new Date('2024-12-31T00:00:00Z').getTime(),
+    dailyRate: 2500,  // 2,500 $BASED/day after first halving
+    label: 'Post-Halving 1'
+  }
+  // Add future halvings here:
+  // {
+  //   startDate: new Date('2025-06-30T00:00:00Z').getTime(),
+  //   dailyRate: 1250,
+  //   label: 'Post-Halving 2'
+  // }
+];
+
+const ANCHOR_VALUE = 35000; // Starting value on Dec 10, 2024
+const TOTAL_NFTS = 3732;
+const MINT_PRICE = 69420;
+const NFT_MINT_TREASURY_PERCENT = 0.51;
+
+// Subnet contract on ETH for reference
+const SUBNET_TOKEN_ADDRESS = '0x758db5be97ddf623a501f607ff822792a8f2d8f2';
+const SUBNET_BRAIN_ADDRESS = '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4';
+
+// ============================================
+// PASSIVE EMISSIONS CALCULATOR (with halvings)
+// ============================================
+
+function calculatePassiveEmissions() {
+  const now = Date.now();
+  let totalEmissions = ANCHOR_VALUE;
+  let currentDailyRate = EMISSION_SCHEDULE[0].dailyRate;
+  
+  // Sort schedule by date
+  const schedule = [...EMISSION_SCHEDULE].sort((a, b) => a.startDate - b.startDate);
+  
+  for (let i = 0; i < schedule.length; i++) {
+    const periodStart = schedule[i].startDate;
+    const periodEnd = schedule[i + 1]?.startDate || now;
+    const periodRate = schedule[i].dailyRate;
+    
+    // If we haven't reached this period yet, skip
+    if (now < periodStart) continue;
+    
+    // Calculate days in this period
+    const effectiveEnd = Math.min(now, periodEnd);
+    const effectiveStart = Math.max(periodStart, EMISSION_SCHEDULE[0].startDate);
+    
+    if (effectiveEnd > effectiveStart) {
+      const daysInPeriod = (effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24);
+      totalEmissions += daysInPeriod * periodRate;
+    }
+    
+    // Track current rate for display
+    if (now >= periodStart && (now < periodEnd || !schedule[i + 1])) {
+      currentDailyRate = periodRate;
+    }
+  }
+  
+  // Calculate time until next halving
+  const nextHalving = schedule.find(s => s.startDate > now);
+  const daysUntilHalving = nextHalving 
+    ? Math.ceil((nextHalving.startDate - now) / (1000 * 60 * 60 * 24))
+    : null;
+  
+  return {
+    total: totalEmissions,
+    currentDailyRate: currentDailyRate,
+    nextHalvingIn: daysUntilHalving,
+    nextHalvingRate: nextHalving?.dailyRate || null
+  };
+}
+
+// ============================================
+// NFT MINT TREASURY (51% of mint proceeds)
+// ============================================
+
+function calculateMintTreasury(totalMinted) {
+  const totalProceeds = totalMinted * MINT_PRICE;
+  return totalProceeds * NFT_MINT_TREASURY_PERCENT;
+}
+
+// ============================================
+// STAKING EMISSIONS (update with your logic)
+// ============================================
+
+function calculateStakingEmissions() {
+  // Replace with actual staking calculation if applicable
+  return 0;
+}
+
+// ============================================
+// COMMUNITY TREASURY TOTAL
+// ============================================
+
+function calculateCommunityTreasury(totalMinted) {
+  const passive = calculatePassiveEmissions();
+  const fromMint = calculateMintTreasury(totalMinted);
+  const staking = calculateStakingEmissions();
+  
+  return {
+    total: fromMint + passive.total + staking,
+    breakdown: {
+      fromMint: fromMint,
+      passiveEmissions: passive.total,
+      stakingEmissions: staking
+    },
+    rates: {
+      currentDaily: passive.currentDailyRate,
+      nextHalvingIn: passive.nextHalvingIn,
+      nextHalvingRate: passive.nextHalvingRate
+    }
+  };
+}
+
+// ============================================
+// UI UPDATE FUNCTION
+// ============================================
+
+async function updatePoolDisplay() {
+  // Get totalMinted from NFT contract
+  const totalMinted = await getTotalMinted(); // Your existing function
+  
+  const treasury = calculateCommunityTreasury(totalMinted);
+  
+  // Format numbers
+  const formatNum = (n) => n.toLocaleString(undefined, {maximumFractionDigits: 0});
+  
+  // Update Community Treasury Total
+  document.getElementById('community-treasury-total').textContent = 
+    formatNum(treasury.total) + ' $BASED';
+  
+  // Update From NFT Mint
+  document.getElementById('from-nft-mint').textContent = 
+    formatNum(treasury.breakdown.fromMint) + ' $BASED';
+  document.getElementById('mint-percent').textContent = '51% of mint proceeds';
+  
+  // Update Passive Emissions
+  document.getElementById('passive-emissions').textContent = 
+    formatNum(treasury.breakdown.passiveEmissions) + ' $BASED';
+  document.getElementById('passive-daily-rate').textContent = 
+    formatNum(treasury.rates.currentDaily) + ' $BASED/day';
+  
+  // Update Halving Countdown
+  if (treasury.rates.nextHalvingIn) {
+    document.getElementById('halving-countdown').textContent = 
+      `Next halving in ${treasury.rates.nextHalvingIn} days (→ ${formatNum(treasury.rates.nextHalvingRate)}/day)`;
+    document.getElementById('halving-countdown').style.display = 'block';
+  } else {
+    document.getElementById('halving-countdown').style.display = 'none';
+  }
+  
+  // Update Staking Emissions
+  document.getElementById('staking-emissions').textContent = 
+    formatNum(treasury.breakdown.stakingEmissions) + ' $BASED';
+}
+
+// Refresh every 10 seconds
+setInterval(updatePoolDisplay, 10000);
+updatePoolDisplay();
