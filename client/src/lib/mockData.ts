@@ -1,7 +1,7 @@
-import guardian1 from '@assets/generated_images/cyberpunk_guardian_neon_armor_purple_cyan.png';
-import guardian2 from '@assets/generated_images/cyberpunk_guardian_robotic_holographic_neon_green.png';
-import guardian3 from '@assets/generated_images/cyberpunk_guardian_hooded_mysterious_neon_blue.png';
-import guardian4 from '@assets/generated_images/cyberpunk_guardian_heavy_armor_red_orange.png';
+import guardian1 from '@/assets/generated_images/cyberpunk_guardian_neon_armor_purple_cyan.png';
+import guardian2 from '@/assets/generated_images/cyberpunk_guardian_robotic_holographic_neon_green.png';
+import guardian3 from '@/assets/generated_images/cyberpunk_guardian_hooded_mysterious_neon_blue.png';
+import guardian4 from '@/assets/generated_images/cyberpunk_guardian_heavy_armor_red_orange.png';
 
 export interface Guardian {
   id: number;
