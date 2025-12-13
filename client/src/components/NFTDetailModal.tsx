@@ -323,7 +323,27 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             </ScrollArea>
 
             {/* Footer Actions */}
-            <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0">
+            <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0 space-y-4">
+                {/* Buy/Offer Section */}
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    <div className="flex-1 w-full">
+                         <div className="text-[10px] text-muted-foreground font-mono mb-1 uppercase tracking-wider">Current Price</div>
+                         <div className="text-2xl font-orbitron text-white font-bold flex items-baseline gap-1">
+                            69,420 <span className="text-sm text-primary">$BASED</span>
+                         </div>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button className="flex-1 sm:w-32 bg-primary text-black hover:bg-primary/90 font-orbitron font-bold tracking-wider">
+                            BUY NOW
+                        </Button>
+                        <Button variant="outline" className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider">
+                            MAKE OFFER
+                        </Button>
+                    </div>
+                </div>
+
+                <Separator className="bg-white/10" />
+
                 <div className="grid grid-cols-3 gap-3">
                      <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
                         <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
@@ -331,7 +351,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                      <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
                         <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
                      </Button>
-                     <Button variant="default" asChild className="bg-primary text-black hover:bg-primary/90 text-xs font-orbitron tracking-wider cursor-pointer">
+                     <Button variant="default" asChild className="bg-white/5 text-white hover:bg-white/10 text-xs font-orbitron tracking-wider cursor-pointer border border-white/10">
                         <a href={`https://explorer.bf1337.org/address/${NFT_CONTRACT}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink size={14} className="mr-2" /> <span className="hidden sm:inline">EXPLORER</span>
                         </a>
