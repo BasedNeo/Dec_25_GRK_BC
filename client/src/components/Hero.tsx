@@ -282,7 +282,7 @@ export function Hero() {
               id="hero-mint-section"
               onClick={() => window.open('https://aftermint.trade', '_blank')}
               disabled={isPaused}
-              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button mb-4
+              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button buy-button mb-4
                 ${mintButtonColor === 'purple' 
                   ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
                   : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(0,255,255,0.4)]'

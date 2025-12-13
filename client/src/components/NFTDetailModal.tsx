@@ -320,7 +320,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                          </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <Button className="flex-1 sm:w-32 btn-cyber-gradient">
+                        <Button className="flex-1 sm:w-32 btn-cyber-gradient buy-now-btn">
                             BUY NOW
                         </Button>
                         <Button variant="outline" className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider">
