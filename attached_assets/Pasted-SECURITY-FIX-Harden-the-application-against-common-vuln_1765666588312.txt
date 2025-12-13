@@ -1,0 +1,95 @@
+SECURITY FIX: Harden the application against common vulnerabilities
+
+1. INPUT SANITIZATION
+Add to all places where user data or external data is rendered:
+
+function sanitizeHtml(str) {
+  if (!str) return '';
+  const temp = document.createElement('div');
+  temp.textContent = str;
+  return temp.innerHTML;
+}
+
+// Use when displaying NFT names, descriptions, etc.
+// NEVER use innerHTML with unsanitized data
+
+2. CONTENT SECURITY POLICY
+Add to your HTML <head>:
+
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: https: blob:;
+  connect-src 'self' https://api.coingecko.com https://mainnet.basedaibridge.com wss://mainnet.basedaibridge.com https://*.mypinata.cloud https://*.ipfs.io;
+">
+
+3. VALIDATE EXTERNAL DATA
+Before using any data from contract or IPFS:
+
+function validateMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object') return null;
+  
+  return {
+    name: sanitizeHtml(metadata.name || ''),
+    description: sanitizeHtml(metadata.description || ''),
+    image: validateImageUrl(metadata.image),
+    attributes: Array.isArray(metadata.attributes) 
+      ? metadata.attributes.map(a => ({
+          trait_type: sanitizeHtml(a.trait_type || ''),
+          value: sanitizeHtml(String(a.value || ''))
+        }))
+      : []
+  };
+}
+
+function validateImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  // Only allow HTTPS and IPFS URLs
+  if (url.startsWith('https://') || url.startsWith('ipfs://')) {
+    return url;
+  }
+  return '';
+}
+
+4. RATE LIMITING FOR API CALLS
+Prevent excessive API calls:
+
+const rateLimiter = {
+  calls: new Map(),
+  
+  canCall(key, limitMs = 1000) {
+    const now = Date.now();
+    const lastCall = this.calls.get(key) || 0;
+    
+    if (now - lastCall < limitMs) {
+      return false;
+    }
+    
+    this.calls.set(key, now);
+    return true;
+  }
+};
+
+// Usage
+if (rateLimiter.canCall('fetchPrice', 5000)) {
+  await fetchPriceFeed();
+}
+
+5. SECURE WALLET INTERACTIONS
+Never expose private keys or sign arbitrary data:
+
+// Before signing any transaction, validate it
+async function safeSign(transaction) {
+  // Only allow transactions to known contracts
+  const allowedContracts = [
+    '0xaE51dc5fD1499A129f8654963560f9340773ad59'.toLowerCase()
+  ];
+  
+  if (!allowedContracts.includes(transaction.to?.toLowerCase())) {
+    throw new Error('Transaction to unknown contract blocked');
+  }
+  
+  return await signer.sendTransaction(transaction);
+}
