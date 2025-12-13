@@ -1,6 +1,6 @@
 // Service Worker for Based Guardians PWA
-const CACHE_NAME = 'based-guardians-v2';
-const URLS_TO_CACHE = [
+const CACHE_NAME = 'based-guardians-v3';
+const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/favicon.png',
@@ -8,15 +8,15 @@ const URLS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  console.log('[ServiceWorker] Install');
+  console.log('[ServiceWorker] Install v3');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[ServiceWorker] Caching all: app shell and content');
-        return cache.addAll(URLS_TO_CACHE);
+        console.log('[ServiceWorker] Caching static assets');
+        return cache.addAll(STATIC_ASSETS);
       })
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -24,72 +24,114 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+        cacheNames
+          .filter((cacheName) => cacheName !== CACHE_NAME)
+          .map((cacheName) => {
             console.log('[ServiceWorker] Removing old cache', cacheName);
             return caches.delete(cacheName);
-          }
-        })
+          })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 0. NEVER CACHE JAVASCRIPT/MODULE FILES - Let Vite/Browser handle them
-  if (url.pathname.match(/\.(js|jsx|ts|tsx|mjs|cjs)$/) || url.pathname.includes('/src/') || url.pathname.includes('/@') || url.pathname.includes('vite')) {
-      return; // Always network, never cache
+  // NEVER cache JS/module files - Let Vite/Browser handle them
+  if (url.pathname.match(/\.(js|jsx|ts|tsx|mjs|cjs)$/) || 
+      url.pathname.includes('/src/') || 
+      url.pathname.includes('/@') || 
+      url.pathname.includes('vite') ||
+      url.pathname.includes('node_modules')) {
+    return;
   }
 
-  // 1. PRICE FEED & API CALLS - NETWORK ONLY
-  // Do NOT cache price feed or RPC calls to ensure real-time data
-  if (url.pathname.includes('price') || url.hostname.includes('coingecko') || url.hostname.includes('rpc') || url.hostname.includes('basedaibridge') || url.pathname.includes('/api/')) {
-      return; // Fallback to browser default (Network)
-  }
-
-  // 2. ASSETS (Images, Fonts, IPFS) - CACHE FIRST
-  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|woff|woff2)$/) || url.hostname.includes('ipfs') || url.hostname.includes('pinata')) {
+  // NETWORK ONLY - API calls, RPC, price feeds, metadata
+  // Contract data MUST be fresh, never cached
+  if (url.hostname.includes('coingecko') || 
+      url.hostname.includes('basedaibridge') ||
+      url.hostname.includes('blastapi') ||
+      url.pathname.includes('/api/') ||
+      url.pathname.includes('price') ||
+      url.pathname.endsWith('.json')) {
     event.respondWith(
-      caches.match(event.request)
-        .then((response) => {
-          if (response) {
-            return response; // Return from cache
-          }
-          return fetch(event.request).then((response) => {
-            if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
-              return response;
-            }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            return response;
-          });
-        })
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ error: 'offline' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
     );
     return;
   }
 
-  // 3. APP SHELL - STALE WHILE REVALIDATE (only for HTML and CSS)
-  if (url.pathname.match(/\.(html|css)$/) || url.pathname === '/') {
+  // CACHE FIRST - Images from IPFS/Pinata (immutable content)
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp)$/) && 
+      (url.hostname.includes('ipfs') || url.hostname.includes('pinata'))) {
     event.respondWith(
-      caches.match(event.request)
-        .then((response) => {
-          const fetchPromise = fetch(event.request).then((networkResponse) => {
-             if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-                const responseToCache = networkResponse.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseToCache);
-                });
-             }
-             return networkResponse;
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        
+        return fetch(event.request).then((response) => {
+          if (!response || response.status !== 200) return response;
+          
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
           });
-          return response || fetchPromise;
-        })
+          return response;
+        }).catch(() => {
+          return new Response('', { status: 404 });
+        });
+      })
     );
+    return;
+  }
+
+  // CACHE FIRST - Local static assets (fonts, local images)
+  if (url.pathname.match(/\.(woff|woff2|ttf|eot|png|jpg|jpeg|svg|gif|webp|css)$/)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        
+        return fetch(event.request).then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // STALE WHILE REVALIDATE - HTML pages
+  if (event.request.mode === 'navigate' || url.pathname === '/') {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        }).catch(() => {
+          return cached || new Response('Offline', { 
+            status: 503, 
+            headers: { 'Content-Type': 'text/html' } 
+          });
+        });
+        
+        return cached || fetchPromise;
+      })
+    );
+    return;
   }
 });
