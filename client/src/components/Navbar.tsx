@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star } from "lucide-react";
+import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, WifiOff, RefreshCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import { useAccount, useBlockNumber, useConnect } from "wagmi";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import confetti from "canvas-confetti";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import rocketLogo from '@assets/generated_images/neon_cyan_rocket_with_simple_flame_on_black.png';
 
 interface NavbarProps {
@@ -28,7 +29,60 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isShaking, setIsShaking] = useState(false);
   const { toast } = useToast();
   const { address, isConnected: wagmiConnected } = useAccount();
+  const { error: connectError } = useConnect();
+  const queryClient = useQueryClient();
   
+  // RPC Connection Monitoring
+  const { error: blockError, refetch: refetchBlock } = useBlockNumber({ 
+    query: { 
+        refetchInterval: 10000,
+        retry: 2
+    } 
+  });
+
+  useEffect(() => {
+    if (blockError) {
+        toast({
+            title: "Network Unavailable",
+            description: "Unable to connect to BasedAI network.",
+            variant: "destructive",
+            action: (
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                        refetchBlock();
+                        queryClient.invalidateQueries();
+                        toast({ title: "Retrying connection...", description: "Please wait." });
+                    }}
+                    className="border-white/20 hover:bg-white/10"
+                >
+                    <RefreshCcw className="w-4 h-4 mr-2" /> Retry
+                </Button>
+            ),
+            duration: 10000,
+        });
+    }
+  }, [blockError, toast, refetchBlock, queryClient]);
+
+  // Wallet Connection Error Handling
+  useEffect(() => {
+    if (connectError) {
+        let message = "Failed to connect wallet.";
+        if (connectError.message.includes("User rejected")) {
+            message = "Connection rejected by user.";
+        } else if (connectError.message.includes("Connector not found")) {
+            message = "Wallet not found. Please install a compatible wallet.";
+        }
+
+        toast({
+            title: "Connection Failed",
+            description: message,
+            variant: "destructive",
+        });
+    }
+  }, [connectError, toast]);
+
   const handleLogoClick = () => {
     setIsShaking(true);
     onTabChange('mint');

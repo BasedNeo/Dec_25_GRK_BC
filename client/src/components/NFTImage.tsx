@@ -63,7 +63,7 @@ export function NFTImage({
            <div className="bg-red-500/10 p-3 rounded-full mb-2">
              <ImageOff className="w-6 h-6 text-red-500/50" />
            </div>
-           <span className="text-xs text-muted-foreground font-mono">Image unavailable</span>
+           <span className="text-xs text-muted-foreground font-mono">Metadata unavailable</span>
            {id && <span className="text-sm font-bold text-white font-orbitron mt-1">#{id}</span>}
         </div>
       )}

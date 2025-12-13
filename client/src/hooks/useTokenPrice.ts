@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
+import { useRef } from "react";
 
 const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
 const TOKEN_ID = "basedai";
@@ -9,7 +11,12 @@ interface PriceData {
   change: number;
 }
 
+// Cache for last known good price
+let lastKnownPrice: PriceData | null = null;
+
 export function useTokenPrice() {
+  const isFirstLoad = useRef(true);
+
   return useQuery<PriceData>({
     queryKey: ["tokenPrice", TOKEN_ID],
     queryFn: async () => {
@@ -37,13 +44,34 @@ export function useTokenPrice() {
         
         console.log("Price Debug:", { ethPrice, basedL1Price });
 
-        return {
+        const newPrice = {
           ethPrice,
           basedL1Price,
           change: tokenData.usd_24h_change || 0
         };
+
+        lastKnownPrice = newPrice;
+        isFirstLoad.current = false;
+        return newPrice;
+
       } catch (e) {
-        console.warn("Price fetch failed, using mock data:", e);
+        console.warn("Price fetch failed:", e);
+        
+        if (isFirstLoad.current) {
+             toast({
+                title: "Price Update Failed",
+                description: "Using cached/mock data while retrying connection...",
+                variant: "destructive",
+                duration: 5000,
+            });
+            isFirstLoad.current = false;
+        }
+
+        // Return last known price if available, otherwise mock data
+        if (lastKnownPrice) {
+            return lastKnownPrice;
+        }
+
         // Fallback to mock data matching user examples ($0.105 range)
         return {
           ethPrice: 0.1052,
