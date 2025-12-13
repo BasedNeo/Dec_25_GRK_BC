@@ -20,7 +20,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MintedNFTsTable } from "./MintedNFTsTable";
 import { RarityChart } from "./RarityChart";
-import { Guardian } from "@/lib/mockData";
+import { NFTImage } from "./NFTImage";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -323,9 +323,10 @@ export function Hero() {
               
               {heroGuardian ? (
                 <>
-                    <img 
+                    <NFTImage 
                         src={heroGuardian.image} 
                         alt={heroGuardian.name} 
+                        id={heroGuardian.id}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                     

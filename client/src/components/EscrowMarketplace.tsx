@@ -807,6 +807,8 @@ export function EscrowMarketplace() {
   );
 }
 
+import { NFTImage } from "./NFTImage";
+
 // Helper Card Component
 function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
@@ -816,7 +818,12 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
         <Card className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 group cursor-pointer relative" onClick={onClick}>
             {/* Image & Badges */}
             <div className="relative aspect-square bg-secondary/20 overflow-hidden">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <NFTImage 
+                    src={item.image} 
+                    alt={item.name} 
+                    id={item.id}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
                 
                 {isRare && (
                     <Badge className="absolute top-2 right-2 bg-purple-500/20 text-purple-400 border-purple-500/50 backdrop-blur-md">

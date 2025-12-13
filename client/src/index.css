@@ -80,7 +80,14 @@ body {
   background-size: 40px 40px;
 }
 
-/* Hide Vite and Replit Error Overlays */
+.nft-image {
+  will-change: opacity, transform;
+}
+
+.nft-image.loaded {
+  opacity: 1;
+}
+
 vite-error-overlay,
 replit-error-modal {
   display: none !important;

@@ -503,10 +503,9 @@ export function NFTGallery({
   );
 }
 
-function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
-  const [imgSrc, setImgSrc] = useState(guardian.image);
-  const [isImageLoading, setIsImageLoading] = useState(true);
+import { NFTImage } from "./NFTImage";
 
+function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
   if (guardian.isError) {
       return (
         <Card className="bg-red-950/20 border-red-500/20 h-full flex flex-col items-center justify-center p-6 text-center">
@@ -542,28 +541,12 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
       <div className="relative aspect-square overflow-hidden bg-secondary/20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
-        {/* Image Loading Skeleton */}
-        {isImageLoading && (
-            <Skeleton className="absolute inset-0 w-full h-full z-20 rounded-none bg-secondary/30" />
-        )}
-
-        {imgSrc ? (
-          <img 
-            src={imgSrc} 
+        <NFTImage 
+            src={guardian.image} 
             alt={guardian.name} 
-            loading="lazy"
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
-            onLoad={() => setIsImageLoading(false)}
-            onError={() => {
-                // Fallback
-                setIsImageLoading(false);
-            }} 
-          />
-        ) : (
-           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-             <span className="mb-2">No Image</span>
-           </div>
-        )}
+            id={guardian.id}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        />
         
         {/* Rarity Badge */}
         <div className="absolute top-2 right-2 z-20">

@@ -17,6 +17,8 @@ import { toast } from "@/hooks/use-toast";
 import { NFT_CONTRACT } from "@/lib/constants";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
+import { NFTImage } from "./NFTImage";
+
 interface NFTDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,12 +28,9 @@ interface NFTDetailModalProps {
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const [backedValue, setBackedValue] = useState(calculateBackedValue());
-  const [isImageLoading, setIsImageLoading] = useState(true);
 
   useEffect(() => {
-    if (isOpen) {
-        setIsImageLoading(true);
-    }
+    // Reset state on open if needed
   }, [isOpen, nft]);
 
   // Live Ticker for Backed Value
@@ -164,13 +163,11 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 transition={{ duration: 0.5 }}
                 className="relative z-10 w-full max-w-md aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
             >
-                {isImageLoading && <Skeleton className="absolute inset-0 w-full h-full bg-secondary/30" />}
-                <img 
+                <NFTImage 
                     src={nft.image} 
                     alt={nft.name} 
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
-                    onLoad={() => setIsImageLoading(false)}
-                    onError={() => setIsImageLoading(false)}
+                    id={nft.id}
+                    className="w-full h-full object-cover transition-opacity duration-300"
                 />
                 
                 {/* ID Overlay */}
