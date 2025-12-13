@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw } from "lucide-react";
 import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE, calculateBackedValue } from "@/lib/mockData";
@@ -408,8 +409,28 @@ export function Hero() {
                     </div>
                 </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-black/50">
-                    <span className="text-primary animate-pulse font-orbitron">LOADING #3000...</span>
+                <div className="w-full h-full bg-black/50 flex flex-col p-0">
+                    <Skeleton className="w-full h-full absolute inset-0 rounded-none bg-primary/5" />
+                    
+                    {/* Top Right Mock */}
+                    <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+                        <Skeleton className="h-5 w-20 rounded-full bg-primary/10" />
+                        <Skeleton className="h-5 w-32 rounded bg-black/60" />
+                    </div>
+
+                    {/* Bottom Info Mock */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6 z-20 space-y-3">
+                        <Skeleton className="h-8 w-3/4 bg-primary/10" />
+                        <div className="flex items-center space-x-2">
+                            <Skeleton className="h-4 w-4 rounded-full" />
+                            <Skeleton className="h-4 w-32" />
+                        </div>
+                    </div>
+                    
+                    {/* Center Loading Text (Optional, keeps it clear it's loading specific ID) */}
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <span className="text-primary/50 animate-pulse font-orbitron text-sm">LOADING #3000...</span>
+                    </div>
                 </div>
               )}
             </Card>

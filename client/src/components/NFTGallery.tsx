@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid } from "lucide-react";
 import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
 import { useAccount } from "wagmi";
@@ -20,6 +21,32 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface NFTGalleryProps {}
+
+function GuardianCardSkeleton() {
+  return (
+    <Card className="bg-card border-white/10 overflow-hidden h-full flex flex-col">
+      <Skeleton className="w-full aspect-square" />
+      <div className="p-4 space-y-3 flex-1">
+        <div className="flex justify-between items-center">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-6 w-3/4" />
+        <div className="pt-4 mt-auto space-y-2">
+            <div className="flex justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-12" />
+            </div>
+            <div className="flex justify-between">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-10" />
+            </div>
+        </div>
+        <Skeleton className="h-9 w-full mt-4" />
+      </div>
+    </Card>
+  );
+}
 
 export function NFTGallery({}: NFTGalleryProps) {
   const { isConnected } = useAccount();
@@ -380,6 +407,7 @@ export function NFTGallery({}: NFTGalleryProps) {
         )}
 
         {!isConnected ? (
+          // ... existing locked state
           <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
             <Lock className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-orbitron text-white mb-2">WALLET LOCKED</h3>
@@ -394,10 +422,18 @@ export function NFTGallery({}: NFTGalleryProps) {
         ) : (
           <>
             {isLoading && !displayNfts.length && !useMockData ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <div className={`grid gap-6 ${
+                gridCols === 1 ? 'grid-cols-1' : 
+                gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+              }`}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                    <GuardianCardSkeleton key={i} />
+                ))}
               </div>
             ) : displayNfts.length === 0 ? (
+               // ... existing empty state
                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
                  <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
                  <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
@@ -407,6 +443,7 @@ export function NFTGallery({}: NFTGalleryProps) {
                </div>
             ) : (
               <>
+// ... rest of the code
                 {/* Unified Grid (Replaces separate Desktop Grid and Mobile Carousel) */}
                 <motion.div 
                   variants={container}

@@ -13,6 +13,7 @@ import { IPFS_ROOT } from "@/lib/constants";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MintedNFTsTableProps {
   totalMinted: number;
@@ -150,8 +151,43 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
       </div>
       
       {status === 'pending' ? (
-        <div className="p-8 flex justify-center items-center text-muted-foreground font-mono">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing minted data...
+        <div className="w-full">
+            {/* Desktop Skeleton */}
+            <div className="hidden md:block">
+                <div className="p-4 grid grid-cols-5 gap-4 border-b border-white/10 bg-white/5">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32 ml-auto" />
+                </div>
+                {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="p-4 grid grid-cols-5 gap-4 border-b border-white/5 items-center">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-24 ml-auto" />
+                    </div>
+                ))}
+            </div>
+            
+            {/* Mobile Skeleton */}
+            <div className="md:hidden flex flex-col gap-2 p-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="bg-white/5 border border-white/10 p-3 flex flex-col gap-3 rounded-lg">
+                        <div className="flex justify-between items-center">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                        </div>
+                        <Skeleton className="h-6 w-3/4" />
+                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                            <Skeleton className="h-3 w-20" />
+                            <Skeleton className="h-3 w-24" />
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
       ) : (
         <>
