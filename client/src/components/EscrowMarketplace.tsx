@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
+import { Security } from "@/lib/security";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trackEvent, trackSearch } from "@/lib/analytics";
 import { ethers } from "ethers";
@@ -518,7 +519,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
           confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
           toast({
             title: "Purchase Successful",
-            description: `You are now the owner of ${item.name}. Asset transferred.`,
+            description: `You are now the owner of ${Security.sanitizeText(item.name)}. Asset transferred.`,
             className: "bg-black border-green-500 text-green-500 font-orbitron",
           });
 
@@ -540,7 +541,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const handleAdminCancel = (item: MarketItem) => {
       toast({
           title: "Admin Action",
-          description: `Listing for ${item.name} cancelled by admin override.`,
+          description: `Listing for ${Security.sanitizeText(item.name)} cancelled by admin override.`,
           variant: "destructive"
       });
   };
@@ -1018,7 +1019,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
             <div className="relative aspect-square bg-secondary/20 overflow-hidden">
                 <NFTImage 
                     src={item.image} 
-                    alt={item.name} 
+                    alt={Security.sanitizeText(item.name)} 
                     id={item.id}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
@@ -1031,7 +1032,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                 
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
                      <div className="flex justify-between items-end">
-                         <span className="text-white font-bold font-orbitron text-sm">{item.name}</span>
+                         <span className="text-white font-bold font-orbitron text-sm">{Security.sanitizeText(item.name)}</span>
                          <span className="text-xs text-muted-foreground font-mono">#{item.id}</span>
                      </div>
                 </div>
@@ -1136,7 +1137,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                 <DialogHeader className="pt-8 sm:pt-0">
                     <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
                     <DialogDescription>
-                        Set your price for <span className="text-primary font-bold">{item.name}</span>.
+                        Set your price for <span className="text-primary font-bold">{Security.sanitizeText(item.name)}</span>.
                     </DialogDescription>
                 </DialogHeader>
 

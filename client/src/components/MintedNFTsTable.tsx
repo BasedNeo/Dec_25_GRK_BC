@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
 import { NFT_CONTRACT, BLOCK_EXPLORER, IPFS_ROOT } from "@/lib/constants";
+import { Security } from "@/lib/security";
 import { fetchTokenOwner, fetchTotalSupply, fetchTokenByIndex, fetchTokenURI } from "@/lib/onchain";
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 import { useState, useEffect, useCallback } from "react";
@@ -260,7 +261,7 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                                     <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </a>
                             </TableCell>
-                            <TableCell className="font-bold text-white font-orbitron text-xs md:text-sm">{guardian.name}</TableCell>
+                            <TableCell className="font-bold text-white font-orbitron text-xs md:text-sm">{Security.sanitizeText(guardian.name)}</TableCell>
                             <TableCell>
                                 <Badge variant="outline" className={`${getRarityColor(guardian.rarity)} font-mono text-[10px] uppercase whitespace-nowrap`}>
                                     {guardian.rarity}
@@ -308,7 +309,7 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                                  </Badge>
                              </div>
                              <div className="flex justify-between items-center">
-                                 <span className="text-white font-orbitron text-sm">{guardian.name}</span>
+                                 <span className="text-white font-orbitron text-sm">{Security.sanitizeText(guardian.name)}</span>
                              </div>
                              <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-white/5 pt-2 mt-1">
                                  <span className="font-mono">{bioType}</span>

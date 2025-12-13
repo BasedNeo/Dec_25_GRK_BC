@@ -582,7 +582,7 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         
         <NFTImage 
             src={Security.sanitizeUrl(guardian.image)} 
-            alt={guardian.name} 
+            alt={Security.sanitizeText(guardian.name)} 
             id={guardian.id}
             className="nft-image w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />

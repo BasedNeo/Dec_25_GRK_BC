@@ -156,7 +156,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             >
                 <NFTImage 
                     src={Security.sanitizeUrl(nft.image)} 
-                    alt={nft.name} 
+                    alt={Security.sanitizeText(nft.name)} 
                     id={nft.id}
                     className="w-full h-full object-cover transition-opacity duration-300"
                 />
