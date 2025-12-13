@@ -42,9 +42,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Safe Sanitize Helper
+  // Safe Sanitize Helper - Strips HTML tags to enforce textContent
   const safeSanitize = (content: string | undefined | null) => {
-    return Security.escapeHtml(content);
+    return Security.sanitizeText(content);
   };
 
   useEffect(() => {
