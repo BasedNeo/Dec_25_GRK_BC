@@ -175,13 +175,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       <div className="flex items-center gap-1">
                           <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
                           <span className="font-bold text-white font-mono">
-                            {priceData ? `$${priceData.ethPrice.toFixed(4)}` : "..."}
+                            {priceData ? `$${priceData.ethPrice.toFixed(4)}` : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />}
                           </span>
                       </div>
-                      {priceData && (
+                      {priceData ? (
                         <span className={`font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                            {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(1)}%
                         </span>
+                      ) : (
+                        <div className="h-3 w-10 rounded skeleton inline-block align-middle ml-2" />
                       )}
                   </div>
                   
@@ -189,7 +191,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
                       <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
                       <span className="font-bold text-cyan-400 font-mono">
-                        {priceData ? `$${priceData.basedL1Price.toFixed(7)}` : "..."}
+                        {priceData ? `$${priceData.basedL1Price.toFixed(7)}` : <div className="h-3 w-16 rounded skeleton inline-block align-middle" />}
                       </span>
                   </div>
                </div>

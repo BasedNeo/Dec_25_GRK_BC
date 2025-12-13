@@ -79,7 +79,11 @@ export function ValueEstimation() {
             </div>
             <p className="text-sm text-muted-foreground font-mono mb-1">BACKED BY / NFT</p>
             <h3 className="text-3xl font-orbitron text-white">
-              {Math.floor(baseValuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
+              {baseValuePerNFT > 0 ? (
+                 <span>{Math.floor(baseValuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span></span>
+              ) : (
+                 <div className="h-8 w-32 skeleton rounded mx-auto" />
+              )}
             </h3>
             <p className="text-xs text-green-400 mt-2 flex items-center">
               <TrendingUp size={12} className="mr-1" /> +30% FOR RARE+
@@ -93,7 +97,11 @@ export function ValueEstimation() {
             </div>
             <p className="text-sm text-muted-foreground font-mono mb-1 z-10">YOUR TOTAL HOLDINGS</p>
             <h3 className="text-3xl font-orbitron text-white z-10 text-glow">
-              {Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span>
+              {userTotalValue > 0 || ownedCount > 0 ? (
+                <span>{Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span></span>
+              ) : (
+                <div className="h-8 w-40 skeleton rounded mx-auto" />
+              )}
             </h3>
             <p className="text-xs text-muted-foreground mt-2 z-10">
               {ownedCount} Guardians
