@@ -355,7 +355,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     onClick={handleInstallClick}
                     className="h-8 text-[10px] px-2 border-cyan-500/50 text-cyan-400 bg-black/50 hover:bg-cyan-500/10 shadow-[0_0_10px_rgba(34,211,238,0.3)] animate-pulse font-orbitron tracking-widest whitespace-nowrap"
                 >
-                    INSTALL APP
+                    Install Based Command App
                 </Button>
             )}
             

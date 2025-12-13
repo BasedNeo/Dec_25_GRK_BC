@@ -1,22 +1,16 @@
 {
   "name": "Based Command App",
   "short_name": "BasedGuardians",
-  "description": "The official app for Based Guardians NFTs",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#00FFFF",
-  "orientation": "portrait",
+  "description": "The DApp for Based Guardians NFTs",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "logo.png",
       "sizes": "192x192",
       "type": "image/png"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png"
     }
-  ]
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#00FFFF",
+  "background_color": "#0a0a0a"
 }
