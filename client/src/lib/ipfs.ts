@@ -48,7 +48,7 @@ export async function fetchGuardianMetadata(id: number): Promise<Guardian> {
         }))
       : [];
 
-    const rarity = traits.find((a: any) => a.type === 'Rarity' || a.type === 'Rarity Level')?.value || 'Common';
+    const rarity = traits.find((a: any) => a.type === 'Rarity Level' || a.type === 'Rarity')?.value || 'Common';
 
     // Calculate dynamic price based on rarity for display
     const rarityMultiplier = rarity === 'Legendary' ? 100 : rarity === 'Epic' ? 10 : rarity === 'Rare' ? 2 : 1;

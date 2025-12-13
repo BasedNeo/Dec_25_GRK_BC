@@ -261,12 +261,30 @@ export async function fetchSmartMintedData() {
               
               // Distribution Stats
               let r = nft.rarity || 'Common';
-              // Normalize rarity keys
-              if (r === 'Rarest (1/1s)') r = 'Rarest-Legendary';
-              if (r === 'Legendary') r = 'Rarest-Legendary';
-              if (distribution[r] !== undefined) {
-                  distribution[r]++;
+              
+              // Normalize rarity keys to match Chart Config
+              // Map various potential IPFS values to our standard keys
+              const normalizationMap: Record<string, string> = {
+                  'Rarest (1/1s)': 'Rarest-Legendary',
+                  'Legendary': 'Rarest-Legendary',
+                  'Rarest': 'Rarest-Legendary',
+                  'Very Rare': 'Very Rare',
+                  'More Rare': 'More Rare',
+                  'Rare': 'Rare',
+                  'Less Rare': 'Less Rare',
+                  'Less Common': 'Less Common',
+                  'Common': 'Common',
+                  'Most Common': 'Most Common'
+              };
+
+              // Direct match or normalized match
+              const normalizedRarity = normalizationMap[r] || r;
+
+              if (distribution[normalizedRarity] !== undefined) {
+                  distribution[normalizedRarity]++;
               } else {
+                  // If we encounter a rarity not in our config, log it and count as Common (or handle otherwise)
+                  // console.warn(`Unknown rarity encountered: ${r}`);
                   distribution['Common']++;
               }
           }
