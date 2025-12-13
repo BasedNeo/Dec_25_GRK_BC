@@ -53,25 +53,39 @@ export function PoolTracker() {
   const [livePoolBalance, setLivePoolBalance] = useState<number>(0);
   const [mintRevenue, setMintRevenue] = useState<number>(0);
 
-  // Sync displayed share when actual poll updates
+  // Sync displayed share when actual poll updates, but prevent backward jumps
   useEffect(() => {
-    setDisplayedPoolShare(poolShare);
+    if (poolShare > 0) {
+        setDisplayedPoolShare(prev => {
+            // Only update from source if source is larger (prevent backward jump)
+            // Or if prev is 0 (initial load)
+            if (prev === 0 || poolShare > prev) {
+                return poolShare;
+            }
+            return prev;
+        });
+    }
   }, [poolShare]);
 
   // Live Ticker for Passive Emissions
   // "give the Passive Emission values feel live"
   useEffect(() => {
-    if (dailyPassive <= 0) return;
+    // Ensure we have a positive rate
+    const rate = dailyPassive > 0 ? dailyPassive : 1.34;
 
     // Calculate emissions per second
     // Total Daily Emissions = Total Supply * Daily Per NFT
     // 3732 * 1.34 = ~5000.88 $BASED / Day
-    const totalDailyEmissions = TOTAL_SUPPLY * dailyPassive;
+    const totalDailyEmissions = TOTAL_SUPPLY * rate;
     const emissionsPerSecond = totalDailyEmissions / 86400;
+    
+    // Update frequency (ms) for smoother animation
+    const tickRate = 50; 
+    const emissionsPerTick = emissionsPerSecond * (tickRate / 1000);
 
     const interval = setInterval(() => {
-        setDisplayedPoolShare(prev => prev + emissionsPerSecond);
-    }, 1000); // Update every second for "live" feel
+        setDisplayedPoolShare(prev => prev + emissionsPerTick);
+    }, tickRate); // Update every 50ms for "live" feel
 
     return () => clearInterval(interval);
   }, [dailyPassive]);
