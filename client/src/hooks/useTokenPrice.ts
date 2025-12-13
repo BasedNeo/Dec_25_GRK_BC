@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { useRef } from "react";
+import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 
 const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
 const TOKEN_ID = "basedai";
@@ -20,6 +21,15 @@ export function useTokenPrice() {
   return useQuery<PriceData>({
     queryKey: ["tokenPrice", TOKEN_ID],
     queryFn: async () => {
+      // 1. Check LocalStorage Cache first (60s validity)
+      const cached = getCached<PriceData>(CACHE_KEYS.PRICE_DATA, 60 * 1000);
+      if (cached) {
+          console.log("Using cached price data");
+          lastKnownPrice = cached;
+          isFirstLoad.current = false;
+          return cached;
+      }
+
       // Use a CORS proxy to avoid browser restrictions
       const targetUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
       // Using allorigins as a reliable fallback for frontend-only demos
@@ -50,8 +60,11 @@ export function useTokenPrice() {
           change: tokenData.usd_24h_change || 0
         };
 
+        // Update caches
+        setCache(CACHE_KEYS.PRICE_DATA, newPrice);
         lastKnownPrice = newPrice;
         isFirstLoad.current = false;
+        
         return newPrice;
 
       } catch (e) {

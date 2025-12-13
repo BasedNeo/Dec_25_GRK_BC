@@ -4,6 +4,7 @@ import { MOCK_GUARDIANS, Guardian } from "@/lib/mockData";
 import { fetchGuardiansPage, PAGE_SIZE } from "@/lib/ipfs";
 import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 import Fuse from 'fuse.js';
+import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 
 export interface GuardianFilters {
   search?: string;
@@ -25,7 +26,16 @@ export function useGuardians(
     queryKey: ['nfts', address, useMockData, useCsvData, filters],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }: { pageParam: unknown }): Promise<{ nfts: Guardian[], nextCursor?: number }> => {
+      const startId = typeof pageParam === 'number' ? pageParam : 1;
+      const cacheKey = `${CACHE_KEYS.NFT_METADATA}_${startId}_${JSON.stringify(filters)}`;
       
+      // 1. Try Cache First (5 minutes validity)
+      const cached = getCached<{ nfts: Guardian[], nextCursor?: number }>(cacheKey, 5 * 60 * 1000);
+      if (cached) {
+          console.log(`Using cached NFT data for page ${startId}`);
+          return cached;
+      }
+
       // Check if we need to force CSV mode due to active filters (Search, Rarity, Traits, Sort, Owner)
       // IPFS mode only supports simple pagination, so we switch to CSV index for advanced queries.
       const hasActiveFilters = 
@@ -181,7 +191,6 @@ export function useGuardians(
              }
 
              // Pagination logic
-             const startId = typeof pageParam === 'number' ? pageParam : 1;
              const pageSize = 100; // Updated to 100 for batching
              const startIndex = startId - 1;
              const endIndex = startIndex + pageSize;
@@ -190,7 +199,9 @@ export function useGuardians(
              // If we have more items after this page, next cursor is next index
              const nextCursor = endIndex < allGuardians.length ? endIndex + 1 : undefined;
 
-             return { nfts, nextCursor };
+             const result = { nfts, nextCursor };
+             setCache(cacheKey, result);
+             return result;
           } catch(e) {
              console.error("Failed to load CSV", e);
              return { nfts: [], nextCursor: undefined };
@@ -204,23 +215,26 @@ export function useGuardians(
       
       // 2. IPFS Fallback (Default Mode)
       try {
-        const startId = typeof pageParam === 'number' ? pageParam : 1;
         const nfts = await fetchGuardiansPage(startId);
         const nextCursor = (startId + 100) <= 3732 ? startId + 100 : undefined;
-        return { nfts, nextCursor };
+        const result = { nfts, nextCursor };
+        setCache(cacheKey, result);
+        return result;
       } catch (e) {
         console.warn("IPFS fetch failed, falling back to CSV index:", e);
         // Fallback to CSV if IPFS fails
         try {
             const csvNfts = await loadGuardiansFromCSV();
             // Simulate pagination on CSV data
-            const startId = typeof pageParam === 'number' ? pageParam : 1;
             const pageSize = 100; // Match IPFS batch size
             const startIndex = startId - 1;
             const endIndex = startIndex + pageSize;
             const nfts = csvNfts.slice(startIndex, endIndex);
             const nextCursor = endIndex < csvNfts.length ? endIndex + 1 : undefined;
-            return { nfts, nextCursor };
+            
+            const result = { nfts, nextCursor };
+            setCache(cacheKey, result);
+            return result;
         } catch (csvErr) {
             console.error("Critical: Both IPFS and CSV failed", csvErr);
             return { nfts: [], nextCursor: undefined };
