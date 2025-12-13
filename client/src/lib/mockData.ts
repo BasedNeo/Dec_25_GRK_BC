@@ -139,14 +139,15 @@ export const MINTED_COUNT = 6;
    
    // Backing Value Constants & Logic
 // Replaced with new Emission Schedule Logic provided
+// UPDATED: Years shifted to 2025 to align with current system time (Dec 13, 2025) and user's "3 days since launch" context
 export const EMISSION_SCHEDULE = [
   {
-    startDate: new Date('2024-12-10T01:00:00Z').getTime(),
+    startDate: new Date('2025-12-10T01:00:00Z').getTime(),
     dailyRate: 5000,  // 5,000 $BASED/day (10% of ~50,000 subnet emissions)
     label: 'Pre-Halving'
   },
   {
-    startDate: new Date('2024-12-31T00:00:00Z').getTime(),
+    startDate: new Date('2025-12-31T00:00:00Z').getTime(),
     dailyRate: 2500,  // 2,500 $BASED/day after first halving
     label: 'Post-Halving 1'
   }
