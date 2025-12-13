@@ -27,11 +27,60 @@ export const publicClient = createPublicClient({
   transport: http()
 });
 
-// ABI for totalSupply
-const minimalABI = [
+// ABI for contract interaction
+const contractABI = [
   {
     inputs: [],
     name: "totalSupply",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "MAX_SUPPLY",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "MINT_PRICE",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "publicMintEnabled",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "revealed",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    name: "ownerOf",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "index", type: "uint256" }],
+    name: "tokenByIndex",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
@@ -43,7 +92,7 @@ export async function fetchTotalSupply(): Promise<number | null> {
     if (!NFT_CONTRACT) return null;
     const data = await publicClient.readContract({
       address: NFT_CONTRACT as `0x${string}`,
-      abi: minimalABI,
+      abi: contractABI,
       functionName: 'totalSupply',
     });
     return Number(data);
@@ -51,4 +100,47 @@ export async function fetchTotalSupply(): Promise<number | null> {
     console.error("Error fetching total supply:", error);
     return null;
   }
+}
+
+export async function fetchContractStats() {
+    try {
+        if (!NFT_CONTRACT) return null;
+        const [maxSupply, mintPrice, isPublicMint, isRevealed, isPaused] = await publicClient.multicall({
+            contracts: [
+                { address: NFT_CONTRACT as `0x${string}`, abi: contractABI, functionName: 'MAX_SUPPLY' },
+                { address: NFT_CONTRACT as `0x${string}`, abi: contractABI, functionName: 'MINT_PRICE' },
+                { address: NFT_CONTRACT as `0x${string}`, abi: contractABI, functionName: 'publicMintEnabled' },
+                { address: NFT_CONTRACT as `0x${string}`, abi: contractABI, functionName: 'revealed' },
+                { address: NFT_CONTRACT as `0x${string}`, abi: contractABI, functionName: 'paused' },
+            ]
+        });
+
+        return {
+            maxSupply: Number(maxSupply.result),
+            mintPrice: formatUnits(maxSupply.result ? (mintPrice.result as bigint) : 0n, 18), // Helper format
+            rawMintPrice: mintPrice.result,
+            isPublicMint: isPublicMint.result,
+            isRevealed: isRevealed.result,
+            isPaused: isPaused.result
+        };
+    } catch (error) {
+        console.error("Error fetching contract stats:", error);
+        return null;
+    }
+}
+
+export async function fetchTokenOwner(tokenId: number): Promise<string | null> {
+    try {
+        if (!NFT_CONTRACT) return null;
+        const owner = await publicClient.readContract({
+            address: NFT_CONTRACT as `0x${string}`,
+            abi: contractABI,
+            functionName: 'ownerOf',
+            args: [BigInt(tokenId)]
+        });
+        return owner as string;
+    } catch (error) {
+        // console.warn(`Error fetching owner for token ${tokenId}:`, error);
+        return null;
+    }
 }

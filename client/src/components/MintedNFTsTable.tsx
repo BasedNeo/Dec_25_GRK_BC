@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Guardian } from "@/lib/mockData";
+import { IPFS_ROOT } from "@/lib/constants";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
@@ -56,8 +57,8 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
     // Fetch in parallel
     const fetchedNFTs = await Promise.all(idsToFetch.map(async (id) => {
         try {
-            // Using the specific IPFS gateway requested
-            const res = await fetch(`https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dvrjfalfyu52y/${id}.json`);
+            // Using the configured IPFS gateway
+            const res = await fetch(`${IPFS_ROOT}${id}.json`);
             if (!res.ok) throw new Error(`Failed to fetch ${id}`);
             const json = await res.json();
             

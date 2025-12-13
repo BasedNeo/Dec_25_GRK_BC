@@ -1,0 +1,120 @@
+I need to ensure my Based Guardians dApp is reading LIVE data from the blockchain contract. Please help me verify and connect the data sources.
+
+⚠️ IMPORTANT: Do NOT change any UI components, styling, or layout. Only update data fetching/connections.
+
+═══════════════════════════════════════════════════════════════
+                     BLOCKCHAIN DETAILS
+═══════════════════════════════════════════════════════════════
+
+Network: BasedAI Mainnet
+RPC URL: https://mainnet.basedaibridge.com/rpc//
+Chain ID: 32323
+Explorer: https://explorer.bf1337.org
+
+Contract Address: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+
+═══════════════════════════════════════════════════════════════
+                     CONTRACT READ FUNCTIONS
+═══════════════════════════════════════════════════════════════
+
+Use ethers.js v6 with these function signatures:
+
+// Collection Stats
+totalMinted() → uint256              // Current mint count
+MAX_SUPPLY() → uint256               // Returns 3732
+MINT_PRICE() → uint256               // Returns 69420000000000000000000 (69420 * 10^18)
+publicMintEnabled() → bool           // Is minting open
+revealed() → bool                    // Are NFTs revealed
+paused() → bool                      // Is contract paused
+
+// Token Data
+ownerOf(uint256 tokenId) → address   // Who owns this token
+tokenByIndex(uint256 index) → uint256 // Get token ID at index position
+balanceOf(address) → uint256         // How many NFTs an address owns
+tokenURI(uint256 tokenId) → string   // Metadata URI
+
+═══════════════════════════════════════════════════════════════
+                     NFT METADATA (IPFS)
+═══════════════════════════════════════════════════════════════
+
+Metadata Base URL:
+https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/
+
+To get metadata for token #1234:
+{BASE_URL}1234.json
+
+Metadata JSON contains:
+- name: "Based Guardian #1234"
+- description: "..."
+- image: "ipfs://..." (convert to gateway URL for display)
+- attributes: Array of 12 traits including:
+  • Rarity Level (values: Rarest-Legendary, Very Rare, Rarest, Rare, Less Rare, Less Common, Common, Most Common)
+  • Biological Type
+  • Background
+  • Role
+  • Eyes
+  • Outfit
+  • Accessory
+  • Weapon
+  • Effect
+  • Expression
+  • Headgear
+  • Special
+
+═══════════════════════════════════════════════════════════════
+                     WHAT SHOULD USE LIVE DATA
+═══════════════════════════════════════════════════════════════
+
+STATS/DASHBOARD:
+✓ Total Minted → from totalMinted()
+✓ Max Supply → from MAX_SUPPLY() 
+✓ Remaining → calculated (MAX_SUPPLY - totalMinted)
+✓ Progress % → calculated
+✓ Mint Price → from MINT_PRICE(), format as "69,420 $BASED"
+✓ Mint Active status → from publicMintEnabled()
+✓ Revealed status → from revealed()
+✓ Paused status → from paused()
+
+NFT CARDS:
+✓ Token ID → from tokenByIndex() when listing
+✓ Image → from IPFS metadata
+✓ Name → from IPFS metadata
+✓ Rarity → from metadata attributes["Rarity Level"]
+✓ Owner → from ownerOf(tokenId)
+
+NFT DETAIL POPUP:
+✓ All above plus full attributes array from metadata
+
+ACTIVITY/RECENT MINTS:
+✓ Fetch last N tokens using totalMinted() and tokenByIndex()
+
+═══════════════════════════════════════════════════════════════
+                     YOUR TASK
+═══════════════════════════════════════════════════════════════
+
+1. FIRST: Show me what contract/data service files already exist in my codebase
+
+2. THEN: Check if they're configured with the correct:
+   - RPC URL (should be: https://mainnet.basedaibridge.com/rpc//)
+   - Contract address (should be: 0xaE51dc5fD1499A129f8654963560f9340773ad59)
+   - Metadata base URL (should be the Pinata IPFS URL above)
+
+3. IDENTIFY: Any places using hardcoded/mock data instead of live data
+
+4. REPORT: Tell me what's already connected vs what needs updating
+
+5. WAIT: Don't change anything until I review your findings
+
+═══════════════════════════════════════════════════════════════
+                     DO NOT CHANGE
+═══════════════════════════════════════════════════════════════
+
+❌ Do NOT modify any component layouts
+❌ Do NOT change CSS/styling
+❌ Do NOT restructure components
+❌ Do NOT add new UI features
+❌ Do NOT remove any existing functionality
+
+ONLY verify and update data connections.
+
+Start by showing me my current contract configuration and data fetching setup.
