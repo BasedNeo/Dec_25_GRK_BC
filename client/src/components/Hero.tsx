@@ -16,6 +16,7 @@ import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
 import { fetchSmartMintedData } from "@/lib/smartFetcher";
 import { AverageStatsChart } from "./AverageStatsChart";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MintedNFTsTable } from "./MintedNFTsTable";
 import { RarityChart } from "./RarityChart";
@@ -243,11 +244,14 @@ export function Hero() {
             </div>
 
             {/* Rarity Chart (New Component) */}
-            <RarityChart 
-                mintedCount={mintedData.nfts.length}
-                totalMinted={mintedData.totalMinted}
-                distribution={mintedData.distribution}
-            />
+            <ErrorBoundary fallback={null}>
+                <RarityChart 
+                    mintedCount={mintedData.nfts.length}
+                    totalMinted={mintedData.totalMinted}
+                    distribution={mintedData.distribution}
+                    isLoading={mintedData.isLoading}
+                />
+            </ErrorBoundary>
             
             <div className="mb-4 text-[10px] text-gray-600 font-mono text-center">
                  Live sync; rarity based on minted metadata.
@@ -255,11 +259,13 @@ export function Hero() {
             </div>
 
             {/* Minted NFTs Table (Shared Data) */}
-            <MintedNFTsTable 
-                nfts={mintedData.nfts}
-                isLoading={mintedData.isLoading}
-                onRefresh={fetchAllMintedData}
-            />
+            <ErrorBoundary onRetry={fetchAllMintedData}>
+                <MintedNFTsTable 
+                    nfts={mintedData.nfts}
+                    isLoading={mintedData.isLoading}
+                    onRefresh={fetchAllMintedData}
+                />
+            </ErrorBoundary>
 
             <div className="flex justify-between items-center mb-8 pt-6">
               <div className="flex items-center space-x-4 bg-black/40 p-2 rounded-lg border border-white/5">

@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { Guardian } from "@/lib/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface RarityChartProps {
   mintedCount: number;
-  totalMinted: number; // This might be redundant if mintedCount is the same, but keeping for clarity
+  totalMinted: number;
   distribution: Record<string, number>;
+  isLoading?: boolean;
 }
 
 const RARITY_CONFIG = [
@@ -19,11 +21,32 @@ const RARITY_CONFIG = [
   { name: 'Most Common', color: '#374151' }
 ];
 
-export function RarityChart({ mintedCount, totalMinted, distribution }: RarityChartProps) {
+export function RarityChart({ mintedCount, totalMinted, distribution, isLoading = false }: RarityChartProps) {
   
   const totalClassified = useMemo(() => {
     return Object.values(distribution).reduce((acc, val) => acc + val, 0);
   }, [distribution]);
+
+  if (isLoading && mintedCount === 0) {
+    return (
+        <div className="w-full bg-black/40 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm mb-6">
+           <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/60">
+                <Skeleton className="h-4 w-32" />
+           </div>
+           <div className="p-4 space-y-3">
+               {Array.from({ length: 8 }).map((_, i) => (
+                   <div key={i} className="space-y-1">
+                       <div className="flex justify-between">
+                           <Skeleton className="h-3 w-20" />
+                           <Skeleton className="h-3 w-10" />
+                       </div>
+                       <Skeleton className="h-2 w-full rounded-full" />
+                   </div>
+               ))}
+           </div>
+        </div>
+    );
+  }
 
   return (
     <div className="w-full bg-black/40 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm mb-6">
@@ -61,3 +84,4 @@ export function RarityChart({ mintedCount, totalMinted, distribution }: RarityCh
     </div>
   );
 }
+

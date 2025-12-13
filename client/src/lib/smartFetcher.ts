@@ -50,6 +50,17 @@ const ABI = [
   }
 ] as const;
 
+// --- Retry Logic Helper ---
+async function withRetry<T>(fn: () => Promise<T>, retries = 4, delay = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return withRetry(fn, retries - 1, delay * 2); // Exponential backoff
+  }
+}
+
 export async function fetchSmartMintedData() {
   // 1. Get Total Supply (Cached 30s)
   let totalSupply = 0;
@@ -57,16 +68,18 @@ export async function fetchSmartMintedData() {
     totalSupply = statsCache.data;
   } else {
     try {
-        const supply = await publicClient.readContract({
+        const supply = await withRetry(() => publicClient.readContract({
             address: NFT_CONTRACT as `0x${string}`,
             abi: ABI,
             functionName: 'totalSupply',
-        });
+        }), 3, 1000); // Retry logic for critical initial call
+        
         totalSupply = Number(supply);
         statsCache = { data: totalSupply, timestamp: Date.now() };
     } catch (e) {
         console.warn("Failed to fetch live supply, defaulting to 0", e);
-        return { nfts: [], distribution: {}, totalMinted: 0 };
+        // Throwing here allows ErrorBoundary to catch it if it's the initial load
+        throw e;
     }
   }
 
