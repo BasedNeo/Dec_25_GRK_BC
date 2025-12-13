@@ -495,6 +495,7 @@ export function NFTGallery({}: NFTGalleryProps) {
 
 function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
   const [imgSrc, setImgSrc] = useState(guardian.image);
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
   if (guardian.isError) {
       return (
@@ -530,14 +531,22 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
     >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        {/* Image Loading Skeleton */}
+        {isImageLoading && (
+            <Skeleton className="absolute inset-0 w-full h-full z-20 rounded-none bg-secondary/30" />
+        )}
+
         {imgSrc ? (
           <img 
             src={imgSrc} 
             alt={guardian.name} 
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+            onLoad={() => setIsImageLoading(false)}
             onError={() => {
                 // Fallback
+                setIsImageLoading(false);
             }} 
           />
         ) : (

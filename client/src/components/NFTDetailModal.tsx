@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,13 @@ interface NFTDetailModalProps {
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const [backedValue, setBackedValue] = useState(calculateBackedValue());
+  const [isImageLoading, setIsImageLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+        setIsImageLoading(true);
+    }
+  }, [isOpen, nft]);
 
   // Live Ticker for Backed Value
   useEffect(() => {
@@ -153,10 +161,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 transition={{ duration: 0.5 }}
                 className="relative z-10 w-full max-w-md aspect-square rounded-xl overflow-hidden shadow-2xl border border-white/10"
             >
+                {isImageLoading && <Skeleton className="absolute inset-0 w-full h-full bg-secondary/30" />}
                 <img 
                     src={nft.image} 
                     alt={nft.name} 
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                    onLoad={() => setIsImageLoading(false)}
+                    onError={() => setIsImageLoading(false)}
                 />
                 
                 {/* ID Overlay */}
