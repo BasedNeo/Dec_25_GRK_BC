@@ -4,7 +4,6 @@ import { NFTGallery } from "@/components/NFTGallery";
 import { ValueEstimation } from "@/components/ValueEstimation";
 import { VotingDAO } from "@/components/VotingDAO";
 import { PoolTracker } from "@/components/PoolTracker";
-import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
 import { useAccount } from "wagmi";
@@ -74,8 +73,9 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
+              className="pt-8"
             >
-              <EscrowMarketplace />
+              <NFTGallery title="GUARDIAN COLLECTION" subtitle="Explore the entire Based Guardian universe." />
             </motion.div>
           )}
 
