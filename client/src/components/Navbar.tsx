@@ -169,15 +169,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </span>
             </div>
 
-            {/* PWA Install Button */}
+            {/* PWA Install Button - Desktop */}
             {deferredPrompt && (
                 <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm" 
                     onClick={handleInstallClick}
-                    className="ml-2 text-[10px] text-muted-foreground hover:text-white border border-transparent hover:border-white/20 animate-pulse"
+                    className="ml-2 text-[10px] border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 shadow-[0_0_10px_rgba(34,211,238,0.3)] animate-pulse font-orbitron tracking-widest"
                 >
-                    INSTALL APP
+                    INSTALL BASED COMMAND APP
                 </Button>
             )}
 
@@ -290,7 +290,19 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-2">
+            {/* PWA Install Button - Mobile (Header) */}
+            {deferredPrompt && (
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleInstallClick}
+                    className="h-8 text-[10px] px-2 border-cyan-500/50 text-cyan-400 bg-black/50 hover:bg-cyan-500/10 shadow-[0_0_10px_rgba(34,211,238,0.3)] animate-pulse font-orbitron tracking-widest whitespace-nowrap"
+                >
+                    INSTALL APP
+                </Button>
+            )}
+            
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-foreground hover:text-primary transition-colors"

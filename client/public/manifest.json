@@ -1,10 +1,12 @@
 {
-  "name": "Based Guardians",
-  "short_name": "BGUARD",
+  "name": "Based Command App",
+  "short_name": "BasedGuardians",
+  "description": "The official app for Based Guardians NFTs",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#00ffff",
+  "theme_color": "#00FFFF",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/favicon.png",
