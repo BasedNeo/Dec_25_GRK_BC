@@ -322,9 +322,16 @@ button:where([class*="buy"], [class*="Buy"]) {
   background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+  border-radius: 4px;
 }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Skeleton variants */
+.skeleton-text { height: 16px; width: 60%; }
+.skeleton-title { height: 24px; width: 40%; }
+.skeleton-image { height: 200px; width: 100%; }
+.skeleton-card { height: 300px; width: 100%; }
