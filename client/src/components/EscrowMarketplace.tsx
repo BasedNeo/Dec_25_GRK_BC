@@ -95,7 +95,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("price-asc");
+  const [sortBy, setSortBy] = useState<string>("id-desc"); // Default to Newest First (Live Chain compatible)
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(false); // Default to Live Chain (false) instead of CSV (true)
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);

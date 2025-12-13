@@ -1,0 +1,162 @@
+// Contract configuration
+const CONTRACT_CONFIG = {
+  address: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+  rpcUrl: 'https://mainnet.basedaibridge.com/rpc/',
+  metadataBaseUri: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/'
+};
+
+// Initialize ethers provider and contract
+let provider, contract;
+
+async function initializeContract() {
+  try {
+    // Check if ethers is loaded
+    if (typeof ethers === 'undefined') {
+      console.error('❌ ethers.js not loaded!');
+      return false;
+    }
+    
+    provider = new ethers.JsonRpcProvider(CONTRACT_CONFIG.rpcUrl);
+    
+    // Minimal ABI for reading NFT data
+    const abi = [
+      'function totalMinted() view returns (uint256)',
+      'function totalSupply() view returns (uint256)',
+      'function MAX_SUPPLY() view returns (uint256)',
+      'function ownerOf(uint256 tokenId) view returns (address)',
+      'function tokenByIndex(uint256 index) view returns (uint256)',
+      'function tokenURI(uint256 tokenId) view returns (string)'
+    ];
+    
+    contract = new ethers.Contract(CONTRACT_CONFIG.address, abi, provider);
+    
+    // Test the connection
+    const totalMinted = await contract.totalMinted();
+    console.log('✅ Contract connected. Total minted:', totalMinted.toString());
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to initialize contract:', error);
+    return false;
+  }
+}
+
+// Fetch all minted NFTs for collection page
+async function fetchCollectionNFTs() {
+  console.log('🔍 Fetching collection NFTs...');
+  
+  const collectionGrid = document.querySelector('.collection-grid, .nft-grid, #collection-container');
+  
+  if (!collectionGrid) {
+    console.error('❌ Collection grid container not found!');
+    return;
+  }
+  
+  // Show loading state
+  collectionGrid.innerHTML = '<div class="loading">Loading NFTs from blockchain...</div>';
+  
+  try {
+    // Initialize contract if not already done
+    if (!contract) {
+      const success = await initializeContract();
+      if (!success) {
+        collectionGrid.innerHTML = '<div class="error">Failed to connect to blockchain. Please refresh.</div>';
+        return;
+      }
+    }
+    
+    // Get total minted count
+    const totalMinted = await contract.totalMinted();
+    const count = Number(totalMinted);
+    
+    console.log(`📊 Total minted: ${count}`);
+    
+    if (count === 0) {
+      collectionGrid.innerHTML = '<div class="empty">No NFTs have been minted yet.</div>';
+      return;
+    }
+    
+    // Fetch NFTs (most recent first)
+    const nfts = [];
+    const batchSize = 20; // Load 20 at a time
+    
+    for (let i = count - 1; i >= Math.max(0, count - batchSize); i--) {
+      try {
+        const tokenId = await contract.tokenByIndex(i);
+        const owner = await contract.ownerOf(tokenId);
+        
+        // Fetch metadata
+        const metadataUrl = `${CONTRACT_CONFIG.metadataBaseUri}${tokenId}.json`;
+        let metadata = null;
+        
+        try {
+          const response = await fetch(metadataUrl);
+          metadata = await response.json();
+        } catch (e) {
+          console.warn(`Failed to fetch metadata for token ${tokenId}`);
+        }
+        
+        nfts.push({
+          tokenId: Number(tokenId),
+          owner: owner,
+          metadata: metadata
+        });
+        
+      } catch (e) {
+        console.warn(`Failed to fetch token at index ${i}:`, e);
+      }
+    }
+    
+    console.log(`✅ Loaded ${nfts.length} NFTs`);
+    
+    // Render NFTs
+    if (nfts.length === 0) {
+      collectionGrid.innerHTML = '<div class="error">Failed to load NFTs. Please refresh.</div>';
+      return;
+    }
+    
+    collectionGrid.innerHTML = nfts.map(nft => createNFTCard(nft)).join('');
+    
+  } catch (error) {
+    console.error('❌ Failed to fetch collection:', error);
+    collectionGrid.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+  }
+}
+
+// Create NFT card HTML
+function createNFTCard(nft) {
+  const { tokenId, owner, metadata } = nft;
+  
+  const name = metadata?.name || `Based Guardian #${tokenId}`;
+  const image = metadata?.image || 'https://via.placeholder.com/300?text=NFT';
+  const rarity = metadata?.attributes?.find(a => a.trait_type?.toLowerCase().includes('rarity'))?.value || 'Unknown';
+  
+  const shortOwner = `${owner.slice(0, 6)}...${owner.slice(-4)}`;
+  
+  return `
+    <div class="nft-card" data-token-id="${tokenId}">
+      <img src="${image}" alt="${name}" class="nft-image" 
+           onerror="this.src='https://via.placeholder.com/300?text=NFT'" />
+      <div class="nft-info">
+        <div class="nft-header">
+          <span class="nft-id">#${tokenId}</span>
+          <span class="nft-rarity">${rarity}</span>
+        </div>
+        <h3 class="nft-name">${name}</h3>
+        <p class="nft-owner">Owner: ${shortOwner}</p>
+        <div class="nft-actions">
+          <button class="offer-btn" data-token-id="${tokenId}">Offer</button>
+          <button class="buy-btn" data-token-id="${tokenId}">Buy</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if we're on the collection page
+  if (window.location.pathname.includes('collection') || document.querySelector('.collection-grid, .nft-grid')) {
+    fetchCollectionNFTs();
+  }
+});

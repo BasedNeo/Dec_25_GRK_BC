@@ -44,7 +44,7 @@ export function useGuardians(
           !!filters.search || 
           (filters.rarity && filters.rarity !== 'all') || 
           (filters.traitType && filters.traitType !== 'all') || 
-          (filters.sortBy && filters.sortBy !== 'id-asc' && filters.sortBy !== 'price-asc') || // Allow default sort
+          (filters.sortBy && filters.sortBy !== 'id-asc' && filters.sortBy !== 'id-desc' && filters.sortBy !== 'price-asc') || // Allow id-asc and id-desc in live mode
           !!filters.owner; // Owner filter forces CSV/Mock logic
 
       // 0. CSV DATA MODE (Explicitly requested OR Active Filters)
@@ -224,11 +224,37 @@ export function useGuardians(
         }
 
         const pageSize = 20; // Smaller batch size for live RPC calls
-        const endIndex = Math.min(startIndex + pageSize, totalMinted);
+        
+        let startIdx = startIndex;
+        let endIdx = Math.min(startIndex + pageSize, totalMinted);
+        let isReverse = false;
+
+        // Handle Reverse Sort (Newest First)
+        if (filters.sortBy === 'id-desc') {
+            isReverse = true;
+            // For reverse, startIndex is actually the offset from the end
+            // Page 0 (startIndex 0): fetch totalMinted - 1 down to totalMinted - 20
+            // Page 1 (startIndex 20): fetch totalMinted - 21 down to totalMinted - 40
+        }
         
         // Loop from tokenByIndex(startIndex) to tokenByIndex(endIndex - 1)
         const promises = [];
-        for (let i = startIndex; i < endIndex; i++) {
+        
+        // Prepare indices to fetch
+        const indicesToFetch = [];
+        if (isReverse) {
+             const start = totalMinted - 1 - startIndex;
+             const end = Math.max(0, start - pageSize + 1);
+             for (let i = start; i >= end; i--) {
+                 indicesToFetch.push(i);
+             }
+        } else {
+             for (let i = startIndex; i < endIdx; i++) {
+                 indicesToFetch.push(i);
+             }
+        }
+
+        for (const i of indicesToFetch) {
             promises.push((async (idx) => {
                 try {
                     const tokenId = await fetchTokenByIndex(idx);
@@ -278,8 +304,20 @@ export function useGuardians(
         const results = await Promise.all(promises);
         const nfts = results.filter((n): n is Guardian => n !== null);
         
-        // Next cursor is endIndex if we haven't reached totalMinted
-        const nextCursor = endIndex < totalMinted ? endIndex : undefined;
+        // Next cursor calculation
+        let nextCursor = undefined;
+        if (isReverse) {
+             // For reverse, we are done when we reach index 0 (or strictly when start - pageSize < 0)
+             // But simpler: if we fetched pageSize items, there might be more. 
+             // Total items is totalMinted. Current offset is startIndex.
+             if (startIndex + pageSize < totalMinted) {
+                 nextCursor = startIndex + pageSize;
+             }
+        } else {
+             if (endIdx < totalMinted) {
+                 nextCursor = endIdx;
+             }
+        }
 
         const result = { nfts, nextCursor };
         setCache(cacheKey, result);
