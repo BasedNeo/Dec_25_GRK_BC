@@ -1,0 +1,171 @@
+TECHNICAL FIX: Implement proper wallet connection and state management
+
+DO NOT change button styling. Only fix the wallet logic.
+
+Create a WalletService (walletService.js):
+
+const WalletService = {
+  address: null,
+  chainId: null,
+  isConnected: false,
+  listeners: [],
+  
+  REQUIRED_CHAIN_ID: '0x7E53', // 32323 in hex (BasedAI)
+  
+  async initialize() {
+    // Check for existing connection
+    const savedAddress = localStorage.getItem('walletAddress');
+    
+    if (window.ethereum && savedAddress) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts[0]?.toLowerCase() === savedAddress.toLowerCase()) {
+          await this.handleConnection(accounts[0]);
+        }
+      } catch (e) {
+        this.clearConnection();
+      }
+    }
+    
+    // Set up event listeners
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
+      window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
+      window.ethereum.on('disconnect', this.handleDisconnect.bind(this));
+    }
+  },
+  
+  async connect() {
+    if (!window.ethereum) {
+      throw new Error('No wallet detected. Please install MetaMask.');
+    }
+    
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (accounts.length > 0) {
+        await this.handleConnection(accounts[0]);
+        return this.address;
+      }
+    } catch (error) {
+      if (error.code === 4001) {
+        throw new Error('Connection rejected by user');
+      }
+      throw error;
+    }
+  },
+  
+  async handleConnection(address) {
+    this.address = address;
+    this.chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    this.isConnected = true;
+    
+    localStorage.setItem('walletAddress', address);
+    
+    // Check if on correct network
+    if (this.chainId !== this.REQUIRED_CHAIN_ID) {
+      await this.switchToBasedAI();
+    }
+    
+    this.notifyListeners('connected', { address: this.address, chainId: this.chainId });
+  },
+  
+  async switchToBasedAI() {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: this.REQUIRED_CHAIN_ID }]
+      });
+    } catch (error) {
+      if (error.code === 4902) {
+        // Chain not added, add it
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: this.REQUIRED_CHAIN_ID,
+            chainName: 'BasedAI',
+            nativeCurrency: { name: 'BASED', symbol: 'BASED', decimals: 18 },
+            rpcUrls: ['https://mainnet.basedaibridge.com/rpc/'],
+            blockExplorerUrls: ['https://explorer.bf1337.org']
+          }]
+        });
+      }
+    }
+  },
+  
+  disconnect() {
+    this.clearConnection();
+    this.notifyListeners('disconnected', {});
+  },
+  
+  clearConnection() {
+    this.address = null;
+    this.chainId = null;
+    this.isConnected = false;
+    localStorage.removeItem('walletAddress');
+  },
+  
+  handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+      this.disconnect();
+    } else if (accounts[0] !== this.address) {
+      this.handleConnection(accounts[0]);
+    }
+  },
+  
+  handleChainChanged(chainId) {
+    this.chainId = chainId;
+    this.notifyListeners('chainChanged', { chainId });
+    
+    if (chainId !== this.REQUIRED_CHAIN_ID) {
+      this.notifyListeners('wrongNetwork', { chainId });
+    }
+  },
+  
+  handleDisconnect() {
+    this.disconnect();
+  },
+  
+  // Observer pattern for UI updates
+  subscribe(callback) {
+    this.listeners.push(callback);
+    return () => {
+      this.listeners = this.listeners.filter(cb => cb !== callback);
+    };
+  },
+  
+  notifyListeners(event, data) {
+    this.listeners.forEach(cb => cb(event, data));
+  },
+  
+  getShortAddress() {
+    if (!this.address) return null;
+    return `${this.address.slice(0, 6)}...${this.address.slice(-4)}`;
+  },
+  
+  isOnCorrectNetwork() {
+    return this.chainId === this.REQUIRED_CHAIN_ID;
+  }
+};
+
+// Initialize on load
+window.addEventListener('DOMContentLoaded', () => {
+  WalletService.initialize();
+});
+
+window.WalletService = WalletService;
+
+USAGE IN UI:
+// Subscribe to wallet changes
+WalletService.subscribe((event, data) => {
+  if (event === 'connected') {
+    updateHeaderWallet(data.address);
+    loadUserNFTs(data.address);
+  } else if (event === 'disconnected') {
+    showConnectButton();
+  } else if (event === 'wrongNetwork') {
+    showNetworkWarning();
+  }
+});

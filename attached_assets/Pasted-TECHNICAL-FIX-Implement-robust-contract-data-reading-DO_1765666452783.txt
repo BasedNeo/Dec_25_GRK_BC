@@ -1,0 +1,163 @@
+TECHNICAL FIX: Implement robust contract data reading
+
+DO NOT change any UI styling. Only fix the technical data layer.
+
+CONTRACT DETAILS:
+- Address: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+- Network: BasedAI (Chain ID: 32323)
+- RPC URL: https://mainnet.basedaibridge.com/rpc/
+
+STEP 1: Create a dedicated contract service file (contractService.js)
+
+const ContractService = {
+  provider: null,
+  contract: null,
+  isInitialized: false,
+  
+  config: {
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+    rpcUrl: 'https://mainnet.basedaibridge.com/rpc/',
+    chainId: 32323,
+    metadataBaseUri: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/'
+  },
+  
+  abi: [
+    'function name() view returns (string)',
+    'function symbol() view returns (string)',
+    'function totalSupply() view returns (uint256)',
+    'function totalMinted() view returns (uint256)',
+    'function MAX_SUPPLY() view returns (uint256)',
+    'function MINT_PRICE() view returns (uint256)',
+    'function publicMintEnabled() view returns (bool)',
+    'function revealed() view returns (bool)',
+    'function paused() view returns (bool)',
+    'function ownerOf(uint256 tokenId) view returns (address)',
+    'function tokenURI(uint256 tokenId) view returns (string)',
+    'function tokenByIndex(uint256 index) view returns (uint256)',
+    'function balanceOf(address owner) view returns (uint256)'
+  ],
+  
+  async initialize() {
+    if (this.isInitialized) return true;
+    
+    try {
+      if (typeof ethers === 'undefined') {
+        throw new Error('ethers.js library not loaded');
+      }
+      
+      this.provider = new ethers.JsonRpcProvider(this.config.rpcUrl);
+      this.contract = new ethers.Contract(this.config.address, this.abi, this.provider);
+      
+      // Verify connection
+      await this.provider.getBlockNumber();
+      this.isInitialized = true;
+      console.log('[ContractService] Initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('[ContractService] Initialization failed:', error);
+      return false;
+    }
+  },
+  
+  async getContractStats() {
+    await this.initialize();
+    
+    const [totalMinted, maxSupply, mintPrice, publicMintEnabled, revealed, paused] = 
+      await Promise.all([
+        this.contract.totalMinted(),
+        this.contract.MAX_SUPPLY(),
+        this.contract.MINT_PRICE(),
+        this.contract.publicMintEnabled(),
+        this.contract.revealed(),
+        this.contract.paused()
+      ]);
+    
+    return {
+      totalMinted: Number(totalMinted),
+      maxSupply: Number(maxSupply),
+      mintPrice: ethers.formatEther(mintPrice),
+      publicMintEnabled,
+      revealed,
+      paused,
+      remaining: Number(maxSupply) - Number(totalMinted),
+      progress: ((Number(totalMinted) / Number(maxSupply)) * 100).toFixed(2)
+    };
+  },
+  
+  async getMintedNFTs(limit = 20, offset = 0) {
+    await this.initialize();
+    
+    const totalMinted = Number(await this.contract.totalMinted());
+    const nfts = [];
+    
+    const start = Math.max(0, totalMinted - offset - limit);
+    const end = totalMinted - offset;
+    
+    for (let i = end - 1; i >= start; i--) {
+      try {
+        const tokenId = await this.contract.tokenByIndex(i);
+        const owner = await this.contract.ownerOf(tokenId);
+        const metadata = await this.fetchMetadata(Number(tokenId));
+        
+        nfts.push({
+          tokenId: Number(tokenId),
+          owner,
+          metadata,
+          index: i
+        });
+      } catch (e) {
+        console.warn(`Failed to fetch token at index ${i}`);
+      }
+    }
+    
+    return { nfts, total: totalMinted, hasMore: start > 0 };
+  },
+  
+  async fetchMetadata(tokenId) {
+    try {
+      const url = `${this.config.metadataBaseUri}${tokenId}.json`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Metadata fetch failed');
+      return await response.json();
+    } catch (error) {
+      console.warn(`Metadata fetch failed for token ${tokenId}`);
+      return null;
+    }
+  },
+  
+  async getUserNFTs(userAddress) {
+    await this.initialize();
+    
+    const balance = Number(await this.contract.balanceOf(userAddress));
+    const nfts = [];
+    
+    // Note: This requires iterating - for production, consider indexer
+    const totalMinted = Number(await this.contract.totalMinted());
+    
+    for (let i = 0; i < totalMinted && nfts.length < balance; i++) {
+      try {
+        const tokenId = await this.contract.tokenByIndex(i);
+        const owner = await this.contract.ownerOf(tokenId);
+        
+        if (owner.toLowerCase() === userAddress.toLowerCase()) {
+          const metadata = await this.fetchMetadata(Number(tokenId));
+          nfts.push({ tokenId: Number(tokenId), owner, metadata });
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    return nfts;
+  }
+};
+
+// Make globally available
+window.ContractService = ContractService;
+
+STEP 2: Use ContractService across all pages that need contract data
+- Collection page: ContractService.getMintedNFTs()
+- Dashboard/Stats: ContractService.getContractStats()
+- User profile: ContractService.getUserNFTs(address)
+
+STEP 3: Add error boundaries - if contract call fails, show retry button, not blank page

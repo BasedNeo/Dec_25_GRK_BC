@@ -1,0 +1,125 @@
+TECHNICAL FIX: Add comprehensive error handling throughout the app
+
+DO NOT change any UI components. Add error handling to existing logic.
+
+Create an ErrorHandler utility:
+
+const ErrorHandler = {
+  // Toast notification for errors
+  showToast(message, type = 'error', duration = 5000) {
+    const existing = document.querySelector('.error-toast');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = `error-toast error-toast--${type}`;
+    toast.innerHTML = `
+      <span class="error-toast__message">${this.escapeHtml(message)}</span>
+      <button class="error-toast__close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('error-toast--visible'), 10);
+    setTimeout(() => {
+      toast.classList.remove('error-toast--visible');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  },
+  
+  // Escape HTML to prevent XSS
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  },
+  
+  // Handle different error types
+  handle(error, context = '') {
+    console.error(`[${context}]`, error);
+    
+    let userMessage = 'An unexpected error occurred';
+    
+    if (error.code === 'NETWORK_ERROR' || error.message?.includes('network')) {
+      userMessage = 'Network connection failed. Please check your internet.';
+    } else if (error.code === 4001) {
+      userMessage = 'Transaction rejected by user';
+    } else if (error.code === -32002) {
+      userMessage = 'Please check your wallet - a request is pending';
+    } else if (error.message?.includes('insufficient funds')) {
+      userMessage = 'Insufficient funds for this transaction';
+    } else if (error.message?.includes('user rejected')) {
+      userMessage = 'Transaction cancelled';
+    } else if (error.message) {
+      userMessage = error.message.slice(0, 100);
+    }
+    
+    this.showToast(userMessage, 'error');
+    return userMessage;
+  },
+  
+  // Wrap async functions with error handling
+  async wrapAsync(fn, context = '') {
+    try {
+      return await fn();
+    } catch (error) {
+      this.handle(error, context);
+      return null;
+    }
+  }
+};
+
+// Add minimal CSS for toast (inject via JS to avoid UI changes)
+const toastStyles = document.createElement('style');
+toastStyles.textContent = `
+  .error-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 16px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 400px;
+  }
+  .error-toast--visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .error-toast--error { background: #dc2626; }
+  .error-toast--warning { background: #d97706; }
+  .error-toast--success { background: #16a34a; }
+  .error-toast--info { background: #2563eb; }
+  .error-toast__close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+`;
+document.head.appendChild(toastStyles);
+
+window.ErrorHandler = ErrorHandler;
+
+USAGE:
+// Wrap all async operations
+const stats = await ErrorHandler.wrapAsync(
+  () => ContractService.getContractStats(),
+  'Loading stats'
+);
+
+// Or handle manually
+try {
+  await someOperation();
+} catch (error) {
+  ErrorHandler.handle(error, 'Operation context');
+}
