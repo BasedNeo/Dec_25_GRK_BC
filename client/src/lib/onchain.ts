@@ -144,3 +144,19 @@ export async function fetchTokenOwner(tokenId: number): Promise<string | null> {
         return null;
     }
 }
+
+export async function fetchTokenByIndex(index: number): Promise<number | null> {
+    try {
+        if (!NFT_CONTRACT) return null;
+        const tokenId = await publicClient.readContract({
+            address: NFT_CONTRACT as `0x${string}`,
+            abi: contractABI,
+            functionName: 'tokenByIndex',
+            args: [BigInt(index)]
+        });
+        return Number(tokenId);
+    } catch (error) {
+        console.error(`Error fetching token by index ${index}:`, error);
+        return null;
+    }
+}
