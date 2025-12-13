@@ -154,33 +154,24 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                 return;
             }
 
-            // 2. Fetch NFTs (Newest First)
+            // 2. Fetch NFTs (0 to totalMinted - 1)
             const fetchedNFTs: MarketItem[] = [];
-            const batchSize = 20;
-            // Fetch last 20 or all if less than 20
-            const startIndex = Math.max(0, totalMinted - batchSize);
             
-            console.log(`Fetching tokens from index ${totalMinted - 1} down to ${startIndex}`);
+            console.log(`Fetching tokens from index 0 to ${totalMinted - 1}`);
 
-            for (let i = totalMinted - 1; i >= startIndex; i--) {
+            for (let i = 0; i < totalMinted; i++) {
                 try {
-                    console.log('Fetching token at index', i);
+                    console.log('Fetching token', i);
                     const tokenIdBig = await contract.tokenByIndex(i);
                     const tokenId = Number(tokenIdBig);
                     
                     const owner = await contract.ownerOf(tokenId);
-                    const uri = await contract.tokenURI(tokenId);
                     
-                    // Metadata
+                    // Metadata - Use explicit Base URI as requested
+                    const baseUri = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/";
+                    const metadataUrl = `${baseUri}${tokenId}.json`;
+                    
                     let metadata = { name: `Guardian #${tokenId}`, image: '', attributes: [] };
-                    let metadataUrl = uri;
-                    
-                    // Fix IPFS URL
-                    if (uri.startsWith('ipfs://')) {
-                        metadataUrl = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                    } else if (!uri.startsWith('http')) {
-                        metadataUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/${tokenId}.json`;
-                    }
 
                     try {
                         const res = await fetch(metadataUrl);
