@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -75,7 +76,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery title="GUARDIAN COLLECTION" subtitle="Explore the entire Based Guardian universe." filterByOwner={false} />
+              <EscrowMarketplace />
             </motion.div>
           )}
 
