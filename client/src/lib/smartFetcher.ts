@@ -172,7 +172,7 @@ export async function fetchSmartMintedData() {
           const results = await publicClient.multicall({ contracts: calls });
           results.forEach((res, idx) => {
               if (res.status === 'success') {
-                  ownersMap[batchIds[idx]] = res.result as string;
+                  ownersMap[batchIds[idx]] = String(res.result);
               }
           });
       } catch (e) {
