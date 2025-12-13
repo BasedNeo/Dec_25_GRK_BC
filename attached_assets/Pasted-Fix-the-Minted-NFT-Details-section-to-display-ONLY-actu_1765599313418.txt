@@ -1,0 +1,133 @@
+Fix the "Minted NFT Details" section to display ONLY actually minted NFTs from the live contract with a "Load More" button.
+
+═══════════════════════════════════════════════════════════════
+                     CURRENT PROBLEM
+═══════════════════════════════════════════════════════════════
+
+The section shows "(6 Total)" but this should reflect the ACTUAL minted count from the contract, not a hardcoded number.
+
+═══════════════════════════════════════════════════════════════
+                     REQUIRED BEHAVIOR
+═══════════════════════════════════════════════════════════════
+
+1. HEADER: "Minted NFT Details (X Total)"
+   - X must come from contract: totalMinted()
+   - Update in real-time when new NFTs are minted
+
+2. INITIAL LOAD: Show last 12 minted NFTs
+   - Get total count: const total = await contract.totalMinted()
+   - Loop from (total - 1) down to (total - 12) to get MOST RECENT first
+   - For each index, get tokenId: await contract.tokenByIndex(index)
+   - Fetch metadata from IPFS for each token
+
+3. LOAD MORE BUTTON:
+   - Appears at bottom of the NFT grid
+   - Button text: "Load More" or "Show More NFTs"
+   - Each click loads 12 more NFTs (older ones)
+   - Button disappears when all minted NFTs are loaded
+   - Show loading spinner while fetching
+
+4. ORDER: Most recently minted first (newest at top)
+
+═══════════════════════════════════════════════════════════════
+                     CONTRACT CALLS NEEDED
+═══════════════════════════════════════════════════════════════
+
+Contract: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+RPC: https://mainnet.basedaibridge.com/rpc//
+
+// Get total minted count
+const totalMinted = await contract.totalMinted(); // Returns uint256
+
+// Get token ID at a specific index (0-based)
+const tokenId = await contract.tokenByIndex(index); // Returns uint256
+
+// Get owner of token
+const owner = await contract.ownerOf(tokenId); // Returns address
+
+// Metadata URL pattern
+const metadataUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/${tokenId}.json`;
+
+═══════════════════════════════════════════════════════════════
+                     LOGIC PSEUDOCODE
+═══════════════════════════════════════════════════════════════
+
+// State
+let loadedNFTs = [];
+let currentIndex = totalMinted - 1; // Start from most recent
+const BATCH_SIZE = 12;
+
+// Initial load
+async function loadInitialNFTs() {
+  const total = await contract.totalMinted();
+  updateHeader(total); // "Minted NFT Details (X Total)"
+  await loadMoreNFTs();
+}
+
+// Load more function
+async function loadMoreNFTs() {
+  showLoadingSpinner();
+  
+  const nftsToLoad = [];
+  const endIndex = Math.max(currentIndex - BATCH_SIZE + 1, 0);
+  
+  for (let i = currentIndex; i >= endIndex; i--) {
+    const tokenId = await contract.tokenByIndex(i);
+    const owner = await contract.ownerOf(tokenId);
+    const metadata = await fetch(metadataUrl).then(r => r.json());
+    
+    nftsToLoad.push({
+      tokenId,
+      owner,
+      name: metadata.name,
+      image: metadata.image,
+      attributes: metadata.attributes,
+      rarity: metadata.attributes.find(a => a.trait_type === "Rarity Level")?.value
+    });
+  }
+  
+  loadedNFTs = [...loadedNFTs, ...nftsToLoad];
+  currentIndex = endIndex - 1;
+  
+  renderNFTs();
+  hideLoadingSpinner();
+  
+  // Hide button if all loaded
+  if (currentIndex < 0) {
+    hideLoadMoreButton();
+  }
+}
+
+═══════════════════════════════════════════════════════════════
+                     UI REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+HEADER:
+- Dynamic count from contract
+- Format: "Minted NFT Details (XXX Total)"
+
+NFT GRID:
+- Keep existing card design
+- Show: image, token ID, name, rarity badge, owner
+
+LOAD MORE BUTTON:
+- Centered below the grid
+- Styled consistently with other buttons
+- Shows "Loading..." with spinner when fetching
+- Disabled while loading
+- Hidden when all NFTs are loaded
+
+LOADING STATE:
+- Show skeleton cards or spinner while initial load
+- Show spinner on Load More button while fetching more
+
+═══════════════════════════════════════════════════════════════
+                     IMPORTANT
+═══════════════════════════════════════════════════════════════
+
+- Do NOT change the existing card component design
+- Do NOT change the grid layout styling
+- ONLY update the data fetching logic and add Load More functionality
+- Keep the section in its current location on the page
+
+Show me your implementation plan before making changes.

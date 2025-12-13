@@ -54,8 +54,8 @@ export function Hero() {
     try {
         // 1. Get Live Supply
         const supply = await fetchTotalSupply();
-        // Fallback to MINTED_COUNT if contract call fails (for demo/mockup stability)
-        const activeSupply = supply !== null ? supply : MINTED_COUNT;
+        // User Requirement: ONLY display actually minted NFTs. No fallback to MINTED_COUNT.
+        const activeSupply = supply !== null ? supply : 0;
         
         setCurrentSupply(activeSupply);
         

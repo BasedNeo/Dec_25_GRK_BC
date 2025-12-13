@@ -19,35 +19,42 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 
 interface MintedNFTsTableProps {
-  totalMinted?: number; // Optional now as we fetch internally
+  totalMinted?: number; // Passed from Hero, but we also sync internally
 }
 
 const BATCH_SIZE = 12;
 
 export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTableProps) {
+  // Use initialTotal if provided (and non-zero), otherwise start at 0
   const [liveTotal, setLiveTotal] = useState<number>(initialTotal || 0);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Sync with contract on mount
-  useEffect(() => {
-    const syncTotal = async () => {
-        try {
-            const total = await fetchTotalSupply();
-            if (total !== null) {
-                setLiveTotal(total);
-            }
-        } catch (e) {
-            console.error("Failed to fetch live total:", e);
-        } finally {
-            setIsInitializing(false);
+  // Sync with contract on mount and periodically
+  const syncTotal = async () => {
+    try {
+        const total = await fetchTotalSupply();
+        if (total !== null) {
+            setLiveTotal(total);
         }
-    };
+    } catch (e) {
+        console.error("Failed to fetch live total:", e);
+    } finally {
+        setIsInitializing(false);
+    }
+  };
+
+  useEffect(() => {
     syncTotal();
-    
-    // Refresh every 30s
-    const interval = setInterval(syncTotal, 30000);
+    const interval = setInterval(syncTotal, 15000); // Poll every 15s
     return () => clearInterval(interval);
   }, []);
+
+  // Update liveTotal if prop changes (and is valid/larger)
+  useEffect(() => {
+    if (initialTotal !== undefined && initialTotal > liveTotal) {
+        setLiveTotal(initialTotal);
+    }
+  }, [initialTotal]);
 
   const shortenAddress = (addr?: string) => {
     if (!addr) return "Unknown";
@@ -67,7 +74,7 @@ export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTablePr
 
   // Fetch function for load more
   const fetchMintedBatch = async ({ pageParam }: { pageParam: number }) => {
-    // pageParam is the starting INDEX (highest index)
+    // pageParam is the starting INDEX (highest index for this batch)
     // We want to fetch BATCH_SIZE items going downwards: index, index-1, ...
     
     // Safety check
@@ -120,6 +127,7 @@ export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTablePr
 
     return {
         nfts: fetchedNFTs,
+        // If we reached 0, no next page. Otherwise, next cursor is one below current end.
         nextCursor: endIndex > 0 ? endIndex - 1 : undefined
     };
   };
@@ -152,7 +160,7 @@ export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTablePr
         <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => refetch()} 
+            onClick={() => { syncTotal(); refetch(); }} 
             className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
             title="Refresh List"
         >
@@ -160,7 +168,7 @@ export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTablePr
         </Button>
       </div>
       
-      {status === 'pending' || isInitializing ? (
+      {status === 'pending' || (isInitializing && liveTotal === 0) ? (
         <div className="w-full">
             {/* Desktop Skeleton */}
             <div className="hidden md:block">
@@ -297,34 +305,35 @@ export function MintedNFTsTable({ totalMinted: initialTotal }: MintedNFTsTablePr
 
             {/* Load More Button */}
             {hasNextPage && (
-                <div className="flex justify-center p-4 border-t border-white/10 bg-black/20">
+                <div className="flex justify-center p-6 border-t border-white/10 bg-black/20">
                     <Button 
                         variant="outline" 
                         onClick={() => fetchNextPage()} 
                         disabled={isFetchingNextPage}
-                        className="w-full md:w-auto min-w-[200px] border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 font-orbitron tracking-widest"
+                        className="w-full md:w-auto min-w-[200px] border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 font-orbitron tracking-widest uppercase"
                     >
                         {isFetchingNextPage ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                LOADING...
+                                Loading...
                             </>
                         ) : (
-                            "LOAD MORE"
+                            "Load More"
                         )}
                     </Button>
                 </div>
             )}
             
             {!hasNextPage && allNFTs.length > 0 && (
-                 <div className="text-center py-4 text-xs font-mono text-muted-foreground/50 bg-black/20">
-                    END OF MINTS
+                 <div className="text-center py-4 text-xs font-mono text-muted-foreground/50 bg-black/20 border-t border-white/10">
+                    END OF MINTED TOKENS
                  </div>
             )}
             
-            {allNFTs.length === 0 && !isFetchingNextPage && (
-                <div className="text-center py-8 text-muted-foreground">
-                    No minted NFTs found or waiting for contract sync.
+            {allNFTs.length === 0 && !isFetchingNextPage && !isInitializing && (
+                <div className="text-center py-12 text-muted-foreground bg-black/20">
+                    <p className="font-orbitron mb-2">NO NFTS MINTED YET</p>
+                    <p className="text-xs font-mono opacity-50">Be the first to mint a Guardian!</p>
                 </div>
             )}
         </>
