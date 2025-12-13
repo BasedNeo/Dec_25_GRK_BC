@@ -117,7 +117,7 @@ export async function fetchContractStats() {
 
         return {
             maxSupply: Number(maxSupply.result),
-            mintPrice: formatUnits(maxSupply.result ? (mintPrice.result as bigint) : 0n, 18), // Helper format
+            mintPrice: formatUnits(maxSupply.result ? (mintPrice.result as bigint) : BigInt(0), 18), // Helper format
             rawMintPrice: mintPrice.result,
             isPublicMint: isPublicMint.result,
             isRevealed: isRevealed.result,
