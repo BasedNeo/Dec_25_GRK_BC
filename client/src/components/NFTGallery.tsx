@@ -182,7 +182,40 @@ export function NFTGallery({
     show: { opacity: 1, y: 0 }
   };
 
-  return (
+    // Pull-to-Refresh Logic
+    useEffect(() => {
+        let startY = 0;
+        let refreshing = false;
+        
+        const handleTouchStart = (e: TouchEvent) => {
+            startY = e.touches[0].pageY;
+        };
+        
+        const handleTouchMove = async (e: TouchEvent) => {
+            if (window.scrollY === 0 && e.touches[0].pageY > startY + 80 && !refreshing) {
+                refreshing = true;
+                // Add visual feedback or vibration if possible
+                if (navigator.vibrate) navigator.vibrate(50);
+                
+                await fetchNextPage(); // Or a dedicated refresh function if available
+                
+                // Simulate refresh delay
+                setTimeout(() => {
+                    refreshing = false;
+                }, 1000);
+            }
+        };
+
+        document.addEventListener('touchstart', handleTouchStart);
+        document.addEventListener('touchmove', handleTouchMove);
+
+        return () => {
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+        };
+    }, [fetchNextPage]);
+
+    return (
     <section id="gallery" className="py-20 border-t border-white/5 relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
@@ -294,9 +327,9 @@ export function NFTGallery({
                            <Button 
                              variant="outline" 
                              onClick={() => setShowFilters(!showFilters)}
-                             className={`border-white/20 ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
+                             className={`border-white/20 min-w-[44px] min-h-[44px] ${showFilters ? 'bg-primary/20 text-primary border-primary' : ''}`}
                            >
-                             <Filter size={14} />
+                             <Filter size={18} />
                            </Button>
                     </div>
                  </div>
@@ -306,7 +339,7 @@ export function NFTGallery({
                         variant="ghost" 
                         size="sm" 
                         onClick={() => setUseCsvData(!useCsvData)}
-                        className={`text-[10px] h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
+                        className={`text-[10px] h-10 md:h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
                     >
                         {useCsvData ? "Using Local CSV Data (Fast)" : "Switch to CSV"}
                     </Button>
@@ -314,7 +347,7 @@ export function NFTGallery({
                         variant="ghost" 
                         size="sm" 
                         onClick={() => { setUseMockData(!useMockData); setUseCsvData(false); }}
-                        className="text-[10px] h-6 text-muted-foreground hover:text-white"
+                        className="text-[10px] h-10 md:h-6 text-muted-foreground hover:text-white"
                     >
                         {useMockData ? "Switch to Real" : "View Demo Data"}
                     </Button>

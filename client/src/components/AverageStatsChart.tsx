@@ -20,53 +20,69 @@ export function AverageStatsChart() {
 
       {/* Chart */}
       <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={STATS_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#9ca3af', fontSize: 12, fontFamily: 'Rajdhani' }} 
-              dy={10}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#9ca3af', fontSize: 12, fontFamily: 'Rajdhani' }} 
-              domain={[0, 10]}
-              ticks={[0, 2, 4, 6, 8]}
-            />
-            <RechartsTooltip 
-              cursor={{ fill: 'rgba(0,255,255,0.05)' }}
-              contentStyle={{ 
-                backgroundColor: 'rgba(10,10,10,0.9)', 
-                border: '1px solid rgba(255,255,255,0.1)', 
-                borderRadius: '8px',
-                fontFamily: 'Orbitron',
-                color: '#fff',
-                padding: '12px'
-              }}
-              itemStyle={{ color: '#00ffff', fontSize: '14px' }}
-              labelStyle={{ color: '#fff', marginBottom: '8px', fontSize: '14px', textAlign: 'center' }}
-              formatter={(value: number) => [`${value.toFixed(2)}`, 'value ']}
-            />
-            <Bar 
-              dataKey="value" 
-              radius={[4, 4, 0, 0]}
-              animationDuration={1500}
-            >
-              {STATS_DATA.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={entry.color} 
-                  className="hover:opacity-80 transition-opacity cursor-pointer"
-                  filter="drop-shadow(0 0 8px rgba(0,255,255,0.2))"
+        {/* Mobile: 2x2 Grid (Custom implementation since Recharts doesn't grid well) */}
+        <div className="block sm:hidden grid grid-cols-2 gap-4 h-full">
+            {STATS_DATA.map((stat, i) => (
+                <div key={i} className="bg-white/5 border border-white/10 rounded p-3 flex flex-col justify-end relative overflow-hidden">
+                    <div className="absolute bottom-0 left-0 right-0 bg-primary/20" style={{ height: `${(stat.value / 10) * 100}%`, background: stat.color, opacity: 0.2 }}></div>
+                    <div className="relative z-10">
+                        <div className="text-2xl font-bold text-white font-orbitron">{stat.value}</div>
+                        <div className="text-xs text-muted-foreground uppercase font-mono">{stat.name}</div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        {/* Desktop: Standard Chart */}
+        <div className="hidden sm:block h-full w-full">
+            <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={STATS_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#9ca3af', fontSize: 12, fontFamily: 'Rajdhani' }} 
+                dy={10}
                 />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+                <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#9ca3af', fontSize: 12, fontFamily: 'Rajdhani' }} 
+                domain={[0, 10]}
+                ticks={[0, 2, 4, 6, 8]}
+                />
+                <RechartsTooltip 
+                cursor={{ fill: 'rgba(0,255,255,0.05)' }}
+                contentStyle={{ 
+                    backgroundColor: 'rgba(10,10,10,0.9)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '8px',
+                    fontFamily: 'Orbitron',
+                    color: '#fff',
+                    padding: '12px'
+                }}
+                itemStyle={{ color: '#00ffff', fontSize: '14px' }}
+                labelStyle={{ color: '#fff', marginBottom: '8px', fontSize: '14px', textAlign: 'center' }}
+                formatter={(value: number) => [`${value.toFixed(2)}`, 'value ']}
+                />
+                <Bar 
+                dataKey="value" 
+                radius={[4, 4, 0, 0]}
+                animationDuration={1500}
+                >
+                {STATS_DATA.map((entry, index) => (
+                    <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.color} 
+                    className="hover:opacity-80 transition-opacity cursor-pointer"
+                    filter="drop-shadow(0 0 8px rgba(0,255,255,0.2))"
+                    />
+                ))}
+                </Bar>
+            </BarChart>
+            </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Decorative Corner */}

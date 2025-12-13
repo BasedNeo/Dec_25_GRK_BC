@@ -64,11 +64,12 @@ export function RarityChart({ mintedCount, totalMinted, distribution, isLoading 
           
           return (
             <div key={config.name} className="space-y-1">
-              <div className="flex justify-between text-[10px] uppercase font-mono text-muted-foreground">
-                <span className="text-white">{config.name}</span>
+              <div className="flex flex-col sm:flex-row sm:justify-between text-[10px] uppercase font-mono text-muted-foreground">
+                <span className="text-white text-xs sm:text-[10px] mb-1 sm:mb-0">{config.name}</span>
                 <span>{count} ({percentage}%)</span>
               </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+              {/* Increased touch target implicitly by spacing */}
+              <div className="h-3 sm:h-2 w-full bg-white/5 rounded-full overflow-hidden">
                  <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${totalClassified > 0 ? (count / totalClassified) * 100 : 0}%` }}
