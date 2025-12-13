@@ -1,0 +1,99 @@
+Fix slow loading with parallel fetches and smart caching.
+
+═══════════════════════════════════════════════════════════════
+                     PARALLEL FETCHES
+═══════════════════════════════════════════════════════════════
+
+BEFORE (slow - sequential):
+for (let i = 0; i < count; i++) {
+  const tokenId = await contract.tokenByIndex(i);  // waits
+  const owner = await contract.ownerOf(tokenId);   // waits
+  const metadata = await fetch(url);               // waits
+}
+
+AFTER (fast - parallel):
+// Step 1: Get all token IDs at once
+const tokenIds = await Promise.all(
+  Array.from({ length: count }, (_, i) => contract.tokenByIndex(i))
+);
+
+// Step 2: Get all owners at once
+const owners = await Promise.all(
+  tokenIds.map(id => contract.ownerOf(id))
+);
+
+// Step 3: Get all metadata at once
+const metadatas = await Promise.all(
+  tokenIds.map(id => 
+    fetch(`${METADATA_BASE}/${id}.json`).then(r => r.json()).catch(() => null)
+  )
+);
+
+// Step 4: Combine
+const nfts = tokenIds.map((id, i) => ({
+  tokenId: Number(id),
+  owner: owners[i],
+  metadata: metadatas[i]
+}));
+
+═══════════════════════════════════════════════════════════════
+                     SMART CACHING
+═══════════════════════════════════════════════════════════════
+
+// Metadata is IMMUTABLE on IPFS - cache forever
+const metadataCache = new Map();
+
+async function getMetadata(tokenId) {
+  // Check memory cache
+  if (metadataCache.has(tokenId)) {
+    return metadataCache.get(tokenId);
+  }
+  
+  // Check localStorage
+  const stored = localStorage.getItem(`nft_${tokenId}`);
+  if (stored) {
+    const data = JSON.parse(stored);
+    metadataCache.set(tokenId, data);
+    return data;
+  }
+  
+  // Fetch and cache
+  const data = await fetch(`${METADATA_BASE}/${tokenId}.json`).then(r => r.json());
+  metadataCache.set(tokenId, data);
+  localStorage.setItem(`nft_${tokenId}`, JSON.stringify(data));
+  return data;
+}
+
+// Contract stats - cache for 30 seconds
+let statsCache = { data: null, timestamp: 0 };
+
+async function getStats() {
+  if (Date.now() - statsCache.timestamp < 30000) {
+    return statsCache.data;
+  }
+  const data = await fetchContractStats();
+  statsCache = { data, timestamp: Date.now() };
+  return data;
+}
+
+═══════════════════════════════════════════════════════════════
+                     INCREMENTAL UPDATES
+═══════════════════════════════════════════════════════════════
+
+On refresh, only fetch NEW NFTs:
+
+async function refreshData() {
+  const currentTotal = await contract.totalMinted();
+  const cachedTotal = mintedNFTs.length;
+  
+  if (currentTotal > cachedTotal) {
+    // Only fetch the new ones
+    for (let i = cachedTotal; i < currentTotal; i++) {
+      const newNFT = await fetchNFTData(i);
+      mintedNFTs.unshift(newNFT); // Add to front
+      updateRarityDistribution(newNFT.rarity);
+    }
+  }
+}
+
+Don't change UI - only improve data fetching performance.

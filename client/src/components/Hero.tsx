@@ -14,8 +14,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 import { useABTest } from "@/hooks/useABTest";
 import { useGuardians } from "@/hooks/useGuardians";
-import { fetchTotalSupply } from "@/lib/onchain";
-import { loadGuardiansFromCSV } from "@/lib/csvLoader";
+import { fetchSmartMintedData } from "@/lib/smartFetcher";
 import { AverageStatsChart } from "./AverageStatsChart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MintedNFTsTable } from "./MintedNFTsTable";
@@ -59,44 +58,16 @@ export function Hero() {
 
   // Unified Fetching Logic
   const fetchAllMintedData = async () => {
-    setMintedData(prev => ({ ...prev, isLoading: true }));
+    // Only show loading on initial load, background refresh shouldn't flicker UI
+    if (mintedData.totalMinted === 0) {
+        setMintedData(prev => ({ ...prev, isLoading: true }));
+    }
+    
     try {
-        // 1. Get Live Supply from Contract
-        const supply = await fetchTotalSupply();
-        const totalMinted = supply !== null ? supply : 0;
-        
-        // 2. Load ALL Guardians from CSV
-        const allGuardians = await loadGuardiansFromCSV();
-
-        // 3. Filter for Minted Only (assuming sequential IDs 1..totalMinted)
-        // In a real scenario where IDs are not sequential (burned?), we would need `fetchTokenByIndex`.
-        // But for this mockup/MVP, and standard ERC721Enumerable sequential mints, this works.
-        const mintedNfts = allGuardians.filter(g => g.id <= totalMinted);
-
-        // 4. Calculate Distribution
-        const distribution: Record<string, number> = {
-            "Rarest-Legendary": 0,
-            "Very Rare": 0,
-            "More Rare": 0,
-            "Rare": 0,
-            "Less Rare": 0,
-            "Less Common": 0,
-            "Common": 0,
-            "Most Common": 0
-        };
-
-        mintedNfts.forEach(nft => {
-            if (distribution[nft.rarity] !== undefined) {
-                distribution[nft.rarity]++;
-            } else {
-                // Fallback mapping if CSV has different names
-                if (nft.rarity === 'Legendary') distribution["Rarest-Legendary"]++;
-                else distribution["Common"]++;
-            }
-        });
+        const { nfts, distribution, totalMinted } = await fetchSmartMintedData();
 
         setMintedData({
-            nfts: mintedNfts,
+            nfts,
             distribution,
             totalMinted,
             isLoading: false
