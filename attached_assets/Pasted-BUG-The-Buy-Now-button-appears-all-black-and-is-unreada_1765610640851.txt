@@ -1,0 +1,262 @@
+BUG: The "Buy Now" button appears all black and is unreadable/invisible.
+The "Offer" button works fine, so use its styling as reference.
+
+═══════════════════════════════════════════════════════════════
+                     THE PROBLEM
+═══════════════════════════════════════════════════════════════
+
+Current state:
+- Offer button: ✅ Visible, styled correctly
+- Buy Now button: ❌ All black, text not visible
+
+This is a CSS issue where the Buy Now button has:
+- Black background + black text, OR
+- Missing styles entirely, OR
+- Inheriting wrong colors
+
+═══════════════════════════════════════════════════════════════
+                     QUICK FIX
+═══════════════════════════════════════════════════════════════
+
+Find the Buy Now button CSS and update it to match the app theme.
+
+STEP 1: Find the button class name
+
+Look for elements like:
+- .buy-button
+- .buy-now-button
+- .buyNow
+- .btn-buy
+- button[data-action="buy"]
+- .purchase-button
+
+STEP 2: Apply proper styling
+
+Add/update this CSS:
+
+/* ═══════════════════════════════════════════════════════════
+   BUY NOW BUTTON - FIX STYLING
+   ═══════════════════════════════════════════════════════════ */
+
+.buy-button,
+.buy-now-button,
+.buyNow,
+.btn-buy,
+[class*="buy-now"],
+[class*="buyNow"],
+button[data-action="buy"] {
+  /* Make visible with gradient background */
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  
+  /* White text for contrast */
+  color: #ffffff !important;
+  
+  /* Ensure visibility */
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-flex !important;
+  
+  /* Proper button styling */
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  
+  /* Center content */
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  
+  /* Smooth transitions */
+  transition: all 0.2s ease !important;
+}
+
+/* Hover state */
+.buy-button:hover,
+.buy-now-button:hover,
+.buyNow:hover,
+.btn-buy:hover,
+[class*="buy-now"]:hover,
+[class*="buyNow"]:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Active/pressed state */
+.buy-button:active,
+.buy-now-button:active {
+  transform: translateY(0) !important;
+}
+
+/* Disabled state */
+.buy-button:disabled,
+.buy-now-button:disabled {
+  background: #4b5563 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+═══════════════════════════════════════════════════════════════
+                     ALTERNATIVE: MATCH OFFER BUTTON
+═══════════════════════════════════════════════════════════════
+
+If the Offer button looks good, copy its exact styles to Buy Now:
+
+1. Inspect the Offer button in DevTools (right-click > Inspect)
+2. Note its class name (e.g., .offer-button)
+3. Copy the computed styles
+4. Apply same styles to Buy Now button
+
+Example - if Offer button has these styles:
+.offer-button {
+  background: #22c55e;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+}
+
+Then apply same pattern to Buy Now:
+.buy-now-button {
+  background: #6366f1;  /* Different color to distinguish */
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+}
+
+═══════════════════════════════════════════════════════════════
+                     IF BUTTON IS COMPLETELY MISSING
+═══════════════════════════════════════════════════════════════
+
+If the Buy Now button element doesn't exist at all, add it:
+
+HTML - Add next to Offer button:
+<div class="button-group">
+  <button class="offer-button">
+    Make Offer
+  </button>
+  
+  <!-- ADD THIS BUY NOW BUTTON -->
+  <button class="buy-now-button" onclick="handleBuyNow()">
+    🛒 Buy Now
+  </button>
+</div>
+
+═══════════════════════════════════════════════════════════════
+                     BUTTON COLOR OPTIONS
+═══════════════════════════════════════════════════════════════
+
+Choose a color that fits your theme:
+
+Option 1 - Purple/Indigo (matches Based Guardians theme):
+background: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+Option 2 - Green (action/success):
+background: linear-gradient(135deg, #22c55e, #16a34a);
+
+Option 3 - Blue (trust/action):
+background: linear-gradient(135deg, #3b82f6, #2563eb);
+
+Option 4 - Orange (urgency):
+background: linear-gradient(135deg, #f59e0b, #d97706);
+
+═══════════════════════════════════════════════════════════════
+                     DEBUG IN BROWSER
+═══════════════════════════════════════════════════════════════
+
+Run this in browser console (F12) to diagnose:
+
+// Find all buttons with "buy" in class or text
+document.querySelectorAll('button').forEach(btn => {
+  const text = btn.textContent.toLowerCase();
+  const className = btn.className.toLowerCase();
+  
+  if (text.includes('buy') || className.includes('buy')) {
+    console.log('Found Buy button:', btn);
+    console.log('Classes:', btn.className);
+    console.log('Computed styles:', {
+      background: getComputedStyle(btn).background,
+      color: getComputedStyle(btn).color,
+      display: getComputedStyle(btn).display,
+      visibility: getComputedStyle(btn).visibility
+    });
+  }
+});
+
+// Force fix all buy buttons temporarily
+document.querySelectorAll('button').forEach(btn => {
+  if (btn.textContent.toLowerCase().includes('buy')) {
+    btn.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+    btn.style.color = 'white';
+    btn.style.border = 'none';
+    btn.style.padding = '12px 24px';
+    btn.style.borderRadius = '8px';
+    console.log('Fixed button:', btn.textContent);
+  }
+});
+
+═══════════════════════════════════════════════════════════════
+                     CSS SPECIFICITY FIX
+═══════════════════════════════════════════════════════════════
+
+If styles aren't applying, there might be a CSS specificity issue.
+
+Add this at the END of your CSS file (or in a <style> tag at bottom of page):
+
+/* Force override with high specificity */
+body .buy-now-button,
+body .buy-button,
+body button.buy-now-button,
+body button.buy-button,
+html body .buy-now-button {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: #ffffff !important;
+  border: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+═══════════════════════════════════════════════════════════════
+                     DARK THEME CONSIDERATION
+═══════════════════════════════════════════════════════════════
+
+If your app has a dark theme, ensure button doesn't inherit dark colors:
+
+/* Prevent inheritance of dark colors */
+.buy-now-button {
+  background-color: initial; /* Reset any inherited bg */
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+
+/* If there's a dark mode class */
+.dark .buy-now-button,
+[data-theme="dark"] .buy-now-button {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+
+═══════════════════════════════════════════════════════════════
+                     TEST AFTER FIX
+═══════════════════════════════════════════════════════════════
+
+□ Buy Now button is visible with colored background
+□ Button text is readable (white on colored background)
+□ Button appears on all NFT cards/listings
+□ Hover effect works (slight lift/glow)
+□ Button is clickable
+□ Matches the overall app theme
+□ Works in both light and dark mode (if applicable)
+
+═══════════════════════════════════════════════════════════════
+                     DON'T CHANGE
+═══════════════════════════════════════════════════════════════
+
+- Offer button styling (it works)
+- Other UI components
+- Layout/positioning
+- Just fix the Buy Now button colors
