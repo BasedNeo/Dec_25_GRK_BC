@@ -65,15 +65,15 @@ export function BuyButton({
         <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 blur-sm" />
       )}
       
-      <div className="relative flex items-center gap-2 z-10">
-        {!compact && <span className="uppercase">Buy Now</span>}
+      <div className="relative flex items-center justify-center gap-1.5 z-10 w-full">
+        {!compact && <span className="uppercase tracking-wide">BUY</span>}
         {compact && <ShoppingBag size={14} />}
         
         {price && (
             <>
-                <div className="h-3 w-px bg-current/30 mx-1" />
-                <span className={cn("font-mono", compact ? "text-xs" : "")}>
-                    {Number(price).toLocaleString()} <span className="text-[0.8em] opacity-80">{currency}</span>
+                <div className="h-3 w-px bg-white/30 mx-0.5" />
+                <span className={cn("font-mono font-bold", compact ? "text-xs" : "")}>
+                    {Number(price).toLocaleString()}
                 </span>
             </>
         )}

@@ -237,12 +237,18 @@ button[class*="buy"] {
   visibility: visible !important;
   
   /* Standard sizing */
-  padding: 12px 24px;
+  padding: 8px 12px; /* Reduced padding to fit in cards */
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  border-radius: 6px;
+  font-weight: 700; /* Bold */
+  font-size: 13px; /* Slightly smaller font */
   cursor: pointer;
+  
+  /* Flex centering */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
   
   /* Prevent text from being invisible */
   -webkit-text-fill-color: #ffffff !important;
