@@ -215,11 +215,11 @@ export function MintedNFTsTable({ totalMinted }: MintedNFTsTableProps) {
             </div>
 
             {/* Infinite Scroll Loader & Sentinel */}
-            <div ref={observerTarget} className="flex flex-col items-center justify-center py-6 w-full bg-black/20">
+            <div ref={observerTarget} className="flex flex-col items-center justify-center py-6 w-full bg-black/20 min-h-[60px]">
                 {isFetchingNextPage && (
                     <div className="flex items-center gap-2 text-cyan-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-xs font-mono animate-pulse">LOADING MORE MINTS...</span>
+                        <span className="text-xs font-mono">LOADING MORE MINTS...</span>
                     </div>
                 )}
                 {!hasNextPage && allNFTs.length > 0 && (
