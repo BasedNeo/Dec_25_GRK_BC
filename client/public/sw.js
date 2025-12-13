@@ -39,9 +39,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // 0. NEVER CACHE JAVASCRIPT/MODULE FILES - Let Vite/Browser handle them
+  if (url.pathname.match(/\.(js|jsx|ts|tsx|mjs|cjs)$/) || url.pathname.includes('/src/') || url.pathname.includes('/@') || url.pathname.includes('vite')) {
+      return; // Always network, never cache
+  }
+
   // 1. PRICE FEED & API CALLS - NETWORK ONLY
   // Do NOT cache price feed or RPC calls to ensure real-time data
-  if (url.pathname.includes('price') || url.hostname.includes('coingecko') || url.hostname.includes('rpc') || url.hostname.includes('basedaibridge')) {
+  if (url.pathname.includes('price') || url.hostname.includes('coingecko') || url.hostname.includes('rpc') || url.hostname.includes('basedaibridge') || url.pathname.includes('/api/')) {
       return; // Fallback to browser default (Network)
   }
 
@@ -69,20 +74,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. APP SHELL - STALE WHILE REVALIDATE
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-           if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-              const responseToCache = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(event.request, responseToCache);
-              });
-           }
-           return networkResponse;
-        });
-        return response || fetchPromise;
-      })
-  );
+  // 3. APP SHELL - STALE WHILE REVALIDATE (only for HTML and CSS)
+  if (url.pathname.match(/\.(html|css)$/) || url.pathname === '/') {
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+             if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseToCache);
+                });
+             }
+             return networkResponse;
+          });
+          return response || fetchPromise;
+        })
+    );
+  }
 });
