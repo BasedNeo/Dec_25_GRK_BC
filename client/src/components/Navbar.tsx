@@ -21,6 +21,8 @@ interface NavbarProps {
 
 import { useTokenPrice } from "@/hooks/useTokenPrice";
 
+import Untitled from "@assets/Untitled.png";
+
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
@@ -116,7 +118,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           >
             <div className="relative">
               <img 
-                src={rocketLogo}
+                src={Untitled}
                 alt="Based Guardians Rocket" 
                 className={`h-14 w-auto object-contain relative z-10 mix-blend-screen transition-all ${
                   isShaking ? 'animate-[mild-shake_0.1s_ease-in-out_infinite]' : 'group-hover:animate-[mild-shake_0.2s_ease-in-out_infinite]'
@@ -312,7 +314,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           </div>
         </div>
       </div>
-
       {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
