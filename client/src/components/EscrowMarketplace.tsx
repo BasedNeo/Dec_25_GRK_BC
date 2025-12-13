@@ -788,8 +788,10 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                             <SelectItem value="all">All Values</SelectItem>
                             {traitTypeFilter !== "all" && (() => {
                                 const values = Array.from(availableTraits[traitTypeFilter] || []);
-                                if (traitTypeFilter === "Character Type" && !values.includes("Based Creature")) {
-                                    values.push("Based Creature");
+                                if (traitTypeFilter === "Character Type") {
+                                    if (!values.includes("Based Guardian")) values.push("Based Guardian");
+                                    if (!values.includes("Based Frog")) values.push("Based Frog");
+                                    if (!values.includes("Based Creature")) values.push("Based Creature");
                                 }
                                 return values.sort().map(val => (
                                     <SelectItem key={val} value={val}>{val}</SelectItem>
