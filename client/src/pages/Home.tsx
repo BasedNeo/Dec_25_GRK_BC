@@ -63,7 +63,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery filterByOwner={true} />
+              <NFTGallery filterByOwner={true} title="YOUR BATTALION" />
             </motion.div>
           )}
 
