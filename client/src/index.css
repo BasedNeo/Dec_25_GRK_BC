@@ -280,6 +280,18 @@ button[class*="buy"] {
   background-color: unset; /* Let gradient show */
 }
 
+/* EMERGENCY FIX - Override all buy button issues */
+*[class*="buy"]:not(div):not(span),
+button:where([class*="buy"], [class*="Buy"]) {
+  background: #22c55e !important;
+  background-image: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+  border: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 /* Skeleton Loading Animation */
 .skeleton {
   background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
