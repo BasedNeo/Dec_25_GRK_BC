@@ -145,34 +145,61 @@ export const HALVING_TIMESTAMP = new Date('2025-12-31T23:59:59Z').getTime();
 export const EMISSION_RATE_DAILY = 5000; // 5,000 $BASED per day
 export const MINT_REVENUE_PERCENT = 0.51; // 51%
 
+// Fixed Anchor for Passive Emissions Tracker (Per User Request)
+// Anchor: Dec 10, 2025, 1:00 AM
+// Start Value: 35,000 $BASED
+// Daily Increase: Daily Yield * 3732
+export const PASSIVE_ANCHOR_TIMESTAMP = new Date('2025-12-10T01:00:00').getTime(); // Local 1am or UTC? Using ISO string without Z implies local, but let's be consistent.
+// User said "12/10/2025 1am". Let's assume a fixed point.
+export const PASSIVE_ANCHOR_VALUE = 35000;
+export const DAILY_YIELD_PER_NFT = 1.3397642; 
+
 export const calculateEmissions = () => {
   const now = Date.now();
-  const msSinceGenesis = Math.max(0, now - GENESIS_TIMESTAMP);
-  const daysSinceGenesis = msSinceGenesis / (1000 * 60 * 60 * 24);
-  return Math.floor(daysSinceGenesis * EMISSION_RATE_DAILY);
+  // Ensure we don't go negative if system time is before anchor (unlikely given date, but good safety)
+  // Actually, current date is Dec 13, 2025 per system prompt. Anchor is Dec 10.
+  
+  const msSinceAnchor = Math.max(0, now - PASSIVE_ANCHOR_TIMESTAMP);
+  const daysSinceAnchor = msSinceAnchor / (1000 * 60 * 60 * 24);
+  
+  // Formula: Anchor + (Days * Daily_Yield * Total_Supply)
+  // Daily_Yield * Total_Supply = 1.3397642 * 3732 ~= 5000
+  const dailyTotalEmission = DAILY_YIELD_PER_NFT * TOTAL_SUPPLY;
+  
+  const totalEmissions = PASSIVE_ANCHOR_VALUE + (daysSinceAnchor * dailyTotalEmission);
+  
+  return totalEmissions; // Returns float, can be floored in UI
 };
 
 export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
   // 1. Base per-NFT from mints: 51% of 69,420
-  const mintShare = 35404.2; // Hardcoded to prevent any constant multiplication issues
+  const mintShare = 35404.2; 
   
-  // 2. Daily Emissions Accrual
-  // 5,000 $BASED / 3,732 NFTs = ~1.3397 per day
-  const dailyEmissionPerNft = 1.3397642; 
+  // 2. Daily Emissions Accrual (Per NFT)
+  // We use the same anchor logic for consistency? 
+  // User specifically asked about the "Passive Emissions" tracker (total).
+  // For "Backed Value" (Per NFT), it typically tracks from Genesis or Mint.
+  // However, "Passive Emission value" usually refers to the accumulated yield.
+  // Let's keep the per-NFT calculation consistent with the global anchor to match the user's mental model if possible,
+  // OR keep it based on Genesis if that's the "age" of the NFT.
+  // Given the strict instruction is for the "Passive Emissions" tracker, I will leave this one 
+  // largely as is but ensure it uses the same DAILY_YIELD_PER_NFT constant.
   
-  // Calculate days since Genesis (Accrued)
+  // Actually, if the tracker starts at 35,000 on Dec 10, the per-NFT value might need to align.
+  // But 35,000 / 3732 ~= 9.3. 
+  // Let's stick to the existing Genesis logic for per-NFT unless told otherwise, 
+  // but use the constant for clarity.
+  
   const now = Date.now();
   const msSinceGenesis = Math.max(0, now - GENESIS_TIMESTAMP);
   const daysSinceGenesis = msSinceGenesis / (1000 * 60 * 60 * 24);
   
-  const accruedEmissions = dailyEmissionPerNft * daysSinceGenesis;
+  const accruedEmissions = DAILY_YIELD_PER_NFT * daysSinceGenesis;
   
   // 3. Apply Rarity Multiplier to Emissions ONLY
-  // Default to 0 boost if rarity not found
   const multiplier = RARITY_CONFIG[rarityLevel]?.multiplier || 0;
   const boostedEmissions = accruedEmissions * (1 + multiplier);
   
-  // Should be approx 35,404 + (Days * 1.34 * Boost)
   return Math.floor(mintShare + boostedEmissions);
 };
 
