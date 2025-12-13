@@ -96,6 +96,12 @@
   100% { transform: translate(0) }
 }
 
+@keyframes mild-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
 .glitch-hover:hover {
   animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
 }
