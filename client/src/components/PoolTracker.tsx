@@ -113,18 +113,24 @@ export function PoolTracker() {
 
         // MOCK OVERRIDE IF DATA IS EMPTY (for demo purposes)
         if (balVal < 100) {
-             // Mock Growth: Continuous growth that never resets
-             // Fixed start date: Jan 1, 2024
-             const START_DATE = new Date('2024-01-01').getTime();
+             // Anchor: Dec 10, 2025, 1:00 AM (Timestamp: 1765328400000)
+             // Using strict timestamp for 12/10/2025 01:00:00 UTC (approx) or Local
+             // Assuming User meant 2025 given the current date in context is Dec 13, 2025
+             const ANCHOR_DATE = new Date('2025-12-10T01:00:00').getTime();
+             const ANCHOR_AMOUNT = 35000;
+             const YIELD_PER_NFT = 1.34;
+             const TOTAL_NFTS = 3732;
+             
              const now = Date.now();
              const msPerDay = 86400000;
-             const daysPassed = (now - START_DATE) / msPerDay;
+             // Calculate precise days passed including partial days
+             const daysPassed = Math.max(0, (now - ANCHOR_DATE) / msPerDay);
              
-             const baseSubnet = 350000;
-             const dailySubnetGrowth = 50000; // ~50k $BASED/day for subnet
+             // Formula: Anchor + (DailyYield * NFTs * DaysPassed)
+             const totalEmissions = ANCHOR_AMOUNT + (YIELD_PER_NFT * TOTAL_NFTS * daysPassed);
              
-             // balVal = Base + (Daily * DaysPassed)
-             balVal = baseSubnet + (dailySubnetGrowth * daysPassed);
+             // Reverse calculate balVal because the code below does: share = balVal * 0.10
+             balVal = totalEmissions / 0.10;
         }
 
         setSubnetBalance(balVal);
