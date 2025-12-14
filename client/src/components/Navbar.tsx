@@ -351,6 +351,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
+            {/* Wallet Balance - Mobile */}
+            <WalletBalanceDisplay />
+            
             {/* PWA Install Button - Mobile (Header) */}
             {deferredPrompt && (
                 <Button 
