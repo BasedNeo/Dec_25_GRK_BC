@@ -1,0 +1,482 @@
+COMMERCIAL FEATURE: Implement accurate wallet portfolio and $BASED balance display
+
+REQUIREMENTS:
+1. Portfolio should ONLY show NFTs the connected wallet actually holds
+2. Show empty state with clear message if wallet has 0 NFTs
+3. Display the user's L1 $BASED balance prominently in the header/nav area
+4. Balance should update when wallet changes or after transactions
+5. All data must come from on-chain - no fake/placeholder data
+
+=== PART 1: WALLET BALANCE SERVICE ===
+
+Create a WalletBalanceService that reads the native $BASED balance:
+
+const WalletBalanceService = {
+  // Cache balance to avoid excessive RPC calls
+  cachedBalance: null,
+  cacheTimestamp: 0,
+  CACHE_DURATION: 15000, // 15 seconds
+  
+  async getBalance(address) {
+    if (!address) return null;
+    
+    // Check cache
+    const now = Date.now();
+    if (this.cachedBalance !== null && (now - this.cacheTimestamp) < this.CACHE_DURATION) {
+      return this.cachedBalance;
+    }
+    
+    try {
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      const balanceWei = await provider.getBalance(address);
+      const balanceFormatted = ethers.formatEther(balanceWei);
+      
+      this.cachedBalance = {
+        wei: balanceWei,
+        formatted: parseFloat(balanceFormatted).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4
+        }),
+        raw: parseFloat(balanceFormatted)
+      };
+      this.cacheTimestamp = now;
+      
+      return this.cachedBalance;
+    } catch (error) {
+      console.error('[WalletBalanceService] Failed to get balance:', error);
+      return null;
+    }
+  },
+  
+  // Clear cache when wallet changes
+  clearCache() {
+    this.cachedBalance = null;
+    this.cacheTimestamp = 0;
+  },
+  
+  // Check if user can afford mint/purchase
+  canAfford(priceInBased) {
+    if (!this.cachedBalance) return false;
+    return this.cachedBalance.raw >= priceInBased;
+  }
+};
+
+=== PART 2: HEADER BALANCE DISPLAY ===
+
+Add a balance indicator to the header/nav area near the wallet button:
+
+HTML structure (add near wallet connect button):
+<div id="wallet-balance-display" class="wallet-balance" style="display: none;">
+  <div class="balance-container">
+    <span class="balance-icon">💎</span>
+    <div class="balance-info">
+      <span class="balance-label">$BASED Balance</span>
+      <span id="user-based-balance" class="balance-amount">--</span>
+    </div>
+  </div>
+</div>
+
+CSS (add these styles - preserving your existing theme):
+.wallet-balance {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-right: 12px;
+}
+
+.balance-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance-icon {
+  font-size: 20px;
+}
+
+.balance-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.balance-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.balance-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #10b981; /* Green for positive balance */
+}
+
+.balance-amount.low-balance {
+  color: #f59e0b; /* Warning orange when balance is low */
+}
+
+.balance-amount.insufficient {
+  color: #ef4444; /* Red when can't afford mint price */
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .wallet-balance {
+    padding: 6px 10px;
+  }
+  .balance-label {
+    display: none; /* Hide label on mobile, just show amount */
+  }
+  .balance-amount {
+    font-size: 12px;
+  }
+}
+
+JavaScript to update balance display:
+
+async function updateBalanceDisplay() {
+  const balanceDisplay = document.getElementById('wallet-balance-display');
+  const balanceAmount = document.getElementById('user-based-balance');
+  
+  // Get current connected wallet
+  const walletAddress = await getCurrentWalletAddress(); // Your existing function
+  
+  if (!walletAddress) {
+    balanceDisplay.style.display = 'none';
+    return;
+  }
+  
+  // Show loading state
+  balanceDisplay.style.display = 'flex';
+  balanceAmount.textContent = 'Loading...';
+  
+  try {
+    const balance = await WalletBalanceService.getBalance(walletAddress);
+    
+    if (balance) {
+      balanceAmount.textContent = `${balance.formatted} $BASED`;
+      
+      // Add visual indicator for balance status
+      const mintPrice = 69420; // NFT mint price in $BASED
+      balanceAmount.classList.remove('low-balance', 'insufficient');
+      
+      if (balance.raw < mintPrice) {
+        balanceAmount.classList.add('insufficient');
+        balanceAmount.title = 'Insufficient balance to mint';
+      } else if (balance.raw < mintPrice * 2) {
+        balanceAmount.classList.add('low-balance');
+        balanceAmount.title = 'Balance is running low';
+      }
+    } else {
+      balanceAmount.textContent = 'Error';
+    }
+  } catch (error) {
+    console.error('Failed to update balance:', error);
+    balanceAmount.textContent = '--';
+  }
+}
+
+// Call on wallet events
+document.addEventListener('walletConnected', updateBalanceDisplay);
+document.addEventListener('walletChanged', () => {
+  WalletBalanceService.clearCache();
+  updateBalanceDisplay();
+});
+
+// Also refresh after any transaction
+document.addEventListener('transactionComplete', () => {
+  WalletBalanceService.clearCache();
+  updateBalanceDisplay();
+});
+
+=== PART 3: PORTFOLIO - ONLY SHOW OWNED NFTs ===
+
+The Portfolio page must ONLY display NFTs the connected wallet actually owns.
+Do NOT show any placeholder or mock data.
+
+Contract config already includes these functions:
+- tokensOfOwner(address) returns uint256[] - returns ALL token IDs owned
+- balanceOf(address) returns uint256 - returns count of NFTs owned
+
+Portfolio loading logic:
+
+async function loadPortfolio() {
+  const portfolioGrid = document.getElementById('portfolio-grid');
+  const portfolioStats = document.getElementById('portfolio-stats');
+  const emptyState = document.getElementById('portfolio-empty');
+  
+  // Get connected wallet
+  const walletAddress = await getCurrentWalletAddress();
+  
+  if (!walletAddress) {
+    showPortfolioState('not-connected');
+    return;
+  }
+  
+  // Show loading state
+  showPortfolioState('loading');
+  
+  try {
+    // Initialize provider and contract
+    const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+    const contract = new ethers.Contract(
+      '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+      [
+        'function tokensOfOwner(address owner) view returns (uint256[])',
+        'function balanceOf(address owner) view returns (uint256)',
+        'function tokenURI(uint256 tokenId) view returns (string)'
+      ],
+      provider
+    );
+    
+    // Get all token IDs owned by this wallet
+    const ownedTokenIds = await contract.tokensOfOwner(walletAddress);
+    const nftCount = ownedTokenIds.length;
+    
+    console.log(`[Portfolio] Wallet ${walletAddress} owns ${nftCount} NFTs:`, ownedTokenIds);
+    
+    // Update portfolio stats
+    if (portfolioStats) {
+      portfolioStats.innerHTML = `
+        <div class="stat">
+          <span class="stat-value">${nftCount}</span>
+          <span class="stat-label">NFTs Owned</span>
+        </div>
+      `;
+    }
+    
+    // EMPTY STATE: User owns 0 NFTs
+    if (nftCount === 0) {
+      showPortfolioState('empty');
+      return;
+    }
+    
+    // User owns NFTs - fetch metadata for each
+    showPortfolioState('grid');
+    portfolioGrid.innerHTML = ''; // Clear any existing content
+    
+    const metadataBaseUri = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/';
+    
+    // Fetch all metadata in parallel for better performance
+    const metadataPromises = ownedTokenIds.map(async (tokenId) => {
+      const id = Number(tokenId);
+      try {
+        const response = await fetch(`${metadataBaseUri}${id}.json`);
+        if (!response.ok) throw new Error('Fetch failed');
+        const metadata = await response.json();
+        return { tokenId: id, metadata };
+      } catch (error) {
+        console.warn(`Failed to fetch metadata for token ${id}:`, error);
+        return { tokenId: id, metadata: null };
+      }
+    });
+    
+    const nftData = await Promise.all(metadataPromises);
+    
+    // Render each NFT card
+    nftData.forEach(({ tokenId, metadata }) => {
+      const card = createPortfolioCard(tokenId, metadata, walletAddress);
+      portfolioGrid.appendChild(card);
+    });
+    
+  } catch (error) {
+    console.error('[Portfolio] Failed to load:', error);
+    showPortfolioState('error');
+  }
+}
+
+function showPortfolioState(state) {
+  const grid = document.getElementById('portfolio-grid');
+  const empty = document.getElementById('portfolio-empty');
+  const loading = document.getElementById('portfolio-loading');
+  const notConnected = document.getElementById('portfolio-not-connected');
+  const error = document.getElementById('portfolio-error');
+  
+  // Hide all states
+  [grid, empty, loading, notConnected, error].forEach(el => {
+    if (el) el.style.display = 'none';
+  });
+  
+  // Show requested state
+  switch (state) {
+    case 'loading':
+      if (loading) loading.style.display = 'flex';
+      break;
+    case 'empty':
+      if (empty) {
+        empty.style.display = 'flex';
+        empty.innerHTML = `
+          <div class="empty-state-content">
+            <div class="empty-icon">🖼️</div>
+            <h3>No NFTs Yet</h3>
+            <p>You don't own any Based Guardians NFTs in this wallet.</p>
+            <a href="/mint" class="btn btn-primary">Mint Your First Guardian</a>
+          </div>
+        `;
+      }
+      break;
+    case 'grid':
+      if (grid) grid.style.display = 'grid';
+      break;
+    case 'not-connected':
+      if (notConnected) {
+        notConnected.style.display = 'flex';
+        notConnected.innerHTML = `
+          <div class="empty-state-content">
+            <div class="empty-icon">🔗</div>
+            <h3>Wallet Not Connected</h3>
+            <p>Connect your wallet to view your Based Guardians collection.</p>
+            <button onclick="connectWallet()" class="btn btn-primary">Connect Wallet</button>
+          </div>
+        `;
+      }
+      break;
+    case 'error':
+      if (error) {
+        error.style.display = 'flex';
+        error.innerHTML = `
+          <div class="empty-state-content">
+            <div class="empty-icon">⚠️</div>
+            <h3>Error Loading Portfolio</h3>
+            <p>Failed to load your NFTs. Please try again.</p>
+            <button onclick="loadPortfolio()" class="btn btn-secondary">Retry</button>
+          </div>
+        `;
+      }
+      break;
+  }
+}
+
+function createPortfolioCard(tokenId, metadata, ownerAddress) {
+  const card = document.createElement('div');
+  card.className = 'portfolio-nft-card';
+  card.dataset.tokenId = tokenId;
+  
+  // Safely extract metadata (with XSS protection)
+  const name = escapeHtml(metadata?.name || `Based Guardian #${tokenId}`);
+  const image = sanitizeUrl(metadata?.image || '');
+  const rarity = escapeHtml(getRarityFromMetadata(metadata));
+  const rarityClass = getRarityClass(rarity);
+  
+  card.innerHTML = `
+    <div class="nft-image-container">
+      <img 
+        src="${image}" 
+        alt="${name}" 
+        loading="lazy"
+        onerror="this.src='placeholder.png'"
+      />
+      <span class="rarity-badge ${rarityClass}">${rarity}</span>
+    </div>
+    <div class="nft-card-info">
+      <h4 class="nft-name">${name}</h4>
+      <span class="nft-id">#${tokenId}</span>
+    </div>
+    <div class="nft-card-actions">
+      <button class="btn btn-sm btn-secondary" onclick="viewNFTDetail(${tokenId})">View</button>
+      <button class="btn btn-sm btn-primary" onclick="listNFT(${tokenId})">List for Sale</button>
+    </div>
+  `;
+  
+  return card;
+}
+
+// Helper functions
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function sanitizeUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('https://') || url.startsWith('ipfs://')) {
+    return url;
+  }
+  if (url.startsWith('Qm') || url.startsWith('bafy')) {
+    return `https://ipfs.io/ipfs/${url}`;
+  }
+  return '';
+}
+
+function getRarityFromMetadata(metadata) {
+  if (!metadata?.attributes) return 'Unknown';
+  const attr = metadata.attributes.find(a => 
+    a.trait_type?.toLowerCase().includes('rarity')
+  );
+  return attr?.value || 'Unknown';
+}
+
+function getRarityClass(rarity) {
+  const map = {
+    'Rarest-Legendary': 'rarity-legendary',
+    'Very Rare': 'rarity-very-rare',
+    'More Rare': 'rarity-more-rare',
+    'Rare': 'rarity-rare',
+    'Less Rare': 'rarity-less-rare',
+    'Less Common': 'rarity-less-common',
+    'Common': 'rarity-common',
+    'Most Common': 'rarity-most-common'
+  };
+  return map[rarity] || 'rarity-common';
+}
+
+=== PART 4: EMPTY STATE STYLING ===
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.empty-state-content h3 {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: var(--text-primary, #ffffff);
+}
+
+.empty-state-content p {
+  font-size: 16px;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  margin-bottom: 24px;
+  max-width: 400px;
+}
+
+=== PART 5: REFRESH ON WALLET EVENTS ===
+
+Ensure portfolio and balance refresh when:
+1. User connects wallet
+2. User switches accounts
+3. User completes a transaction (mint, buy, sell)
+
+// Add these event handlers
+if (window.ethereum) {
+  window.ethereum.on('accountsChanged', (accounts) => {
+    if (accounts.length > 0) {
+      WalletBalanceService.clearCache();
+      loadPortfolio();
+      updateBalanceDisplay();
+    } else {
+      showPortfolioState('not-connected');
+    }
+  });
+  
+  window.ethereum
