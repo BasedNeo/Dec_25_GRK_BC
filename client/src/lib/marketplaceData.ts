@@ -20,6 +20,8 @@ export interface MarketItem extends Guardian {
     listingExpiresAt?: string;
     offers?: MarketOffer[];
     estimatedValue?: number;
+    isMinted?: boolean;
+    mintPrice?: number;
 }
 
 export interface MarketOffer {

@@ -326,16 +326,48 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
      }
 
      if (!data) return [];
-     // Flatten pages and add mock price/listing status for the marketplace demo
-     return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
-        ...item,
-        isListed: true, // Assume all fetched are listed for this demo
-        // Mock price: Make some items (e.g., every 3rd one) have NO price to test the "Offer" state
-        price: item.id % 3 === 0 ? undefined : 420 + (item.id % 100), 
-        currency: '$BASED',
-        owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
-     })) as unknown as MarketItem[];
-  }, [data, directNFTs, useCsvData]);
+     
+     const MINT_PRICE = 69420;
+     const totalMinted = contractStats?.totalMinted ?? 0;
+     
+     // Create a Set of actively listed token IDs for O(1) lookup
+     const listedTokenIds = new Set<number>(
+       (marketplace.activeListingIds || []).map(id => Number(id))
+     );
+     
+     // Flatten pages and determine real status based on contract data
+     return data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
+        const tokenId = item.id;
+        const isMinted = tokenId <= totalMinted;
+        const isListed = isMinted && listedTokenIds.has(tokenId);
+        
+        // Price logic:
+        // - UNMINTED: show mint price
+        // - MINTED + LISTED: price will be fetched from contract (placeholder for now, BuyButton fetches real price)
+        // - MINTED + NOT LISTED: no price (accepts offers)
+        let price: number | undefined;
+        if (!isMinted) {
+           price = MINT_PRICE;
+        } else if (isListed) {
+           // Listed items - the BuyButton component will fetch the actual price from contract
+           // We set a placeholder indicating it's listed (actual price is fetched by useListing hook)
+           price = undefined; // Will be fetched by BuyButton/useListing
+        } else {
+           // Minted but not listed - no price, accepts offers
+           price = undefined;
+        }
+        
+        return {
+          ...item,
+          isListed,
+          isMinted,
+          mintPrice: MINT_PRICE,
+          price,
+          currency: '$BASED' as const,
+          owner: isMinted ? `0x${'?'.repeat(38)}` : undefined // Unknown owner for minted items
+        };
+     }) as unknown as MarketItem[];
+  }, [data, directNFTs, useCsvData, contractStats?.totalMinted, marketplace.activeListingIds]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
@@ -379,7 +411,9 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
 
     // Tab Filter
     if (activeTab === "buy") {
-       items = items.filter(i => i.isListed);
+       // Show ALL NFTs in the marketplace - unminted, minted (not listed), and listed
+       // Each card will show appropriate button: MINT, MAKE OFFER, or BUY
+       // No filtering needed - show everything
     } else if (activeTab === "inventory") {
        // Mock inventory for connected user (just show some random ones if connected)
        items = isConnected ? items.filter(i => i.id % 50 === 0) : [];
@@ -1071,13 +1105,24 @@ import { NFTImage } from "./NFTImage";
 // Helper Card Component
 function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
-    const hasPrice = item.price && item.price > 0;
     const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
     
-    // Determine if this NFT is minted (tokenId <= totalMinted)
-    const isMinted = totalMinted !== undefined && item.id <= totalMinted;
-    const isUnminted = totalMinted !== undefined && item.id > totalMinted;
-    const MINT_PRICE = 69420; // 69,420 $BASED
+    // Use the isMinted prop from item (set in allItems useMemo) or fallback to calculation
+    const isMinted = item.isMinted ?? (totalMinted !== undefined && item.id <= totalMinted);
+    const isUnminted = !isMinted && totalMinted !== undefined;
+    const isListed = item.isListed && isMinted;
+    
+    // For listed items, fetch real price from contract
+    const { listing, isLoading: isLoadingPrice } = useListing(isListed ? item.id : undefined);
+    
+    // Determine displayed price
+    // - UNMINTED: show mintPrice (69420)
+    // - LISTED: show contract price
+    // - NOT LISTED (minted): no price
+    const MINT_PRICE = item.mintPrice ?? 69420;
+    const contractPrice = listing?.price ? Number(listing.price) : undefined;
+    const hasPrice = isListed && contractPrice !== undefined;
+    
     const AFTERMINT_URL = "https://aftermint.trade/mint/based-guardians";
     
     return (
@@ -1091,10 +1136,15 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 
-                {/* Mint Available Badge for unminted NFTs */}
+                {/* Status Badges */}
                 {isUnminted && (
                     <Badge className="absolute top-2 left-2 bg-[#6cff61]/20 text-[#6cff61] border-[#6cff61]/50 backdrop-blur-md animate-pulse" data-testid={`badge-mint-available-${item.id}`}>
                         <Zap size={10} className="mr-1" /> MINT AVAILABLE
+                    </Badge>
+                )}
+                {isListed && (
+                    <Badge className="absolute top-2 left-2 bg-primary/20 text-primary border-primary/50 backdrop-blur-md" data-testid={`badge-listed-${item.id}`}>
+                        <ShoppingBag size={10} className="mr-1" /> LISTED
                     </Badge>
                 )}
                 
@@ -1120,10 +1170,16 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                             <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
                             <span className="text-lg font-bold text-[#6cff61] font-mono">{MINT_PRICE.toLocaleString()} $BASED</span>
                         </div>
-                    ) : hasPrice ? (
+                    ) : isListed ? (
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-muted-foreground uppercase">Price</span>
-                            <span className="text-lg font-bold text-primary font-mono" data-price={item.price}>{item.price} $BASED</span>
+                            <span className="text-[10px] text-muted-foreground uppercase">Listed Price</span>
+                            {isLoadingPrice ? (
+                                <span className="text-lg font-bold text-primary font-mono animate-pulse">Loading...</span>
+                            ) : hasPrice ? (
+                                <span className="text-lg font-bold text-primary font-mono" data-price={contractPrice}>{Number(contractPrice).toLocaleString()} $BASED</span>
+                            ) : (
+                                <span className="text-lg font-bold text-primary font-mono">--</span>
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center">
@@ -1141,26 +1197,24 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     ) : isUnminted ? (
                         <Button 
                             className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
-                            data-testid={`button-buy-now-${item.id}`}
+                            data-testid={`button-mint-${item.id}`}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowRandomMintWarning(true);
                             }}
                         >
-                            <Zap size={14} className="mr-2" /> BUY NOW
+                            <Zap size={14} className="mr-2" /> MINT
                         </Button>
-                    ) : (
+                    ) : isListed ? (
                         <>
-                            {hasPrice && (
-                                <BuyButton 
-                                    tokenId={item.id}
-                                    price={item.price}
-                                    className="flex-1"
-                                    onBuy={() => onBuy()}
-                                />
-                            )}
+                            <BuyButton 
+                                tokenId={item.id}
+                                price={contractPrice}
+                                className="flex-1"
+                                onBuy={() => onBuy()}
+                            />
                             <Button 
-                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full' : ''} bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]`} 
+                                className="offer-btn flex-1 bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOffer();
@@ -1170,6 +1224,17 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                 OFFER
                             </Button>
                         </>
+                    ) : (
+                        <Button 
+                            className="offer-btn w-full bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onOffer();
+                            }}
+                            data-testid={`button-make-offer-${item.id}`}
+                        >
+                            MAKE OFFER
+                        </Button>
                     )}
                     
                     {isAdmin && !isOwner && (

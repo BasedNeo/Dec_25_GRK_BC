@@ -1,0 +1,127 @@
+## COMMERCIAL READINESS FIX: Remove Remaining Mock Data & Polish
+
+I've done a code review and found these issues that need fixing for commercial testing:
+
+---
+
+## ISSUE 1: MARKETPLACE USES MOCK PRICES (Critical)
+
+In `client/src/components/EscrowMarketplace.tsx`, the marketplace is adding FAKE prices to all items.
+
+### Fix Location 1: Remove mock price generation (around line 329-337)
+
+FIND this code:
+return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
+   ...item,
+   isListed: true, // Assume all fetched are listed for this demo
+   // Mock price: Make some items (e.g., every 3rd one) have NO price to test the "Offer" state
+   price: item.id % 3 === 0 ? undefined : 420 + (item.id % 100), 
+   currency: '$BASED',
+   owner: `0x${item.id.toString(16).padStart(40, '0')}` // Mock owner
+})) as unknown as MarketItem[];REPLACE WITH:
+return data.pages.flatMap((page: any) => page.nfts).map((item: any) => ({
+   ...item,
+   isListed: false, // Will be updated by real marketplace data
+   price: undefined, // Real price comes from useListing hook
+   currency: '$BASED',
+   owner: item.owner || undefined
+})) as unknown as MarketItem[];### Fix Location 2: Remove mock receivedOffers (around line 90-93)
+
+FIND:
+const [receivedOffers, setReceivedOffers] = useState([
+    { id: 1, nftId: 300, nftName: "Guardian #300", offerer: "0x71C...9A21", amount: 450, time: "2 hours ago", status: "pending" },
+    { id: 2, nftId: 1245, nftName: "Guardian #1245", offerer: "0xA4F...B299", amount: 1200, time: "1 day ago", status: "pending" }
+]);REPLACE WITH:
+// Real offers will come from blockchain events - empty for now until we implement offer tracking
+const [receivedOffers, setReceivedOffers] = useState<any[]>([]);---
+
+## ISSUE 2: REMOVE DEBUG CONSOLE LOGS (49 statements)
+
+Search the entire `client/src` folder for console.log, console.warn, console.error statements.
+
+Keep ONLY these types:
+- console.error for actual errors that should be tracked
+- Remove all console.log debug statements
+
+Files with most logs to clean:
+- EscrowMarketplace.tsx (14 logs)
+- smartFetcher.ts (7 logs)
+- useGuardians.ts (5 logs)
+- PoolTracker.tsx (4 logs)
+- onchain.ts (5 logs)
+
+Either delete them or wrap in a debug flag:
+const DEBUG = false; // Set to false for production
+if (DEBUG) console.log('...');---
+
+## ISSUE 3: CLEAN UP MOCK IMPORTS
+
+In files that still import MOCK data but don't need it:
+
+### NFTGallery.tsx - Line 7
+CHANGE:
+import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";TO:
+import { Guardian, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";Also remove the `useMockData` and `useCsvData` state variables if they're no longer used.
+
+### Hero.tsx
+Check if MOCK_GUARDIANS import is still needed. If not, remove it.
+
+---
+
+## ISSUE 4: MARKETPLACE "BUY" TAB SHOWS ALL NFTs
+
+The marketplace currently shows ALL NFTs with fake "for sale" status. It should only show NFTs that are actually listed on the marketplace contract.
+
+Add this logic to filter by real listings:
+
+// In EscrowMarketplace.tsx, after getting activeListingIds from marketplace hook
+
+const listedTokenIds = new Set(marketplace.activeListingIds?.map(id => Number(id)) || []);
+
+// Filter allItems to only show actually listed NFTs
+const listedItems = allItems.filter(item => listedTokenIds.has(item.id));Then use `listedItems` instead of `allItems` in the Buy tab.
+
+---
+
+## ISSUE 5: ADD EMPTY STATE FOR MARKETPLACE
+
+When no NFTs are listed for sale, show a proper message:
+
+{listedItems.length === 0 && (
+  <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+    <ShoppingBag className="w-16 h-16 text-muted-foreground mb-4" />
+    <h3 className="text-xl font-orbitron text-white mb-2">NO ACTIVE LISTINGS</h3>
+    <p className="text-muted-foreground mb-4">No Guardians are currently listed for sale.</p>
+    <p className="text-xs text-muted-foreground">Be the first to list yours!</p>
+  </div>
+)}---
+
+## ISSUE 6: POOLTRACKER MOCK DATA
+
+In `client/src/components/PoolTracker.tsx`, there are 15 mock/demo references.
+
+Review and replace mock staking data with:
+- Real staking contract data if available
+- Or clear messaging that "Staking feature coming soon"
+
+---
+
+## TESTING AFTER FIXES:
+
+1. [ ] Connect wallet with 0 NFTs → Portfolio shows "You don't own any Guardians"
+2. [ ] Marketplace Buy tab → Shows "No Active Listings" (since nothing is listed yet)
+3. [ ] Marketplace Offers tab → Shows "No Active Offers" 
+4. [ ] No console.log spam in browser DevTools
+5. [ ] All prices show as real contract values, not fake numbers
+
+---
+
+## SUMMARY OF CHANGES:
+
+1. ✅ Remove mock prices in marketplace
+2. ✅ Remove mock receivedOffers  
+3. ✅ Clean up 49 console.log statements
+4. ✅ Remove unused MOCK_GUARDIANS imports
+5. ✅ Filter marketplace to show only real listings
+6. ✅ Add proper empty states
+7. ✅ Clean up PoolTracker mock data
