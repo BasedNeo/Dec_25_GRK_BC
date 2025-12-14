@@ -1146,12 +1146,11 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                 />
                             )}
                             <Button 
-                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full bg-[#00ffff] text-black hover:bg-[#00ffff]/90' : 'bg-black border border-[#00ffff] text-[#00ffff] hover:bg-[#00ffff]/10'} font-bold px-2 h-8`} 
+                                className={`offer-btn flex-1 ${!hasPrice ? 'w-full' : ''} bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]`} 
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOffer();
                                 }}
-                                variant={!hasPrice ? 'default' : 'outline'}
                                 data-testid={`button-offer-${item.id}`}
                             >
                                 OFFER
@@ -1419,8 +1418,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         disabled={!isConnected || !canAfford || isValidating || balanceLoading}
                         className={`flex-1 w-full font-bold font-orbitron ${
                             canAfford 
-                                ? 'bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10' 
-                                : 'bg-gray-900/50 border border-cyan-500/30 text-cyan-400/50 cursor-not-allowed'
+                                ? 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.4)]' 
+                                : 'bg-gray-800 border border-cyan-500/30 text-cyan-400/50 cursor-not-allowed'
                         }`}
                         data-testid="submit-offer-btn"
                     >
