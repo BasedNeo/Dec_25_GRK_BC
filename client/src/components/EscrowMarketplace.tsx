@@ -1210,7 +1210,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                 setShowRandomMintWarning(true);
                             }}
                         >
-                            <Zap size={14} className="mr-2" /> MINT
+                            <Zap size={14} className="mr-2" /> MINT NOW
                         </Button>
                     ) : isListed ? (
                         <>

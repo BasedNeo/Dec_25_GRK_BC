@@ -1,0 +1,93 @@
+## ENSURE MINT FEATURES STAY IN PLACE
+
+### Verify the "MINT AVAILABLE" badge exists on unminted NFTs:
+
+In the MarketCard image section, ensure this badge appears for unminted NFTs:
+
+{/* Mint Available Badge for unminted NFTs */}
+{!item.isMinted && (
+    <Badge className="absolute top-2 left-2 bg-[#6cff61]/20 text-[#6cff61] border-[#6cff61]/50 backdrop-blur-md animate-pulse">
+        <Zap size={10} className="mr-1" /> MINT AVAILABLE
+    </Badge>
+)}### Verify the Random Mint Warning Dialog exists:
+
+This dialog should already exist in MarketCard. Confirm it's still there:
+
+{/* Random Mint Warning Dialog */}
+<Dialog open={showRandomMintWarning} onOpenChange={setShowRandomMintWarning}>
+    <DialogContent className="bg-black border-amber-500/50 text-white sm:max-w-md z-[10000]">
+        <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-500 font-orbitron">
+                <AlertTriangle className="h-5 w-5" />
+                RANDOM MINT
+            </DialogTitle>
+            <DialogDescription className="text-gray-300 pt-4">
+                <strong className="text-amber-400">Important:</strong> Minting is random. 
+                You will likely <strong>NOT</strong> receive this specific NFT (#{selectedMintItem?.id}).
+                <p className="mt-3 text-sm text-gray-400">
+                    The{/* Details */}
+<div className="nft-info p-4 space-y-4">
+    <div className="flex justify-between items-center min-h-[3rem]">
+        {/* UNMINTED - Show Mint Price */}
+        {!item.isMinted ? (
+            <div className="flex flex-col">
+                <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
+                <span className="text-lg font-bold text-[#6cff61]{Number(item.price).toLocaleString()} $BASED</span>
+            </div>
+        ) : (
+            /* MINTED but NOT LISTED - Show dashes */
+            <div className="flex flex-col justify-center">
+                <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
+                <span className="text-sm font-bold text-white font-mono">--</span>
+            </div>
+        )}
+        
+        {/* Show active offer to owner (grey badge) */}
+        {item.hasActiveOffer && item.owner?.toLowerCase() === address?.toLowerCase() && (
+            <div className="bg-gray-700/50 border border-gray-500/50 px-2 py-1 rounded">
+                <span className="text-[10px] text-gray-300 font-mono">OFFER: {item.highestOffer?.toLocaleString()} $BASED</span>
+            </div>
+        )}
+    </div>
+    
+    {/* Buttons */}
+    <div className="nft-actions flex gap-2" onClick={(e) => e.stopPropagation()}>
+        {!item.isMinted ? (
+            /* UNMINTED - Mint Button (green, triggers random mint warning) */
+            <Button 
+                className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRandomMintWarning(true);
+                    setSelectedMintItem(item);
+                }}
+            >
+                <Zap size={14} className="mr-2" /> MINT NOW
+            </Button>
+        ) : item.isListed ? (
+            /* MINTED & LISTED - Buy + Offer buttons */
+            <>
+                <BuyButton 
+                    tokenId={item.id}
+                    price={item.price}
+                    className="flex-1"
+                    onBuy={() => onBuy()}
+                />
+                <Button 
+                    className="flex-1 bg-cyan-500 text-black hover:bg-cyan-400 font-bold"
+                    onClick={(e) => { e.stopPropagation(); onOffer(); }}
+                >
+                    OFFER
+                </Button>
+            </>
+        ) : (
+            /* MINTED but NOT LISTED - Only Offer button */
+            <Button 
+                className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-bold shadow-[0_0_10px_rgba(0,255,255,0.3)]"
+                onClick={(e) => { e.stopPropagation(); onOffer(); }}
+            >
+                MAKE OFFER
+            </Button>
+        )}
+    </div>
+</div>
