@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { RefreshCw, AlertTriangle, Zap } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Zap, Wallet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { cn } from '@/lib/utils';
 
 const MINT_PRICE = 69420;
@@ -14,6 +15,7 @@ interface MintBalancePanelProps {
 
 export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProps) {
   const { balance, isLoading, isConnected, refetch } = useWalletBalance();
+  const { openConnectModal } = useConnectModal();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const maxAffordable = balance ? Math.floor(balance.raw / MINT_PRICE) : 0;
@@ -127,19 +129,29 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
         </div>
       )}
 
-      <a 
-        href={AFTERMINT_URL} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="block mt-4"
-      >
+      {!isConnected ? (
         <Button 
-          className="w-full py-5 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(108,255,97,0.4)]"
-          data-testid="mint-aftermint-btn"
+          onClick={openConnectModal}
+          className="w-full mt-4 py-5 bg-primary hover:bg-primary/90 text-black font-bold font-orbitron tracking-wider text-lg"
+          data-testid="connect-wallet-mint-btn"
         >
-          <Zap size={18} className="mr-2" /> MINT NOW
+          <Wallet size={18} className="mr-2" /> CONNECT WALLET
         </Button>
-      </a>
+      ) : (
+        <a 
+          href={AFTERMINT_URL} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block mt-4"
+        >
+          <Button 
+            className="w-full py-5 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(108,255,97,0.4)]"
+            data-testid="mint-aftermint-btn"
+          >
+            <Zap size={18} className="mr-2" /> MINT NOW
+          </Button>
+        </a>
+      )}
     </Card>
   );
 }
