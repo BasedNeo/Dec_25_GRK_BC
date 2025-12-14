@@ -1029,7 +1029,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
 
       {/* Biometric Modal */}
       <Dialog open={showBiometricModal} onOpenChange={setShowBiometricModal}>
-        <DialogContent className="bg-black border-white/10 text-white sm:max-w-md">
+        <DialogContent className="bg-black border-white/10 text-white sm:max-w-md z-[10000]">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 font-orbitron">
                     <Fingerprint className="text-accent" /> Biometric Authentication
@@ -1173,7 +1173,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
             
             {/* Random Mint Warning Dialog */}
             <Dialog open={showRandomMintWarning} onOpenChange={setShowRandomMintWarning}>
-                <DialogContent className="bg-black border-amber-500/50 text-white sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+                <DialogContent className="bg-black border-amber-500/50 text-white sm:max-w-md z-[10000]" onClick={(e) => e.stopPropagation()}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-amber-500 font-orbitron tracking-widest">
                             <AlertTriangle className="h-5 w-5" />
@@ -1335,7 +1335,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto">
+            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto z-[10000]">
                 <DialogHeader className="pt-8 sm:pt-0">
                     <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
                     <DialogDescription>

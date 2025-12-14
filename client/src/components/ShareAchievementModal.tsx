@@ -86,7 +86,7 @@ export function ShareAchievementModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md p-0 bg-black/95 border border-white/10 overflow-hidden">
+      <DialogContent className="max-w-md p-0 bg-black/95 border border-white/10 overflow-hidden z-[10000]">
         <DialogTitle className="sr-only">Share Your Achievement</DialogTitle>
         <DialogDescription className="sr-only">Share your Based Guardian NFT achievement on social media</DialogDescription>
         
