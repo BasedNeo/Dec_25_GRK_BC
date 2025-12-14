@@ -20,13 +20,19 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MintedNFTsTable } from "./MintedNFTsTable";
 import { RarityChart } from "./RarityChart";
 import { NFTImage } from "./NFTImage";
+import { MintBalancePanel } from "./MintBalancePanel";
+import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
+  const [maxAffordable, setMaxAffordable] = useState(0);
   const { toast } = useToast();
   const { isPaused } = useSecurity();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   
   // Shared Data State
   const [mintedData, setMintedData] = useState<{
@@ -223,6 +229,8 @@ export function Hero() {
           <p className="text-lg text-muted-foreground mb-8 font-rajdhani leading-relaxed max-w-lg">
             The Based Guardians — Step into the Based Universe where courage, creativity, and community collide. 3,732 unique NFTs (1,776 Guardians, 1,320 Based Frogs, 636 Creatures). Staked to BasedAI Brain for $BASED emissions; Legendary rarities unlock higher yields. All NFT holders gain Race-to-Base privileges. A longterm vision blending 80s retro-fantasy with AI/blockchain/humanitarian mission. 'This story, your story, has only just begun... Stay Based.' 
           </p>
+
+          <MintBalancePanel onMaxAffordableChange={setMaxAffordable} />
 
           <div className="bg-card/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl max-w-md shadow-2xl w-full">
             <div className="flex justify-between items-center mb-6">

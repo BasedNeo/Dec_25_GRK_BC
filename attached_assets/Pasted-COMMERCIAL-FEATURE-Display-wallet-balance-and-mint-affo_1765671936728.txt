@@ -1,0 +1,665 @@
+COMMERCIAL FEATURE: Display wallet balance and mint affordability on Mint page
+
+GOAL: Users should clearly see their $BASED balance and know exactly how many NFTs they can afford to mint BEFORE attempting a transaction. This prevents failed transactions and improves UX.
+
+CONTEXT:
+- NFT Mint Price: 69,420 $BASED per NFT
+- Chain: BasedAI L1 (Chain ID: 32323)
+- RPC: https://mainnet.basedaibridge.com/rpc/
+- Native token: $BASED (18 decimals)
+
+=== PART 1: BALANCE DISPLAY COMPONENT FOR MINT PAGE ===
+
+Add this component near the mint controls (quantity selector and mint button):
+
+HTML Structure:
+<div id="mint-balance-panel" class="mint-balance-panel">
+  <div class="balance-header">
+    <span class="balance-title">Your Wallet</span>
+    <button class="refresh-btn" onclick="refreshMintBalance()" title="Refresh Balance">
+      <span id="refresh-icon">↻</span>
+    </button>
+  </div>
+  
+  <div class="balance-main">
+    <div class="balance-amount-large">
+      <span id="mint-page-balance">--</span>
+      <span class="token-symbol">$BASED</span>
+    </div>
+  </div>
+  
+  <div class="affordability-info">
+    <div class="afford-row">
+      <span class="afford-label">Mint Price:</span>
+      <span class="afford-value">69,420 $BASED</span>
+    </div>
+    <div class="afford-row highlight">
+      <span class="afford-label">You Can Mint:</span>
+      <span id="max-affordable-mints" class="afford-value afford-count">--</span>
+    </div>
+  </div>
+  
+  <div id="balance-warning" class="balance-warning" style="display: none;">
+    <span class="warning-icon">⚠️</span>
+    <span class="warning-text"></span>
+  </div>
+</div>
+
+=== PART 2: CSS STYLING (Preserve existing theme) ===
+
+.mint-balance-panel {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 78, 59, 0.2) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  max-width: 400px;
+}
+
+.balance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.balance-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.refresh-btn.spinning #refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.balance-main {
+  margin-bottom: 20px;
+}
+
+.balance-amount-large {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.balance-amount-large #mint-page-balance {
+  font-size: 32px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.balance-amount-large .token-symbol {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.affordability-info {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.afford-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.afford-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.afford-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.afford-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.afford-row.highlight {
+  padding-top: 12px;
+}
+
+.afford-count {
+  font-size: 20px;
+  color: #10b981;
+}
+
+.afford-count.zero {
+  color: #ef4444;
+}
+
+.afford-count.low {
+  color: #f59e0b;
+}
+
+.balance-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+}
+
+.warning-icon {
+  font-size: 16px;
+}
+
+.warning-text {
+  font-size: 13px;
+  color: #fca5a5;
+}
+
+/* Not connected state */
+.mint-balance-panel.not-connected {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.mint-balance-panel.not-connected .balance-amount-large #mint-page-balance {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .mint-balance-panel {
+    padding: 16px;
+  }
+  
+  .balance-amount-large #mint-page-balance {
+    font-size: 24px;
+  }
+  
+  .afford-count {
+    font-size: 18px;
+  }
+}
+
+=== PART 3: JAVASCRIPT LOGIC ===
+
+const MintBalanceManager = {
+  MINT_PRICE: 69420, // $BASED per NFT
+  balance: null,
+  maxAffordable: 0,
+  
+  async init() {
+    // Check if wallet is connected
+    const address = await this.getWalletAddress();
+    if (address) {
+      await this.updateBalance();
+    } else {
+      this.showNotConnected();
+    }
+    
+    // Listen for wallet events
+    this.setupEventListeners();
+  },
+  
+  async getWalletAddress() {
+    if (!window.ethereum) return null;
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      return accounts[0] || null;
+    } catch {
+      return null;
+    }
+  },
+  
+  async updateBalance() {
+    const address = await this.getWalletAddress();
+    
+    if (!address) {
+      this.showNotConnected();
+      return;
+    }
+    
+    // Show loading
+    const balanceEl = document.getElementById('mint-page-balance');
+    const affordEl = document.getElementById('max-affordable-mints');
+    const refreshBtn = document.querySelector('.refresh-btn');
+    
+    if (refreshBtn) refreshBtn.classList.add('spinning');
+    if (balanceEl) balanceEl.textContent = 'Loading...';
+    
+    try {
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      const balanceWei = await provider.getBalance(address);
+      const balanceFormatted = parseFloat(ethers.formatEther(balanceWei));
+      
+      this.balance = balanceFormatted;
+      this.maxAffordable = Math.floor(balanceFormatted / this.MINT_PRICE);
+      
+      // Update display
+      this.updateDisplay();
+      
+      // Update mint controls based on affordability
+      this.updateMintControls();
+      
+    } catch (error) {
+      console.error('[MintBalance] Failed to fetch balance:', error);
+      if (balanceEl) balanceEl.textContent = 'Error';
+      if (affordEl) affordEl.textContent = '--';
+    } finally {
+      if (refreshBtn) refreshBtn.classList.remove('spinning');
+    }
+  },
+  
+  updateDisplay() {
+    const panel = document.getElementById('mint-balance-panel');
+    const balanceEl = document.getElementById('mint-page-balance');
+    const affordEl = document.getElementById('max-affordable-mints');
+    const warningEl = document.getElementById('balance-warning');
+    
+    if (!balanceEl || !affordEl) return;
+    
+    // Format balance with commas
+    balanceEl.textContent = this.balance.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    
+    // Show max affordable
+    affordEl.textContent = this.maxAffordable.toString();
+    
+    // Style based on affordability
+    affordEl.classList.remove('zero', 'low');
+    if (panel) panel.classList.remove('not-connected');
+    
+    if (this.maxAffordable === 0) {
+      affordEl.classList.add('zero');
+      this.showWarning('insufficient');
+    } else if (this.maxAffordable <= 2) {
+      affordEl.classList.add('low');
+      this.showWarning('low');
+    } else {
+      this.hideWarning();
+    }
+  },
+  
+  showNotConnected() {
+    const panel = document.getElementById('mint-balance-panel');
+    const balanceEl = document.getElementById('mint-page-balance');
+    const affordEl = document.getElementById('max-affordable-mints');
+    
+    if (panel) panel.classList.add('not-connected');
+    if (balanceEl) balanceEl.textContent = 'Connect Wallet';
+    if (affordEl) affordEl.textContent = '--';
+    
+    this.hideWarning();
+    this.updateMintControls();
+  },
+  
+  showWarning(type) {
+    const warningEl = document.getElementById('balance-warning');
+    if (!warningEl) return;
+    
+    const warningText = warningEl.querySelector('.warning-text');
+    
+    if (type === 'insufficient') {
+      warningText.textContent = `You need at least ${this.MINT_PRICE.toLocaleString()} $BASED to mint. Get more $BASED to continue.`;
+    } else if (type === 'low') {
+      warningText.textContent = `Balance is low. You can only mint ${this.maxAffordable} NFT${this.maxAffordable > 1 ? 's' : ''}.`;
+    }
+    
+    warningEl.style.display = 'flex';
+  },
+  
+  hideWarning() {
+    const warningEl = document.getElementById('balance-warning');
+    if (warningEl) warningEl.style.display = 'none';
+  },
+  
+  updateMintControls() {
+    const mintBtn = document.getElementById('mint-button') || document.querySelector('.mint-btn');
+    const quantityInput = document.getElementById('mint-quantity');
+    const quantityMax = document.getElementById('quantity-max');
+    
+    const isConnected = this.balance !== null;
+    
+    // Update max quantity input based on what user can afford
+    if (quantityInput && this.maxAffordable > 0) {
+      quantityInput.max = this.maxAffordable;
+      // If current value exceeds max affordable, reduce it
+      if (parseInt(quantityInput.value) > this.maxAffordable) {
+        quantityInput.value = this.maxAffordable;
+        this.updateTotalCost();
+      }
+    }
+    
+    // Update max button text if exists
+    if (quantityMax) {
+      quantityMax.textContent = `Max (${this.maxAffordable})`;
+      quantityMax.disabled = this.maxAffordable === 0;
+    }
+    
+    // Update mint button state
+    if (mintBtn) {
+      if (!isConnected) {
+        mintBtn.textContent = 'Connect Wallet';
+        mintBtn.disabled = false;
+        mintBtn.onclick = () => connectWallet(); // Your existing connect function
+      } else if (this.maxAffordable === 0) {
+        mintBtn.textContent = 'Insufficient Balance';
+        mintBtn.disabled = true;
+        mintBtn.classList.add('disabled');
+      } else {
+        mintBtn.textContent = 'Mint Now';
+        mintBtn.disabled = false;
+        mintBtn.classList.remove('disabled');
+      }
+    }
+  },
+  
+  // Update total cost when quantity changes
+  updateTotalCost() {
+    const quantityInput = document.getElementById('mint-quantity');
+    const totalCostEl = document.getElementById('total-mint-cost');
+    
+    if (!quantityInput || !totalCostEl) return;
+    
+    const quantity = parseInt(quantityInput.value) || 1;
+    const totalCost = quantity * this.MINT_PRICE;
+    
+    totalCostEl.textContent = `${totalCost.toLocaleString()} $BASED`;
+    
+    // Show warning if trying to mint more than can afford
+    if (quantity > this.maxAffordable) {
+      totalCostEl.classList.add('exceeds-balance');
+    } else {
+      totalCostEl.classList.remove('exceeds-balance');
+    }
+  },
+  
+  // Validate before mint
+  validateMint(quantity) {
+    if (!this.balance) {
+      return { valid: false, error: 'Wallet not connected' };
+    }
+    
+    const totalCost = quantity * this.MINT_PRICE;
+    
+    if (totalCost > this.balance) {
+      return { 
+        valid: false, 
+        error: `Insufficient balance. You need ${totalCost.toLocaleString()} $BASED but only have ${this.balance.toLocaleString()} $BASED.`
+      };
+    }
+    
+    return { valid: true };
+  },
+  
+  setupEventListeners() {
+    // Listen for wallet connection/changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+          this.updateBalance();
+        } else {
+          this.balance = null;
+          this.maxAffordable = 0;
+          this.showNotConnected();
+        }
+      });
+      
+      window.ethereum.on('chainChanged', () => {
+        this.updateBalance();
+      });
+    }
+    
+    // Listen for quantity changes
+    const quantityInput = document.getElementById('mint-quantity');
+    if (quantityInput) {
+      quantityInput.addEventListener('input', () => this.updateTotalCost());
+      quantityInput.addEventListener('change', () => this.updateTotalCost());
+    }
+    
+    // Listen for successful mints to refresh balance
+    document.addEventListener('mintSuccess', () => {
+      this.updateBalance();
+    });
+  }
+};
+
+// Global refresh function for the button
+function refreshMintBalance() {
+  MintBalanceManager.updateBalance();
+}
+
+// Initialize when mint page loads
+document.addEventListener('DOMContentLoaded', () => {
+  // Only init if on mint page
+  if (document.getElementById('mint-balance-panel')) {
+    MintBalanceManager.init();
+  }
+});
+
+// Also init when navigating to mint page (for SPA)
+function initMintPage() {
+  MintBalanceManager.init();
+}
+
+=== PART 4: QUANTITY SELECTOR WITH TOTAL COST ===
+
+Update your existing quantity selector to show total cost:
+
+<div class="mint-quantity-section">
+  <label class="quantity-label">Quantity to Mint</label>
+  
+  <div class="quantity-controls">
+    <button class="qty-btn" onclick="decrementQuantity()">−</button>
+    <input 
+      type="number" 
+      id="mint-quantity" 
+      value="1" 
+      min="1" 
+      max="100" 
+      class="quantity-input"
+    />
+    <button class="qty-btn" onclick="incrementQuantity()">+</button>
+    <button id="quantity-max" class="qty-max-btn" onclick="setMaxQuantity()">Max</button>
+  </div>
+  
+  <div class="total-cost-row">
+    <span class="total-label">Total Cost:</span>
+    <span id="total-mint-cost" class="total-value">69,420 $BASED</span>
+  </div>
+</div>
+
+CSS for quantity section:
+.mint-quantity-section {
+  margin: 24px 0;
+}
+
+.quantity-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qty-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qty-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.quantity-input {
+  width: 80px;
+  height: 40px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.qty-max-btn {
+  padding: 0 16px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #10b981;
+  background: transparent;
+  color: #10b981;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qty-max-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.qty-max-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.total-cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.total-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.total-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+}
+
+.total-value.exceeds-balance {
+  color: #ef4444;
+}
+
+JavaScript for quantity controls:
+function decrementQuantity() {
+  const input = document.getElementById('mint-quantity');
+  const current = parseInt(input.value) || 1;
+  if (current > 1) {
+    input.value = current - 1;
+    MintBalanceManager.updateTotalCost();
+  }
+}
+
+function incrementQuantity() {
+  const input = document.getElementById('mint-quantity');
+  const current = parseInt(input.value) || 1;
+  const max = MintBalanceManager.maxAffordable || 100;
+  if (current < max) {
+    input.value = current + 1;
+    MintBalanceManager.updateTotalCost();
+  }
+}
+
+function setMaxQuantity() {
+  const input = document.getElementById('mint-quantity');
+  const max = MintBalanceManager.maxAffordable;
+  if (max > 0) {
+    input.value = max;
+    MintBalanceManager.updateTotalCost();
+  }
+}
+
+=== PART 5: INTEGRATE WITH MINT FUNCTION ===
+
+Before executing mint transaction, validate:
+
+async function executeMint() {
+  const quantity = parseInt(document.getElementById('mint-quantity').value) || 1;
+  
+  // Validate before attempting transaction
+  const validation = MintBalanceManager.validateMint(quantity);
+  
+  if (!validation.valid) {
+    showToast(validation.error, 'error');
+    return;
+  }
+  
+  // Continue with existing mint logic...
+  try {
+    // Your existing mint transaction code
+    const mintPrice = ethers.parseEther('69420');
+    const totalValue = mintPrice * BigInt(quantity);
+    
+    // ... execute transaction
+    
+    // After successful mint, refresh balance
+    document.dispatchEvent(new CustomEvent('mintSuccess'));
+    
+  } catch (error) {
+    console.error('Mint failed:', error);
+    showToast('Mint failed: ' + error.message, 'error');
+  }
+}
+
+=== TESTING CHECKLIST ===
+[ ] Balance shows after wallet connects
+[ ] "You Can Mint: X" shows correct number (balance / 69420, floored)
+[ ] Max button sets quantity to max affordable
+[ ] Can't increment quantity beyond what user can afford
+[ ] Total cost updates when quantity changes
+[ ] Warning shows when balance is insufficient
+[ ] Mint button disabled with "Insufficient Balance" text when can't afford
+[ ] Balance refreshes after successful mint
+[ ] Works on mobile screens
+[ ] Shows "Connect Wallet" state when not connected
