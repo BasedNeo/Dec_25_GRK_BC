@@ -29,7 +29,6 @@ export function WalletBalanceDisplay() {
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-black/40 backdrop-blur-md"
       data-testid="wallet-balance-display"
     >
-      <span className="text-base">💎</span>
       <div className="flex flex-col leading-tight">
         <span className="text-[9px] text-muted-foreground font-mono tracking-wider hidden sm:block">
           $BASED BALANCE
