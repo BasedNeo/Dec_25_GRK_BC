@@ -1,0 +1,65 @@
+
+---
+
+## PROMPT 2 OF 4: Update MarketCard to Show Mint vs Buy
+
+
+In `client/src/components/NFTDetailModal.tsx`, add an offers section that shows all active offers on the NFT.
+
+### Add offers display section inside the modal:
+
+Find where the NFT details are shown and add this section:
+
+{/* ACTIVE OFFERS SECTION - OpenSea Style */}
+<div className="mt-6 border-t border-white/10 pt-4">
+    <h4 className="text-sm font-orbitron text-white mb-3 flex items-center gap-2">
+        <MessageCircle size={14} className="text-cyan-400" />
+        OFFERS
+    </h4>
+    
+    {activeOffers && activeOffers.length > 0 ? (
+        <div className="space-y-2 max-h-40 overflow-y-auto">
+            {activeOffers.map((offer, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                            <span className="text-xs font-mono text-cyan-400">
+                                {offer.offerer.slice(0, 4)}
+                            </span>
+                        </div>
+                        <div>
+                            <p className="text-sm font-mono text-white">{Number(offer.amount).toLocaleString()} $BASED</p>
+                            <p className="text-[10px] text-muted-foreground">
+                                Expires: {new Date(offer.expiresAt * 1000).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {/* Show Accept button if user is owner */}
+                    {isOwner && (
+                        <Button 
+                            size="sm" 
+                            className="bg-green-500 text-black hover:bg-green-600 text-xs"
+                            onClick={() => handleAcceptOffer(offer)}
+                        >
+                            ACCEPT
+                        </Button>
+                    )}
+                </div>
+            ))}
+        </div>
+    ) : (
+        <p className="text-sm text-muted-foreground text-center py-4">No active offers</p>
+    )}
+</div>### Add the hook to fetch offers for this NFT:
+
+At the top of the component, add:
+import { useOffer } from '@/hooks/useMarketplace';
+
+// Inside the component:
+const { address } = useAccount();
+const isOwner = nft?.owner?.toLowerCase() === address?.toLowerCase();
+
+// For now, activeOffers would come from blockchain events or a separate query
+// This is a placeholder - you'd need to implement offer fetching
+const [activeOffers, setActiveOffers] = useState<any[]>([]);

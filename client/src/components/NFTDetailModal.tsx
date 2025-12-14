@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download } from "lucide-react";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download, MessageCircle } from "lucide-react";
 import { Guardian, calculateBackedValue } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -21,6 +21,8 @@ import { getRarityClass } from "@/lib/utils";
 import { BuyButton } from "./BuyButton";
 import { NFTImage } from "./NFTImage";
 import { ShareAchievementModal } from "./ShareAchievementModal";
+import { useAccount } from 'wagmi';
+import { useMarketplace } from '@/hooks/useMarketplace';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -32,6 +34,26 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const [backedValue, setBackedValue] = useState(calculateBackedValue());
   const [showShareModal, setShowShareModal] = useState(false);
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  
+  const { address } = useAccount();
+  const marketplace = useMarketplace();
+  
+  const isOwner = nft && 'owner' in nft ? nft.owner?.toLowerCase() === address?.toLowerCase() : false;
+  
+  const handleAcceptOffer = async (offer: any) => {
+    if (!nft) return;
+    try {
+      await marketplace.acceptOffer(nft.id, offer.offerer);
+      toast({ 
+        title: "Offer Accepted", 
+        description: `You accepted an offer of ${offer.amount} $BASED`,
+        className: "bg-black border-green-500 text-green-500 font-orbitron"
+      });
+    } catch (error) {
+      console.error('Failed to accept offer:', error);
+    }
+  };
 
   useEffect(() => {
     // Reset state on open if needed
@@ -307,6 +329,49 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             <div className="text-center py-4 text-muted-foreground text-xs font-mono">
                                 No attributes found for this Guardian.
                             </div>
+                        )}
+                    </div>
+
+                    {/* ACTIVE OFFERS SECTION - OpenSea Style */}
+                    <div className="mt-6 border-t border-white/10 pt-4">
+                        <h4 className="text-sm font-orbitron text-white mb-3 flex items-center gap-2">
+                            <MessageCircle size={14} className="text-cyan-400" />
+                            OFFERS
+                        </h4>
+                        
+                        {activeOffers && activeOffers.length > 0 ? (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {activeOffers.map((offer, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                                                <span className="text-xs font-mono text-cyan-400">
+                                                    {offer.offerer.slice(0, 4)}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-mono text-white">{Number(offer.amount).toLocaleString()} $BASED</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    Expires: {new Date(offer.expiresAt * 1000).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Show Accept button if user is owner */}
+                                        {isOwner && (
+                                            <Button 
+                                                size="sm" 
+                                                className="bg-green-500 text-black hover:bg-green-600 text-xs"
+                                                onClick={() => handleAcceptOffer(offer)}
+                                            >
+                                                ACCEPT
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No active offers</p>
                         )}
                     </div>
                 </div>
