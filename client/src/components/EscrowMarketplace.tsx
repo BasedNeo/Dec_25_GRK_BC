@@ -54,6 +54,8 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [selectedNFT, setSelectedNFT] = useState<MarketItem | null>(null);
   const [offerItem, setOfferItem] = useState<MarketItem | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
+  const [selectedMintItem, setSelectedMintItem] = useState<MarketItem | null>(null);
 
   // --- Real Marketplace Contract Integration ---
   const marketplace = useMarketplace();
