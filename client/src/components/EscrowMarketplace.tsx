@@ -23,7 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ADMIN_WALLET } from "@/lib/constants";
+import { ADMIN_WALLET, MARKETPLACE_CONTRACT } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { Security } from "@/lib/security";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -36,7 +36,7 @@ import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
-import { useMarketplace, useListing, MARKETPLACE_CONTRACT } from "@/hooks/useMarketplace";
+import { useMarketplace, useListing } from "@/hooks/useMarketplace";
 import { parseEther } from "viem";
 
 interface EscrowMarketplaceProps {

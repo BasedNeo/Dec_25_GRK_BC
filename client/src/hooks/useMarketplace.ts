@@ -15,10 +15,7 @@ import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAcc
 import { parseEther, formatEther } from 'viem';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { NFT_CONTRACT, CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
-
-// Marketplace contract address (just deployed!)
-export const MARKETPLACE_CONTRACT = "0x88161576266dCDedb19342aC2197267282520793";
+import { NFT_CONTRACT, CHAIN_ID, BLOCK_EXPLORER, MARKETPLACE_CONTRACT } from '@/lib/constants';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
