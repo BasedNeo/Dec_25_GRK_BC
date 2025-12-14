@@ -2,7 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { NFTGallery } from "@/components/NFTGallery";
 import { ValueEstimation } from "@/components/ValueEstimation";
-import { VotingDAO } from "@/components/VotingDAO";
+import { Governance } from "@/components/Governance";
 import { PoolTracker } from "@/components/PoolTracker";
 import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
@@ -92,7 +92,7 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <VotingDAO />
+              <Governance />
             </motion.div>
           )}
 

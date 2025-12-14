@@ -9,6 +9,7 @@ export const IPFS_ROOT = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/
 export const ALCHEMY_KEY = import.meta.env.VITE_ALCHEMY_KEY;
 export const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
 export const MARKETPLACE_CONTRACT = "0x88161576266dCDedb19342aC2197267282520793";
+export const GOVERNANCE_CONTRACT = "0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995";
 export const POOL_WALLET = import.meta.env.VITE_POOL_WALLET || "0xPoolWalletAddress";
 export const BASED_TOKEN_L1 = import.meta.env.VITE_BASED_TOKEN || "0xBasedTokenAddressL1";
 export const BASED_TOKEN_ETH = "0x44971abf0251958492fee97da3e5c5ada88b9185";
