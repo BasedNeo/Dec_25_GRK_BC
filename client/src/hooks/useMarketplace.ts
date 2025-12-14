@@ -16,6 +16,7 @@ import { parseEther, formatEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { savePendingTx } from '@/hooks/usePendingTransactions';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -264,6 +265,11 @@ export function useMarketplace() {
       isSuccess: isConfirmed,
       txHash: txHash,
     }));
+
+    if (txHash && isConfirming && !isConfirmed) {
+      const desc: Record<string, string> = { approve: 'Approving marketplace', list: 'Listing NFT', delist: 'Delisting NFT', buy: 'Buying NFT', offer: 'Making offer', acceptOffer: 'Accepting offer', cancelOffer: 'Cancelling offer' };
+      savePendingTx(txHash, state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list', desc[state.action] || 'Marketplace action');
+    }
 
     if (isConfirmed && txHash) {
       const actionMessages: Record<string, string> = {

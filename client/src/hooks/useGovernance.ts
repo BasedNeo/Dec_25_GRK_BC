@@ -6,6 +6,7 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { useState, useCallback, useEffect } from 'react';
 import { GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
+import { savePendingTx } from '@/hooks/usePendingTransactions';
 
 export enum ProposalStatus { Pending = 0, Active = 1, Passed = 2, Failed = 3, Executed = 4, Cancelled = 5 }
 
@@ -108,6 +109,9 @@ export function useGovernance() {
   });
 
   useEffect(() => {
+    if (txHash && isConfirming && !isSuccess) {
+      savePendingTx(txHash, pendingAction === 'vote' ? 'vote' : 'proposal', pendingAction === 'vote' ? 'Submitting vote' : pendingAction === 'createProposal' ? 'Creating proposal' : 'Governance action');
+    }
     if (isSuccess && txHash) {
       const messages: Record<string, string> = {
         createProposal: 'Proposal created successfully!',
@@ -124,7 +128,7 @@ export function useGovernance() {
       refetchActive();
       setPendingAction(null);
     }
-  }, [isSuccess, txHash, pendingAction, toast, refetchCount, refetchActive]);
+  }, [isSuccess, txHash, pendingAction, toast, refetchCount, refetchActive, isConfirming]);
 
   useEffect(() => {
     if (writeError) {

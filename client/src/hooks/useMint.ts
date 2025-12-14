@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
 import { useContractData } from './useContractData';
+import { savePendingTx } from '@/hooks/usePendingTransactions';
 
 const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
 
@@ -65,6 +66,12 @@ export function useMint() {
       toast({ title: "Mint Failed", description: friendly, variant: "destructive" });
     }
   }, [isWriteError, isReceiptError, writeError, receiptError]);
+
+  useEffect(() => {
+    if (txHash && !state.isSuccess && !state.isError) {
+      savePendingTx(txHash, 'mint', 'Minting Guardian NFT(s)');
+    }
+  }, [txHash, state.isSuccess, state.isError]);
 
   const canAfford = (qty: number) => {
     if (!balanceData) return false;
