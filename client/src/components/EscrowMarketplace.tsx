@@ -784,23 +784,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-8"
             >
-              <Card className="p-4 bg-white/5 border-white/10 grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-mono text-muted-foreground">RARITY</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['all', 'common', 'rare', 'legendary'].map(r => (
-                      <Badge 
-                        key={r}
-                        variant="outline" 
-                        className={`cursor-pointer capitalize ${rarityFilter === r ? 'bg-primary text-black border-primary' : 'text-muted-foreground hover:text-white'}`}
-                        onClick={() => setRarityFilter(r)}
-                      >
-                        {r}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
+              <Card className="p-4 bg-white/5 border-white/10 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label className="text-xs font-mono text-muted-foreground">ATTRIBUTE TYPE</Label>
                     <Select value={traitTypeFilter} onValueChange={(v) => { setTraitTypeFilter(v); setTraitValueFilter("all"); }}>
