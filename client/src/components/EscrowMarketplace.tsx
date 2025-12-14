@@ -1055,6 +1055,7 @@ import { NFTImage } from "./NFTImage";
 function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const hasPrice = item.price && item.price > 0;
+    const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
     
     // Determine if this NFT is minted (tokenId <= totalMinted)
     const isMinted = totalMinted !== undefined && item.id <= totalMinted;
@@ -1121,20 +1122,16 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                             List / Delist
                         </Button>
                     ) : isUnminted ? (
-                        <a 
-                            href={AFTERMINT_URL} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="w-full"
-                            onClick={(e) => e.stopPropagation()}
+                        <Button 
+                            className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
+                            data-testid={`button-buy-now-${item.id}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowRandomMintWarning(true);
+                            }}
                         >
-                            <Button 
-                                className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
-                                data-testid={`button-buy-now-${item.id}`}
-                            >
-                                <Zap size={14} className="mr-2" /> BUY NOW
-                            </Button>
-                        </a>
+                            <Zap size={14} className="mr-2" /> BUY NOW
+                        </Button>
                     ) : (
                         <>
                             {hasPrice && (
@@ -1165,6 +1162,49 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     )}
                 </div>
             </div>
+            
+            {/* Random Mint Warning Dialog */}
+            <Dialog open={showRandomMintWarning} onOpenChange={setShowRandomMintWarning}>
+                <DialogContent className="bg-black border-amber-500/50 text-white sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-500 font-orbitron tracking-widest">
+                            <AlertTriangle className="h-5 w-5" />
+                            RANDOM MINT
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-300 pt-4 text-base leading-relaxed">
+                            <strong className="text-amber-400">Important:</strong> Minting is random. You will likely <strong>NOT</strong> receive this specific NFT (#{item.id}).
+                            <p className="mt-3 text-sm text-gray-400">
+                                The NFT you receive will be randomly selected from the remaining unminted collection.
+                            </p>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2 sm:gap-2 flex-col sm:flex-row pt-4">
+                        <Button 
+                            variant="ghost" 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowRandomMintWarning(false);
+                            }}
+                            className="flex-1"
+                        >
+                            CANCEL
+                        </Button>
+                        <a 
+                            href={AFTERMINT_URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex-1"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Button 
+                                className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold font-orbitron"
+                            >
+                                <Zap size={14} className="mr-2" /> I UNDERSTAND, MINT NOW
+                            </Button>
+                        </a>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
