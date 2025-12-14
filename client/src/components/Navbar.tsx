@@ -167,35 +167,23 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
           {/* Desktop Navigation */}
           <div className="flex items-center gap-2 ml-auto md:ml-4 mr-2 md:mr-0 price-feed-container flex-shrink-0">
-               {/* Unified Price Feed - Visible on ALL screens */}
+               {/* Price Feed - Visible on ALL screens */}
                <div 
                  id="priceBadge"
-                 className="flex flex-col justify-center px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[120px] md:min-w-[140px]"
+                 className="flex items-center justify-center gap-2 md:gap-3 px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[120px] md:min-w-[160px]"
                >
-                  {/* Row 1: BASED (ETH) */}
-                  <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
-                      <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
-                          <span className="font-bold text-white font-mono">
-                            {priceData ? `$${priceData.ethPrice.toFixed(4)}` : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />}
-                          </span>
-                      </div>
-                      {priceData ? (
-                        <span className={`font-bold font-mono ${priceData.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                           {priceData.change >= 0 ? '▲' : '▼'} {Math.abs(priceData.change).toFixed(1)}%
-                        </span>
-                      ) : (
-                        <div className="h-3 w-10 rounded skeleton inline-block align-middle ml-2" />
-                      )}
-                  </div>
-                  
-                  {/* Row 2: BASED (L1) */}
-                  <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
-                      <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
-                      <span className="font-bold text-cyan-400 font-mono">
-                        {priceData ? `$${priceData.basedL1Price.toFixed(7)}` : <div className="h-3 w-16 rounded skeleton inline-block align-middle" />}
-                      </span>
-                  </div>
+                  <span className="text-muted-foreground font-mono font-bold text-[10px]">$BASED:</span>
+                  <span className="font-bold text-white font-mono text-[10px]">
+                    {priceData && priceData.usdPrice > 0 
+                      ? `$${priceData.usdPrice.toFixed(4)}` 
+                      : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                    }
+                  </span>
+                  {priceData && priceData.usdPrice > 0 && (
+                    <span className={`font-bold font-mono text-[10px] ${priceData.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                       {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h).toFixed(1)}%
+                    </span>
+                  )}
                </div>
             </div>
 

@@ -1,13 +1,20 @@
+Fix the token price display in useTokenPrice.ts:
+
+1. The current code has a bug where it divides the price by 1000 incorrectly.
+
+2. Replace the entire `client/src/hooks/useTokenPrice.ts` with:
+
 import { useQuery } from "@tanstack/react-query";
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 
+// CoinGecko API for BasedAI token
 const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
 const TOKEN_ID = "basedai";
 
 interface PriceData {
-  usdPrice: number;
-  change24h: number;
-  lastUpdated: number;
+  usdPrice: number;       // Price in USD
+  change24h: number;      // 24h change percentage
+  lastUpdated: number;    // Timestamp
 }
 
 let lastKnownPrice: PriceData | null = null;
@@ -16,12 +23,14 @@ export function useTokenPrice() {
   return useQuery<PriceData>({
     queryKey: ["tokenPrice", TOKEN_ID],
     queryFn: async () => {
+      // Check cache first (30 second validity for fresher prices)
       const cached = getCached<PriceData>(CACHE_KEYS.PRICE_DATA, 30 * 1000);
       if (cached) {
         lastKnownPrice = cached;
         return cached;
       }
 
+      // Try direct CoinGecko API first
       try {
         const directUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
         const res = await fetch(directUrl);
@@ -46,6 +55,7 @@ export function useTokenPrice() {
         console.warn("Direct CoinGecko fetch failed, trying proxy...");
       }
 
+      // Fallback to CORS proxy
       try {
         const targetUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
         const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
@@ -71,6 +81,7 @@ export function useTokenPrice() {
         console.warn("Proxy fetch also failed");
       }
 
+      // Return last known price or fallback
       if (lastKnownPrice) return lastKnownPrice;
       
       return {
@@ -79,7 +90,14 @@ export function useTokenPrice() {
         lastUpdated: 0
       };
     },
-    refetchInterval: 30000,
+    refetchInterval: 30000,  // Refresh every 30 seconds
     staleTime: 30000,
   });
-}
+}3. Update any components that use this hook to use `usdPrice` instead of `ethPrice` or `basedL1Price`.
+
+4. Where price is displayed, show it correctly:
+   - Format: `$${usdPrice.toFixed(4)}` or similar
+   - Show "Price unavailable" if usdPrice is 0
+   - Show last updated time if needed
+
+5. Remove the incorrect division by 1000 that was making the price display wrong.
