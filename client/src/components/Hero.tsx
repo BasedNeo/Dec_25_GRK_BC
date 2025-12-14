@@ -23,7 +23,7 @@ import { NFTImage } from "./NFTImage";
 import { MintBalancePanel } from "./MintBalancePanel";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useMint, MINT_PRICE_BASED } from "@/hooks/useMint";
+import { useMint } from "@/hooks/useMint";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -266,7 +266,7 @@ export function Hero() {
             </div>
 
             {/* Minted NFTs Table (Shared Data) */}
-            <ErrorBoundary onRetry={fetchAllMintedData}>
+            <ErrorBoundary>
                 <MintedNFTsTable 
                     nfts={mintedData.nfts}
                     isLoading={mintedData.isLoading}
