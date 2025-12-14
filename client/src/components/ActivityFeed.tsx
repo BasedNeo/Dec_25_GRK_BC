@@ -16,7 +16,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   RefreshCw, 
   ExternalLink, 
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  Rocket,
+  Coins,
+  ScrollText,
+  Orbit,
+  TrendingUp
 } from 'lucide-react';
 import { 
   useActivityFeed, 
@@ -86,11 +91,11 @@ export function ActivityFeed({
 
         {showStats && !compact && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <StatCard label="Mints" value={stats.totalMints} icon="🎨" color="text-green-400" />
-            <StatCard label="Sales" value={stats.totalSales} icon="💰" color="text-yellow-400" />
-            <StatCard label="Listings" value={stats.totalListings} icon="📋" color="text-cyan-400" />
-            <StatCard label="Transfers" value={stats.totalTransfers} icon="🔄" color="text-blue-400" />
-            <StatCard label="Volume" value={`${stats.totalVolume.toLocaleString()}`} suffix="$BASED" icon="📈" color="text-purple-400" />
+            <StatCard label="Mints" value={stats.totalMints} icon={<Rocket className="w-5 h-5 text-white" />} color="text-white" />
+            <StatCard label="Sales" value={stats.totalSales} icon={<Coins className="w-5 h-5 text-white" />} color="text-white" />
+            <StatCard label="Listings" value={stats.totalListings} icon={<ScrollText className="w-5 h-5 text-white" />} color="text-white" />
+            <StatCard label="Transfers" value={stats.totalTransfers} icon={<Orbit className="w-5 h-5 text-white" />} color="text-white" />
+            <StatCard label="Volume" value={`${stats.totalVolume.toLocaleString()}`} suffix="$BASED" icon={<TrendingUp className="w-5 h-5 text-white" />} color="text-white" />
           </div>
         )}
 
@@ -153,11 +158,11 @@ export function ActivityFeed({
   );
 }
 
-function StatCard({ label, value, icon, color, suffix }: { label: string; value: number | string; icon: string; color: string; suffix?: string }) {
+function StatCard({ label, value, icon, color, suffix }: { label: string; value: number | string; icon: React.ReactNode; color: string; suffix?: string }) {
   return (
     <Card className="bg-white/5 border-white/10 p-4">
       <div className="flex items-center gap-2 mb-1">
-        <span>{icon}</span>
+        {icon}
         <span className="text-xs text-muted-foreground font-mono uppercase">{label}</span>
       </div>
       <div className={`text-2xl font-bold font-orbitron ${color}`}>
