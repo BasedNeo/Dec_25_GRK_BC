@@ -484,22 +484,15 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
       }
   };
 
-  const handleAcceptOffer = (offerId: number) => {
-      toast({
-          title: "Accepting Offer",
-          description: "Transferring asset to buyer...",
-          className: "bg-black border-accent text-accent font-orbitron"
-      });
-      
-      setTimeout(() => {
+  const handleAcceptOffer = async (offerId: number, tokenId: number, offererAddress: string) => {
+      try {
+          await marketplace.acceptOffer(tokenId, offererAddress);
           setReceivedOffers(prev => prev.filter(o => o.id !== offerId));
           confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
-          toast({
-              title: "Offer Accepted",
-              description: "Asset transferred. Funds (minus 1% fee) added to your wallet.",
-              className: "bg-black border-green-500 text-green-500 font-orbitron"
-          });
-      }, 2000);
+          trackEvent('nft_accept_offer', 'Marketplace', `Item #${tokenId}`);
+      } catch (error) {
+          console.error('Accept offer failed:', error);
+      }
   };
 
   const handleRejectOffer = (offerId: number) => {
@@ -509,6 +502,43 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
           description: "The offer has been declined.",
           variant: "destructive"
       });
+  };
+
+  // --- List/Delist NFT Functions ---
+  const handleListNFT = async (tokenId: number, price: number) => {
+      if (!marketplace.isApproved) {
+          toast({
+              title: "Approval Required",
+              description: "Please approve the marketplace first to list your NFT.",
+              variant: "destructive"
+          });
+          return;
+      }
+      
+      try {
+          await marketplace.listNFT(tokenId, price);
+          trackEvent('nft_list', 'Marketplace', `Item #${tokenId}`, price);
+      } catch (error) {
+          console.error('List failed:', error);
+      }
+  };
+
+  const handleDelistNFT = async (tokenId: number) => {
+      try {
+          await marketplace.delistNFT(tokenId);
+          trackEvent('nft_delist', 'Marketplace', `Item #${tokenId}`);
+      } catch (error) {
+          console.error('Delist failed:', error);
+      }
+  };
+
+  const handleApproveMarketplace = async () => {
+      try {
+          await marketplace.approveMarketplace();
+          trackEvent('marketplace_approve', 'Marketplace');
+      } catch (error) {
+          console.error('Approval failed:', error);
+      }
   };
 
   const handleBiometricAuth = async () => {
