@@ -1,0 +1,203 @@
+## COMMERCIAL TESTING READINESS CHECKLIST
+
+Please audit and fix these areas to ensure the app is ready for real-user testing:
+
+---
+
+## 1. REMOVE ALL CONSOLE.LOG STATEMENTS
+
+Search the entire codebase and remove or comment out all console.log, console.warn, console.error statements that expose sensitive data or are debug-only. Keep only essential error logging.
+
+Replace verbose logs with minimal production logging:
+- Remove: console.log("Fetching data...", userData)
+- Keep: console.error("[Critical] Transaction failed:", error.message)
+
+---
+
+## 2. VERIFY ALL CONTRACT ADDRESSES
+
+Confirm these addresses are correct in `client/src/lib/constants.ts`:
+
+- NFT_CONTRACT: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+- MARKETPLACE_CONTRACT: 0x88161576266dCDedb19342aC2197267282520793  
+- GOVERNANCE_CONTRACT: 0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995
+- CHAIN_ID: 32323
+- RPC_URL: https://mainnet.basedaibridge.com/rpc
+- BLOCK_EXPLORER: https://explorer.bf1337.org
+
+If any are incorrect, update them now.
+
+---
+
+## 3. ADD GLOBAL ERROR BOUNDARY
+
+Ensure there's a top-level error boundary that catches React errors and shows a user-friendly message instead of crashing.
+
+In App.tsx, wrap the app with ErrorBoundary:
+
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+function App() {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback />}>
+      {/* rest of app */}
+    </ErrorBoundary>
+  );
+}
+
+function ErrorFallback() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="text-center">
+        <h1 className="text-2xl font-orbitron text-red-500 mb-4">Something went wrong</h1>
+        <p className="text-muted-foreground mb-6">Please refresh the page or try again later.</p>
+        <button onClick={() => window.location.reload()} className="px-6 py-2 bg-primary text-black rounded font-bold">
+          REFRESH PAGE
+        </button>
+      </div>
+    </div>
+  );
+}
+
+---
+
+## 4. ADD RPC FALLBACK
+
+If the primary RPC fails, try a backup. Update any direct ethers.JsonRpcProvider calls:
+
+const getProvider = () => {
+  const PRIMARY_RPC = 'https://mainnet.basedaibridge.com/rpc';
+  const BACKUP_RPC = 'https://mainnet.basedaibridge.com/rpc'; // Add actual backup if available
+  
+  try {
+    return new ethers.JsonRpcProvider(PRIMARY_RPC);
+  } catch (e) {
+    console.warn('Primary RPC failed, trying backup');
+    return new ethers.JsonRpcProvider(BACKUP_RPC);
+  }
+};
+
+---
+
+## 5. VALIDATE USER INPUTS
+
+Before any transaction, validate:
+
+- Mint quantity: Must be 1-10 and <= remainingSupply
+- List price: Must be > 0
+- Offer amount: Must be > 0 and <= user balance
+- Proposal title: Must be 1-100 chars
+- Proposal description: Must be 1-2000 chars
+
+Add validation before writeContract calls with user-friendly error toasts.
+
+---
+
+## 6. HANDLE WALLET DISCONNECTION GRACEFULLY
+
+When wallet disconnects mid-action, show clear message:
+
+In components that use useAccount, add:
+
+useEffect(() => {
+  if (!isConnected && previouslyConnected) {
+    toast({
+      title: "Wallet Disconnected",
+      description: "Please reconnect your wallet to continue.",
+      variant: "destructive"
+    });
+  }
+}, [isConnected]);
+
+---
+
+## 7. ADD TRANSACTION TIMEOUT HANDLING
+
+If a transaction takes too long (>60 seconds), show a warning:
+
+const [txStartTime, setTxStartTime] = useState<number | null>(null);
+
+useEffect(() => {
+  if (isConfirming && !txStartTime) {
+    setTxStartTime(Date.now());
+  }
+  
+  if (txStartTime && isConfirming) {
+    const timeout = setTimeout(() => {
+      if (Date.now() - txStartTime > 60000) {
+        toast({
+          title: "Transaction Taking Long",
+          description: "Your transaction is still pending. Check the block explorer for status.",
+          className: "bg-yellow-500/10 border-yellow-500"
+        });
+      }
+    }, 60000);
+    return () => clearTimeout(timeout);
+  }
+}, [isConfirming, txStartTime]);
+
+---
+
+## 8. ENSURE MOBILE RESPONSIVENESS
+
+Check these components work on mobile (320px - 768px width):
+
+- Hero mint section: Buttons should be full-width on mobile
+- Marketplace grid: Should be 1-2 columns on mobile
+- Governance cards: Should stack vertically
+- Navbar: Should have hamburger menu
+- Modals: Should be full-screen on mobile
+
+Add these responsive classes where missing:
+- `w-full md:w-auto` for buttons
+- `flex-col md:flex-row` for layouts
+- `text-sm md:text-base` for text
+
+---
+
+## 9. ADD LOADING STATES FOR ALL ASYNC OPERATIONS
+
+Every button that triggers an async action should show loading state:
+
+<Button disabled={isLoading}>
+  {isLoading ? (
+    <><Loader2 className="w-4 h-4 animate-spin mr-2" />LOADING...</>
+  ) : (
+    'SUBMIT'
+  )}
+</Button>
+
+---
+
+## 10. TEST CHECKLIST
+
+After making these changes, manually test:
+
+[ ] Connect wallet on correct network → Should work
+[ ] Connect wallet on wrong network → Should show switch banner
+[ ] Disconnect wallet → Should show connect prompts
+[ ] Mint with insufficient balance → Should show clear error
+[ ] Mint with sufficient balance → Should succeed and show confirmation
+[ ] View Portfolio with 0 NFTs → Should show empty message
+[ ] View Portfolio with NFTs → Should show only owned NFTs
+[ ] List NFT in marketplace → Should require approval first
+[ ] Buy NFT → Should verify on-chain before purchase
+[ ] Create governance proposal → Should require min NFTs
+[ ] Vote on proposal → Should update vote counts
+[ ] Refresh page with pending tx → Should show in tracker
+[ ] Mobile view → All features accessible
+
+---
+
+## SUMMARY
+
+This audit ensures:
+✅ No debug logs exposed to users
+✅ Correct contract addresses
+✅ Graceful error handling
+✅ RPC resilience
+✅ Input validation
+✅ Wallet state handling
+✅ Transaction feedback
+✅ Mobile compatibility
+✅ Consistent loading states

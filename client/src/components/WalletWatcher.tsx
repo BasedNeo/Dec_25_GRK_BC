@@ -17,9 +17,6 @@ export function WalletWatcher() {
         const savedAddress = localStorage.getItem('connectedWallet');
         
         if (savedAddress && !isConnected && window.ethereum) {
-            console.log("Attempting auto-reconnect to", savedAddress);
-            // Wagmi handles this mostly, but we can force a check or update local state
-            // If using injected connector (MetaMask etc), we can try to connect silently
             connect({ connector: injected() });
         }
     }

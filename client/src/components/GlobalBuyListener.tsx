@@ -31,7 +31,6 @@ export function GlobalBuyListener() {
           // However, the user asked to REMOVE individual listeners.
           // Since we can't easily check if a React handler ran, we'll implement the logic here.
           
-          console.log('Global Buy Listener Caught Click:', { tokenId, price });
           
           // Check wallet connection (Mocking the check or using window.ethereum if available)
           // In this mock environment, we might not have window.ethereum, so we'll simulate success or check basic connectivity
