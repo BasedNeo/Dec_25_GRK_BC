@@ -415,7 +415,8 @@ export function PoolTracker() {
             
           </div>
           
-          {/* Subnet Info */}
+          {/* Subnet Info - Hidden for now */}
+          {/* 
           <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-2xl mx-auto flex flex-col md:flex-row items-center justify-center gap-6 text-sm font-mono">
              <div className="font-bold text-white uppercase tracking-wider hidden md:block">Subnet Details</div>
              <div className="h-4 w-px bg-white/20 hidden md:block"></div>
@@ -446,6 +447,7 @@ export function PoolTracker() {
                 </div>
              </div>
           </div>
+          */}
 
           <div className="mb-8 mt-6 flex justify-center">
                <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 border border-white/5 rounded-full px-3 py-1 bg-black/20">
