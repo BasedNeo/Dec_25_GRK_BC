@@ -132,10 +132,10 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
       {!isConnected ? (
         <Button 
           onClick={openConnectModal}
-          className="w-full mt-4 py-5 bg-[#35dbba] hover:bg-[#35dbba]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(53,219,186,0.4)]"
+          className="w-full mt-4 py-4 bg-[#35dbba] hover:bg-[#35dbba]/90 text-black font-bold font-orbitron tracking-wider text-base shadow-[0_0_20px_rgba(53,219,186,0.4)]"
           data-testid="connect-wallet-mint-btn"
         >
-          <Wallet size={18} className="mr-2" /> CONNECT WALLET
+          <Wallet size={14} className="mr-2" /> CONNECT WALLET
         </Button>
       ) : (
         <a 
@@ -145,10 +145,10 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
           className="block mt-4"
         >
           <Button 
-            className="w-full py-5 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(108,255,97,0.4)]"
+            className="w-full py-4 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-base shadow-[0_0_20px_rgba(108,255,97,0.4)]"
             data-testid="mint-aftermint-btn"
           >
-            <Zap size={18} className="mr-2" /> MINT NOW
+            <Zap size={14} className="mr-2" /> MINT NOW
           </Button>
         </a>
       )}
