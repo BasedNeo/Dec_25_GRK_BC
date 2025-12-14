@@ -66,7 +66,7 @@ export function NFTGallery({
   const [useCsvData, setUseCsvData] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
-  const { nfts: ownedNFTs, isLoading: isLoadingOwned, balance: nftBalance, refetch: refetchOwned } = useOwnedNFTs();
+  const { nfts: ownedNFTs, isLoading: isLoadingOwned } = useOwnedNFTs();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // PWA Install Prompt
