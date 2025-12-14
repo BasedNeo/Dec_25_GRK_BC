@@ -63,12 +63,17 @@ function App() {
     <ErrorBoundary fallback={<GlobalErrorFallback />}>
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider theme={darkTheme({
-            accentColor: '#00ffff',
-            accentColorForeground: 'black',
-            borderRadius: 'none',
-            fontStack: 'system',
-          })}>
+          <RainbowKitProvider 
+            theme={darkTheme({
+              accentColor: '#00ffff',
+              accentColorForeground: 'black',
+              borderRadius: 'medium',
+              fontStack: 'system',
+            })}
+            modalSize="compact"
+            initialChain={32323}
+            showRecentTransactions={true}
+          >
             <SecurityProvider>
               <TooltipProvider>
                 <NetworkSwitchBanner />
