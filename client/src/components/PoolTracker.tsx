@@ -1,4 +1,4 @@
-import { TOTAL_SUPPLY, calculatePassiveEmissions, EMISSION_SCHEDULE } from "@/lib/mockData";
+import { calculatePassiveEmissions } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -8,17 +8,11 @@ import { RPC_URL, NFT_CONTRACT } from "@/lib/constants";
 
 const MINT_PRICE = 69420;
 const TREASURY_PERCENT = 0.51;
-const ROYALTY_PERCENT = 0.02;
-const MARKETPLACE_CONTRACT = "0x88161576266dCDedb19342aC2197267282520793";
 
 const NFT_ABI = ["function totalMinted() view returns (uint256)"];
-const MARKETPLACE_ABI = [
-  "event Sold(uint256 indexed listingId, address indexed buyer, uint256 price)"
-];
 
 export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
-  const [salesVolume, setSalesVolume] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,38 +29,12 @@ export function PoolTracker() {
     }
   }, []);
 
-  const fetchSalesVolume = useCallback(async () => {
-    try {
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
-      const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
-      
-      const filter = contract.filters.Sold();
-      const events = await contract.queryFilter(filter, 0, "latest");
-      
-      let totalVolume = 0;
-      for (const event of events) {
-        const log = event as ethers.EventLog;
-        if (log.args && log.args.price) {
-          totalVolume += parseFloat(ethers.formatEther(log.args.price));
-        }
-      }
-      
-      return totalVolume;
-    } catch (e) {
-      console.error("Failed to fetch sales volume:", e);
-      return 0;
-    }
-  }, []);
-
   const updateData = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const [minted, volume] = await Promise.all([
-        fetchMintedCount(),
-        fetchSalesVolume()
-      ]);
+      const minted = await fetchMintedCount();
       
       if (minted !== null) {
         setMintedCount(minted);
@@ -74,7 +42,6 @@ export function PoolTracker() {
         setError("Failed to fetch minted count from contract");
       }
       
-      setSalesVolume(volume);
       setLastUpdated(new Date());
     } catch (e) {
       console.error("Update failed:", e);
@@ -93,17 +60,10 @@ export function PoolTracker() {
       });
     }, 60 * 1000);
 
-    const salesInterval = setInterval(() => {
-      fetchSalesVolume().then(volume => {
-        setSalesVolume(volume);
-      });
-    }, 2 * 60 * 1000);
-
     return () => {
       clearInterval(mintInterval);
-      clearInterval(salesInterval);
     };
-  }, [fetchMintedCount, fetchSalesVolume]);
+  }, [fetchMintedCount]);
 
   const treasuryData = useMemo(() => {
     const minted = mintedCount ?? 0;
@@ -113,16 +73,13 @@ export function PoolTracker() {
     const emissionsData = calculatePassiveEmissions();
     const passiveEmissions = emissionsData.total;
     
-    const royaltyShare = salesVolume * ROYALTY_PERCENT;
-    
-    const totalTreasury = mintRevenue + passiveEmissions + royaltyShare;
+    const totalTreasury = mintRevenue + passiveEmissions;
     
     const backedValuePerNFT = minted > 0 ? totalTreasury / minted : 0;
     
     return {
       mintRevenue,
       passiveEmissions,
-      royaltyShare,
       totalTreasury,
       backedValuePerNFT,
       currentDailyRate: emissionsData.currentDailyRate,
@@ -130,7 +87,7 @@ export function PoolTracker() {
       nextHalvingRate: emissionsData.nextHalvingRate,
       minted
     };
-  }, [mintedCount, salesVolume]);
+  }, [mintedCount]);
 
   const formatNumber = (num: number, decimals: number = 0) => {
     return num.toLocaleString(undefined, {
@@ -182,7 +139,7 @@ export function PoolTracker() {
             <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
             
             <div className="bg-black/40 border border-pink-500/30 rounded-xl p-5 flex flex-col items-center text-center">
               <div className="flex items-center gap-2 mb-3">
@@ -210,17 +167,26 @@ export function PoolTracker() {
               </span>
             </div>
             
+            <div className="bg-black/40 border border-orange-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 mb-3">
+                <Database size={18} className="text-orange-400" />
+                <h3 className="text-sm font-bold text-white font-orbitron uppercase">Staking Emissions</h3>
+              </div>
+              <span className="text-2xl font-mono font-bold text-orange-400 mb-1" data-testid="text-staking-emissions">
+                0 $BASED
+              </span>
+              <span className="text-xs text-orange-500/70 font-mono bg-orange-500/5 px-2 py-1 rounded border border-orange-500/10 mt-1">COMING SOON</span>
+            </div>
+            
             <div className="bg-black/40 border border-green-500/30 rounded-xl p-5 flex flex-col items-center text-center">
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign size={18} className="text-green-400" />
-                <h3 className="text-sm font-bold text-white font-orbitron uppercase">Royalty Share (2%)</h3>
+                <h3 className="text-sm font-bold text-white font-orbitron uppercase">Royalty Share</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-share">
-                {formatNumber(treasuryData.royaltyShare)} $BASED
+                0 $BASED
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono">
-                From {formatNumber(salesVolume)} total sales
-              </span>
+              <span className="text-xs text-green-500/70 font-mono bg-green-500/5 px-2 py-1 rounded border border-green-500/10 mt-1">COMING SOON</span>
             </div>
 
           </div>
