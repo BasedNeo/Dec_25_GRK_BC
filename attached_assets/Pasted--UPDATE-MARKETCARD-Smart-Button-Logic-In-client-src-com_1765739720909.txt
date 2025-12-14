@@ -1,0 +1,84 @@
+## UPDATE MARKETCARD: Smart Button Logic
+
+In `client/src/components/EscrowMarketplace.tsx`, find the MarketCard component (around line 1063).
+
+### Update the card to show proper status and buttons:
+
+Replace the price and button section in MarketCard with:
+
+{/* Details */}
+<div className="nft-info p-4 space-y-4">
+    <div className="flex justify-between items-center min-h-[3rem]">
+        {/* UNMINTED - Show Mint Price */}
+        {!item.isMinted ? (
+            <div className="flex flex-col">
+                <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
+                <span className="text-lg font-bold text-[#6cffisMinted?: boolean;ber;intPrice || 69420).toLocaleString()} $BASED</span>
+            </div>
+        ) : item.isListed && item.price ? (
+            /* MINTED & LISTED - Show Sale Price */
+            <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase">Sale Price</span>
+                <span className="text-lg font-bold text-primary font-mono">{Number(item.price).toLocaleString()} $BASED</span>
+            </div>
+        ) : (
+            /* MINTED but NOT LISTED - Show dashes */
+            <div className="flex flex-col justify-center">
+                <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
+                <span className="text-sm font-bold text-white font-mono">--</span>
+            </div>
+        )}
+        
+        {/* Show active offer to owner (grey badge) */}
+        {item.hasActiveOffer && item.owner?.toLowerCase() === address?.toLowerCase() && (
+            <div className="bg-gray-700/50 border border-gray-500/50 px-2 py-1 rounded">
+                <span className="text-[10px] text-gray-300 font-mono">OFFER: {item.highestOffer?.toLocaleString()} $BASED</span>
+            </div>
+        )}
+    </div>
+    
+    {/* Buttons */}
+    <div className="nft-actions flex gap-2" onClick={(e) => e.stopPropagation()}>
+        {!item.isMinted ? (
+            /* UNMINTED - Mint Button (green, triggers random mint warning) */
+            <Button 
+                className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRandomMintWarning(true);
+                    setSelectedMintItem(item);
+                }}
+            >
+                <Zap size={14} className="mr-2" /> MINT NOW
+            </Button>
+        ) : item.isListed ? (
+            /* MINTED & LISTED - Buy + Offer buttons */
+            <>
+                <BuyButton 
+                    tokenId={item.id}
+                    price={item.price}
+                    className="flex-1"
+                    onBuy={() => onBuy()}
+                />
+                <Button 
+                    className="flex-1 bg-cyan-500 text-black hover:bg-cyan-400 font-bold"
+                    onClick={(e) => { e.stopPropagation(); onOffer(); }}
+                >
+                    OFFER
+                </Button>
+            </>
+        ) : (
+            /* MINTED but NOT LISTED - Only Offer button */
+            <Button 
+                className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-bold shadow-[0_0_10px_rgba(0,255,255,0.3)]"
+                onClick={(e) => { e.stopPropagation(); onOffer(); }}
+            >
+                MAKE OFFER
+            </Button>
+        )}
+    </div>
+</div>### Also add state for random mint warning at component level:
+
+Add near other state declarations:
+const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
+const [selectedMintItem, setSelectedMintItem] = useState<MarketItem | null>(null);

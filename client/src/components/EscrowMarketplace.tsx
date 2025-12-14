@@ -1183,8 +1183,15 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center">
-                            <span className="text-[10px] text-muted-foreground uppercase italic">Taking Offers</span>
+                            <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
                             <span className="text-sm font-bold text-white font-mono">--</span>
+                        </div>
+                    )}
+                    
+                    {/* Show active offer badge to owner */}
+                    {item.hasActiveOffer && item.highestOffer && (
+                        <div className="bg-gray-700/50 border border-gray-500/50 px-2 py-1 rounded">
+                            <span className="text-[10px] text-gray-300 font-mono">OFFER: {item.highestOffer.toLocaleString()} $BASED</span>
                         </div>
                     )}
                 </div>

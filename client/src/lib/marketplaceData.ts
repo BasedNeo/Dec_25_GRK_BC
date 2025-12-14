@@ -22,6 +22,8 @@ export interface MarketItem extends Guardian {
     estimatedValue?: number;
     isMinted?: boolean;
     mintPrice?: number;
+    hasActiveOffer?: boolean;
+    highestOffer?: number;
 }
 
 export interface MarketOffer {
