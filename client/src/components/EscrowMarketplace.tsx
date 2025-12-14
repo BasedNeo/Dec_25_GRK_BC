@@ -297,6 +297,12 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
     fetchDirectly();
   }, [useCsvData]); // Re-run if toggling CSV mode
 
+  // Determine if any filters are active (startOffset should be 0 when filtering)
+  const hasActiveFilters = 
+      !!debouncedSearch || 
+      (rarityFilter && rarityFilter !== 'all') || 
+      (traitTypeFilter && traitTypeFilter !== 'all');
+
   // Use infinite query for data with server-side (hook-side) filtering
   const { 
     data, 
@@ -310,7 +316,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
       traitType: traitTypeFilter,
       traitValue: traitValueFilter,
       sortBy,
-      startOffset: 299 // Start at NFT #300
+      startOffset: hasActiveFilters ? 0 : 299 // Start at 0 when filtering, else #300
   }); 
 
   const allItems = useMemo(() => {
@@ -411,9 +417,9 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
             setTraitTypeFilter("Character Type");
             setTimeout(() => setTraitValueFilter("Based Guardian"), 0);
         }},
-        { label: "Based Creature", action: () => { 
+        { label: "Based Creatures", action: () => { 
             setTraitTypeFilter("Character Type");
-            setTimeout(() => setTraitValueFilter("Based Creature"), 0);
+            setTimeout(() => setTraitValueFilter("Based Creatures"), 0);
         }}
     ];
   }, []);
