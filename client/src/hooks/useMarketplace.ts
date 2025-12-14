@@ -17,6 +17,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
 import { savePendingTx } from '@/hooks/usePendingTransactions';
+import { parseContractError } from '@/lib/errorParser';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -296,20 +297,7 @@ export function useMarketplace() {
 
   useEffect(() => {
     if (isWriteError || isReceiptError) {
-      const errorMessage = writeError?.message || receiptError?.message || 'Transaction failed';
-      
-      let friendlyError = errorMessage;
-      if (errorMessage.includes('user rejected')) {
-        friendlyError = 'Transaction was cancelled';
-      } else if (errorMessage.includes('insufficient funds')) {
-        friendlyError = 'Insufficient $BASED balance';
-      } else if (errorMessage.includes('NotTokenOwner')) {
-        friendlyError = 'You do not own this NFT';
-      } else if (errorMessage.includes('ListingNotActive')) {
-        friendlyError = 'This listing is no longer active';
-      } else if (errorMessage.includes('NotSeller')) {
-        friendlyError = 'Only the seller can perform this action';
-      }
+      const friendlyError = parseContractError(writeError || receiptError);
 
       setState(prev => ({
         ...prev,

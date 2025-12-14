@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { savePendingTx } from '@/hooks/usePendingTransactions';
+import { parseContractError } from '@/lib/errorParser';
 
 export enum ProposalStatus { Pending = 0, Active = 1, Passed = 2, Failed = 3, Executed = 4, Cancelled = 5 }
 
@@ -132,11 +133,7 @@ export function useGovernance() {
 
   useEffect(() => {
     if (writeError) {
-      let msg = writeError.message || 'Transaction failed';
-      if (msg.includes('user rejected')) msg = 'Transaction cancelled';
-      else if (msg.includes('Not enough NFTs')) msg = 'You need at least 1 NFT to create a proposal';
-      else if (msg.includes('Already voted')) msg = 'You have already voted on this proposal';
-      else if (msg.includes('Voting not active')) msg = 'Voting is not active for this proposal';
+      const msg = parseContractError(writeError);
       toast({ title: "Transaction Failed", description: msg, variant: "destructive" });
       setPendingAction(null);
     }

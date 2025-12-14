@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
 import { useContractData } from './useContractData';
 import { savePendingTx } from '@/hooks/usePendingTransactions';
+import { parseContractError } from '@/lib/errorParser';
 
 const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
 
@@ -54,14 +55,7 @@ export function useMint() {
 
   useEffect(() => {
     if (isWriteError || isReceiptError) {
-      const msg = writeError?.message || receiptError?.message || 'Transaction failed';
-      let friendly = msg;
-      if (msg.includes('insufficient funds')) friendly = 'Insufficient $BASED balance';
-      else if (msg.includes('user rejected')) friendly = 'Transaction cancelled';
-      else if (msg.includes('Public mint not enabled')) friendly = 'Public minting is not enabled yet';
-      else if (msg.includes('Exceeds max supply')) friendly = 'Not enough NFTs remaining';
-      else if (msg.includes('paused')) friendly = 'Minting is currently paused';
-      
+      const friendly = parseContractError(writeError || receiptError);
       setState(prev => ({ ...prev, isError: true, error: friendly }));
       toast({ title: "Mint Failed", description: friendly, variant: "destructive" });
     }
