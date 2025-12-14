@@ -1,5 +1,6 @@
 import "@rainbow-me/rainbowkit/styles.css";
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { getDefaultConfig, getDefaultWallets } from "@rainbow-me/rainbowkit";
+import { rabbyWallet, trustWallet, okxWallet } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http } from 'wagmi';
 
@@ -38,6 +39,13 @@ export const config = getDefaultConfig({
     [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/'),
   },
   ssr: false,
+  wallets: [
+    ...getDefaultWallets().wallets,
+    {
+      groupName: 'Popular',
+      wallets: [rabbyWallet, trustWallet, okxWallet],
+    },
+  ],
 });
 
 export { basedL1 };
