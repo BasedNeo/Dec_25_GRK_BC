@@ -1,0 +1,191 @@
+## COMPREHENSIVE FIX: Remove Mock Data & Connect Live Contract Data
+
+This prompt fixes multiple issues found during code review. Apply ALL changes systematically.
+
+---
+
+### FIX 1: Remove Mock Offers from EscrowMarketplace.tsx
+
+The `receivedOffers` state is using hardcoded mock data. Replace it with real contract data.
+
+In `client/src/components/EscrowMarketplace.tsx`, find lines 89-93:
+
+// Mock Received Offers (for Seller Dashboard)
+const [receivedOffers, setReceivedOffers] = useState([
+    { id: 1, nftId: 300, nftName: "Guardian #300", offerer: "0x71C...9A21", amount: 450, time: "2 hours ago", status: "pending" },
+    { id: 2, nftId: 1245, nftName: "Guardian #1245", offerer: "0xA4F...B299", amount: 1200, time: "1 day ago", status: "pending" }
+]);**REPLACE WITH:**
+
+// Real offers from blockchain (empty until fetched)
+const [receivedOffers, setReceivedOffers] = useState<{
+    id: number;
+    nftId: number;
+    nftName: string;
+    offerer: string;
+    amount: number;
+    time: string;
+    status: string;
+}[]>([]);
+
+// TODO: In production, fetch offers from OfferMade events on marketplace contract
+// This is a placeholder until offer indexing is implemented---
+
+### FIX 2: Fix Activity Feed to Read Real totalMinted from Contract
+
+The Activity tab stats only count events from the last ~1000 blocks, missing the real total.
+
+In `client/src/hooks/useActivityFeed.ts`, add contract reads for accurate stats.
+
+**STEP 1:** Add a new state for contract stats (around line 87):
+
+const [contractStats, setContractStats] = useState({
+  totalMinted: 0,
+  maxSupply: 3732
+});**STEP 2:** Add contract fetch inside `fetchActivities` (after line 99, right after getting currentBlock):
+
+// === FETCH REAL TOTALS FROM CONTRACT ===
+try {
+  const nftStateContract = new ethers.Contract(NFT_CONTRACT, [
+    'function totalMinted() view returns (uint256)',
+    'function MAX_SUPPLY() view returns (uint256)'
+  ], provider);
+  
+  const [totalMinted, maxSupply] = await Promise.all([
+    nftStateContract.totalMinted(),
+    nftStateContract.MAX_SUPPLY()
+  ]);
+  
+  setContractStats({
+    totalMinted: Number(totalMinted),
+    maxSupply: Number(maxSupply)
+  });
+} catch (err) {
+  // Fallback - keep existing stats
+}
+// ==========================================**STEP 3:** Update the stats object (around line 231) to use contract data for mints:
+
+// Stats combining CONTRACT state (accurate totals) + EVENT data (recent activity)
+const stats = {
+  // CUMULATIVE FROM CONTRACT - accurate total
+  totalMinted: contractStats.totalMinted,
+  maxSupply: contractStats.maxSupply,
+  
+  // FROM EVENTS - recent activity counts (last ~1000 blocks)
+  recentMints: activities.filter(a => a.type === 'mint').length,
+  totalSales: activities.filter(a => a.type === 'sale').length,
+  totalListings: activities.filter(a => a.type === 'list').length,
+  totalTransfers: activities.filter(a => a.type === 'transfer').length,
+  totalVolume: activities
+    .filter(a => a.type === 'sale' && a.price)
+    .reduce((sum, a) => sum + Number(a.price || 0), 0),
+};**STEP 4:** Update the return statement to include contractStats:
+
+return {
+  activities,
+  isLoading,
+  error,
+  lastBlock,
+  stats,
+  contractStats, // ADD THIS
+  refresh: fetchActivities,
+};---
+
+### FIX 3: Update ActivityFeed.tsx to Display Real Total Minted
+
+In `client/src/components/ActivityFeed.tsx`, update the StatCard for mints (around line 94):
+
+{showStats && !compact && (
+  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    {/* Total Minted - FROM CONTRACT (accurate) */}
+    <StatCard 
+      label="Total Minted" 
+      value={`${stats.totalMinted || 0} / 3,732`}
+      icon={<Rocket className="w-5 h-5 text-[#6cff61]" />} 
+      color="text-[#6cff61]" 
+    />
+    
+    {/* Rest remain the same but rename labels for clarity */}
+    <StatCard label="Recent Sales" value={stats.totalSales} icon={<Coins className="w-5 h-5 text-yellow-400" />} color="text-yellow-400" />
+    <StatCard label="Recent Listings" value={stats.totalListings} icon={<ScrollText className="w-5 h-5 text-cyan-400" />} color="text-cyan-400" />
+    <StatCard label="Transfers" value={stats.totalTransfers} icon={<Orbit className="w-5 h-5 text-blue-400" />} color="text-blue-400" />
+    <StatCard label="Volume" value={stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '0'} suffix="$BASED" icon={<TrendingUp className="w-5 h-5 text-purple-400" />} color="text-purple-400" />
+  </div>
+)}---
+
+### FIX 4: Fix MARKETPLACE_CONTRACT Import Inconsistency
+
+In `client/src/hooks/useActivityFeed.ts`, change line 16 from:
+
+import { MARKETPLACE_CONTRACT } from '@/hooks/useMarketplace';**TO:**
+
+import { MARKETPLACE_CONTRACT } from '@/lib/constants';This ensures consistent imports from the central constants file.
+
+---
+
+### FIX 5: Remove Duplicate GOVERNANCE_CONTRACT Definition
+
+In `client/src/hooks/useGovernance.ts`, remove line 20-21:
+
+// Governance Contract (deployed to BasedAI)
+export const GOVERNANCE_CONTRACT = "0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995";**REPLACE WITH:**
+
+import { GOVERNANCE_CONTRACT } from '@/lib/constants';Make sure to add this to the existing imports at the top of the file.
+
+---
+
+### FIX 6: Remove Console.log Statements in useActivityFeed.ts
+
+Remove the debug console.log statements:
+
+**Line 196:** Remove `console.log('[ActivityFeed] No marketplace events yet');`
+
+**Line 210:** Change `console.error('[ActivityFeed] Error fetching activities:', err);` to just:
+setError(err.message || 'Failed to fetch activity');(Keep the setError, remove the console.error)
+
+---
+
+### FIX 7: Add Live Mint Status to Activity Tab Header
+
+In `client/src/components/ActivityFeed.tsx`, update the header section (around line 71-76):
+
+<div className="flex items-center gap-3">
+  <div className="p-2 bg-primary/10 rounded-lg">
+    <ActivityIcon className="w-5 h-5 text-primary" />
+  </div>
+  <div>
+    <h2 className="text-2xl font-black text-white font-orbitron flex items-center gap-2">
+      {title}
+      <span className="flex items-center gap-1 text-xs font-normal text-[#6cff61]">
+        <span className="w-2 h-2 rounded-full bg-[#6cff61] animate-pulse" />
+        LIVE
+      </span>
+    </h2>
+    <p className="text-xs text-muted-foreground font-mono">
+      Block #{lastBlock.toLocaleString()} • {stats.totalMinted || 0} Minted • Auto-refreshes
+    </p>
+  </div>
+</div>---
+
+### FIX 8: Increase Block Lookback for More Activity History
+
+In `client/src/hooks/useActivityFeed.ts`, change line 102 from:
+
+const fromBlock = Math.max(0, currentBlock - 1000);**TO:**
+
+// Look back further for more history (~5k blocks = ~2.5 hours on BasedAI)
+const fromBlock = Math.max(0, currentBlock - 5000);---
+
+## SUMMARY OF FIXES:
+
+| Issue | File | Fix |
+|-------|------|-----|
+| Mock offers | EscrowMarketplace.tsx | Remove hardcoded offers, use empty array |
+| Activity stats wrong | useActivityFeed.ts | Add contract reads for totalMinted |
+| Stats display | ActivityFeed.tsx | Show real minted count from contract |
+| Import inconsistency | useActivityFeed.ts | Import from constants.ts |
+| Duplicate constant | useGovernance.ts | Import from constants.ts |
+| Debug logs | useActivityFeed.ts | Remove console.log statements |
+| Live indicator | ActivityFeed.tsx | Add pulsing LIVE badge |
+| Limited history | useActivityFeed.ts | Increase block lookback to 5000 |
+
+After applying these fixes, the Activity tab will show accurate real-time data from the blockchain.

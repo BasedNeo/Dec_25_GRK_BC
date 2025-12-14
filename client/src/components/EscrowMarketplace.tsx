@@ -86,11 +86,15 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
     return () => clearInterval(interval);
   }, []);
 
-  // Mock Received Offers (for Seller Dashboard)
-  const [receivedOffers, setReceivedOffers] = useState([
-      { id: 1, nftId: 300, nftName: "Guardian #300", offerer: "0x71C...9A21", amount: 450, time: "2 hours ago", status: "pending" },
-      { id: 2, nftId: 1245, nftName: "Guardian #1245", offerer: "0xA4F...B299", amount: 1200, time: "1 day ago", status: "pending" }
-  ]);
+  const [receivedOffers, setReceivedOffers] = useState<{
+    id: number;
+    nftId: number;
+    nftName: string;
+    offerer: string;
+    amount: number;
+    time: string;
+    status: string;
+  }[]>([]);
 
   // Load saved searches on mount
   useEffect(() => {
