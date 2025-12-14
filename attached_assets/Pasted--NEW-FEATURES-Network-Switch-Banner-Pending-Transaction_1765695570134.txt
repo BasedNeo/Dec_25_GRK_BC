@@ -1,0 +1,242 @@
+## NEW FEATURES: Network Switch Banner + Pending Transaction Tracker
+
+Create these 3 NEW FILES and add 2 lines to App.tsx:
+
+---
+
+## FILE 1: Create `client/src/components/NetworkSwitchBanner.tsx`
+
+import { useAccount, useSwitchChain } from 'wagmi';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { useState } from 'react';
+import { CHAIN_ID } from '@/lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export function NetworkSwitchBanner() {
+  const { isConnected, chain } = useAccount();
+  const { switchChain, isPending } = useSwitchChain();
+  const [dismissed, setDismissed] = useState(false);
+  
+  const showBanner = isConnected && chain?.id !== CHAIN_ID && !dismissed;
+  if (!showBanner) return null;
+  
+  return (
+    <AnimatePresence>
+      <motion.div initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-full"><AlertTriangle className="w-5 h-5" /></div>
+            <div>
+              <p className="font-bold font-orbitron text-sm">WRONG NETWORK DETECTED</p>
+              <p className="text-xs text-white/80">You're on <span className="font-mono font-bold">{chain?.name || `Chain ${chain?.id}`}</span>. This dApp requires <span className="font-mono font-bold">BasedAI (32323)</span>.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => switchChain({ chainId: CHAIN_ID })} disabled={isPending} className="bg-white text-red-600 hover:bg-white/90 font-bold font-orbitron text-sm px-4 py-2 h-auto">
+              {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />SWITCHING...</> : <>⚡ SWITCH TO BASEDAI</>}
+            </Button>
+            <button onClick={() => setDismissed(true)} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+        <div className="h-1 bg-gradient-to-r from-yellow-400 via-red-500 to-orange-500 animate-pulse" />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+---
+
+## FILE 2: Create `client/src/hooks/usePendingTransactions.ts`
+
+import { useState, useEffect, useCallback } from 'react';
+import { useWaitForTransactionReceipt } from 'wagmi';
+import { BLOCK_EXPLORER } from '@/lib/constants';
+
+const STORAGE_KEY = 'basedguardians_pending_txs';
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export type TxType = 'mint' | 'buy' | 'list' | 'delist' | 'offer' | 'vote' | 'proposal' | 'approve' | 'other';
+
+export interface PendingTransaction {
+  hash: `0x${string)}`;
+  type: TxType;
+  description: string;
+  timestamp: number;
+  tokenId?: number;
+  amount?: string;
+  status: 'pending' | 'confirmed' | 'failed';
+}
+
+export function savePendingTx(hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }) {
+  try {
+    const existing = getPendingTxs();
+    if (existing.some(tx => tx.hash === hash)) return;
+    existing.push({ hash, type, description, timestamp: Date.now(), tokenId: extra?.tokenId, amount: extra?.amount, status: 'pending' });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+    window.dispatchEvent(new CustomEvent('pending-tx-added'));
+  } catch (e) {}
+}
+
+export function getPendingTxs(): PendingTransaction[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    const txs: PendingTransaction[] = JSON.parse(stored);
+    return txs.filter(tx => Date.now() - tx.timestamp < MAX_AGE_MS);
+  } catch (e) { return []; }
+}
+
+export function updateTxStatus(hash: string, status: 'confirmed' | 'failed') {
+  try {
+    const txs = getPendingTxs();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(txs.map(tx => tx.hash === hash ? { ...tx, status } : tx)));
+    window.dispatchEvent(new CustomEvent('pending-tx-updated'));
+  } catch (e) {}
+}
+
+export function removePendingTx(hash: string) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getPendingTxs().filter(tx => tx.hash !== hash)));
+  } catch (e) {}
+}
+
+export function clearCompletedTxs() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getPendingTxs().filter(tx => tx.status === 'pending')));
+  } catch (e) {}
+}
+
+export function usePendingTransactions() {
+  const [transactions, setTransactions] = useState<PendingTransaction[]>([]);
+  
+  useEffect(() => {
+    setTransactions(getPendingTxs());
+    const refresh = () => setTransactions(getPendingTxs());
+    window.addEventListener('pending-tx-added', refresh);
+    window.addEventListener('pending-tx-updated', refresh);
+    return () => { window.removeEventListener('pending-tx-added', refresh); window.removeEventListener('pending-tx-updated', refresh); };
+  }, []);
+  
+  const pendingTxs = transactions.filter(tx => tx.status === 'pending');
+  
+  return {
+    transactions, pendingTxs,
+    pendingCount: pendingTxs.length,
+    hasPending: pendingTxs.length > 0,
+    addTransaction: useCallback((hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }) => { savePendingTx(hash, type, description, extra); setTransactions(getPendingTxs()); }, []),
+    dismissTransaction: useCallback((hash: string) => { removePendingTx(hash); setTransactions(getPendingTxs()); }, []),
+    clearCompleted: useCallback(() => { clearCompletedTxs(); setTransactions(getPendingTxs()); }, []),
+    getExplorerLink: (hash: string) => `${BLOCK_EXPLORER}/tx/${hash}`,
+  };
+}
+
+export function useWatchTransaction(hash: `0x${string}` | undefined) {
+  const { isSuccess, isError } = useWaitForTransactionReceipt({ hash });
+  useEffect(() => {
+    if (!hash) return;
+    if (isSuccess) updateTxStatus(hash, 'confirmed');
+    else if (isError) updateTxStatus(hash, 'failed');
+  }, [hash, isSuccess, isError]);
+}
+
+export function getTxTypeEmoji(type: TxType): string {
+  return { mint: '🎨', buy: '🛒', list: '📋', delist: '❌', offer: '🏷️', vote: '🗳️', proposal: '📜', approve: '✅', other: '📝' }[type];
+}
+
+---
+
+## FILE 3: Create `client/src/components/PendingTxBanner.tsx`
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePendingTransactions, useWatchTransaction, getTxTypeEmoji, PendingTransaction } from '@/hooks/usePendingTransactions';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
+
+export function PendingTxBanner() {
+  const { transactions, pendingCount, hasPending, dismissTransaction, clearCompleted, getExplorerLink } = usePendingTransactions();
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (transactions.length === 0) return null;
+  
+  return (
+    <div className="fixed bottom-4 right-4 z-[9998] max-w-sm w-full">
+      <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-white/5" onClick={() => setIsExpanded(!isExpanded)}>
+          <div className="flex items-center gap-3">
+            {hasPending ? <div className="relative"><Loader2 className="w-5 h-5 text-cyan-400 animate-spin" /><span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 text-black text-[10px] font-bold rounded-full flex items-center justify-center">{pendingCount}</span></div> : <CheckCircle className="w-5 h-5 text-green-400" />}
+            <div><p className="font-orbitron text-sm text-white">{hasPending ? 'TRANSACTIONS PENDING' : 'ALL COMPLETE'}</p><p className="text-[10px] text-muted-foreground">{transactions.length} tracked</p></div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!hasPending && transactions.length > 0 && <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); clearCompleted(); }} className="h-7 px-2 text-xs text-muted-foreground"><Trash2 className="w-3 h-3 mr-1" />Clear</Button>}
+            {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </div>
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+              <div className="border-t border-white/10 max-h-64 overflow-y-auto">
+                {transactions.map((tx) => <TxRow key={tx.hash} tx={tx} onDismiss={() => dismissTransaction(tx.hash)} explorerLink={getExplorerLink(tx.hash)} />)}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+}
+
+function TxRow({ tx, onDismiss, explorerLink }: { tx: PendingTransaction; onDismiss: () => void; explorerLink: string; }) {
+  useWatchTransaction(tx.status === 'pending' ? tx.hash : undefined);
+  const StatusIcon = { pending: Loader2, confirmed: CheckCircle, failed: XCircle }[tx.status];
+  const colors = { pending: 'text-cyan-400 bg-cyan-500/10', confirmed: 'text-green-400 bg-green-500/10', failed: 'text-red-400 bg-red-500/10' };
+  
+  return (
+    <div className="px-4 py-3 border-b border-white/5 hover:bg-white/5 group">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 flex-1">
+          <span className="text-lg">{getTxTypeEmoji(tx.type)}</span>
+          <div><p className="text-sm text-white truncate">{tx.description}</p><Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 mt-1 ${colors[tx.status]}`}><StatusIcon className={`w-3 h-3 mr-1 ${tx.status === 'pending' ? 'animate-spin' : ''}`} />{tx.status.toUpperCase()}</Badge></div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <a href={explorerLink} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white/10 rounded"><ExternalLink className="w-3 h-3 text-primary" /></a>
+          {tx.status !== 'pending' && <button onClick={onDismiss} className="p-1.5 hover:bg-white/10 rounded"><X className="w-3 h-3" /></button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+---
+
+## STEP 4: Update App.tsx
+
+Add these imports at the top of your App.tsx:
+
+import { NetworkSwitchBanner } from '@/components/NetworkSwitchBanner';
+import { PendingTxBanner } from '@/components/PendingTxBanner';
+
+Then add the components inside your App return statement:
+
+function App() {
+  return (
+    <>
+      <NetworkSwitchBanner />
+      {/* ... your existing app content ... */}
+      <PendingTxBanner />
+    </>
+  );
+}
+
+---
+
+## WHAT YOU GET:
+
+✅ Red banner at top when user is on wrong network with one-click switch to BasedAI
+✅ Floating transaction tracker in bottom-right corner
+✅ Transactions persist across page refresh (localStorage)
+✅ Auto-updates status when transactions confirm or fail
+✅ Click to view any transaction on block explorer
+✅ Clear completed transactions with one click

@@ -18,6 +18,8 @@ import { SpaceBackground } from "@/components/SpaceBackground";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 import { WalletWatcher } from "@/components/WalletWatcher";
+import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
+import { PendingTxBanner } from "@/components/PendingTxBanner";
 
 function Router() {
   return (
@@ -46,12 +48,14 @@ function App() {
         })}>
           <SecurityProvider>
             <TooltipProvider>
+              <NetworkSwitchBanner />
               <SpaceBackground />
               <Router />
               <DisclaimerModal />
               <OnboardingTour />
               <GlobalBuyListener />
               <WalletWatcher />
+              <PendingTxBanner />
               <Toaster />
             </TooltipProvider>
           </SecurityProvider>
