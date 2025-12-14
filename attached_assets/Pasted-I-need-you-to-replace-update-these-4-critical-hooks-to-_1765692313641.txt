@@ -1,0 +1,412 @@
+I need you to replace/update these 4 critical hooks to ensure they read on-chain data perfectly, work commercially, and are secure. 
+
+## CRITICAL: Contract Addresses
+- NFT_CONTRACT: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+- MARKETPLACE_CONTRACT: 0x88161576266dCDedb19342aC2197267282520793
+- GOVERNANCE_CONTRACT: 0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995
+- CHAIN_ID: 32323
+
+---
+
+## FILE 1: `client/src/hooks/useContractData.ts` (NEW - Central on-chain data reader)
+
+This hook reads ALL live data from the NFT contract. Create this file:
+
+import { useReadContract, useAccount } from 'wagmi';
+import { CHAIN_ID } from '@/lib/constants';
+
+const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+
+const CONTRACT_ABI = [
+  { name: 'totalMinted', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'MAX_SUPPLY', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'MINT_PRICE', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'publicMintEnabled', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { name: 'paused', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { name: 'revealed', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }], outputs: [{ type: 'uint256' }] },
+  { name: 'tokensOfOwner', type: 'function', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }], outputs: [{ type: 'uint256[]' }] },
+  { name: 'tokenURI', type: 'function', stateMutability: 'view', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ type: 'string' }] },
+  { name: 'ownerOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ type: 'address' }] },
+] as const;
+
+export function useContractData() {
+  const { address } = useAccount();
+
+  const { data: totalMinted, isLoading: loadingMinted, refetch: refetchMinted } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'totalMinted',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 10000 }
+  });
+
+  const { data: maxSupply } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'MAX_SUPPLY',
+    chainId: CHAIN_ID,
+  });
+
+  const { data: mintPrice } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'MINT_PRICE',
+    chainId: CHAIN_ID,
+  });
+
+  const { data: publicMintEnabled } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'publicMintEnabled',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 30000 }
+  });
+
+  const { data: isPaused } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'paused',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 30000 }
+  });
+
+  const { data: isRevealed } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'revealed',
+    chainId: CHAIN_ID,
+  });
+
+  const { data: userBalance } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: !!address, refetchInterval: 15000 }
+  });
+
+  const { data: userTokens, refetch: refetchUserTokens } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'tokensOfOwner',
+    args: address ? [address] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: !!address }
+  });
+
+  const mintedCount = totalMinted ? Number(totalMinted) : 0;
+  const maxSupplyCount = maxSupply ? Number(maxSupply) : 3732;
+  const mintPriceWei = mintPrice || BigInt(69420) * BigInt(10**18);
+  const mintPriceBased = Number(mintPriceWei / BigInt(10**18));
+  const remainingSupply = maxSupplyCount - mintedCount;
+  const percentMinted = maxSupplyCount > 0 ? (mintedCount / maxSupplyCount) * 100 : 0;
+  const isSoldOut = remainingSupply <= 0;
+  const canMint = publicMintEnabled === true && isPaused !== true && !isSoldOut;
+
+  return {
+    // Raw data
+    totalMinted: mintedCount,
+    maxSupply: maxSupplyCount,
+    mintPrice: mintPriceBased,
+    mintPriceWei,
+    
+    // Status flags
+    publicMintEnabled: publicMintEnabled ?? false,
+    isPaused: isPaused ?? false,
+    isRevealed: isRevealed ?? false,
+    isSoldOut,
+    canMint,
+    
+    // Computed
+    remainingSupply,
+    percentMinted,
+    
+    // User data
+    userBalance: userBalance ? Number(userBalance) : 0,
+    userTokens: userTokens ? (userTokens as bigint[]).map(Number) : [],
+    
+    // Loading
+    isLoading: loadingMinted,
+    
+    // Actions
+    refetch: () => { refetchMinted(); refetchUserTokens(); }
+  };
+}
+
+// Hook to get specific token data
+export function useTokenData(tokenId: number | undefined) {
+  const { data: owner, isLoading: loadingOwner } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'ownerOf',
+    args: tokenId !== undefined ? [BigInt(tokenId)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: tokenId !== undefined }
+  });
+
+  const { data: tokenURI, isLoading: loadingURI } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'tokenURI',
+    args: tokenId !== undefined ? [BigInt(tokenId)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: tokenId !== undefined }
+  });
+
+  return {
+    owner: owner as string | undefined,
+    tokenURI: tokenURI as string | undefined,
+    isLoading: loadingOwner || loadingURI
+  };
+}
+
+---
+
+## FILE 2: Update `client/src/hooks/useMint.ts` (Add on-chain status reading)
+
+Replace the entire file with this version that reads contract status:
+
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useBalance } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
+import { useContractData } from './useContractData';
+
+const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+
+const MINT_ABI = [
+  { name: 'mint', type: 'function', stateMutability: 'payable', inputs: [{ name: 'quantity', type: 'uint256' }], outputs: [] },
+] as const;
+
+export function useMint() {
+  const { toast } = useToast();
+  const { address, isConnected, chain } = useAccount();
+  
+  // Get live contract data
+  const { 
+    totalMinted, maxSupply, mintPrice, mintPriceWei,
+    publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
+    refetch: refetchContractData
+  } = useContractData();
+  
+  // User's native $BASED balance
+  const { data: balanceData, refetch: refetchBalance } = useBalance({
+    address,
+    chainId: CHAIN_ID,
+  });
+
+  const [state, setState] = useState({
+    isPending: false,
+    isConfirming: false,
+    isSuccess: false,
+    isError: false,
+    error: null as string | null,
+    txHash: undefined as `0x${string}` | undefined,
+  });
+
+  const { writeContract, data: txHash, isPending, isError: isWriteError, error: writeError, reset: resetWrite } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash });
+
+  useEffect(() => {
+    setState(prev => ({ ...prev, isPending, isConfirming, isSuccess: isConfirmed, txHash }));
+    
+    if (isConfirmed && txHash) {
+      toast({
+        title: "🎉 Mint Successful!",
+        description: (
+          <div>
+            Your Based Guardian has been minted!
+            <a href={`${BLOCK_EXPLORER}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-1">
+              View Transaction →
+            </a>
+          </div>
+        ),
+      });
+      refetchContractData();
+      refetchBalance();
+    }
+  }, [isPending, isConfirming, isConfirmed, txHash]);
+
+  useEffect(() => {
+    if (isWriteError || isReceiptError) {
+      const msg = writeError?.message || receiptError?.message || 'Transaction failed';
+      let friendly = msg;
+      if (msg.includes('insufficient funds')) friendly = 'Insufficient $BASED balance';
+      else if (msg.includes('user rejected')) friendly = 'Transaction cancelled';
+      else if (msg.includes('Public mint not enabled')) friendly = 'Public minting is not enabled yet';
+      else if (msg.includes('Exceeds max supply')) friendly = 'Not enough NFTs remaining';
+      else if (msg.includes('paused')) friendly = 'Minting is currently paused';
+      
+      setState(prev => ({ ...prev, isError: true, error: friendly }));
+      toast({ title: "Mint Failed", description: friendly, variant: "destructive" });
+    }
+  }, [isWriteError, isReceiptError, writeError, receiptError]);
+
+  const canAfford = (qty: number) => {
+    if (!balanceData) return false;
+    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+    return balanceData.value >= cost;
+  };
+
+  const maxAffordable = () => {
+    if (!balanceData) return 0;
+    const bal = Number(formatEther(balanceData.value));
+    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+  };
+
+  const mint = async (quantity: number) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
+      return;
+    }
+    if (!publicMintEnabled) {
+      toast({ title: "Mint Not Open", description: "Public minting is not enabled yet", variant: "destructive" });
+      return;
+    }
+    if (isPaused) {
+      toast({ title: "Paused", description: "Minting is temporarily paused", variant: "destructive" });
+      return;
+    }
+    if (quantity < 1 || quantity > Math.min(10, remainingSupply)) {
+      toast({ title: "Invalid Quantity", description: `You can mint 1-${Math.min(10, remainingSupply)} NFTs`, variant: "destructive" });
+      return;
+    }
+    if (!canAfford(quantity)) {
+      toast({ title: "Insufficient Balance", description: `Need ${(mintPrice * quantity).toLocaleString()} $BASED`, variant: "destructive" });
+      return;
+    }
+
+    const totalCost = parseEther(String(mintPrice * quantity));
+    toast({ title: "Confirm Transaction", description: "Please confirm in your wallet..." });
+
+    try {
+      writeContract({
+        address: NFT_CONTRACT as `0x${string}`,
+        abi: MINT_ABI,
+        functionName: 'mint',
+        args: [BigInt(quantity)],
+        value: totalCost,
+        chainId: CHAIN_ID,
+      });
+    } catch (err: any) {
+      setState(prev => ({ ...prev, isError: true, error: err.message }));
+    }
+  };
+
+  const reset = () => {
+    resetWrite();
+    setState({ isPending: false, isConfirming: false, isSuccess: false, isError: false, error: null, txHash: undefined });
+  };
+
+  return {
+    // Actions
+    mint,
+    reset,
+    
+    // Transaction state
+    state,
+    isMinting: state.isPending || state.isConfirming,
+    
+    // Contract data (LIVE from chain)
+    totalMinted,
+    maxSupply,
+    mintPrice,
+    remainingSupply,
+    publicMintEnabled,
+    isPaused,
+    isSoldOut,
+    canMint,
+    
+    // User data
+    balance: balanceData ? formatEther(balanceData.value) : null,
+    balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
+    canAfford,
+    maxAffordable: maxAffordable(),
+  };
+}
+
+---
+
+## FILE 3: Update `client/src/hooks/useMarketplace.ts` (Add chainId, better error handling)
+
+Add chainId to ALL useReadContract calls. Update the query options like this:
+
+// For every useReadContract call, add:
+chainId: CHAIN_ID,
+query: { refetchInterval: 15000 }
+
+Also add this validation before every write action:
+
+if (chain?.id !== CHAIN_ID) {
+  toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+  return;
+}
+
+---
+
+## FILE 4: Update `client/src/hooks/useGovernance.ts` (Add toast notifications, chainId)
+
+Add toast notifications for success/error. Add chainId to all contract calls:
+
+// Add to useGovernance():
+const { toast } = useToast();
+const { chain } = useAccount();
+
+// Add useEffect to handle success/error:
+useEffect(() => {
+  if (isSuccess && txHash) {
+    const messages: Record<string, string> = {
+      createProposal: 'Proposal created successfully!',
+      vote: 'Vote cast successfully!',
+      finalize: 'Proposal finalized!',
+      cancel: 'Proposal cancelled!'
+    };
+    toast({ 
+      title: "✅ Success!", 
+      description: messages[pendingAction || ''] || 'Transaction confirmed!',
+      className: "bg-black border-green-500 text-green-500"
+    });
+    refetchCount();
+    refetchActive();
+  }
+}, [isSuccess, txHash, pendingAction]);
+
+useEffect(() => {
+  if (writeError) {
+    let msg = writeError.message || 'Transaction failed';
+    if (msg.includes('user rejected')) msg = 'Transaction cancelled';
+    else if (msg.includes('Not enough NFTs')) msg = 'You need at least 1 NFT to create a proposal';
+    else if (msg.includes('Already voted')) msg = 'You have already voted on this proposal';
+    toast({ title: "Transaction Failed", description: msg, variant: "destructive" });
+  }
+}, [writeError]);
+
+// Add chain validation to all write functions:
+if (chain?.id !== CHAIN_ID) {
+  toast({ title: "Wrong Network", description: "Switch to BasedAI network", variant: "destructive" });
+  return;
+}
+
+---
+
+## Summary of Changes:
+
+1. **NEW useContractData hook** - Central source of truth for ALL on-chain NFT data
+2. **useMint** - Now reads live contract state (publicMintEnabled, paused, totalMinted, maxSupply)
+3. **useMarketplace** - Added chainId to all calls, better error messages
+4. **useGovernance** - Added toast notifications, chain validation
+
+These changes ensure:
+- ✅ All data comes from the blockchain, not mock data
+- ✅ Auto-refresh keeps data current
+- ✅ Proper error handling with user-friendly messages
+- ✅ Chain validation prevents wrong-network transactions
+- ✅ Toast notifications for all transaction states
+- ✅ Commercial-grade security and reliability

@@ -4,8 +4,9 @@
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
-import { useState, useCallback } from 'react';
-import { NFT_CONTRACT, GOVERNANCE_CONTRACT } from '@/lib/constants';
+import { useState, useCallback, useEffect } from 'react';
+import { NFT_CONTRACT, GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { useToast } from '@/hooks/use-toast';
 
 export enum ProposalStatus { Pending = 0, Active = 1, Passed = 2, Failed = 3, Executed = 4, Cancelled = 5 }
 
@@ -54,39 +55,129 @@ const GOVERNANCE_ABI = [
 ] as const;
 
 export function useGovernance() {
-  const { address, isConnected } = useAccount();
+  const { toast } = useToast();
+  const { address, isConnected, chain } = useAccount();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const { data: proposalCount, refetch: refetchCount } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'proposalCount' });
-  const { data: votingPower } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'getVotingPower', args: address ? [address] : undefined });
-  const { data: minNFTsToPropose } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'minNFTsToPropose' });
-  const { data: quorumPercentage } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'quorumPercentage' });
-  const { data: activeProposalIds, refetch: refetchActive } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'getActiveProposals' });
+  const { data: proposalCount, refetch: refetchCount } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'proposalCount',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 30000 }
+  });
+  const { data: votingPower } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'getVotingPower', 
+    args: address ? [address] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: !!address, refetchInterval: 30000 }
+  });
+  const { data: minNFTsToPropose } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'minNFTsToPropose',
+    chainId: CHAIN_ID 
+  });
+  const { data: quorumPercentage } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'quorumPercentage',
+    chainId: CHAIN_ID 
+  });
+  const { data: activeProposalIds, refetch: refetchActive } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'getActiveProposals',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 30000 }
+  });
+
+  useEffect(() => {
+    if (isSuccess && txHash) {
+      const messages: Record<string, string> = {
+        createProposal: 'Proposal created successfully!',
+        vote: 'Vote cast successfully!',
+        finalize: 'Proposal finalized!',
+        cancel: 'Proposal cancelled!'
+      };
+      toast({ 
+        title: "Success!", 
+        description: messages[pendingAction || ''] || 'Transaction confirmed!',
+        className: "bg-black border-green-500 text-green-500"
+      });
+      refetchCount();
+      refetchActive();
+      setPendingAction(null);
+    }
+  }, [isSuccess, txHash, pendingAction, toast, refetchCount, refetchActive]);
+
+  useEffect(() => {
+    if (writeError) {
+      let msg = writeError.message || 'Transaction failed';
+      if (msg.includes('user rejected')) msg = 'Transaction cancelled';
+      else if (msg.includes('Not enough NFTs')) msg = 'You need at least 1 NFT to create a proposal';
+      else if (msg.includes('Already voted')) msg = 'You have already voted on this proposal';
+      else if (msg.includes('Voting not active')) msg = 'Voting is not active for this proposal';
+      toast({ title: "Transaction Failed", description: msg, variant: "destructive" });
+      setPendingAction(null);
+    }
+  }, [writeError, toast]);
 
   const createProposal = useCallback(async (title: string, description: string, category: string) => {
-    if (!isConnected) throw new Error('Wallet not connected');
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
     setPendingAction('createProposal');
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'createProposal', args: [title, description, category] });
-  }, [isConnected, writeContract]);
+    toast({ title: "Creating Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'createProposal', args: [title, description, category], chainId: CHAIN_ID });
+  }, [isConnected, chain, writeContract, toast]);
 
   const vote = useCallback(async (proposalId: number, support: boolean) => {
-    if (!isConnected) throw new Error('Wallet not connected');
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
     setPendingAction('vote');
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'vote', args: [BigInt(proposalId), support] });
-  }, [isConnected, writeContract]);
+    toast({ title: support ? "Voting For" : "Voting Against", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'vote', args: [BigInt(proposalId), support], chainId: CHAIN_ID });
+  }, [isConnected, chain, writeContract, toast]);
 
   const finalizeProposal = useCallback(async (proposalId: number) => {
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
     setPendingAction('finalize');
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'finalizeProposal', args: [BigInt(proposalId)] });
-  }, [writeContract]);
+    toast({ title: "Finalizing Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'finalizeProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
+  }, [chain, writeContract, toast]);
 
   const cancelProposal = useCallback(async (proposalId: number) => {
-    if (!isConnected) throw new Error('Wallet not connected');
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
     setPendingAction('cancel');
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'cancelProposal', args: [BigInt(proposalId)] });
-  }, [isConnected, writeContract]);
+    toast({ title: "Cancelling Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'cancelProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
+  }, [isConnected, chain, writeContract, toast]);
 
   const canCreateProposal = isConnected && votingPower !== undefined && minNFTsToPropose !== undefined && votingPower >= minNFTsToPropose;
 
@@ -101,10 +192,38 @@ export function useGovernance() {
 
 export function useProposal(proposalId: number | undefined) {
   const { address } = useAccount();
-  const { data: proposal, isLoading, refetch } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'getProposal', args: proposalId !== undefined ? [BigInt(proposalId)] : undefined });
-  const { data: voteInfo } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'getVoteInfo', args: proposalId !== undefined && address ? [BigInt(proposalId), address] : undefined });
-  const { data: isActive } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'isVotingActive', args: proposalId !== undefined ? [BigInt(proposalId)] : undefined });
-  const { data: timeRemaining } = useReadContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'getTimeRemaining', args: proposalId !== undefined ? [BigInt(proposalId)] : undefined });
+  const { data: proposal, isLoading, refetch } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'getProposal', 
+    args: proposalId !== undefined ? [BigInt(proposalId)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: proposalId !== undefined, refetchInterval: 15000 }
+  });
+  const { data: voteInfo } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'getVoteInfo', 
+    args: proposalId !== undefined && address ? [BigInt(proposalId), address] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: proposalId !== undefined && !!address }
+  });
+  const { data: isActive } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'isVotingActive', 
+    args: proposalId !== undefined ? [BigInt(proposalId)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: proposalId !== undefined, refetchInterval: 15000 }
+  });
+  const { data: timeRemaining } = useReadContract({ 
+    address: GOVERNANCE_CONTRACT as `0x${string}`, 
+    abi: GOVERNANCE_ABI, 
+    functionName: 'getTimeRemaining', 
+    args: proposalId !== undefined ? [BigInt(proposalId)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: proposalId !== undefined, refetchInterval: 15000 }
+  });
   return { proposal: proposal as Proposal | undefined, isLoading, refetch, userVote: voteInfo ? { hasVoted: voteInfo[0], support: voteInfo[1], power: Number(voteInfo[2]) } : null, isActive: isActive ?? false, timeRemaining: timeRemaining ? Number(timeRemaining) : 0 };
 }
 

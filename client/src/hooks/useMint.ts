@@ -1,218 +1,111 @@
-/**
- * useMint Hook
- * 
- * This hook handles minting NFTs from the BasedGuardians contract.
- * It uses wagmi's useWriteContract to send transactions.
- * 
- * IMPORTANT: The mint function requires payment in $BASED (native token).
- * Price: 69,420 $BASED per NFT
- */
-
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useBalance } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
+import { useContractData } from './useContractData';
 
-export const MINT_PRICE_BASED = 69420;
+const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
 
 const MINT_ABI = [
-  {
-    name: 'mint',
-    type: 'function',
-    stateMutability: 'payable',
-    inputs: [{ name: 'quantity', type: 'uint256' }],
-    outputs: [],
-  },
-  {
-    name: 'publicMintEnabled',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'bool' }],
-  },
-  {
-    name: 'paused',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'bool' }],
-  },
-  {
-    name: 'totalMinted',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'uint256' }],
-  },
-  {
-    name: 'MAX_SUPPLY',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'uint256' }],
-  },
+  { name: 'mint', type: 'function', stateMutability: 'payable', inputs: [{ name: 'quantity', type: 'uint256' }], outputs: [] },
 ] as const;
 
-export interface MintState {
-  isPending: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  isError: boolean;
-  error: string | null;
-  txHash: `0x${string}` | undefined;
-}
-
-export interface UseMintReturn {
-  mint: (quantity: number) => Promise<void>;
-  state: MintState;
-  reset: () => void;
-  balance: string | null;
-  canAfford: (quantity: number) => boolean;
-  maxAffordable: number;
-}
-
-export function useMint(): UseMintReturn {
+export function useMint() {
   const { toast } = useToast();
   const { address, isConnected, chain } = useAccount();
   
-  const { data: balanceData } = useBalance({
-    address: address,
+  const { 
+    totalMinted, maxSupply, mintPrice, mintPriceWei,
+    publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
+    refetch: refetchContractData
+  } = useContractData();
+  
+  const { data: balanceData, refetch: refetchBalance } = useBalance({
+    address,
     chainId: CHAIN_ID,
   });
 
-  const [state, setState] = useState<MintState>({
+  const [state, setState] = useState({
     isPending: false,
     isConfirming: false,
     isSuccess: false,
     isError: false,
-    error: null,
-    txHash: undefined,
+    error: null as string | null,
+    txHash: undefined as `0x${string}` | undefined,
   });
 
-  const { 
-    writeContract, 
-    data: txHash,
-    isPending: isWritePending,
-    isError: isWriteError,
-    error: writeError,
-    reset: resetWrite
-  } = useWriteContract();
-
-  const { 
-    isLoading: isConfirming, 
-    isSuccess: isConfirmed,
-    isError: isReceiptError,
-    error: receiptError
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
+  const { writeContract, data: txHash, isPending, isError: isWriteError, error: writeError, reset: resetWrite } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      isPending: isWritePending,
-      isConfirming: isConfirming,
-      isSuccess: isConfirmed,
-      txHash: txHash,
-    }));
-
+    setState(prev => ({ ...prev, isPending, isConfirming, isSuccess: isConfirmed, txHash }));
+    
     if (isConfirmed && txHash) {
       toast({
         title: "Mint Successful!",
-        description: "Your Based Guardian has been minted! Check your wallet.",
-        className: "bg-black border-green-500 text-green-500 font-orbitron",
+        description: `Your Based Guardian has been minted! View transaction: ${BLOCK_EXPLORER}/tx/${txHash}`,
       });
+      refetchContractData();
+      refetchBalance();
     }
-  }, [isWritePending, isConfirming, isConfirmed, txHash, toast]);
+  }, [isPending, isConfirming, isConfirmed, txHash]);
 
   useEffect(() => {
     if (isWriteError || isReceiptError) {
-      const errorMessage = writeError?.message || receiptError?.message || 'Transaction failed';
+      const msg = writeError?.message || receiptError?.message || 'Transaction failed';
+      let friendly = msg;
+      if (msg.includes('insufficient funds')) friendly = 'Insufficient $BASED balance';
+      else if (msg.includes('user rejected')) friendly = 'Transaction cancelled';
+      else if (msg.includes('Public mint not enabled')) friendly = 'Public minting is not enabled yet';
+      else if (msg.includes('Exceeds max supply')) friendly = 'Not enough NFTs remaining';
+      else if (msg.includes('paused')) friendly = 'Minting is currently paused';
       
-      let friendlyError = errorMessage;
-      if (errorMessage.includes('insufficient funds')) {
-        friendlyError = 'Insufficient $BASED balance for this transaction';
-      } else if (errorMessage.includes('user rejected')) {
-        friendlyError = 'Transaction was cancelled';
-      } else if (errorMessage.includes('Public mint not enabled')) {
-        friendlyError = 'Public minting is not currently enabled';
-      } else if (errorMessage.includes('Exceeds max supply')) {
-        friendlyError = 'Not enough NFTs remaining';
-      } else if (errorMessage.includes('Incorrect payment')) {
-        friendlyError = 'Incorrect payment amount';
-      }
-
-      setState(prev => ({
-        ...prev,
-        isError: true,
-        error: friendlyError,
-      }));
-
-      toast({
-        title: "Mint Failed",
-        description: friendlyError,
-        variant: "destructive",
-      });
+      setState(prev => ({ ...prev, isError: true, error: friendly }));
+      toast({ title: "Mint Failed", description: friendly, variant: "destructive" });
     }
-  }, [isWriteError, isReceiptError, writeError, receiptError, toast]);
+  }, [isWriteError, isReceiptError, writeError, receiptError]);
 
-  const canAfford = (quantity: number): boolean => {
+  const canAfford = (qty: number) => {
     if (!balanceData) return false;
-    const totalCost = BigInt(MINT_PRICE_BASED) * BigInt(quantity) * BigInt(10 ** 18);
-    return balanceData.value >= totalCost;
+    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+    return balanceData.value >= cost;
   };
 
-  const maxAffordable = (): number => {
+  const maxAffordable = () => {
     if (!balanceData) return 0;
-    const balanceInBased = Number(formatEther(balanceData.value));
-    return Math.floor(balanceInBased / MINT_PRICE_BASED);
+    const bal = Number(formatEther(balanceData.value));
+    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
   };
 
-  const mint = async (quantity: number): Promise<void> => {
+  const mint = async (quantity: number) => {
     if (!isConnected) {
-      toast({
-        title: "Wallet Not Connected",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
       return;
     }
-
     if (chain?.id !== CHAIN_ID) {
-      toast({
-        title: "Wrong Network",
-        description: "Please switch to BasedAI network (Chain ID: 32323)",
-        variant: "destructive",
-      });
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
       return;
     }
-
-    if (quantity < 1 || quantity > 10) {
-      toast({
-        title: "Invalid Quantity",
-        description: "You can mint between 1 and 10 NFTs at a time",
-        variant: "destructive",
-      });
+    if (!publicMintEnabled) {
+      toast({ title: "Mint Not Open", description: "Public minting is not enabled yet", variant: "destructive" });
       return;
     }
-
+    if (isPaused) {
+      toast({ title: "Paused", description: "Minting is temporarily paused", variant: "destructive" });
+      return;
+    }
+    if (quantity < 1 || quantity > Math.min(10, remainingSupply)) {
+      toast({ title: "Invalid Quantity", description: `You can mint 1-${Math.min(10, remainingSupply)} NFTs`, variant: "destructive" });
+      return;
+    }
     if (!canAfford(quantity)) {
-      toast({
-        title: "Insufficient Balance",
-        description: `You need ${(MINT_PRICE_BASED * quantity).toLocaleString()} $BASED to mint ${quantity} NFT(s)`,
-        variant: "destructive",
-      });
+      toast({ title: "Insufficient Balance", description: `Need ${(mintPrice * quantity).toLocaleString()} $BASED`, variant: "destructive" });
       return;
     }
 
-    const totalCostWei = parseEther(String(MINT_PRICE_BASED * quantity));
-
-    toast({
-      title: "Confirm Transaction",
-      description: "Please confirm the transaction in your wallet...",
-      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
-    });
+    const totalCost = parseEther(String(mintPrice * quantity));
+    toast({ title: "Confirm Transaction", description: "Please confirm in your wallet..." });
 
     try {
       writeContract({
@@ -220,36 +113,37 @@ export function useMint(): UseMintReturn {
         abi: MINT_ABI,
         functionName: 'mint',
         args: [BigInt(quantity)],
-        value: totalCostWei,
+        value: totalCost,
         chainId: CHAIN_ID,
       });
     } catch (err: any) {
-      console.error('[useMint] Error:', err);
-      setState(prev => ({
-        ...prev,
-        isError: true,
-        error: err.message || 'Failed to submit transaction',
-      }));
+      setState(prev => ({ ...prev, isError: true, error: err.message }));
     }
   };
 
   const reset = () => {
     resetWrite();
-    setState({
-      isPending: false,
-      isConfirming: false,
-      isSuccess: false,
-      isError: false,
-      error: null,
-      txHash: undefined,
-    });
+    setState({ isPending: false, isConfirming: false, isSuccess: false, isError: false, error: null, txHash: undefined });
   };
 
   return {
     mint,
-    state,
     reset,
+    
+    state,
+    isMinting: state.isPending || state.isConfirming,
+    
+    totalMinted,
+    maxSupply,
+    mintPrice,
+    remainingSupply,
+    publicMintEnabled,
+    isPaused,
+    isSoldOut,
+    canMint,
+    
     balance: balanceData ? formatEther(balanceData.value) : null,
+    balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
     canAfford,
     maxAffordable: maxAffordable(),
   };

@@ -16,6 +16,7 @@ import { parseEther, formatEther } from 'viem';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, BLOCK_EXPLORER, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import type { Chain } from 'viem';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -189,7 +190,7 @@ export interface MarketplaceState {
 
 export function useMarketplace() {
   const { toast } = useToast();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   
   const [state, setState] = useState<MarketplaceState>({
     isPending: false,
@@ -224,19 +225,24 @@ export function useMarketplace() {
     abi: NFT_ABI,
     functionName: 'isApprovedForAll',
     args: address ? [address, MARKETPLACE_CONTRACT as `0x${string}`] : undefined,
-    query: { enabled: !!address },
+    chainId: CHAIN_ID,
+    query: { enabled: !!address, refetchInterval: 15000 },
   });
 
   const { data: listingCount, refetch: refetchListingCount } = useReadContract({
     address: MARKETPLACE_CONTRACT as `0x${string}`,
     abi: MARKETPLACE_ABI,
     functionName: 'getActiveListingCount',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 15000 },
   });
 
   const { data: activeListingIds, refetch: refetchListings } = useReadContract({
     address: MARKETPLACE_CONTRACT as `0x${string}`,
     abi: MARKETPLACE_ABI,
     functionName: 'getActiveListings',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 15000 },
   });
 
   useEffect(() => {
@@ -307,6 +313,10 @@ export function useMarketplace() {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
       return;
     }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'approve' }));
     
@@ -328,6 +338,10 @@ export function useMarketplace() {
   const listNFT = async (tokenId: number, priceInBased: number) => {
     if (!isConnected) {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
       return;
     }
 
@@ -364,6 +378,10 @@ export function useMarketplace() {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
       return;
     }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'delist' }));
 
@@ -385,6 +403,10 @@ export function useMarketplace() {
   const buyNFT = async (tokenId: number, priceWei: bigint) => {
     if (!isConnected) {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
       return;
     }
 
@@ -413,6 +435,10 @@ export function useMarketplace() {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
       return;
     }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'offer' }));
 
@@ -439,6 +465,10 @@ export function useMarketplace() {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
       return;
     }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'cancelOffer' }));
 
@@ -454,6 +484,10 @@ export function useMarketplace() {
   const acceptOffer = async (tokenId: number, offererAddress: string) => {
     if (!isConnected) {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
       return;
     }
 
@@ -512,7 +546,8 @@ export function useListing(tokenId: number | undefined) {
     abi: MARKETPLACE_ABI,
     functionName: 'getListing',
     args: tokenId !== undefined ? [BigInt(tokenId)] : undefined,
-    query: { enabled: tokenId !== undefined },
+    chainId: CHAIN_ID,
+    query: { enabled: tokenId !== undefined, refetchInterval: 15000 },
   });
 
   const listing: Listing | null = data ? {
@@ -533,7 +568,8 @@ export function useOffer(tokenId: number | undefined, offererAddress: string | u
     abi: MARKETPLACE_ABI,
     functionName: 'getOffer',
     args: tokenId !== undefined && offererAddress ? [BigInt(tokenId), offererAddress as `0x${string}`] : undefined,
-    query: { enabled: tokenId !== undefined && !!offererAddress },
+    chainId: CHAIN_ID,
+    query: { enabled: tokenId !== undefined && !!offererAddress, refetchInterval: 15000 },
   });
 
   const offer: Offer | null = data ? {
