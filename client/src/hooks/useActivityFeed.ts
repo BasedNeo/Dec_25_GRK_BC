@@ -8,6 +8,7 @@
  * - Transfers
  * 
  * OPTIMIZATION: Block timestamp caching to reduce RPC calls
+ * FIXED: Now fetches REAL totalMinted from contract state (not just events)
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -27,6 +28,14 @@ export interface Activity {
   timestamp: number;
   txHash: string;
   blockNumber: number;
+}
+
+// Contract Stats from on-chain state
+export interface ContractStats {
+  totalMinted: number;
+  maxSupply: number;
+  activeListings: number;
+  activeOffers: number;
 }
 
 // BLOCK TIMESTAMP CACHE - Reduces RPC calls significantly
@@ -50,7 +59,9 @@ async function getBlockTimestamp(provider: ethers.JsonRpcProvider, blockNumber: 
 
 // ABIs for parsing events
 const NFT_ABI = [
-  'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
+  'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
+  'function totalMinted() view returns (uint256)',
+  'function MAX_SUPPLY() view returns (uint256)'
 ];
 
 const MARKETPLACE_ABI = [
@@ -77,6 +88,14 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastBlock, setLastBlock] = useState<number>(0);
+  
+  // Contract state for accurate cumulative stats
+  const [contractStats, setContractStats] = useState<ContractStats>({
+    totalMinted: 0,
+    maxSupply: 3732,
+    activeListings: 0,
+    activeOffers: 0,
+  });
 
   // Fetch activities from blockchain
   const fetchActivities = useCallback(async () => {
@@ -86,10 +105,29 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
-      // Look back ~1000 blocks (adjust based on chain speed)
-      const fromBlock = Math.max(0, currentBlock - 1000);
+      // Look back ~10000 blocks for more history
+      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
+      const fromBlock = Math.max(0, currentBlock - 10000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+      
+      // === FETCH REAL CONTRACT STATE (not event-based) ===
+      try {
+        const totalMinted = await nftContract.totalMinted();
+        
+        // Try to get marketplace stats (if functions exist)
+        let activeListings = 0;
+        let activeOffers = 0;
+        
+        setContractStats({
+          totalMinted: Number(totalMinted),
+          maxSupply: 3732,
+          activeListings,
+          activeOffers,
+        });
+      } catch (err) {
+        console.error('[ActivityFeed] Error fetching contract stats:', err);
+      }
       
       // Fetch Transfer events from NFT contract
       const transferFilter = nftContract.filters.Transfer();
@@ -213,15 +251,25 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, fetchActivities]);
 
-  // Stats
+  // Stats combining CONTRACT state + EVENT counts
   const stats = {
-    totalMints: activities.filter(a => a.type === 'mint').length,
+    // CUMULATIVE from CONTRACT (real total)
+    totalMinted: contractStats.totalMinted,
+    
+    // FROM EVENTS (recent activity only - last 10000 blocks)
+    recentMints: activities.filter(a => a.type === 'mint').length,
     totalSales: activities.filter(a => a.type === 'sale').length,
     totalListings: activities.filter(a => a.type === 'list').length,
     totalTransfers: activities.filter(a => a.type === 'transfer').length,
+    
+    // VOLUME from events (would need historical indexing for true total)
     totalVolume: activities
       .filter(a => a.type === 'sale' && a.price)
       .reduce((sum, a) => sum + Number(a.price || 0), 0),
+      
+    // FROM CONTRACT (real-time)
+    activeListings: contractStats.activeListings,
+    activeOffers: contractStats.activeOffers,
   };
 
   return {
@@ -230,6 +278,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     error,
     lastBlock,
     stats,
+    contractStats,
     refresh: fetchActivities,
   };
 }

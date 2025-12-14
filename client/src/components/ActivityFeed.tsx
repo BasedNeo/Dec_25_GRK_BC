@@ -5,6 +5,7 @@
  * - Mints, Sales, Listings, Transfers
  * - Auto-refreshes every 30 seconds
  * - Links to block explorer
+ * - Shows REAL contract stats (not just event counts)
  */
 
 import { useState } from 'react';
@@ -69,9 +70,15 @@ export function ActivityFeed({
               <ActivityIcon className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white font-orbitron">{title}</h2>
+              <h2 className="text-2xl font-black text-white font-orbitron flex items-center gap-2">
+                {title}
+                <span className="flex items-center gap-1 text-xs font-normal text-[#6cff61]">
+                  <span className="w-2 h-2 rounded-full bg-[#6cff61] animate-pulse" />
+                  LIVE
+                </span>
+              </h2>
               <p className="text-xs text-muted-foreground font-mono">
-                Block #{lastBlock.toLocaleString()} • Auto-refreshes every 30s
+                Block #{lastBlock.toLocaleString()} • {stats.totalMinted} / 3,732 Minted • Auto-refreshes
               </p>
             </div>
           </div>
@@ -91,11 +98,46 @@ export function ActivityFeed({
 
         {showStats && !compact && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <StatCard label="Mints" value={stats.totalMints} icon={<Rocket className="w-5 h-5 text-white" />} color="text-white" />
-            <StatCard label="Sales" value={stats.totalSales} icon={<Coins className="w-5 h-5 text-white" />} color="text-white" />
-            <StatCard label="Listings" value={stats.totalListings} icon={<ScrollText className="w-5 h-5 text-white" />} color="text-white" />
-            <StatCard label="Transfers" value={stats.totalTransfers} icon={<Orbit className="w-5 h-5 text-white" />} color="text-white" />
-            <StatCard label="Volume" value={`${stats.totalVolume.toLocaleString()}`} suffix="$BASED" icon={<TrendingUp className="w-5 h-5 text-white" />} color="text-white" />
+            {/* Total Mints - FROM CONTRACT (accurate) */}
+            <StatCard 
+              label="Total Minted" 
+              value={stats.totalMinted || 0} 
+              icon={<Rocket className="w-5 h-5 text-[#6cff61]" />} 
+              color="text-[#6cff61]" 
+            />
+            
+            {/* Sales - From recent events */}
+            <StatCard 
+              label="Recent Sales" 
+              value={stats.totalSales} 
+              icon={<Coins className="w-5 h-5 text-yellow-400" />} 
+              color="text-yellow-400" 
+            />
+            
+            {/* Listings - From recent events */}
+            <StatCard 
+              label="Recent Listings" 
+              value={stats.totalListings} 
+              icon={<ScrollText className="w-5 h-5 text-cyan-400" />} 
+              color="text-cyan-400" 
+            />
+            
+            {/* Transfers - From recent events */}
+            <StatCard 
+              label="Transfers" 
+              value={stats.totalTransfers} 
+              icon={<Orbit className="w-5 h-5 text-blue-400" />} 
+              color="text-blue-400" 
+            />
+            
+            {/* Volume - From recent sales */}
+            <StatCard 
+              label="Volume" 
+              value={stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '0'} 
+              suffix="$BASED" 
+              icon={<TrendingUp className="w-5 h-5 text-purple-400" />} 
+              color="text-purple-400" 
+            />
           </div>
         )}
 

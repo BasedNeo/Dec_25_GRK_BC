@@ -1,0 +1,189 @@
+## FIX ACTIVITY TAB: Make Metrics Show Real Contract Data
+
+The Activity tab currently only counts events from the last ~1000 blocks. The 5 metric cards should show REAL cumulative on-chain data from contract state, not just recent event counts.
+
+### Step 1: Update `client/src/hooks/useActivityFeed.ts`
+
+Add contract state reads at the top of fetchActivities function (after getting provider):
+
+// Import at top of file
+import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT } from '@/lib/constants';
+
+// Add NFT contract ABI for reading state
+const NFT_STATE_ABI = [
+  'function totalMinted() view returns (uint256)',
+  'function MAX_SUPPLY() view returns (uint256)',
+  'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
+];
+
+// Add marketplace state ABI
+const MARKETPLACE_STATE_ABI = [
+  'function getActiveListingCount() view returns (uint256)',
+  'function getActiveOfferCount() view returns (uint256)', // If exists
+  'event Listed(uint256 indexed tokenId, address indexed seller, uint256 price)',
+  'event Sold(uint256 indexed tokenId, address indexed seller, address indexed buyer, uint256 price, uint256 fee)',
+  'event Delisted(uint256 indexed tokenId, address indexed seller)',
+  'event OfferMade(uint256 indexed tokenId, address indexed offerer, uint256 amount, uint256 expiresAt)'
+];### Step 2: Add state for contract-based stats
+
+Add these state variables in the hook:
+
+const [contractStats, setContractStats] = useState({
+  totalMinted: 0,
+  maxSupply: 3732,
+  activeListings: 0,
+  activeOffers: 0,
+});### Step 3: Fetch real contract state in fetchActivities
+
+Add this after creating the provider (around line 96):
+
+// === FETCH REAL CONTRACT STATE (not event-based) ===
+try {
+  const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_STATE_ABI, provider);
+  
+  // Get real totalMinted from contract
+  const totalMinted = await nftContract.totalMinted();
+  
+  // Try to get marketplace stats
+  let activeListings = 0;
+  let activeOffers = 0;
+  try {
+    const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_STATE_ABI, provider);
+    // If your marketplace has these functions:
+    // activeListings = await marketplaceContract.getActiveListingCount();
+    // activeOffers = await marketplaceContract.getActiveOfferCount();
+  } catch (e) {
+    // Functions might not exist yet
+  }
+  
+  setContractStats({
+    totalMinted: Number(totalMinted),
+    maxSupply: 3732,
+    activeListings,
+    activeOffers,
+  });
+} catch (err) {
+  console.error('[ActivityFeed] Error fetching contract stats:', err);
+}### Step 4: Update the stats object (around line 231)
+
+Replace the stats calculation to use CONTRACT data for cumulative stats and EVENT data for recent activity:
+
+// Stats combining CONTRACT state + EVENT counts
+const stats = {
+  // CUMULATIVE from CONTRACT (real total)
+  totalMinted: contractStats.totalMinted,
+  
+  // FROM EVENTS (recent activity only - last 1000 blocks)
+  recentMints: activities.filter(a => a.type === 'mint').length,
+  totalSales: activities.filter(a => a.type === 'sale').length,
+  totalListings: activities.filter(a => a.type === 'list').length,
+  totalTransfers: activities.filter(a => a.type === 'transfer').length,
+  
+  // VOLUME from events (would need historical indexing for true total)
+  totalVolume: activities
+    .filter(a => a.type === 'sale' && a.price)
+    .reduce((sum, a) => sum + Number(a.price || 0), 0),
+    
+  // FROM CONTRACT (real-time)
+  activeListings: contractStats.activeListings,
+  activeOffers: contractStats.activeOffers,
+};### Step 5: Return contractStats from the hook
+
+Update the return statement:
+
+return {
+  activities,
+  isLoading,
+  error,
+  lastBlock,
+  stats,
+  contractStats, // ADD THIS
+  refresh: fetchActivities,
+};### Step 6: Update ActivityFeed.tsx to display correctly
+
+In `client/src/components/ActivityFeed.tsx`, update the StatCards:
+
+{showStats && !compact && (
+  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    {/* Total Mints - FROM CONTRACT (accurate) */}
+    <StatCard 
+      label="Total Minted" 
+      value={stats.totalMinted || 0} 
+      icon={<Rocket className="w-5 h-5 text-[#6cff61]" />} 
+      color="text-[#6cff61]" 
+    />
+    
+    {/* Sales - From recent events */}
+    <StatCard 
+      label="Recent Sales" 
+      value={stats.totalSales} 
+      icon={<Coins className="w-5 h-5 text-yellow-400" />} 
+      color="text-yellow-400" 
+    />
+    
+    {/* Listings - From recent events */}
+    <StatCard 
+      label="Recent Listings" 
+      value={stats.totalListings} 
+      icon={<ScrollText className="w-5 h-5 text-cyan-400" />} 
+      color="text-cyan-400" 
+    />
+    
+    {/* Transfers - From recent events */}
+    <StatCard 
+      label="Transfers" 
+      value={stats.totalTransfers} 
+      icon={<Orbit className="w-5 h-5 text-blue-400" />} 
+      color="text-blue-400" 
+    />
+    
+    {/* Volume - From recent sales */}
+    <StatCard 
+      label="Volume" 
+      value={stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '0'} 
+      suffix="$BASED" 
+      icon={<TrendingUp className="w-5 h-5 text-purple-400" />} 
+      color="text-purple-400" 
+    />
+  </div>
+)}### Step 7: Add "Live" indicator with pulsing animation
+
+Add near the title (around line 72):
+
+<div className="flex items-center gap-3">
+  <div className="p-2 bg-primary/10 rounded-lg">
+    <ActivityIcon className="w-5 h-5 text-primary" />
+  </div>
+  <div>
+    <h2 className="text-2xl font-black text-white font-orbitron flex items-center gap-2">
+      {title}
+      <span className="flex items-center gap-1 text-xs font-normal text-[#6cff61]">
+        <span className="w-2 h-2 rounded-full bg-[#6cff61] animate-pulse" />
+        LIVE
+      </span>
+    </h2>
+    <p className="text-xs text-muted-foreground font-mono">
+      Block #{lastBlock.toLocaleString()} • {stats.totalMinted} / 3,732 Minted • Auto-refreshes
+    </p>
+  </div>
+</div>### Step 8: Increase block lookback for more history
+
+In useActivityFeed.ts, increase the lookback range (line ~102):
+
+// Look back further for more history (adjust based on chain block time)
+// BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
+const fromBlock = Math.max(0, currentBlock - 10000);---
+
+## EXPECTED RESULT:
+
+| Metric Card | Data Source | Accuracy |
+|-------------|-------------|----------|
+| **Total Minted** | `totalMinted()` contract call | ✅ 100% accurate real-time |
+| **Recent Sales** | Event logs (last ~10k blocks) | Recent only |
+| **Recent Listings** | Event logs | Recent only |
+| **Transfers** | Event logs | Recent only |
+| **Volume** | Sum of sale prices from events | Recent only |
+
+The "Total Minted" metric will now show the REAL number from the contract (6 if 6 are minted), not just what's in recent event logs.
+
+For TRUE historical volume and sales counts, you'd need a database/indexer (like The Graph or a custom backend). But this fix makes the mints accurate immediately.
