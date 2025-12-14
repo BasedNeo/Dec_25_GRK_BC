@@ -9,6 +9,7 @@ import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
+import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -62,8 +63,10 @@ export function NFTGallery({
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [useMockData, setUseMockData] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(true); // Default to CSV Data for speed & completeness
+  const [useCsvData, setUseCsvData] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  
+  const { nfts: ownedNFTs, isLoading: isLoadingOwned, balance: nftBalance, refetch: refetchOwned } = useOwnedNFTs();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // PWA Install Prompt
@@ -142,7 +145,7 @@ export function NFTGallery({
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
-  const displayNfts = (nfts && nfts.length > 0) ? nfts : (useMockData ? MOCK_GUARDIANS : []);
+  const displayNfts = filterByOwner ? ownedNFTs : (nfts && nfts.length > 0) ? nfts : [];
 
   // Extract Traits
   const availableTraits = useMemo(() => {
@@ -248,7 +251,7 @@ export function NFTGallery({
                   )}
                 </div>
 
-                {isConnected && nfts.length > 0 && (
+                {isConnected && displayNfts.length > 0 && filterByOwner && (
                    <Card className="bg-black/40 border-primary/30 backdrop-blur-md px-8 py-6 flex flex-col md:flex-row items-center gap-8 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
                        <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0 md:pr-8">
                            <div className="flex items-center gap-2 mb-1">
@@ -339,24 +342,6 @@ export function NFTGallery({
                           </div>
                        </div>
 
-                       <div className="flex items-center justify-center md:justify-end gap-2 w-full">
-                          <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => setUseCsvData(!useCsvData)}
-                              className={`text-[10px] h-10 md:h-6 ${useCsvData ? 'text-green-400 bg-green-400/10' : 'text-muted-foreground hover:text-white'}`}
-                          >
-                              {useCsvData ? "Using Local CSV Data (Fast)" : "Switch to CSV"}
-                          </Button>
-                          <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => { setUseMockData(!useMockData); setUseCsvData(false); }}
-                              className="text-[10px] h-10 md:h-6 text-muted-foreground hover:text-white"
-                          >
-                              {useMockData ? "Switch to Real" : "View Demo Data"}
-                          </Button>
-                       </div>
                      </div>
                   )}
                 </div>
@@ -469,7 +454,7 @@ export function NFTGallery({
                 </div>)
               ) : (
                 <>
-                  {isLoading && !displayNfts.length && !useMockData ? (
+                  {(filterByOwner ? isLoadingOwned : isLoading) && !displayNfts.length ? (
                     <div className={`grid gap-6 ${
                       gridCols === 1 ? 'grid-cols-1' : 
                       gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
@@ -483,8 +468,17 @@ export function NFTGallery({
                   ) : displayNfts.length === 0 ? (
                      // ... existing empty state
                      (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                         <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
-                         <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
+                         {filterByOwner ? (
+                           <>
+                             <p className="text-muted-foreground mb-4">You don't own any Guardians yet.</p>
+                             <p className="text-xs text-muted-foreground/50 mb-6">Mint or buy NFTs to see them here.</p>
+                           </>
+                         ) : (
+                           <>
+                             <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
+                             <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
+                           </>
+                         )}
                          <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
                             Clear Filters
                          </Button>
