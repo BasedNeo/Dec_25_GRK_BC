@@ -1,18 +1,22 @@
 import { calculatePassiveEmissions } from "@/lib/mockData";
 import { motion } from "framer-motion";
-import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign } from "lucide-react";
+import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign, Info } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
-import { RPC_URL, NFT_CONTRACT } from "@/lib/constants";
+import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MINT_PRICE = 69420;
-const TREASURY_PERCENT = 0.51;
 
 const NFT_ABI = ["function totalMinted() view returns (uint256)"];
+const MARKETPLACE_ABI = [
+  "event Sold(uint256 indexed listingId, address indexed buyer, uint256 price)"
+];
 
 export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
+  const [salesVolume, setSalesVolume] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +33,38 @@ export function PoolTracker() {
     }
   }, []);
 
+  const fetchSalesVolume = useCallback(async () => {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
+      
+      const filter = contract.filters.Sold();
+      const events = await contract.queryFilter(filter, 0, "latest");
+      
+      let totalVolume = 0;
+      for (const event of events) {
+        const log = event as ethers.EventLog;
+        if (log.args && log.args.price) {
+          totalVolume += parseFloat(ethers.formatEther(log.args.price));
+        }
+      }
+      
+      return totalVolume;
+    } catch (e) {
+      console.error("Failed to fetch sales volume:", e);
+      return 0;
+    }
+  }, []);
+
   const updateData = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const minted = await fetchMintedCount();
+      const [minted, volume] = await Promise.all([
+        fetchMintedCount(),
+        fetchSalesVolume()
+      ]);
       
       if (minted !== null) {
         setMintedCount(minted);
@@ -42,6 +72,7 @@ export function PoolTracker() {
         setError("Failed to fetch minted count from contract");
       }
       
+      setSalesVolume(volume);
       setLastUpdated(new Date());
     } catch (e) {
       console.error("Update failed:", e);
@@ -60,34 +91,45 @@ export function PoolTracker() {
       });
     }, 60 * 1000);
 
+    const salesInterval = setInterval(() => {
+      fetchSalesVolume().then(volume => {
+        setSalesVolume(volume);
+      });
+    }, 2 * 60 * 1000);
+
     return () => {
       clearInterval(mintInterval);
+      clearInterval(salesInterval);
     };
-  }, [fetchMintedCount]);
+  }, [fetchMintedCount, fetchSalesVolume]);
 
   const treasuryData = useMemo(() => {
     const minted = mintedCount ?? 0;
     
-    const mintRevenue = minted * MINT_PRICE * TREASURY_PERCENT;
+    const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    
+    const royaltyRevenue = salesVolume * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
     
     const emissionsData = calculatePassiveEmissions();
     const passiveEmissions = emissionsData.total;
     
-    const totalTreasury = mintRevenue + passiveEmissions;
+    const totalTreasury = mintRevenue + royaltyRevenue + passiveEmissions;
     
     const backedValuePerNFT = minted > 0 ? totalTreasury / minted : 0;
     
     return {
       mintRevenue,
+      royaltyRevenue,
       passiveEmissions,
       totalTreasury,
       backedValuePerNFT,
       currentDailyRate: emissionsData.currentDailyRate,
       nextHalvingIn: emissionsData.nextHalvingIn,
       nextHalvingRate: emissionsData.nextHalvingRate,
-      minted
+      minted,
+      salesVolume
     };
-  }, [mintedCount]);
+  }, [mintedCount, salesVolume]);
 
   const formatNumber = (num: number, decimals: number = 0) => {
     return num.toLocaleString(undefined, {
@@ -107,9 +149,31 @@ export function PoolTracker() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <h2 className="text-4xl md:text-5xl font-black text-white font-orbitron text-center mb-2 uppercase tracking-tight">
-            Community Treasury
-          </h2>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h2 className="text-4xl md:text-5xl font-black text-white font-orbitron text-center uppercase tracking-tight">
+              Community Treasury
+            </h2>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="text-muted-foreground hover:text-primary transition-colors">
+                    <Info size={20} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs bg-black/90 border-white/10 text-left">
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold text-white mb-2">Revenue Split:</p>
+                    <p className="text-cyan-400">51% of mint fees → Community Treasury</p>
+                    <p className="text-muted-foreground">49% of mint fees → Creator</p>
+                    <p className="text-green-400 mt-2">10% royalty on sales:</p>
+                    <p className="text-green-300 pl-2">• 2% → Treasury</p>
+                    <p className="text-muted-foreground pl-2">• 4% → Royalty Wallet</p>
+                    <p className="text-muted-foreground pl-2">• 4% → Creator</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl max-w-md mx-auto">
@@ -122,7 +186,7 @@ export function PoolTracker() {
 
           <div className="flex flex-col items-center justify-center mb-8 relative py-8">
             <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
-            <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Community Treasury</span>
+            <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
             <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow" data-testid="text-total-treasury">
               {formatNumber(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
             </div>
@@ -136,7 +200,7 @@ export function PoolTracker() {
             <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2" data-testid="text-backed-value">
               {formatNumber(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted</p>
+            <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted NFTs</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
@@ -144,26 +208,39 @@ export function PoolTracker() {
             <div className="bg-black/40 border border-pink-500/30 rounded-xl p-5 flex flex-col items-center text-center">
               <div className="flex items-center gap-2 mb-3">
                 <Coins size={18} className="text-pink-400" />
-                <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Mints (51%)</h3>
+                <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Mints ({MINT_SPLIT.TREASURY_PERCENT}%)</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-pink-400 mb-1" data-testid="text-mint-revenue">
                 {formatNumber(treasuryData.mintRevenue)} $BASED
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                {formatNumber(treasuryData.minted)} × {formatNumber(MINT_PRICE)} × 51%
+                {formatNumber(treasuryData.minted)} × {formatNumber(MINT_PRICE)} × {MINT_SPLIT.TREASURY_PERCENT}%
               </span>
             </div>
             
             <div className="bg-black/40 border border-cyan-500/30 rounded-xl p-5 flex flex-col items-center text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
               <div className="flex items-center gap-2 mb-3">
                 <Zap size={18} className="text-cyan-400" />
-                <h3 className="text-sm font-bold text-white font-orbitron uppercase">Passive Emissions</h3>
+                <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Emissions</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-cyan-400 mb-1" data-testid="text-passive-emissions">
                 {formatNumber(treasuryData.passiveEmissions)} $BASED
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
                 Since Dec 10, 2025
+              </span>
+            </div>
+            
+            <div className="bg-black/40 border border-green-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign size={18} className="text-green-400" />
+                <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Royalties ({ROYALTY_SPLIT.TREASURY_PERCENT}%)</h3>
+              </div>
+              <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-revenue">
+                {formatNumber(treasuryData.royaltyRevenue)} $BASED
+              </span>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                From {formatNumber(treasuryData.salesVolume)} total sales volume
               </span>
             </div>
             
@@ -176,17 +253,6 @@ export function PoolTracker() {
                 0 $BASED
               </span>
               <span className="text-xs text-orange-500/70 font-mono bg-orange-500/5 px-2 py-1 rounded border border-orange-500/10 mt-1">COMING SOON</span>
-            </div>
-            
-            <div className="bg-black/40 border border-green-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign size={18} className="text-green-400" />
-                <h3 className="text-sm font-bold text-white font-orbitron uppercase">Royalty Share</h3>
-              </div>
-              <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-share">
-                0 $BASED
-              </span>
-              <span className="text-xs text-green-500/70 font-mono bg-green-500/5 px-2 py-1 rounded border border-green-500/10 mt-1">COMING SOON</span>
             </div>
 
           </div>

@@ -1,0 +1,70 @@
+## UPDATE: Based Command App - Ecosystem Wallet Configuration
+
+Update the app to reflect the new ecosystem wallet structure:
+
+### 1. Update `client/src/lib/constants.ts`:
+
+Add/update these wallet addresses:
+
+// === ECOSYSTEM WALLETS ===
+export const COMMUNITY_TREASURY = "0xae543104fdbe456478e19894f7f0e01f0971c9b4";  // 51% of mint, 2% of royalty
+export const ROYALTY_WALLET = "0xb1362caf09189887599ed40f056712b1a138210c";      // 4% of royalty
+export const CREATOR_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";      // 49% of mint, 4% of royalty, 1% platform fee
+
+// === SPLITTER CONTRACTS (add addresses after deployment) ===
+export const MINT_SPLITTER = "";      // TODO: Add after deploying
+export const ROYALTY_SPLITTER = "";   // TODO: Add after deploying
+
+// === REVENUE SPLIT CONFIGURATION ===
+export const MINT_SPLIT = {
+  TREASURY_PERCENT: 51,
+  CREATOR_PERCENT: 49
+};
+
+export const ROYALTY_SPLIT = {
+  TOTAL_ROYALTY_PERCENT: 10,
+  TREASURY_PERCENT: 2,
+  ROYALTY_WALLET_PERCENT: 4,
+  CREATOR_PERCENT: 4
+};
+
+export const PLATFORM_FEE_PERCENT = 1;### 2. Update `client/src/components/PoolTracker.tsx`:
+
+Fix the treasury calculation to use real data:
+
+- Fetch totalMinted from NFT contract (0xaE51dc5fD1499A129f8654963560f9340773ad59)
+- Fetch total sales volume from marketplace Sold events (0x88161576266dCDedb19342aC2197267282520793)
+- Calculate:
+  - Mint Revenue to Treasury = totalMinted × 69420 × 0.51
+  - Royalty Revenue to Treasury = totalSalesVolume × 0.02
+  - Passive Emissions = use existing calculatePassiveEmissions()
+  - Total Treasury = Mint Revenue + Royalty Revenue + Passive Emissions
+  - Backed Value Per NFT = Total Treasury ÷ totalMinted
+
+- Remove any "Treasury wallet not configured" message
+- Display breakdown showing each revenue source
+
+### 3. Add Treasury Breakdown UI in PoolTracker:
+
+Show cards for:
+- "From Mints (51%): X $BASED"
+- "From Royalties (2%): X $BASED" 
+- "From Emissions: X $BASED"
+- "TOTAL TREASURY: X $BASED"
+- "BACKED VALUE PER NFT: X $BASED"
+
+Include small text showing the formula: "= Treasury ÷ Minted NFTs"
+
+### 4. Update any hardcoded wallet references:
+
+Search for old ADMIN_WALLET or ROYALTY_WALLET references and update to use the new constants:
+- COMMUNITY_TREASURY for treasury operations
+- CREATOR_WALLET for platform fees and creator revenue
+
+### 5. Optional - Add Ecosystem Info Section:
+
+Create a small info tooltip or section explaining the revenue split:
+- "51% of mint fees → Community Treasury"
+- "49% of mint fees → Creator"
+- "10% royalty on sales split: 2% Treasury, 4% Royalty Wallet, 4% Creator"
+- "1% platform fee on Based Command trades → Creator"
