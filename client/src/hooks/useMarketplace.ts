@@ -190,6 +190,18 @@ export interface MarketplaceState {
 export function useMarketplace() {
   const { toast } = useToast();
   const { address, isConnected, chain } = useAccount();
+
+  const checkNetwork = (): boolean => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return false;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
   
   const [state, setState] = useState<MarketplaceState>({
     isPending: false,
@@ -308,14 +320,7 @@ export function useMarketplace() {
   }, [isWriteError, isReceiptError, writeError, receiptError, toast]);
 
   const approveMarketplace = async () => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'approve' }));
     
@@ -335,14 +340,7 @@ export function useMarketplace() {
   };
 
   const listNFT = async (tokenId: number, priceInBased: number) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     if (!isApproved) {
       toast({ 
@@ -373,14 +371,7 @@ export function useMarketplace() {
   };
 
   const delistNFT = async (tokenId: number) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'delist' }));
 
@@ -400,14 +391,7 @@ export function useMarketplace() {
   };
 
   const buyNFT = async (tokenId: number, priceWei: bigint) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'buy' }));
 
@@ -430,14 +414,7 @@ export function useMarketplace() {
   };
 
   const makeOffer = async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'offer' }));
 
@@ -460,14 +437,7 @@ export function useMarketplace() {
   };
 
   const cancelOffer = async (tokenId: number) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'cancelOffer' }));
 
@@ -481,14 +451,7 @@ export function useMarketplace() {
   };
 
   const acceptOffer = async (tokenId: number, offererAddress: string) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'acceptOffer' }));
 

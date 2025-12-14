@@ -58,6 +58,18 @@ export function useGovernance() {
   const { address, isConnected, chain } = useAccount();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
+
+  const checkNetwork = (): boolean => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return false;
+    }
+    if (chain?.id !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   const { data: proposalCount, refetch: refetchCount } = useReadContract({ 
@@ -127,52 +139,28 @@ export function useGovernance() {
   }, [writeError, toast]);
 
   const createProposal = useCallback(async (title: string, description: string, category: string) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
     setPendingAction('createProposal');
     toast({ title: "Creating Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
     writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'createProposal', args: [title, description, category], chainId: CHAIN_ID });
   }, [isConnected, chain, writeContract, toast]);
 
   const vote = useCallback(async (proposalId: number, support: boolean) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
     setPendingAction('vote');
     toast({ title: support ? "Voting For" : "Voting Against", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
     writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'vote', args: [BigInt(proposalId), support], chainId: CHAIN_ID });
   }, [isConnected, chain, writeContract, toast]);
 
   const finalizeProposal = useCallback(async (proposalId: number) => {
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
     setPendingAction('finalize');
     toast({ title: "Finalizing Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
     writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'finalizeProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
-  }, [chain, writeContract, toast]);
+  }, [isConnected, chain, writeContract, toast]);
 
   const cancelProposal = useCallback(async (proposalId: number) => {
-    if (!isConnected) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return;
-    }
-    if (chain?.id !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network (Chain ID: 32323)", variant: "destructive" });
-      return;
-    }
+    if (!checkNetwork()) return;
     setPendingAction('cancel');
     toast({ title: "Cancelling Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
     writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'cancelProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
