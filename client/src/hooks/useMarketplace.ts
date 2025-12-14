@@ -1,0 +1,552 @@
+/**
+ * useMarketplace Hook
+ * 
+ * This hook handles all marketplace interactions:
+ * - Listing NFTs for sale
+ * - Buying listed NFTs
+ * - Making and accepting offers
+ * - Approving the marketplace to transfer NFTs
+ * 
+ * Contract: 0x88161576266dCDedb19342aC2197267282520793
+ * Network: BasedAI (Chain ID: 32323)
+ */
+
+import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { NFT_CONTRACT, CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
+
+// Marketplace contract address (just deployed!)
+export const MARKETPLACE_CONTRACT = "0x88161576266dCDedb19342aC2197267282520793";
+
+// Marketplace ABI - all the functions we need
+const MARKETPLACE_ABI = [
+  {
+    name: 'getListing',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'price', type: 'uint256' },
+      { name: 'listedAt', type: 'uint256' },
+      { name: 'active', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getOffer',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'offerer', type: 'address' }
+    ],
+    outputs: [
+      { name: 'amount', type: 'uint256' },
+      { name: 'expiresAt', type: 'uint256' },
+      { name: 'active', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getActiveListings',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256[]' }],
+  },
+  {
+    name: 'getActiveListingCount',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'platformFeeBps',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'listNFT',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'price', type: 'uint256' }
+    ],
+    outputs: [],
+  },
+  {
+    name: 'delistNFT',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    name: 'updatePrice',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'newPrice', type: 'uint256' }
+    ],
+    outputs: [],
+  },
+  {
+    name: 'buyNFT',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    name: 'makeOffer',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'expirationDays', type: 'uint256' }
+    ],
+    outputs: [],
+  },
+  {
+    name: 'cancelOffer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    name: 'acceptOffer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'offerer', type: 'address' }
+    ],
+    outputs: [],
+  },
+] as const;
+
+const NFT_ABI = [
+  {
+    name: 'isApprovedForAll',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'operator', type: 'address' }
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'setApprovalForAll',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'approved', type: 'bool' }
+    ],
+    outputs: [],
+  },
+  {
+    name: 'ownerOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'address' }],
+  },
+] as const;
+
+export interface Listing {
+  tokenId: number;
+  seller: string;
+  price: string;
+  priceWei: bigint;
+  listedAt: number;
+  active: boolean;
+}
+
+export interface Offer {
+  tokenId: number;
+  offerer: string;
+  amount: string;
+  amountWei: bigint;
+  expiresAt: number;
+  active: boolean;
+}
+
+export interface MarketplaceState {
+  isPending: boolean;
+  isConfirming: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  error: string | null;
+  txHash: `0x${string}` | undefined;
+  action: 'idle' | 'approve' | 'list' | 'delist' | 'buy' | 'offer' | 'acceptOffer' | 'cancelOffer';
+}
+
+export function useMarketplace() {
+  const { toast } = useToast();
+  const { address, isConnected } = useAccount();
+  
+  const [state, setState] = useState<MarketplaceState>({
+    isPending: false,
+    isConfirming: false,
+    isSuccess: false,
+    isError: false,
+    error: null,
+    txHash: undefined,
+    action: 'idle',
+  });
+
+  const { 
+    writeContract, 
+    data: txHash,
+    isPending: isWritePending,
+    isError: isWriteError,
+    error: writeError,
+    reset: resetWrite
+  } = useWriteContract();
+
+  const { 
+    isLoading: isConfirming, 
+    isSuccess: isConfirmed,
+    isError: isReceiptError,
+    error: receiptError
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const { data: isApproved, refetch: refetchApproval } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: NFT_ABI,
+    functionName: 'isApprovedForAll',
+    args: address ? [address, MARKETPLACE_CONTRACT as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const { data: listingCount, refetch: refetchListingCount } = useReadContract({
+    address: MARKETPLACE_CONTRACT as `0x${string}`,
+    abi: MARKETPLACE_ABI,
+    functionName: 'getActiveListingCount',
+  });
+
+  const { data: activeListingIds, refetch: refetchListings } = useReadContract({
+    address: MARKETPLACE_CONTRACT as `0x${string}`,
+    abi: MARKETPLACE_ABI,
+    functionName: 'getActiveListings',
+  });
+
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      isPending: isWritePending,
+      isConfirming: isConfirming,
+      isSuccess: isConfirmed,
+      txHash: txHash,
+    }));
+
+    if (isConfirmed && txHash) {
+      const actionMessages: Record<string, string> = {
+        approve: 'Marketplace approved! You can now list NFTs.',
+        list: 'NFT listed successfully!',
+        delist: 'NFT delisted and returned to your wallet.',
+        buy: 'Purchase successful! NFT transferred to your wallet.',
+        offer: 'Offer submitted successfully!',
+        acceptOffer: 'Offer accepted! NFT sold.',
+        cancelOffer: 'Offer cancelled and funds refunded.',
+      };
+
+      toast({
+        title: "✅ Transaction Confirmed!",
+        description: actionMessages[state.action] || 'Transaction successful!',
+        className: "bg-black border-green-500 text-green-500 font-orbitron",
+      });
+
+      refetchApproval();
+      refetchListings();
+      refetchListingCount();
+    }
+  }, [isWritePending, isConfirming, isConfirmed, txHash, state.action, toast]);
+
+  useEffect(() => {
+    if (isWriteError || isReceiptError) {
+      const errorMessage = writeError?.message || receiptError?.message || 'Transaction failed';
+      
+      let friendlyError = errorMessage;
+      if (errorMessage.includes('user rejected')) {
+        friendlyError = 'Transaction was cancelled';
+      } else if (errorMessage.includes('insufficient funds')) {
+        friendlyError = 'Insufficient $BASED balance';
+      } else if (errorMessage.includes('NotTokenOwner')) {
+        friendlyError = 'You do not own this NFT';
+      } else if (errorMessage.includes('ListingNotActive')) {
+        friendlyError = 'This listing is no longer active';
+      } else if (errorMessage.includes('NotSeller')) {
+        friendlyError = 'Only the seller can perform this action';
+      }
+
+      setState(prev => ({
+        ...prev,
+        isError: true,
+        error: friendlyError,
+      }));
+
+      toast({
+        title: "Transaction Failed",
+        description: friendlyError,
+        variant: "destructive",
+      });
+    }
+  }, [isWriteError, isReceiptError, writeError, receiptError, toast]);
+
+  const approveMarketplace = async () => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'approve' }));
+    
+    toast({
+      title: "Approve Marketplace",
+      description: "Please confirm to allow the marketplace to transfer your NFTs...",
+      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+    });
+
+    writeContract({
+      address: NFT_CONTRACT as `0x${string}`,
+      abi: NFT_ABI,
+      functionName: 'setApprovalForAll',
+      args: [MARKETPLACE_CONTRACT as `0x${string}`, true],
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const listNFT = async (tokenId: number, priceInBased: number) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    if (!isApproved) {
+      toast({ 
+        title: "Approval Required", 
+        description: "Please approve the marketplace first", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'list' }));
+
+    toast({
+      title: "List NFT",
+      description: `Listing Guardian #${tokenId} for ${priceInBased.toLocaleString()} $BASED...`,
+      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+    });
+
+    const priceWei = parseEther(String(priceInBased));
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'listNFT',
+      args: [BigInt(tokenId), priceWei],
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const delistNFT = async (tokenId: number) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'delist' }));
+
+    toast({
+      title: "Delist NFT",
+      description: `Removing Guardian #${tokenId} from sale...`,
+      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+    });
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'delistNFT',
+      args: [BigInt(tokenId)],
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const buyNFT = async (tokenId: number, priceWei: bigint) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'buy' }));
+
+    const priceFormatted = formatEther(priceWei);
+
+    toast({
+      title: "Buy NFT",
+      description: `Purchasing Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED...`,
+      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+    });
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'buyNFT',
+      args: [BigInt(tokenId)],
+      value: priceWei,
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const makeOffer = async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'offer' }));
+
+    toast({
+      title: "Make Offer",
+      description: `Offering ${offerAmountBased.toLocaleString()} $BASED for Guardian #${tokenId}...`,
+      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+    });
+
+    const offerWei = parseEther(String(offerAmountBased));
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'makeOffer',
+      args: [BigInt(tokenId), BigInt(expirationDays)],
+      value: offerWei,
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const cancelOffer = async (tokenId: number) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'cancelOffer' }));
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'cancelOffer',
+      args: [BigInt(tokenId)],
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const acceptOffer = async (tokenId: number, offererAddress: string) => {
+    if (!isConnected) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return;
+    }
+
+    setState(prev => ({ ...prev, action: 'acceptOffer' }));
+
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'acceptOffer',
+      args: [BigInt(tokenId), offererAddress as `0x${string}`],
+      chainId: CHAIN_ID,
+    });
+  };
+
+  const reset = () => {
+    resetWrite();
+    setState({
+      isPending: false,
+      isConfirming: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+      txHash: undefined,
+      action: 'idle',
+    });
+  };
+
+  const refresh = () => {
+    refetchApproval();
+    refetchListings();
+    refetchListingCount();
+  };
+
+  return {
+    state,
+    isApproved: isApproved ?? false,
+    activeListingIds: activeListingIds as bigint[] | undefined,
+    listingCount: listingCount ? Number(listingCount) : 0,
+    approveMarketplace,
+    listNFT,
+    delistNFT,
+    buyNFT,
+    makeOffer,
+    cancelOffer,
+    acceptOffer,
+    reset,
+    refresh,
+    marketplaceAddress: MARKETPLACE_CONTRACT,
+    nftAddress: NFT_CONTRACT,
+  };
+}
+
+export function useListing(tokenId: number | undefined) {
+  const { data, isLoading, refetch } = useReadContract({
+    address: MARKETPLACE_CONTRACT as `0x${string}`,
+    abi: MARKETPLACE_ABI,
+    functionName: 'getListing',
+    args: tokenId !== undefined ? [BigInt(tokenId)] : undefined,
+    query: { enabled: tokenId !== undefined },
+  });
+
+  const listing: Listing | null = data ? {
+    tokenId: tokenId!,
+    seller: data[0] as string,
+    price: formatEther(data[1] as bigint),
+    priceWei: data[1] as bigint,
+    listedAt: Number(data[2]),
+    active: data[3] as boolean,
+  } : null;
+
+  return { listing, isLoading, refetch };
+}
+
+export function useOffer(tokenId: number | undefined, offererAddress: string | undefined) {
+  const { data, isLoading, refetch } = useReadContract({
+    address: MARKETPLACE_CONTRACT as `0x${string}`,
+    abi: MARKETPLACE_ABI,
+    functionName: 'getOffer',
+    args: tokenId !== undefined && offererAddress ? [BigInt(tokenId), offererAddress as `0x${string}`] : undefined,
+    query: { enabled: tokenId !== undefined && !!offererAddress },
+  });
+
+  const offer: Offer | null = data ? {
+    tokenId: tokenId!,
+    offerer: offererAddress!,
+    amount: formatEther(data[0] as bigint),
+    amountWei: data[0] as bigint,
+    expiresAt: Number(data[1]),
+    active: data[2] as boolean,
+  } : null;
+
+  return { offer, isLoading, refetch };
+}
