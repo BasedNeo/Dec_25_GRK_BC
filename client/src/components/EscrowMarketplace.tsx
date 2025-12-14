@@ -76,7 +76,6 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
         );
         const totalMinted = await contract.totalMinted();
         setContractStats({ totalMinted: Number(totalMinted) });
-        console.log('[Collection] Total minted from contract:', Number(totalMinted));
       } catch (error) {
         console.error('[Collection] Failed to fetch totalMinted:', error);
       }
@@ -151,15 +150,12 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
         setDirectError(null);
         setDirectNFTs([]);
 
-        console.log('Initializing contract connection...');
 
         const debugContractConnection = async () => {
             try {
                 const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
-                console.log('Provider created:', '✅ YES');
                 
                 const blockNumber = await provider.getBlockNumber();
-                console.log('Connected to blockchain, block:', blockNumber, '✅');
                 
                 const contract = new ethers.Contract(
                     '0xaE51dc5fD1499A129f8654963560f9340773ad59',
@@ -168,7 +164,6 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                 );
                 
                 const totalMinted = await contract.totalMinted();
-                console.log('Contract connected, NFTs minted:', totalMinted.toString(), '✅');
                 return Number(totalMinted);
             } catch (error: any) {
                 console.error('❌ ERROR:', error.message);
@@ -194,7 +189,6 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
             // 1. Get Total Minted
             const totalMintedBig = await contract.totalMinted();
             const totalMinted = Number(totalMintedBig);
-            console.log('Total minted:', totalMinted);
             setContractStats({ totalMinted });
 
             if (totalMinted === 0) {
@@ -206,11 +200,9 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
             const fetchedNFTs: MarketItem[] = [];
             const PRE_REVEAL_URI = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.json";
             
-            console.log(`Fetching tokens from index 0 to ${totalMinted - 1}`);
 
             for (let i = 0; i < totalMinted; i++) {
                 try {
-                    console.log('Fetching token', i);
                     const tokenIdBig = await contract.tokenByIndex(i);
                     const tokenId = Number(tokenIdBig);
                     
@@ -292,7 +284,6 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                 }
             }
 
-            console.log('NFTs loaded:', fetchedNFTs.length);
             setDirectNFTs(fetchedNFTs);
 
         } catch (error: any) {
@@ -1018,7 +1009,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                                      <Button variant="outline" className="flex-1 md:flex-none border-red-500/50 text-red-500 hover:bg-red-500/10" onClick={() => handleRejectOffer(offer.id)}>
                                          REJECT
                                      </Button>
-                                     <Button className="flex-1 md:flex-none bg-green-500 text-black hover:bg-green-600" onClick={() => handleAcceptOffer(offer.id)}>
+                                     <Button className="flex-1 md:flex-none bg-green-500 text-black hover:bg-green-600" onClick={() => handleAcceptOffer(offer.id, offer.nftId, offer.offerer)}>
                                          ACCEPT OFFER
                                      </Button>
                                  </div>
