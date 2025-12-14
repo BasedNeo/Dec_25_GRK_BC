@@ -52,7 +52,7 @@ export function DisclaimerModal() {
         <DialogFooter className="sm:justify-center mt-4">
           <Button
             onClick={handleAccept}
-            className="w-full bg-red-900/20 text-red-500 border border-red-500/50 hover:bg-red-900/40 font-orbitron tracking-widest"
+            className="w-full bg-red-600 text-white hover:bg-red-500 font-orbitron tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.4)]"
           >
             I UNDERSTAND & ACCEPT RISKS
           </Button>
