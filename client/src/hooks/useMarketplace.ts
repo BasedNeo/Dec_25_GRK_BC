@@ -13,10 +13,9 @@
 
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { NFT_CONTRACT, CHAIN_ID, BLOCK_EXPLORER, MARKETPLACE_CONTRACT } from '@/lib/constants';
-import type { Chain } from 'viem';
+import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [

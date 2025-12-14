@@ -3,9 +3,8 @@
  */
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
 import { useState, useCallback, useEffect } from 'react';
-import { NFT_CONTRACT, GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 
 export enum ProposalStatus { Pending = 0, Active = 1, Passed = 2, Failed = 3, Executed = 4, Cancelled = 5 }
