@@ -22,7 +22,6 @@ import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
 import { PendingTxBanner } from "@/components/PendingTxBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
-import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
 function GlobalErrorFallback() {
@@ -30,15 +29,15 @@ function GlobalErrorFallback() {
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <h1 className="text-2xl font-orbitron text-red-500 mb-4">Something went wrong</h1>
-        <p className="text-muted-foreground mb-6">Please refresh the page or try again later.</p>
-        <Button 
+        <p className="text-gray-400 mb-6">Please refresh the page or try again later.</p>
+        <button 
           onClick={() => window.location.reload()} 
-          className="px-6 py-2 bg-primary text-black font-bold"
+          className="px-6 py-3 bg-cyan-500 text-black font-bold rounded-lg hover:bg-cyan-400 transition-colors inline-flex items-center gap-2"
           data-testid="button-refresh-page"
         >
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <RefreshCw className="h-4 w-4" />
           REFRESH PAGE
-        </Button>
+        </button>
       </div>
     </div>
   );
