@@ -1343,7 +1343,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         className={`flex-1 w-full font-bold font-orbitron ${
                             canAfford 
                                 ? 'bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10' 
-                                : 'bg-gray-800 border border-gray-600 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-900/50 border border-cyan-500/30 text-cyan-400/50 cursor-not-allowed'
                         }`}
                         data-testid="submit-offer-btn"
                     >
