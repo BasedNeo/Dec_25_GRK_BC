@@ -72,7 +72,6 @@ function App() {
             })}
             modalSize="compact"
             initialChain={32323}
-            showRecentTransactions={true}
           >
             <SecurityProvider>
               <TooltipProvider>
