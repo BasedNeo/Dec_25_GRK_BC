@@ -834,6 +834,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                                     if (!values.includes("Based Guardian")) values.push("Based Guardian");
                                     if (!values.includes("Based Frog")) values.push("Based Frog");
                                     if (!values.includes("Based Creature")) values.push("Based Creature");
+                                    if (!values.includes("Based Creatures")) values.push("Based Creatures");
                                 }
                                 return values.sort().map(val => (
                                     <SelectItem key={val} value={val}>{val}</SelectItem>
