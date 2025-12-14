@@ -13,6 +13,7 @@ import confetti from "canvas-confetti";
 import { showToast } from "@/lib/customToast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
+import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
 import Untitled from "@/assets/Untitled.png";
 
 interface NavbarProps {
@@ -250,6 +251,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             )}
 
             <div className="ml-4 flex items-center gap-3">
+              {/* Wallet Balance Display */}
+              <WalletBalanceDisplay />
+              
               {/* Badges */}
               {badges.topVoter && (
                   <Tooltip>
