@@ -4,6 +4,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
+import { Footer } from "./Footer";
 
 interface UniverseTabProps {
   onMintClick: () => void;
@@ -211,20 +212,15 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-4 border-t border-cyan-500/30 bg-black text-center">
-        <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono text-cyan-500/60">
-            <p>© 2025 Based Guardians · Powered by BasedAI · A hopeful bond that grows with every passing star.</p>
-            <div className="flex items-center gap-6">
-                <ConnectButton.Custom>
-                    {({ openConnectModal }) => (
-                        <button onClick={openConnectModal} className="hover:text-cyan-400 transition-colors">Connect Wallet</button>
-                    )}
-                </ConnectButton.Custom>
-                <button onClick={onMintClick} className="hover:text-cyan-400 transition-colors">Mint Now</button>
-            </div>
-        </div>
-      </footer>
+      {/* Universe-specific tagline */}
+      <div className="py-4 border-t border-cyan-500/30 bg-black text-center">
+        <p className="text-xs font-mono text-cyan-500/60 max-w-4xl mx-auto px-4">
+          A hopeful bond that grows with every passing star.
+        </p>
+      </div>
+
+      {/* Main Footer */}
+      <Footer />
     </div>
   );
 }
