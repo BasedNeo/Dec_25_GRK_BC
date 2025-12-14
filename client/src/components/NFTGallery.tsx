@@ -491,7 +491,6 @@ export function NFTGallery({
                      </div>)
                   ) : (
                     <>
-      // ... rest of the code
                       {/* Unified Grid (Replaces separate Desktop Grid and Mobile Carousel) */}
                       <motion.div 
                         variants={container}
