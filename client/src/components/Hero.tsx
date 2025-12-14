@@ -291,10 +291,12 @@ export function Hero() {
               id="hero-mint-section"
               onClick={handleMint}
               disabled={isPaused || isMinting || (isConnected && !canAfford(mintQuantity))}
-              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cyber-button buy-button mb-4
-                ${mintButtonColor === 'purple' 
-                  ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(0,255,255,0.4)]'
+              className={`w-full py-6 text-lg font-orbitron tracking-widest disabled:opacity-50 disabled:cursor-not-allowed mb-4
+                ${!isConnected 
+                  ? 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.5)]'
+                  : mintButtonColor === 'purple' 
+                    ? 'bg-[#bf00ff] text-white hover:bg-[#bf00ff]/90 shadow-[0_0_20px_rgba(191,0,255,0.4)]' 
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(0,255,255,0.4)]'
                 }
               `}
               data-testid="button-mint"
@@ -304,7 +306,7 @@ export function Hero() {
                   <Zap className="mr-2 h-4 w-4" /> PAUSED
                 </span>
               ) : !isConnected ? (
-                <span className="flex items-center justify-center">
+                <span className="flex items-center justify-center text-black font-bold">
                   <Wallet className="mr-2 h-4 w-4" /> CONNECT WALLET TO MINT
                 </span>
               ) : mintState.isPending ? (
