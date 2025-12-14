@@ -761,7 +761,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                    <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
                    <SelectValue placeholder="Sort By" />
                  </SelectTrigger>
-                 <SelectContent>
+                 <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
                    <SelectItem value="floor-price">Floor Price (Lowest)</SelectItem>
@@ -807,7 +807,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                         <SelectTrigger className="bg-black/50 border-white/10 text-white">
                             <SelectValue placeholder="Select Type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
                             <SelectItem value="all">All Attributes</SelectItem>
                             {/* Pre-populate or use available */}
                             {Object.keys(availableTraits).length > 0 ? 
@@ -834,7 +834,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                         <SelectTrigger className="bg-black/50 border-white/10 text-white">
                             <SelectValue placeholder="Select Value" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
                             <SelectItem value="all">All Values</SelectItem>
                             {traitTypeFilter !== "all" && (() => {
                                 const values = Array.from(availableTraits[traitTypeFilter] || []);
