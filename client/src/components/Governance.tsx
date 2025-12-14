@@ -205,6 +205,7 @@ export function Governance() {
                     onVote={governance.vote}
                     isPending={governance.isPending}
                     isConfirming={governance.isConfirming}
+                    quorumPercentage={governance.quorumPercentage}
                   />
                 ))
               )}
@@ -235,9 +236,10 @@ interface ProposalCardProps {
   onVote: (id: number, support: boolean) => void;
   isPending: boolean;
   isConfirming: boolean;
+  quorumPercentage: number;
 }
 
-function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isConfirming }: ProposalCardProps) {
+function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isConfirming, quorumPercentage }: ProposalCardProps) {
   const { proposal, isLoading, userVote, isActive, timeRemaining } = useProposal(proposalId);
 
   if (isLoading || !proposal) {
@@ -331,6 +333,46 @@ function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isC
                     Total Votes: {voteStats.total}
                   </div>
                 </div>
+
+                {/* QUORUM PROGRESS INDICATOR */}
+                {(() => {
+                  const totalVotes = Number(proposal.votesFor) + Number(proposal.votesAgainst);
+                  const MAX_SUPPLY = 3732;
+                  const requiredVotes = Math.ceil(MAX_SUPPLY * (quorumPercentage / 100));
+                  const quorumProgress = Math.min(100, (totalVotes / requiredVotes) * 100);
+                  const quorumMet = totalVotes >= requiredVotes;
+                  
+                  return (
+                    <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Quorum Progress
+                        </span>
+                        <span className={quorumMet ? 'text-green-400' : 'text-yellow-400'}>
+                          {totalVotes} / {requiredVotes} votes ({quorumPercentage}% required)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <motion.div 
+                          className={`h-full ${quorumMet ? 'bg-green-500' : 'bg-yellow-500'}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${quorumProgress}%` }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+                      {quorumMet ? (
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Quorum reached! Result will be binding.
+                        </p>
+                      ) : isActive && (
+                        <p className="text-xs text-yellow-400 mt-1">
+                          ⚠️ {requiredVotes - totalVotes} more votes needed to reach quorum
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {userVote?.hasVoted ? (
                   <div className="p-3 rounded bg-white/5 border border-white/10 text-center">
