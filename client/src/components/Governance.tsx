@@ -191,10 +191,13 @@ export function Governance() {
                 <Vote className="w-5 h-5 text-primary" /> PROPOSALS
               </h2>
               {governance.proposalCount === 0 ? (
-                <Card className="p-8 bg-white/5 border-white/10 text-center">
-                  <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>
-                </Card>
+                <>
+                  <DemoProposalCard />
+                  <Card className="p-6 bg-white/5 border-white/10 text-center border-dashed border-primary/30">
+                    <Vote className="w-10 h-10 text-primary/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">The above is a demo proposal. Create a real proposal to get started!</p>
+                  </Card>
+                </>
               ) : (
                 Array.from({ length: governance.proposalCount }, (_, i) => i + 1).reverse().map(id => (
                   <ProposalCard 
@@ -235,6 +238,121 @@ interface ProposalCardProps {
   onVote: (id: number, support: boolean) => void;
   isPending: boolean;
   isConfirming: boolean;
+}
+
+function DemoProposalCard() {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const demoProposal = {
+    id: 0,
+    title: 'Community Pool Allocation for Marketing Initiative',
+    category: 'Treasury',
+    description: 'This is a demo proposal to showcase the governance voting interface. In a real proposal, the description would contain details about the initiative, budget breakdown, timeline, and expected outcomes. Community members can vote FOR or AGAINST using their NFT voting power (1 NFT = 1 Vote). Proposals require reaching quorum to pass.',
+    votesFor: BigInt(247),
+    votesAgainst: BigInt(89),
+    totalVoters: BigInt(42),
+    status: 0,
+  };
+  
+  const voteStats = calculateVotePercentage(demoProposal.votesFor, demoProposal.votesAgainst);
+  
+  return (
+    <motion.div layout>
+      <Card className="bg-white/5 border-primary/30 overflow-hidden relative" data-testid="demo-proposal-card">
+        <div className="absolute top-2 right-2 z-10">
+          <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">DEMO</Badge>
+        </div>
+        <div 
+          className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold font-mono">
+                #1
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs border-white/20">{demoProposal.category}</Badge>
+                  <Badge variant="outline" className="text-xs border-green-500/50 text-green-400">
+                    Active
+                  </Badge>
+                </div>
+                <h3 className="font-bold text-white">{demoProposal.title}</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  <span>{Number(demoProposal.totalVoters)} voters</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <Clock className="w-3 h-3" />
+                  <span>6d 23h remaining</span>
+                </div>
+              </div>
+              {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 border-t border-white/10 pt-4 space-y-4">
+                <p className="text-sm text-muted-foreground">{demoProposal.description}</p>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" /> For: {voteStats.forPercent}%
+                    </span>
+                    <span className="text-red-400 flex items-center gap-1">
+                      Against: {voteStats.againstPercent}% <XCircle className="w-4 h-4" />
+                    </span>
+                  </div>
+                  <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="absolute left-0 top-0 h-full bg-green-500 transition-all"
+                      style={{ width: `${voteStats.forPercent}%` }}
+                    />
+                    <div 
+                      className="absolute right-0 top-0 h-full bg-red-500 transition-all"
+                      style={{ width: `${voteStats.againstPercent}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-center text-muted-foreground">
+                    Total Votes: {voteStats.total}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    disabled
+                    className="flex-1 bg-green-600/50 text-white cursor-not-allowed"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" /> VOTE FOR
+                  </Button>
+                  <Button 
+                    disabled
+                    className="flex-1 bg-red-600/50 text-white cursor-not-allowed"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
+                  </Button>
+                </div>
+                <p className="text-xs text-center text-muted-foreground italic">Demo only - connect wallet and create a real proposal to vote</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+    </motion.div>
+  );
 }
 
 function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isConfirming }: ProposalCardProps) {
