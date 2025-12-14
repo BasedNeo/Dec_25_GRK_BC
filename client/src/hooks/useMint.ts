@@ -17,7 +17,7 @@ export function useMint() {
   const { address, isConnected, chain } = useAccount();
   
   const { 
-    totalMinted, maxSupply, mintPrice, mintPriceWei,
+    totalMinted, maxSupply, mintPrice,
     publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
     refetch: refetchContractData
   } = useContractData();
