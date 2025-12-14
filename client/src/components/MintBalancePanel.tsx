@@ -132,7 +132,7 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
       {!isConnected ? (
         <Button 
           onClick={openConnectModal}
-          className="w-full mt-4 py-5 bg-primary hover:bg-primary/90 text-black font-bold font-orbitron tracking-wider text-lg"
+          className="w-full mt-4 py-5 bg-[#35dbba] hover:bg-[#35dbba]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(53,219,186,0.4)]"
           data-testid="connect-wallet-mint-btn"
         >
           <Wallet size={18} className="mr-2" /> CONNECT WALLET
