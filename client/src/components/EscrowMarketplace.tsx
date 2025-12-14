@@ -36,6 +36,8 @@ import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
+import { useMarketplace, useListing, MARKETPLACE_CONTRACT } from "@/hooks/useMarketplace";
+import { parseEther } from "viem";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
@@ -52,6 +54,9 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [selectedNFT, setSelectedNFT] = useState<MarketItem | null>(null);
   const [offerItem, setOfferItem] = useState<MarketItem | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+
+  // --- Real Marketplace Contract Integration ---
+  const marketplace = useMarketplace();
 
   // --- CRITICAL FIX: Direct Contract Fetching State ---
   const [directNFTs, setDirectNFTs] = useState<MarketItem[]>([]);
@@ -455,26 +460,28 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
       setShowOfferModal(true);
   };
 
-  const submitOffer = (amount: number, duration: string) => {
+  const submitOffer = async (amount: number, duration: string) => {
+      if (!offerItem) return;
       setShowOfferModal(false);
       setIsSubmitting(true);
       
-      toast({
-          title: "Submitting Offer",
-          description: "Signing transaction...",
-          className: "bg-black border-primary text-primary font-orbitron"
-      });
+      // Parse duration string to days (e.g., "7 days" -> 7)
+      const daysMatch = duration.match(/(\d+)/);
+      const expirationDays = daysMatch ? parseInt(daysMatch[1]) : 7;
 
-      setTimeout(() => {
+      try {
+          await marketplace.makeOffer(offerItem.id, amount, expirationDays);
+          trackEvent('nft_offer', 'Marketplace', `Item #${offerItem.id}`, amount);
+          
+          // Show success on confirmation (handled by hook, but add confetti here)
+          if (marketplace.state.isSuccess) {
+              confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 }, colors: ['#00ffff', '#bf00ff'] });
+          }
+      } catch (error) {
+          console.error('Offer failed:', error);
+      } finally {
           setIsSubmitting(false);
-          toast({
-              title: "Offer Submitted",
-              description: `You offered ${amount} $BASED for ${offerItem?.name}. Valid for ${duration}.`,
-              className: "bg-black border-green-500 text-green-500 font-orbitron"
-          });
-          // Analytics
-          trackEvent('nft_offer', 'Marketplace', `Item #${offerItem?.id}`, amount);
-      }, 1500);
+      }
   };
 
   const handleAcceptOffer = (offerId: number) => {
@@ -525,30 +532,26 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
     }
   };
 
-  const handleBuy = (item: MarketItem) => {
-    const executeBuy = () => {
+  const handleBuy = async (item: MarketItem) => {
+    const executeBuy = async () => {
         if (isPaused) {
             toast({ title: "Market Paused", description: "Trading halted by admin.", variant: "destructive" });
             return;
         }
 
-        toast({
-          title: "Processing Transaction",
-          description: "Interacting with Escrow Contract...",
-          className: "bg-black border-accent text-accent font-orbitron",
-        });
-
-        setTimeout(() => {
-          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
-          toast({
-            title: "Purchase Successful",
-            description: `You are now the owner of ${Security.sanitizeText(item.name)}. Asset transferred.`,
-            className: "bg-black border-green-500 text-green-500 font-orbitron",
-          });
-
-          // Analytics: Track Sale (Buy Action)
-          trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat((item.price || 0).toString()));
-        }, 2000);
+        try {
+            // Convert price to wei (item.price is in $BASED)
+            const priceWei = parseEther(String(item.price || 0));
+            await marketplace.buyNFT(item.id, priceWei);
+            
+            // Analytics: Track Sale (Buy Action)
+            trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat((item.price || 0).toString()));
+            
+            // Show confetti on success (hook handles toast)
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
+        } catch (error) {
+            console.error('Buy failed:', error);
+        }
     };
 
     if (!isConnected) { openConnectModal?.(); return; }
@@ -558,7 +561,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
         return; 
     }
     
-    executeBuy();
+    await executeBuy();
   };
 
   const handleAdminCancel = (item: MarketItem) => {
