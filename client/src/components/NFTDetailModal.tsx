@@ -144,7 +144,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
         {/* Left Side: Image */}
-        <div className="relative w-full md:w-1/2 h-1/3 md:h-full bg-black flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-white/10 group shrink-0">
+        <div className="relative w-full md:w-1/2 h-1/4 md:h-full bg-black flex items-center justify-center p-4 md:p-6 border-b md:border-b-0 md:border-r border-white/10 group shrink-0">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
             
@@ -179,7 +179,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         </div>
 
         {/* Right Side: Details */}
-        <div className="w-full md:w-1/2 flex flex-col h-2/3 md:h-full bg-card/50 relative flex-1">
+        <div className="w-full md:w-1/2 flex flex-col h-3/4 md:h-full bg-card/50 relative flex-1">
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
                 <div className="pr-16">
