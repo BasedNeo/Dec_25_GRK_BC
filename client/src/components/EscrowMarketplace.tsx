@@ -1097,15 +1097,52 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
 function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
     const [amount, setAmount] = useState<number>(0);
     const [duration, setDuration] = useState("1 week");
-    const { isConnected } = useAccount();
+    const [isValidating, setIsValidating] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const { isConnected, address } = useAccount();
     const chainId = useChainId();
     const { switchChain } = useSwitchChain();
     const { toast } = useToast();
+    
+    // Real wallet balance
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [balanceLoading, setBalanceLoading] = useState(false);
+    
+    const GAS_BUFFER = 100; // Reserve for gas fees
+    const maxOffer = walletBalance ? Math.max(0, walletBalance - GAS_BUFFER) : 0;
+    const canAfford = walletBalance !== null && amount > 0 && amount <= maxOffer;
+    const insufficientFunds = walletBalance !== null && amount > maxOffer;
+    
+    // Fetch wallet balance when modal opens
+    useEffect(() => {
+        if (isOpen && isConnected && address) {
+            setBalanceLoading(true);
+            const fetchBalance = async () => {
+                try {
+                    const { ethers } = await import('ethers');
+                    const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/', {
+                        chainId: 32323,
+                        name: 'BasedAI'
+                    });
+                    const balanceWei = await provider.getBalance(address);
+                    const balance = parseFloat(ethers.formatEther(balanceWei));
+                    setWalletBalance(balance);
+                } catch (error) {
+                    console.error('[OfferModal] Failed to fetch balance:', error);
+                    setWalletBalance(null);
+                } finally {
+                    setBalanceLoading(false);
+                }
+            };
+            fetchBalance();
+        }
+    }, [isOpen, isConnected, address]);
     
     // Reset when item changes
     useEffect(() => {
         if (item) {
             setAmount(item.price ? Math.floor(item.price * 0.9) : 100);
+            setValidationError(null);
         }
     }, [item]);
 
@@ -1128,6 +1165,47 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
             });
         }
     }, [isOpen, isConnected, chainId, switchChain, toast]);
+    
+    const handleSubmit = async () => {
+        if (!isConnected) {
+            setValidationError('Please connect your wallet first');
+            return;
+        }
+        
+        if (amount <= 0) {
+            setValidationError('Please enter an offer amount');
+            return;
+        }
+        
+        if (walletBalance === null) {
+            setValidationError('Could not verify wallet balance. Please try again.');
+            return;
+        }
+        
+        if (amount > walletBalance) {
+            setValidationError(`Insufficient balance. You have ${walletBalance.toLocaleString()} $BASED but are offering ${amount.toLocaleString()} $BASED.`);
+            return;
+        }
+        
+        if (amount > maxOffer) {
+            setValidationError(`You need to keep ~${GAS_BUFFER} $BASED for gas fees. Maximum offer: ${maxOffer.toLocaleString()} $BASED`);
+            return;
+        }
+        
+        setIsValidating(true);
+        setValidationError(null);
+        
+        // Proceed with offer submission
+        onSubmit(amount, duration);
+        setIsValidating(false);
+    };
+    
+    const setMaxOffer = () => {
+        if (maxOffer > 0) {
+            setAmount(Math.floor(maxOffer));
+            setValidationError(null);
+        }
+    };
 
     if (!item) return null;
 
@@ -1149,15 +1227,62 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                              <Input 
                                 type="number" 
                                 value={amount} 
-                                onChange={(e) => setAmount(Number(e.target.value))}
-                                className="bg-white/5 border-white/10 text-white font-mono text-lg"
+                                onChange={(e) => {
+                                    setAmount(Number(e.target.value));
+                                    setValidationError(null);
+                                }}
+                                className={`bg-white/5 border-white/10 text-white font-mono text-lg ${insufficientFunds ? 'border-red-500/50' : ''}`}
+                                data-testid="offer-amount-input"
                              />
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={setMaxOffer}
+                                disabled={!walletBalance || maxOffer <= 0}
+                                className="bg-white/5 border-white/10 text-cyan-400 hover:bg-cyan-500/10 font-mono text-xs px-3"
+                                data-testid="max-offer-btn"
+                             >
+                                MAX
+                             </Button>
                         </div>
                         <div className="flex justify-between text-[10px] text-muted-foreground">
-                            <span>Balance: 42,000 $BASED</span>
-                            <span>Floor: 420 $BASED</span>
+                            <span data-testid="offer-balance-display">
+                                {balanceLoading ? (
+                                    'Loading balance...'
+                                ) : walletBalance !== null ? (
+                                    <>Balance: <span className={insufficientFunds ? 'text-red-400' : 'text-emerald-400'}>{walletBalance.toLocaleString()}</span> $BASED</>
+                                ) : isConnected ? (
+                                    'Could not load balance'
+                                ) : (
+                                    'Connect wallet to see balance'
+                                )}
+                            </span>
+                            <span>
+                                {walletBalance !== null && (
+                                    <>Max: {maxOffer.toLocaleString()} $BASED</>
+                                )}
+                            </span>
                         </div>
                     </div>
+                    
+                    {/* Validation Error */}
+                    {validationError && (
+                        <div className="p-3 rounded bg-red-500/10 border border-red-500/30 flex items-start gap-2" data-testid="offer-validation-error">
+                            <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                            <span className="text-xs text-red-300">{validationError}</span>
+                        </div>
+                    )}
+                    
+                    {/* Insufficient Funds Warning */}
+                    {insufficientFunds && !validationError && (
+                        <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 flex items-start gap-2" data-testid="insufficient-funds-warning">
+                            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs text-amber-300">
+                                <p className="font-semibold">Insufficient Balance</p>
+                                <p>You need {(amount - (walletBalance || 0)).toLocaleString()} more $BASED</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Duration Select */}
                     <div className="space-y-2">
@@ -1190,7 +1315,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent className="bg-black border-white/20 text-white text-xs max-w-[200px]">
-                                        <p>Gas paid in $BASED (BasedAI native token)</p>
+                                        <p>Gas paid in $BASED (BasedAI native token). ~{GAS_BUFFER} $BASED reserved for transaction fees.</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -1201,15 +1326,28 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         </div>
                     </div>
                     
-                    <p className="text-[10px] text-muted-foreground text-center px-4">
-                        Offers are non-binding until accepted by the seller. Funds will be held in escrow upon acceptance.
-                    </p>
+                    {/* Important Disclaimer */}
+                    <div className="p-3 rounded bg-amber-500/5 border border-amber-500/20">
+                        <p className="text-[10px] text-amber-200/80 text-center">
+                            <strong>⚠️ Note:</strong> Your $BASED is <strong>NOT locked</strong> until seller accepts. 
+                            You must maintain sufficient balance when the seller accepts, or the offer will fail.
+                        </p>
+                    </div>
                 </div>
 
                 <DialogFooter className="flex gap-2 sm:gap-2 flex-col sm:flex-row pb-6 sm:pb-0">
                     <Button variant="ghost" onClick={onClose} className="flex-1 w-full">CANCEL</Button>
-                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 w-full bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-bold font-orbitron">
-                        SUBMIT OFFER
+                    <Button 
+                        onClick={handleSubmit} 
+                        disabled={!isConnected || !canAfford || isValidating || balanceLoading}
+                        className={`flex-1 w-full font-bold font-orbitron ${
+                            canAfford 
+                                ? 'bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10' 
+                                : 'bg-gray-800 border border-gray-600 text-gray-500 cursor-not-allowed'
+                        }`}
+                        data-testid="submit-offer-btn"
+                    >
+                        {isValidating ? 'VALIDATING...' : balanceLoading ? 'LOADING...' : 'SUBMIT OFFER'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

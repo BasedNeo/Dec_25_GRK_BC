@@ -1,0 +1,196 @@
+FEATURE: Validate wallet balance before allowing offer submission
+
+This is a TEMPORARY solution until a marketplace contract is deployed.
+It checks if the user has enough $BASED before they can submit an offer.
+
+NOTE: This does NOT guarantee funds will be available when seller accepts.
+For a production marketplace, a smart contract escrow is required.
+
+JavaScript Implementation:
+
+const OfferValidator = {
+  
+  // Check if user can afford to make this offer
+  async validateOffer(offerAmount) {
+    const walletAddress = await this.getWalletAddress();
+    
+    if (!walletAddress) {
+      return {
+        valid: false,
+        error: 'Please connect your wallet first',
+        errorType: 'NOT_CONNECTED'
+      };
+    }
+    
+    try {
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      const balanceWei = await provider.getBalance(walletAddress);
+      const balance = parseFloat(ethers.formatEther(balanceWei));
+      
+      if (balance < offerAmount) {
+        return {
+          valid: false,
+          error: `Insufficient balance. You have ${balance.toLocaleString()} $BASED but are offering ${offerAmount.toLocaleString()} $BASED.`,
+          errorType: 'INSUFFICIENT_FUNDS',
+          balance: balance,
+          shortfall: offerAmount - balance
+        };
+      }
+      
+      // Also check they have enough for gas (estimate ~100 $BASED for safety)
+      const gasBuffer = 100;
+      if (balance < offerAmount + gasBuffer) {
+        return {
+          valid: false,
+          error: `You need to keep some $BASED for gas fees. Maximum offer: ${(balance - gasBuffer).toLocaleString()} $BASED`,
+          errorType: 'NEED_GAS_BUFFER',
+          maxOffer: balance - gasBuffer
+        };
+      }
+      
+      return {
+        valid: true,
+        balance: balance,
+        remainingAfterOffer: balance - offerAmount
+      };
+      
+    } catch (error) {
+      console.error('[OfferValidator] Error:', error);
+      return {
+        valid: false,
+        error: 'Could not verify wallet balance. Please try again.',
+        errorType: 'NETWORK_ERROR'
+      };
+    }
+  },
+  
+  async getWalletAddress() {
+    if (!window.ethereum) return null;
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      return accounts[0] || null;
+    } catch {
+      return null;
+    }
+  }
+};
+
+// Use in offer form submission
+async function submitOffer(tokenId, offerAmount) {
+  // Show loading
+  showLoading('Validating offer...');
+  
+  // Validate balance
+  const validation = await OfferValidator.validateOffer(offerAmount);
+  
+  if (!validation.valid) {
+    hideLoading();
+    
+    // Show appropriate error UI
+    if (validation.errorType === 'INSUFFICIENT_FUNDS') {
+      showOfferError(`
+        <div class="error-content">
+          <h4>Insufficient Balance</h4>
+          <p>Your balance: <strong>${validation.balance.toLocaleString()} $BASED</strong></p>
+          <p>Offer amount: <strong>${offerAmount.toLocaleString()} $BASED</strong></p>
+          <p>You need <strong>${validation.shortfall.toLocaleString()} more $BASED</strong></p>
+        </div>
+      `);
+    } else {
+      showToast(validation.error, 'error');
+    }
+    
+    return false;
+  }
+  
+  // Balance is sufficient - proceed with offer
+  // NOTE: Since no escrow contract, just store in database
+  // Seller will need to verify funds are still available at acceptance
+  
+  try {
+    const response = await fetch('/api/offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokenId,
+        offerAmount,
+        buyerAddress: await OfferValidator.getWalletAddress(),
+        timestamp: Date.now(),
+        // Include balance snapshot for transparency
+        buyerBalanceAtOffer: validation.balance
+      })
+    });
+    
+    if (response.ok) {
+      showToast('Offer submitted!', 'success');
+      // Show disclaimer
+      showOfferDisclaimer();
+      return true;
+    } else {
+      throw new Error('Failed to submit offer');
+    }
+  } catch (error) {
+    showToast('Failed to submit offer. Please try again.', 'error');
+    return false;
+  }
+}
+
+function showOfferDisclaimer() {
+  showModal(`
+    <div class="offer-disclaimer">
+      <h3>⚠️ Offer Submitted</h3>
+      <p>Your offer has been recorded. Please note:</p>
+      <ul>
+        <li>Your $BASED is <strong>NOT locked</strong></li>
+        <li>You must have sufficient balance when the seller accepts</li>
+        <li>If you spend your $BASED before acceptance, the offer will fail</li>
+      </ul>
+      <p class="disclaimer-note">
+        In the future, offers will use smart contract escrow for guaranteed transactions.
+      </p>
+    </div>
+  `);
+}
+
+// Update offer input to show max based on balance
+async function initOfferInput() {
+  const offerInput = document.getElementById('offer-amount');
+  const maxOfferBtn = document.getElementById('max-offer-btn');
+  const balanceDisplay = document.getElementById('offer-balance-display');
+  
+  const walletAddress = await OfferValidator.getWalletAddress();
+  
+  if (!walletAddress) {
+    if (offerInput) offerInput.disabled = true;
+    if (balanceDisplay) balanceDisplay.textContent = 'Connect wallet to make offers';
+    return;
+  }
+  
+  try {
+    const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+    const balanceWei = await provider.getBalance(walletAddress);
+    const balance = parseFloat(ethers.formatEther(balanceWei));
+    const maxOffer = Math.max(0, balance - 100); // Reserve 100 for gas
+    
+    if (balanceDisplay) {
+      balanceDisplay.innerHTML = `
+        Your balance: <strong>${balance.toLocaleString()} $BASED</strong>
+        <br><small>Max offer: ${maxOffer.toLocaleString()} $BASED (after gas)</small>
+      `;
+    }
+    
+    if (maxOfferBtn) {
+      maxOfferBtn.onclick = () => {
+        offerInput.value = maxOffer.toFixed(0);
+      };
+    }
+    
+    if (offerInput) {
+      offerInput.max = maxOffer;
+      offerInput.placeholder = `Up to ${maxOffer.toLocaleString()}`;
+    }
+    
+  } catch (error) {
+    console.error('Failed to load balance for offer:', error);
+  }
+}
