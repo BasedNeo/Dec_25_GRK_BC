@@ -1,5 +1,13 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { 
+  rabbyWallet,
+  metaMaskWallet,
+  coinbaseWallet,
+  walletConnectWallet,
+  injectedWallet,
+  rainbowWallet
+} from '@rainbow-me/rainbowkit/wallets';
 import { type Chain } from 'wagmi/chains';
 import { createStorage, http } from 'wagmi';
 
@@ -17,7 +25,7 @@ const basedL1 = {
 
 export const config = getDefaultConfig({
   appName: "Based Guardians",
-  projectId: import.meta.env.VITE_WALLET_CONNECT_ID || "3a8170812b534d0ff9d794f19a901d64", // Fallback ID for demo
+  projectId: import.meta.env.VITE_WALLET_CONNECT_ID || "3a8170812b534d0ff9d794f19a901d64",
   chains: [basedL1],
   transports: {
     [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/'),
@@ -26,4 +34,22 @@ export const config = getDefaultConfig({
   storage: createStorage({
     storage: window.localStorage,
   }),
+  wallets: [
+    {
+      groupName: 'Recommended',
+      wallets: [
+        rabbyWallet,
+        metaMaskWallet,
+        rainbowWallet,
+        coinbaseWallet,
+        walletConnectWallet,
+      ],
+    },
+    {
+      groupName: 'Other',
+      wallets: [
+        injectedWallet,
+      ],
+    },
+  ],
 });

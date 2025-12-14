@@ -183,9 +183,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                             }
                           </span>
                       </div>
-                      {priceData && priceData.usdPrice > 0 && (
+                      {priceData && priceData.usdPrice > 0 && priceData.change24h !== undefined && (
                         <span className={`font-bold font-mono ${priceData.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                           {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h).toFixed(1)}%
+                           {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h || 0).toFixed(1)}%
                         </span>
                       )}
                   </div>
