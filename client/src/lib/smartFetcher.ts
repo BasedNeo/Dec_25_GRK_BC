@@ -65,6 +65,13 @@ const ABI = [
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalMinted",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
   }
 ] as const;
 
@@ -93,7 +100,7 @@ export async function fetchSmartMintedData() {
         const supply = await withRetry(() => publicClient.readContract({
             address: NFT_CONTRACT as `0x${string}`,
             abi: ABI,
-            functionName: 'totalSupply',
+            functionName: 'totalMinted',
         }), 3, 1000); // Retry logic for critical initial call
         
         totalSupply = Number(supply);

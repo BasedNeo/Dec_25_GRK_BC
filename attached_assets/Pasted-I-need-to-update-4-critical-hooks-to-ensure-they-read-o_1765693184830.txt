@@ -1,0 +1,139 @@
+I need to update 4 critical hooks to ensure they read on-chain data perfectly and work commercially. Please REPLACE the contents of these files:
+
+## CRITICAL CONTRACT ADDRESSES:
+- NFT_CONTRACT: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+- MARKETPLACE_CONTRACT: 0x88161576266dCDedb19342aC2197267282520793
+- GOVERNANCE_CONTRACT: 0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995
+- CHAIN_ID: 32323
+
+---
+
+## FILE 1: REPLACE `client/src/hooks/useTotalSupply.ts`
+
+IMPORTANT FIXES:
+- Changed from totalSupply to totalMinted (accurate mint count)
+- Added MAX_SUPPLY, publicMintEnabled, paused reading
+- Added chainId to all calls
+- Returns computed values: remainingSupply, percentMinted, isSoldOut, canMint
+
+/**
+ * useTotalSupply Hook - FIXED
+ * Now uses 'totalMinted' instead of 'totalSupply' for accurate count
+ */
+import { useReadContract } from 'wagmi';
+import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { getCached, setCache, CACHE_KEYS } from '@/lib/cache';
+
+const contractAbi = [
+  { inputs: [], name: "totalMinted", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "MAX_SUPPLY", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "publicMintEnabled", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "paused", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
+] as const;
+
+export function useTotalSupply() {
+  const cachedSupply = getCached<string>(CACHE_KEYS.CONTRACT_STATE, 30 * 1000);
+
+  const { data: totalMinted, isError, isLoading, refetch } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: contractAbi,
+    functionName: 'totalMinted',
+    chainId: CHAIN_ID,
+    query: { refetchInterval: 10000, initialData: cachedSupply ? BigInt(cachedSupply) : undefined }
+  });
+
+  const { data: maxSupply } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`, abi: contractAbi, functionName: 'MAX_SUPPLY', chainId: CHAIN_ID
+  });
+
+  const { data: publicMintEnabled } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`, abi: contractAbi, functionName: 'publicMintEnabled', chainId: CHAIN_ID, query: { refetchInterval: 30000 }
+  });
+
+  const { data: isPaused } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`, abi: contractAbi, functionName: 'paused', chainId: CHAIN_ID, query: { refetchInterval: 30000 }
+  });
+
+  if (totalMinted) setCache(CACHE_KEYS.CONTRACT_STATE, totalMinted.toString());
+
+  const minted = totalMinted ? Number(totalMinted) : (cachedSupply ? Number(cachedSupply) : 0);
+  const max = maxSupply ? Number(maxSupply) : 3732;
+
+  return {
+    totalSupply: minted, totalMinted: minted, maxSupply: max,
+    remainingSupply: max - minted, percentMinted: max > 0 ? (minted / max) * 100 : 0, isSoldOut: minted >= max,
+    publicMintEnabled: publicMintEnabled ?? false, isPaused: isPaused ?? false,
+    canMint: (publicMintEnabled ?? false) && !(isPaused ?? false) && minted < max,
+    isError, isLoading: isLoading && !cachedSupply, refetch
+  };
+}---
+
+## FILE 2: REPLACE `client/src/hooks/useMint.ts`
+
+IMPORTANT FIXES:
+- Now reads LIVE contract state: publicMintEnabled, paused, totalMinted, MAX_SUPPLY
+- Validates against live contract state before minting
+- Returns live data for UI display
+- Auto-refreshes after successful mint
+
+The file is ~400 lines. Key changes:
+1. Import useReadContract from wagmi
+2. Add live contract reads for publicMintEnabled, paused, totalMinted, MAX_SUPPLY
+3. In mint() function, check isMintOpen, isPaused, isSoldOut before allowing mint
+4. Return additional values: publicMintEnabled, isPaused, isSoldOut, canMint, totalMinted, maxSupply, remainingSupply, percentMinted
+
+---
+
+## FILE 3: UPDATE `client/src/hooks/useMarketplace.ts`
+
+IMPORTANT FIXES:
+- Added chainId: CHAIN_ID to ALL useReadContract calls
+- Added refetchInterval: 15000 for real-time data
+- Added checkNetwork() helper that validates network before every write
+- Changed all action functions to use checkNetwork() instead of just checking isConnected
+
+---
+
+## FILE 4: UPDATE `client/src/hooks/useGovernance.ts`
+
+IMPORTANT FIXES:
+- Added chainId: CHAIN_ID to ALL useReadContract calls
+- Added useToast() and toast notifications for success/error
+- Added useEffect to handle success toast with transaction link
+- Added useEffect to handle error toast with user-friendly messages
+- Added checkNetwork() helper that validates network before every write
+- Added refetchInterval for real-time updates
+
+---
+
+## FILE 5: UPDATE `client/src/lib/smartFetcher.ts`
+
+In the ABI array, ADD totalMinted function:
+{
+  inputs: [],
+  name: "totalMinted",
+  outputs: [{ name: "", type: "uint256" }],
+  stateMutability: "view",
+  type: "function",
+},In fetchSmartMintedData(), CHANGE the totalSupply call to use totalMinted:
+// BEFORE:
+functionName: 'totalSupply',
+
+// AFTER:
+functionName: 'totalMinted',---
+
+## SUMMARY OF CHANGES:
+
+1. **useTotalSupply** - Uses totalMinted (not totalSupply), reads live contract state
+2. **useMint** - Reads live publicMintEnabled/paused before mint, validates everything
+3. **useMarketplace** - chainId on all reads, network validation on all writes
+4. **useGovernance** - chainId on all reads, toast notifications, network validation
+5. **smartFetcher** - Uses totalMinted for accurate count
+
+These fixes ensure:
+✅ All data comes directly from blockchain
+✅ Auto-refresh keeps data current (every 10-30 seconds)
+✅ Proper error handling with user-friendly messages
+✅ Chain validation prevents wrong-network transactions
+✅ Toast notifications for all transaction states
+✅ Commercial-grade security and reliability
