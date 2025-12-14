@@ -6,6 +6,7 @@ const TOKEN_ID = "basedai";
 
 interface PriceData {
   usdPrice: number;
+  basedL1Price: number;
   change24h: number;
   lastUpdated: number;
 }
@@ -31,8 +32,10 @@ export function useTokenPrice() {
           const tokenData = data[TOKEN_ID];
           
           if (tokenData && tokenData.usd) {
+            const usdPrice = tokenData.usd;
             const priceData: PriceData = {
-              usdPrice: tokenData.usd,
+              usdPrice,
+              basedL1Price: usdPrice / 1000,
               change24h: tokenData.usd_24h_change || 0,
               lastUpdated: Date.now()
             };
@@ -56,8 +59,10 @@ export function useTokenPrice() {
           const tokenData = data[TOKEN_ID];
           
           if (tokenData && tokenData.usd) {
+            const usdPrice = tokenData.usd;
             const priceData: PriceData = {
-              usdPrice: tokenData.usd,
+              usdPrice,
+              basedL1Price: usdPrice / 1000,
               change24h: tokenData.usd_24h_change || 0,
               lastUpdated: Date.now()
             };
@@ -75,6 +80,7 @@ export function useTokenPrice() {
       
       return {
         usdPrice: 0,
+        basedL1Price: 0,
         change24h: 0,
         lastUpdated: 0
       };

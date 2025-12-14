@@ -170,20 +170,36 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                {/* Price Feed - Visible on ALL screens */}
                <div 
                  id="priceBadge"
-                 className="flex items-center justify-center gap-2 md:gap-3 px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[120px] md:min-w-[160px]"
+                 className="flex flex-col justify-center px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[120px] md:min-w-[140px]"
                >
-                  <span className="text-muted-foreground font-mono font-bold text-[10px]">$BASED:</span>
-                  <span className="font-bold text-white font-mono text-[10px]">
-                    {priceData && priceData.usdPrice > 0 
-                      ? `$${priceData.usdPrice.toFixed(4)}` 
-                      : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
-                    }
-                  </span>
-                  {priceData && priceData.usdPrice > 0 && (
-                    <span className={`font-bold font-mono text-[10px] ${priceData.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                       {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h).toFixed(1)}%
-                    </span>
-                  )}
+                  {/* Row 1: BASED (ETH) */}
+                  <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
+                      <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
+                          <span className="font-bold text-white font-mono">
+                            {priceData && priceData.usdPrice > 0 
+                              ? `$${priceData.usdPrice.toFixed(4)}` 
+                              : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                            }
+                          </span>
+                      </div>
+                      {priceData && priceData.usdPrice > 0 && (
+                        <span className={`font-bold font-mono ${priceData.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                           {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h).toFixed(1)}%
+                        </span>
+                      )}
+                  </div>
+                  
+                  {/* Row 2: BASED (L1) */}
+                  <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
+                      <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
+                      <span className="font-bold text-cyan-400 font-mono">
+                        {priceData && priceData.basedL1Price > 0 
+                          ? `$${priceData.basedL1Price.toFixed(7)}` 
+                          : <div className="h-3 w-16 rounded skeleton inline-block align-middle" />
+                        }
+                      </span>
+                  </div>
                </div>
             </div>
 
