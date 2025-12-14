@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Zap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { cn } from '@/lib/utils';
 
 const MINT_PRICE = 69420;
+const AFTERMINT_URL = "https://aftermint.trade/mint/based-guardians";
 
 interface MintBalancePanelProps {
   onMaxAffordableChange?: (max: number) => void;
@@ -125,6 +126,20 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
           <span className="text-[13px] text-red-300">{warningMessage}</span>
         </div>
       )}
+
+      <a 
+        href={AFTERMINT_URL} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block mt-4"
+      >
+        <Button 
+          className="w-full py-5 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-lg shadow-[0_0_20px_rgba(108,255,97,0.4)]"
+          data-testid="mint-aftermint-btn"
+        >
+          <Zap size={18} className="mr-2" /> MINT NOW
+        </Button>
+      </a>
     </Card>
   );
 }
