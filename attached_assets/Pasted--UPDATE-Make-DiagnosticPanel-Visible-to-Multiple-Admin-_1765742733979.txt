@@ -1,3 +1,7 @@
+## UPDATE: Make DiagnosticPanel Visible to Multiple Admin Wallets
+
+Replace the ENTIRE contents of `client/src/components/DiagnosticPanel.tsx` with this:
+
 /**
  * DiagnosticPanel - ADMIN ONLY
  * 
@@ -17,6 +21,7 @@ import {
 import { useAccount, useChainId } from 'wagmi';
 import { X, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
+// ========== APPROVED ADMIN WALLETS ==========
 const ADMIN_WALLETS = [
   '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
   '0xb1362caf09189887599ed40f056712b1a138210c',
@@ -24,6 +29,7 @@ const ADMIN_WALLETS = [
   '0xbba49256a93a06fcf3b0681fead2b4e3042b9124',
   '0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af',
 ];
+// ============================================
 
 export function DiagnosticPanel() {
   const { address, isConnected } = useAccount();
@@ -33,19 +39,23 @@ export function DiagnosticPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasRun, setHasRun] = useState(false);
 
+  // ========== ADMIN ONLY CHECK ==========
   const isAdmin = isConnected && address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
   );
   
+  // Don't render ANYTHING for non-admins
   if (!isAdmin) {
     return null;
   }
+  // ======================================
 
   const runDiagnostics = async () => {
     setIsRunning(true);
     setHasRun(true);
     const results: Record<string, { status: 'pass' | 'fail' | 'warn'; message: string }> = {};
 
+    // Test 1: RPC Connection
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const blockNumber = await provider.getBlockNumber();
@@ -54,12 +64,14 @@ export function DiagnosticPanel() {
       results['RPC Connection'] = { status: 'fail', message: e.message?.slice(0, 50) || 'Failed' };
     }
 
+    // Test 2: Chain ID
     if (chainId === CHAIN_ID) {
       results['Network'] = { status: 'pass', message: `BasedAI (${chainId})` };
     } else {
       results['Network'] = { status: 'fail', message: `Wrong chain: ${chainId} (need ${CHAIN_ID})` };
     }
 
+    // Test 3: NFT Contract
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const nft = new ethers.Contract(NFT_CONTRACT, [
@@ -93,6 +105,7 @@ export function DiagnosticPanel() {
       results['NFT Contract'] = { status: 'fail', message: e.message?.slice(0, 50) || 'Failed' };
     }
 
+    // Test 4: Marketplace Contract
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const code = await provider.getCode(MARKETPLACE_CONTRACT);
@@ -105,6 +118,7 @@ export function DiagnosticPanel() {
       results['Marketplace'] = { status: 'fail', message: e.message?.slice(0, 50) || 'Failed' };
     }
 
+    // Test 5: Governance Contract
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const code = await provider.getCode(GOVERNANCE_CONTRACT);
@@ -117,6 +131,7 @@ export function DiagnosticPanel() {
       results['Governance'] = { status: 'fail', message: e.message?.slice(0, 50) || 'Failed' };
     }
 
+    // Test 6: Wallet
     results['Your Wallet'] = { status: 'pass', message: `${address?.slice(0,6)}...${address?.slice(-4)}` };
     results['Admin Status'] = { status: 'pass', message: '✓ Authorized' };
 
@@ -124,6 +139,7 @@ export function DiagnosticPanel() {
     setIsRunning(false);
   };
 
+  // Auto-run on mount
   useEffect(() => {
     if (isAdmin && !hasRun) {
       runDiagnostics();
@@ -146,7 +162,6 @@ export function DiagnosticPanel() {
         onClick={() => setIsMinimized(false)}
         className="fixed bottom-4 right-4 z-[9999] bg-black/90 border border-cyan-500/50 rounded-full p-3 hover:bg-cyan-500/20 transition-colors"
         title="Open Diagnostics"
-        data-testid="diagnostic-expand-btn"
       >
         <span className="text-lg">🔬</span>
         {failCount > 0 && (
@@ -159,7 +174,8 @@ export function DiagnosticPanel() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] bg-black/95 border border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-500/20 max-w-sm w-80 font-mono text-xs" data-testid="diagnostic-panel">
+    <div className="fixed bottom-4 right-4 z-[9999] bg-black/95 border border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-500/20 max-w-sm w-80 font-mono text-xs">
+      {/* Header */}
       <div className="flex justify-between items-center p-3 border-b border-cyan-500/30 bg-cyan-500/10">
         <div className="flex items-center gap-2">
           <span className="text-lg">🔬</span>
@@ -171,7 +187,6 @@ export function DiagnosticPanel() {
             disabled={isRunning}
             className="p-1 hover:bg-cyan-500/20 rounded transition-colors"
             title="Refresh"
-            data-testid="diagnostic-refresh-btn"
           >
             <RefreshCw size={14} className={`text-cyan-400 ${isRunning ? 'animate-spin' : ''}`} />
           </button>
@@ -179,19 +194,20 @@ export function DiagnosticPanel() {
             onClick={() => setIsMinimized(true)}
             className="p-1 hover:bg-cyan-500/20 rounded transition-colors"
             title="Minimize"
-            data-testid="diagnostic-minimize-btn"
           >
             <X size={14} className="text-gray-400" />
           </button>
         </div>
       </div>
 
+      {/* Summary */}
       <div className="flex gap-3 p-2 border-b border-white/10 text-[10px]">
         <span className="text-green-400">✓ {passCount} passed</span>
         {warnCount > 0 && <span className="text-yellow-400">⚠ {warnCount} warnings</span>}
         {failCount > 0 && <span className="text-red-400">✗ {failCount} failed</span>}
       </div>
 
+      {/* Results */}
       <div className="p-3 space-y-1.5 max-h-72 overflow-y-auto">
         {Object.entries(diagnostics).map(([key, { status, message }]) => (
           <div key={key} className="flex items-start justify-between gap-2">
@@ -215,6 +231,7 @@ export function DiagnosticPanel() {
         )}
       </div>
 
+      {/* Footer */}
       <div className="p-2 border-t border-white/10 text-[10px] text-gray-500 text-center">
         Visible to {ADMIN_WALLETS.length} authorized wallets only
       </div>
@@ -222,4 +239,16 @@ export function DiagnosticPanel() {
   );
 }
 
-export default DiagnosticPanel;
+export default DiagnosticPanel;---
+
+## WHO CAN SEE IT:
+
+| Wallet | Access |
+|--------|--------|
+| 0xae543104fDBe456478E19894f7F0e01f0971c9B4 | ✅ Admin |
+| 0xb1362caf09189887599ed40f056712b1a138210c | ✅ Admin |
+| 0xabce9e63a9ae51e215bb10c9648f4c0f400c5847 | ✅ Admin |
+| 0xbba49256a93a06fcf3b0681fead2b4e3042b9124 | ✅ Admin |
+| 0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af | ✅ Admin |
+| Any other wallet | ❌ Hidden |
+| Not connected | ❌ Hidden |
