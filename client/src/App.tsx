@@ -21,6 +21,7 @@ import { WalletWatcher } from "@/components/WalletWatcher";
 import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
 import { PendingTxBanner } from "@/components/PendingTxBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -80,6 +81,7 @@ function App() {
                 <WalletWatcher />
                 <PendingTxBanner />
                 <Toaster />
+                <DiagnosticPanel />
               </TooltipProvider>
             </SecurityProvider>
           </RainbowKitProvider>

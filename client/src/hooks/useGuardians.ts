@@ -36,7 +36,6 @@ export function useGuardians(
       // 1. Try Cache First (30 seconds validity as requested)
       const cached = getCached<{ nfts: Guardian[], nextCursor?: number }>(cacheKey, 30 * 1000);
       if (cached) {
-          console.log(`Using cached NFT data for index ${startIndex}`);
           return cached;
       }
 

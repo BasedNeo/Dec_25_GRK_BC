@@ -1,0 +1,388 @@
+## 🔬 COMPREHENSIVE TESTING & BUG FIX PROTOCOL
+
+Run this protocol systematically to identify and fix all issues before commercial launch.
+
+---
+
+## PHASE 1: ENVIRONMENT & CONNECTIVITY CHECKS
+
+### Test 1.1: RPC Connection
+Add this diagnostic component to temporarily display on the homepage:
+
+// client/src/components/DiagnosticPanel.tsx
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, GOVERNANCE_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { useAccount, useChainId } from 'wagmi';
+
+export function DiagnosticPanel() {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const [diagnostics, setDiagnostics] = useState<Record<string, string>>({});
+  const [isRunning, setIsRunning] = useState(false);
+
+  const runDiagnostics = async () => {
+    setIsRunning(true);
+    const results: Record<string, string> = {};
+    
+    // Test 1: RPC Connection
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const blockNumber = await provider.getBlockNumber();
+      results['RPC Connection'] = `✅ Connected (Block #${blockNumber})`;
+    } catch (e: any) {
+      results['RPC Connection'] = `❌ Failed: ${e.message}`;
+    }
+    
+    // Test 2: NFT Contract
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const nft = new ethers.Contract(NFT_CONTRACT, [
+        'function totalMinted() view returns (uint256)',
+        'function MAX_SUPPLY() view returns (uint256)',
+        'function MINT_PRICE() view returns (uint256)',
+        'function publicMintEnabled() view returns (bool)',
+        'function paused() view returns (bool)'
+      ], provider);
+      
+      const [totalMinted, maxSupply, mintPrice, publicMintEnabled, paused] = await Promise.all([
+        nft.totalMinted(),
+        nft.MAX_SUPPLY(),
+        nft.MINT_PRICE(),
+        nft.publicMintEnabled(),
+        nft.paused()
+      ]);
+      
+      results['NFT Contract'] = `✅ Connected`;
+      results['├─ Total Minted'] = `${totalMinted} / ${maxSupply}`;
+      results['├─ Mint Price'] = `${ethers.formatEther(mintPrice)} $BASED`;
+      results['├─ Public Mint'] = publicMintEnabled ? '✅ Enabled' : '❌ Disabled';
+      results['└─ Paused'] = paused ? '⚠️ Yes' : '✅ No';
+    } catch (e: any) {
+      results['NFT Contract'] = `❌ Failed: ${e.message}`;
+    }
+    
+    // Test 3: Marketplace Contract
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const code = await provider.getCode(MARKETPLACE_CONTRACT);
+      if (code === '0x') {
+        results['Marketplace Contract'] = `❌ Not deployed at ${MARKETPLACE_CONTRACT}`;
+      } else {
+        results['Marketplace Contract'] = `✅ Deployed (${code.length} bytes)`;
+      }
+    } catch (e: any) {
+      results['Marketplace Contract'] = `❌ Failed: ${e.message}`;
+    }
+    
+    // Test 4: Governance Contract
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const code = await provider.getCode(GOVERNANCE_CONTRACT);
+      if (code === '0x') {
+        results['Governance Contract'] = `❌ Not deployed at ${GOVERNANCE_CONTRACT}`;
+      } else {
+        results['Governance Contract'] = `✅ Deployed (${code.length} bytes)`;
+      }
+    } catch (e: any) {
+      results['Governance Contract'] = `❌ Failed: ${e.message}`;
+    }
+    
+    // Test 5: Wallet Connection
+    results['Wallet Connected'] = isConnected ? `✅ ${address?.slice(0,6)}...${address?.slice(-4)}` : '❌ Not connected';
+    results['Chain ID'] = chainId === CHAIN_ID ? `✅ Correct (${chainId})` : `❌ Wrong chain (${chainId}, expected ${CHAIN_ID})`;
+    
+    setDiagnostics(results);
+    setIsRunning(false);
+  };
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 bg-black/90 border border-cyan-500/50 rounded-lg p-4 max-w-md font-mono text-xs">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-cyan-400 font-bold">🔬 DIAGNOSTICS</span>
+        <button 
+          onClick={runDiagnostics}
+          disabled={isRunning}
+          className="px-2 py-1 bg-cyan-500 text-black rounded text-xs font-bold hover:bg-cyan-400"
+        >
+          {isRunning ? 'Running...' : 'Run Tests'}
+        </button>
+      </div>
+      <div className="space-y-1 max-h-60 overflow-y-auto">
+        {Object.entries(diagnostics).map(([key, value]) => (
+          <div key={key} className="flex justify-between">
+            <span className="text-gray-400">{key}:</span>
+            <span className={value.includes('✅') ? 'text-green-400' : value.includes('❌') ? 'text-red-400' : 'text-yellow-400'}>
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}Add to App.tsx temporarily:
+import { DiagnosticPanel } from '@/components/DiagnosticPanel';
+// In return, add: <DiagnosticPanel />---
+
+## PHASE 2: FEATURE-BY-FEATURE TESTING
+
+### Test 2.1: Minting Flow Checklist
+Create this test checklist and fix any failures:
+
+| Test | Expected | Fix If Failed |
+|------|----------|---------------|
+| Connect wallet on wrong network | Shows network switch banner | Check NetworkSwitchBanner renders |
+| Click network switch button | Switches to BasedAI (32323) | Verify useSwitchChain hook |
+| Mint count shows correct number | Matches totalMinted() | Use useContractData hook |
+| Mint button disabled when paused | Button says "PAUSED" | Check useMint reads paused state |
+| Mint button disabled when soldout | Button says "SOLD OUT" | Check totalMinted >= MAX_SUPPLY |
+| Click MINT with insufficient balance | Shows "Insufficient Balance" | Check balance comparison |
+| Click MINT with sufficient balance | Opens wallet confirmation | Check writeContract call |
+| Transaction pending | Shows pending state + toast | Check transaction hash exists |
+| Transaction confirmed | Shows success toast + updates count | Check useWaitForTransactionReceipt |
+| Transaction failed | Shows error toast with reason | Parse revert reason |
+
+### Test 2.2: Marketplace Flow Checklist
+
+| Test | Expected | Fix If Failed |
+|------|----------|---------------|
+| Marketplace loads all 3732 NFTs | Grid shows all NFTs | Check data source (CSV + contract) |
+| Unminted NFT shows MINT button | Green MINT button | Check isMinted logic |
+| Unminted NFT shows mint price | 69,420 $BASED | Check price display logic |
+| Minted NFT not listed shows "--" | Dash for price | Check isListed logic |
+| Listed NFT shows sale price | Real price from contract | Use useListing hook |
+| Click BUY verifies on-chain | Fetches listing before buy | Check BuyButton verification |
+| Click MAKE OFFER opens modal | Offer modal appears | Check dialog state |
+| Submit offer creates transaction | Wallet confirmation | Check makeOffer function |
+| Owner sees offer badge on card | Grey offer badge | Check hasActiveOffer logic |
+| NFT detail modal shows offers | List of active offers | Fetch offers for tokenId |
+
+### Test 2.3: Governance Flow Checklist
+
+| Test | Expected | Fix If Failed |
+|------|----------|---------------|
+| Shows user voting power | Number of NFTs owned | Check tokensOfOwner call |
+| Create proposal (with NFT) | Opens form, submits | Check createProposal function |
+| Create proposal (no NFT) | Shows "Must own NFT" | Check voting power > 0 |
+| Vote on proposal | Transaction submits | Check vote function |
+| Already voted | Shows "Already Voted" | Check hasVoted mapping |
+| Quorum progress shows | Progress bar + percentage | Calculate votes/quorum |
+| Finalize after deadline | Button enabled | Check block.timestamp > endTime |
+| Finalize before deadline | Button disabled | Check time remaining |
+
+### Test 2.4: Activity Feed Checklist
+
+| Test | Expected | Fix If Failed |
+|------|----------|---------------|
+| Total Minted shows real count | Matches contract totalMinted() | Use contract call, not events |
+| Recent mints show in feed | Last 10-50 mints visible | Increase block lookback |
+| Mint event shows correct data | TokenId, minter address, time | Parse Transfer event correctly |
+| Sales show in feed | Sale events appear | Query Sold events |
+| Volume calculates correctly | Sum of sale prices | Parse price from events |
+| Auto-refresh works | Updates every 30s | Check setInterval |
+| Refresh button works | Fetches new data | Check refresh function |
+| Filter tabs work | Filters by type | Check filter logic |
+
+---
+
+## PHASE 3: ERROR HANDLING AUDIT
+
+### Add Global Error Boundary
+// client/src/components/ErrorBoundary.tsx
+import { Component, ErrorInfo, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h1>
+            <p className="text-gray-400 mb-4">{this.state.error?.message}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-cyan-500 text-black rounded font-bold"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}### Add to all contract hooks - robust error parsing:
+// Helper function to parse contract errors
+export function parseContractError(error: any): string {
+  const message = error?.message || error?.toString() || 'Unknown error';
+  
+  // Common revert reasons
+  if (message.includes('insufficient funds')) return 'Insufficient $BASED balance';
+  if (message.includes('user rejected')) return 'Transaction cancelled by user';
+  if (message.includes('Pausable: paused')) return 'Contract is paused';
+  if (message.includes('exceeds max supply')) return 'Sold out!';
+  if (message.includes('Public mint not enabled')) return 'Minting not started yet';
+  if (message.includes('Not token owner')) return 'You do not own this NFT';
+  if (message.includes('Listing not active')) return 'This listing is no longer active';
+  if (message.includes('Offer expired')) return 'This offer has expired';
+  if (message.includes('Already voted')) return 'You have already voted';
+  if (message.includes('Voting ended')) return 'Voting period has ended';
+  if (message.includes('Voting not ended')) return 'Voting period not yet ended';
+  if (message.includes('Not approved')) return 'NFT not approved for marketplace';
+  
+  // Network errors
+  if (message.includes('network')) return 'Network error - check your connection';
+  if (message.includes('timeout')) return 'Request timed out - try again';
+  
+  // Return shortened version of unknown errors
+  return message.length > 100 ? message.slice(0, 100) + '...' : message;
+}---
+
+## PHASE 4: CONSOLE ERROR CLEANUP
+
+### Remove all debug console.logs
+Search and remove (keep only error logging):
+
+# Find all console.log statements
+grep -r "console.log" client/src/ --include="*.ts" --include="*.tsx"
+
+# These should be REMOVED (debug logs):
+console.log('[Mint]', ...)
+console.log('[Marketplace]', ...)
+console.log('Fetching...', ...)
+
+# These can STAY (error logs):
+console.error('[Error]', ...)Replace debug logs with conditional:
+const DEBUG = import.meta.env.DEV; // Only true in development
+
+if (DEBUG) console.log('Debug info:', data);---
+
+## PHASE 5: SECURITY CHECKLIST
+
+| Check | Status | Fix |
+|-------|--------|-----|
+| All contract reads include chainId | ⬜ | Add `chainId: CHAIN_ID` to all useReadContract |
+| All writes verify network first | ⬜ | Check `chain?.id === CHAIN_ID` before write |
+| BuyButton verifies listing on-chain | ⬜ | Fetch listing, check isActive & price |
+| No private keys in frontend | ⬜ | Search for "0x" 64-char strings |
+| Admin functions protected | ⬜ | Only owner can call admin functions |
+| Prices parsed safely | ⬜ | Use BigInt, handle overflow |
+| Addresses validated | ⬜ | Check isAddress() before use |
+
+---
+
+## PHASE 6: FINAL VALIDATION SCRIPT
+
+Add this to run before deploying:
+
+// client/src/utils/validateDeployment.ts
+export async function validateDeployment() {
+  const issues: string[] = [];
+  
+  // 1. Check all contract addresses are not placeholders
+  const contracts = { NFT_CONTRACT, MARKETPLACE_CONTRACT, GOVERNANCE_CONTRACT };
+  for (const [name, addr] of Object.entries(contracts)) {
+    if (!addr || addr.includes('0x0000') || addr.length !== 42) {
+      issues.push(`${name} has invalid address: ${addr}`);
+    }
+  }
+  
+  // 2. Check RPC is reachable
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    await provider.getBlockNumber();
+  } catch {
+    issues.push('RPC_URL is not reachable');
+  }
+  
+  // 3. Check contracts are deployed
+  for (const [name, addr] of Object.entries(contracts)) {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const code = await provider.getCode(addr);
+      if (code === '0x') {
+        issues.push(`${name} has no code at ${addr}`);
+      }
+    } catch {
+      issues.push(`Failed to check ${name}`);
+    }
+  }
+  
+  // 4. Check block explorer URL
+  if (!BLOCK_EXPLORER.startsWith('http')) {
+    issues.push('BLOCK_EXPLORER URL invalid');
+  }
+  
+  return {
+    valid: issues.length === 0,
+    issues
+  };
+}---
+
+## QUICK REFERENCE: Common Fixes
+
+### Fix: "Cannot read properties of undefined"
+// Before (crashes if data undefined)
+const value = data.property;
+
+// After (safe access)
+const value = data?.property ?? defaultValue;### Fix: "BigInt cannot be serialized"
+// Before (crashes in JSON.stringify)
+JSON.stringify({ amount: 123n });
+
+// After (convert to string)
+JSON.stringify({ amount: amount.toString() });### Fix: "User rejected transaction"
+// Add try-catch with user-friendly message
+try {
+  await writeContract(config);
+} catch (e: any) {
+  if (e.message?.includes('rejected')) {
+    toast({ title: 'Transaction cancelled', variant: 'default' });
+  } else {
+    toast({ title: 'Transaction failed', description: parseContractError(e), variant: 'destructive' });
+  }
+}### Fix: "Wrong network" errors
+// Always check network before writes
+if (chain?.id !== CHAIN_ID) {
+  toast({ title: 'Please switch to BasedAI network', variant: 'destructive' });
+  return;
+}---
+
+## DEPLOYMENT CHECKLIST
+
+Before going live:
+
+- [ ] DiagnosticPanel removed from production
+- [ ] All console.log statements removed
+- [ ] All contract addresses verified correct
+- [ ] Network switch banner working
+- [ ] Error boundary in place
+- [ ] All mock data removed
+- [ ] Mobile responsive tested
+- [ ] Wallet connect tested (MetaMask, WalletConnect)
+- [ ] All transaction flows tested end-to-end
+- [ ] Block explorer links working
