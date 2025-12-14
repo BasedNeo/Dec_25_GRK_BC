@@ -1,3 +1,7 @@
+## PERFORMANCE FIX: Activity Feed Block Caching
+
+REPLACE the entire contents of `client/src/hooks/useActivityFeed.ts` with this:
+
 /**
  * useActivityFeed Hook - PERFORMANCE OPTIMIZED
  * 
@@ -12,7 +16,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { NFT_CONTRACT, BLOCK_EXPLORER, RPC_URL, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { NFT_CONTRACT, BLOCK_EXPLORER, RPC_URL } from '@/lib/constants';
+import { MARKETPLACE_CONTRACT } from '@/hooks/useMarketplace';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -282,4 +287,12 @@ export function formatTimeAgo(timestamp: number): string {
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   
   return new Date(timestamp * 1000).toLocaleDateString();
-}
+}---
+
+## WHAT THIS FIX DOES:
+
+✅ **Block timestamp caching** - Same block never fetched twice
+✅ **Reduces RPC calls** - 10 events in same block = 1 call instead of 10
+✅ **Faster loading** - Cached lookups are instant
+✅ **Lower RPC costs** - Fewer API calls to your provider
+✅ **Session persistence** - Cache survives during user session
