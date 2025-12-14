@@ -1,0 +1,68 @@
+## URGENT FIX: Wallet Connection Module is Broken
+
+The wallet connection is completely non-functional:
+- Clicking MetaMask icon does nothing
+- Clicking WalletConnect icon closes the popup without connecting
+- Rabby wallet and other standard wallets are not showing in the wallet list
+- Mobile MetaMask opens the app but never prompts for connection approval
+
+### Complete Fix Required:
+
+1. **Replace `client/src/lib/wagmi.ts` entirely with this:**
+
+import "@rainbow-me/rainbowkit/styles.css";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { type Chain } from 'wagmi/chains';
+import { http } from 'wagmi';
+
+const basedL1 = {
+  id: 32323,
+  name: 'BasedAI',
+  nativeCurrency: { 
+    name: 'Based', 
+    symbol: 'BASED', 
+    decimals: 18 
+  },
+  rpcUrls: {
+    default: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+    public: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+  },
+  blockExplorers: {
+    default: { name: 'Based Explorer', url: 'https://explorer.bf1337.org' },
+  },
+  testnet: false,
+} as const satisfies Chain;
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64',
+  chains: [basedL1],
+  transports: {
+    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/'),
+  },
+  ssr: false,
+});
+
+export { basedL1 };2. **Update RainbowKitProvider in `client/src/App.tsx`:**
+
+Find the RainbowKitProvider component and replace its props with:
+
+<RainbowKitProvider 
+  theme={darkTheme({
+    accentColor: '#00ffff',
+    accentColorForeground: 'black',
+    borderRadius: 'medium',
+    fontStack: 'system',
+  })}
+  modalSize="compact"
+  initialChain={32323}
+>3. **Check package versions in package.json:**
+
+Make sure these are compatible versions:
+- @rainbow-me/rainbowkit: ^2.0.0 or latest
+- wagmi: ^2.0.0 or latest  
+- viem: ^2.0.0 or latest
+
+If versions are mismatched, run: `npm update @rainbow-me/rainbowkit wagmi viem`
+
+4. **Add to `.env` file (create if missing):**
