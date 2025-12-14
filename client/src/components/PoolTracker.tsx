@@ -1,4 +1,4 @@
-import { MOCK_POOL_BALANCE, calculatePoolBalance, MINT_PRICE, calculateEmissions, getTreasuryMetrics, TOTAL_SUPPLY } from "@/lib/mockData";
+import { MINT_PRICE, getTreasuryMetrics, TOTAL_SUPPLY } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info, ExternalLink, Timer, Zap, Brain, AlertTriangle } from "lucide-react";
 import { Line } from "react-chartjs-2";
@@ -40,7 +40,6 @@ const SUBNET_ADDRESS = "0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4";
 const ETH_RPC_URL = "https://eth-mainnet.public.blastapi.io";
 
 export function PoolTracker() {
-  const [balance, setBalance] = useState<number>(MOCK_POOL_BALANCE);
   const [mintedCount, setMintedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -51,6 +50,7 @@ export function PoolTracker() {
   const [poolShare, setPoolShare] = useState<number>(0);
   const [displayedPoolShare, setDisplayedPoolShare] = useState<number>(0);
   const [livePoolBalance, setLivePoolBalance] = useState<number>(0);
+  const [poolWalletConfigured, setPoolWalletConfigured] = useState<boolean>(true);
   const [mintRevenue, setMintRevenue] = useState<number>(0);
 
   // Sync displayed share when actual poll updates, but prevent backward jumps
@@ -142,13 +142,17 @@ export function PoolTracker() {
 
   // Poll Live Pool Wallet (BasedAI L1)
   const pollPoolWallet = useCallback(async () => {
+      // Check if pool wallet is configured
+      if (!POOL_WALLET || POOL_WALLET === "0xPoolWalletAddress" || !POOL_WALLET.startsWith("0x") || POOL_WALLET.length !== 42) {
+          setPoolWalletConfigured(false);
+          setLivePoolBalance(0);
+          return;
+      }
+      
+      setPoolWalletConfigured(true);
+      
       try {
           const provider = new ethers.JsonRpcProvider(RPC_URL);
-          // Assuming $BASED is the native token of BasedAI L1, we check native balance.
-          // IF it's an ERC20 on L1, we would use the contract.
-          // The user said "Ethers.js balanceOf on VITE_BASED_TOKEN". 
-          // Usually 'balanceOf' implies ERC20. 'getBalance' implies native.
-          // We will try ERC20 first if address is present, else native.
           
           let val = 0;
           if (BASED_TOKEN_L1 && BASED_TOKEN_L1.startsWith("0x") && BASED_TOKEN_L1 !== "0xBasedTokenAddressL1") {
@@ -157,11 +161,7 @@ export function PoolTracker() {
                const bal = await contract.balanceOf(POOL_WALLET);
                val = parseFloat(ethers.formatEther(bal));
           } else {
-               // Fallback to Native Balance of the Pool Wallet
-               // Or if POOL_WALLET is placeholder, we use mock.
-               if (POOL_WALLET === "0xPoolWalletAddress") {
-                   throw new Error("Pool Wallet not configured");
-               }
+               // Use native balance of the Pool Wallet
                const bal = await provider.getBalance(POOL_WALLET);
                val = parseFloat(ethers.formatEther(bal));
           }
@@ -169,9 +169,8 @@ export function PoolTracker() {
           setLivePoolBalance(val);
 
       } catch (e) {
-          console.warn("Pool Wallet Poll failed (using mock)", e);
-          // Mock Value: "2,294,461.67 $BASED" as per request example
-          setLivePoolBalance(2294461.67);
+          console.error("Pool Wallet Poll failed", e);
+          setLivePoolBalance(0);
       }
   }, []);
 
@@ -360,6 +359,26 @@ export function PoolTracker() {
             </div>
           </div>
           
+          {/* Pool Wallet Balance (if configured) */}
+          {poolWalletConfigured && livePoolBalance > 0 && (
+            <div className="mb-6 p-4 bg-black/40 border border-green-500/30 rounded-xl max-w-md mx-auto">
+              <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Pool Wallet Balance</span>
+              <div className="text-2xl font-bold text-green-400 font-mono">
+                {livePoolBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span className="text-sm">$BASED</span>
+              </div>
+            </div>
+          )}
+          
+          {!poolWalletConfigured && (
+            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl max-w-md mx-auto">
+              <div className="flex items-center justify-center gap-2 text-yellow-400 text-sm">
+                <AlertTriangle size={16} />
+                <span>Treasury wallet not configured</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Set VITE_POOL_WALLET environment variable</p>
+            </div>
+          )}
+
           {/* Treasury Breakdown Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 w-full max-w-6xl mx-auto">
             
