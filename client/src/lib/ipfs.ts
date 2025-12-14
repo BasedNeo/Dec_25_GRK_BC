@@ -37,7 +37,13 @@ export async function fetchGuardianMetadata(id: number): Promise<Guardian> {
 
     // Sanitize fields
     const cleanName = DOMPurify.sanitize(data.name || `Guardian #${id}`);
-    const cleanImage = data.image ? data.image.replace('ipfs://', 'https://ipfs.io/ipfs/') : '';
+    // Use fast Pinata gateway instead of slow ipfs.io
+    let cleanImage = '';
+    if (data.image) {
+      cleanImage = data.image
+        .replace('ipfs://', 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/')
+        .replace('https://ipfs.io/ipfs/', 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/');
+    }
     
     // Parse traits safely - Handle various formats (trait_type, TraitType, attributes vs traits)
     const rawAttrs = data.attributes || data.traits || [];

@@ -1,7 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, AlertTriangle, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Fast gateway for IPFS images
+const FAST_GATEWAY = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/';
+
+// Convert any IPFS URL to use the fast gateway
+function optimizeImageUrl(url: string): string {
+  if (!url) return '';
+  return url
+    .replace('ipfs://', FAST_GATEWAY)
+    .replace('https://ipfs.io/ipfs/', FAST_GATEWAY)
+    .replace('https://gateway.pinata.cloud/ipfs/', FAST_GATEWAY);
+}
 
 interface NFTImageProps {
   src: string;
@@ -10,6 +22,7 @@ interface NFTImageProps {
   className?: string;
   fallbackSrc?: string;
   aspectRatio?: string; // e.g. "aspect-square"
+  priority?: boolean; // For above-the-fold images
 }
 
 export function NFTImage({ 
@@ -18,24 +31,42 @@ export function NFTImage({
   id, 
   className, 
   fallbackSrc,
-  aspectRatio = "aspect-square" 
+  aspectRatio = "aspect-square",
+  priority = false
 }: NFTImageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState(src);
+  const optimizedSrc = optimizeImageUrl(src);
+  const optimizedFallback = fallbackSrc ? optimizeImageUrl(fallbackSrc) : undefined;
+  const [currentSrc, setCurrentSrc] = useState(optimizedSrc);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     // Reset state when src changes
     setIsLoading(true);
     setHasError(false);
-    setCurrentSrc(src);
+    setCurrentSrc(optimizeImageUrl(src));
   }, [src]);
+  
+  // Preload image for better performance
+  useEffect(() => {
+    if (priority && optimizedSrc) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = optimizedSrc;
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+      };
+    }
+  }, [priority, optimizedSrc]);
 
   const handleError = () => {
     setIsLoading(false);
     setHasError(true);
-    if (fallbackSrc) {
-        setCurrentSrc(fallbackSrc);
+    if (optimizedFallback) {
+        setCurrentSrc(optimizedFallback);
     }
   };
 
@@ -69,15 +100,18 @@ export function NFTImage({
       )}
 
       {/* Image */}
-      {(!hasError || fallbackSrc) && (
+      {(!hasError || optimizedFallback) && (
         <img
+          ref={imgRef}
           src={currentSrc}
           alt={alt}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
           onLoad={handleLoad}
           onError={handleError}
           className={cn(
-            "w-full h-full object-cover transition-all duration-500 ease-in-out nft-image",
+            "w-full h-full object-cover transition-all duration-300 ease-out nft-image",
             isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100 loaded"
           )}
         />
