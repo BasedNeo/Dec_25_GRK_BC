@@ -1,0 +1,78 @@
+## GOVERNANCE IMPROVEMENT: Quorum Progress Indicator
+
+This shows users if a proposal will reach the required voting threshold.
+
+---
+
+### STEP 1: Update ProposalCard to include quorumPercentage
+
+In `client/src/components/Governance.tsx`, find the ProposalCard function and update the useGovernance destructuring.
+
+FIND this line:
+const { vote, isPending, isConfirming, isSuccess, votingPower, isConnected } = useGovernance();REPLACE with:
+const { vote, isPending, isConfirming, isSuccess, votingPower, isConnected, quorumPercentage } = useGovernance();---
+
+### STEP 2: Add the Quorum Progress Indicator
+
+Find the closing `</div>` of the vote progress bars section (after the "Against" progress bar).
+
+ADD this code right after the vote progress bars `</div>`:
+
+{/* QUORUM PROGRESS INDICATOR */}
+{(() => {
+  // Calculate quorum progress (total votes vs required quorum)
+  const totalVotes = Number(proposal.votesFor) + Number(proposal.votesAgainst);
+  // Max supply of NFTs (total voting power possible)
+  const MAX_SUPPLY = 3732;
+  const requiredVotes = Math.ceil(MAX_SUPPLY * (quorumPercentage / 100));
+  const quorumProgress = Math.min(100, (totalVotes / requiredVotes) * 100);
+  const quorumMet = totalVotes >= requiredVotes;
+  
+  return (
+    <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-muted-foreground flex items-center gap-1">
+          <Users className="w-3 h-3" />
+          Quorum Progress
+        </span>
+        <span className={quorumMet ? 'text-green-400' : 'text-yellow-400'}>
+          {totalVotes} / {requiredVotes} votes ({quorumPercentage}% required)
+        </span>
+      </div>
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <motion.div 
+          className={`h-full ${quorumMet ? 'bg-green-500' : 'bg-yellow-500'}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${quorumProgress}%` }}
+          transition={{ duration: 0.5 }}
+        />
+      </div>
+      {quorumMet ? (
+        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" /> Quorum reached! Result will be binding.
+        </p>
+      ) : isActive && (
+        <p className="text-xs text-yellow-400 mt-1">
+          ⚠️ {requiredVotes - totalVotes} more votes needed to reach quorum
+        </p>
+      )}
+    </div>
+  );
+})()}---
+
+## WHAT THIS ADDS:
+
+✅ **Visual Progress Bar** - Shows how close proposal is to reaching quorum
+✅ **Color Coded** - Green when quorum met, yellow when not
+✅ **Vote Counter** - Shows "X / Y votes (Z% required)"
+✅ **Success Message** - "Quorum reached! Result will be binding." with green checkmark
+✅ **Warning Message** - "⚠️ X more votes needed to reach quorum"
+✅ **Animated** - Smooth progress bar animation
+
+---
+
+## WHERE TO PUT IT:
+
+The code goes inside the ProposalCard component, right after the "For" and "Against" vote progress bars, before the voting buttons section.
+
+Structure should look like:
