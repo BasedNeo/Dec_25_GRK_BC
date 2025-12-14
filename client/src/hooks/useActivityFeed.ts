@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { NFT_CONTRACT, BLOCK_EXPLORER, RPC_URL, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT } from '@/lib/constants';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -48,13 +48,6 @@ async function getBlockTimestamp(provider: ethers.JsonRpcProvider, blockNumber: 
   return timestamp;
 }
 
-// Event signatures
-const TRANSFER_EVENT = 'Transfer(address,address,uint256)';
-const LISTED_EVENT = 'Listed(uint256,address,uint256)';
-const SOLD_EVENT = 'Sold(uint256,address,address,uint256,uint256)';
-const DELISTED_EVENT = 'Delisted(uint256,address)';
-const OFFER_MADE_EVENT = 'OfferMade(uint256,address,uint256,uint256)';
-
 // ABIs for parsing events
 const NFT_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
@@ -84,10 +77,6 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastBlock, setLastBlock] = useState<number>(0);
-
-  // Shorten address helper
-  const shortenAddress = (addr: string) => 
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   // Fetch activities from blockchain
   const fetchActivities = useCallback(async () => {
