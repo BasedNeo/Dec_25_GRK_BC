@@ -1,0 +1,426 @@
+FEATURE: Make Collection tab show LIVE minting status for all 3,732 NFTs
+
+CRITICAL RULES:
+- DO NOT change or rebuild the existing grid, search, filters, sorting, or design
+- ONLY add the logic to differentiate minted vs un-minted NFTs
+- Keep 100% of existing CSS and component structure
+
+=== OVERVIEW ===
+
+The Collection shows all 3,732 NFTs in the Based Guardians series.
+- Minted NFTs (tokenId ≤ totalMinted): Owned by someone, can receive offers
+- Un-minted NFTs (tokenId > totalMinted): Available to mint on Aftermint.trade
+
+Contract: 0xaE51dc5fD1499A129f8654963560f9340773ad59
+RPC: https://mainnet.basedaibridge.com/rpc/
+Function to call: totalMinted() returns uint256 (currently returns 6)
+
+=== PART 1: MINTED COUNT SERVICE ===
+
+Create a service to track how many NFTs are minted:
+
+const MintedCountService = {
+  count: 0,
+  lastFetched: 0,
+  CACHE_DURATION: 300000, // 5 minutes
+  isLoading: false,
+  
+  async getTotalMinted(forceRefresh = false) {
+    const now = Date.now();
+    
+    // Return cached if fresh
+    if (!forceRefresh && this.count > 0 && (now - this.lastFetched) < this.CACHE_DURATION) {
+      return this.count;
+    }
+    
+    // Prevent duplicate fetches
+    if (this.isLoading) {
+      // Wait for existing fetch
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return this.count;
+    }
+    
+    this.isLoading = true;
+    
+    try {
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      const contract = new ethers.Contract(
+        '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+        ['function totalMinted() view returns (uint256)'],
+        provider
+      );
+      
+      const minted = await contract.totalMinted();
+      this.count = Number(minted);
+      this.lastFetched = now;
+      
+      console.log(`[MintedCount] Total minted: ${this.count}`);
+      
+      // Dispatch event for UI updates
+      document.dispatchEvent(new CustomEvent('mintedCountUpdated', { 
+        detail: { count: this.count } 
+      }));
+      
+      return this.count;
+      
+    } catch (error) {
+      console.error('[MintedCount] Failed to fetch:', error);
+      // Return last known count on error
+      return this.count;
+    } finally {
+      this.isLoading = false;
+    }
+  },
+  
+  // Check if a specific token is minted
+  isMinted(tokenId) {
+    return tokenId <= this.count;
+  },
+  
+  // Start background polling (every 5 minutes)
+  startPolling() {
+    // Initial fetch
+    this.getTotalMinted(true);
+    
+    // Poll every 5 minutes
+    setInterval(() => {
+      this.getTotalMinted(true);
+    }, 300000);
+  }
+};
+
+// Auto-start when Collection page loads
+MintedCountService.startPolling();
+
+=== PART 2: NFT CARD LOGIC UPDATE ===
+
+Update your existing NFT card rendering to check minting status.
+
+FIND your existing card creation function (likely named something like 
+createNFTCard, renderNFTCard, NFTCard component, etc.)
+
+ADD this logic to determine card type:
+
+function getNFTListingStatus(tokenId) {
+  const isMinted = MintedCountService.isMinted(tokenId);
+  
+  return {
+    isMinted,
+    status: isMinted ? 'owned' : 'available',
+    price: isMinted ? null : '69,420 $BASED',
+    primaryAction: isMinted ? 'offer' : 'buy',
+    badge: isMinted ? null : 'Mint Available'
+  };
+}
+
+Then in your card render function, ADD (don't replace) this logic:
+
+// Get listing status
+const listing = getNFTListingStatus(tokenId);
+
+// Add badge for un-minted NFTs
+const badgeHtml = listing.badge 
+  ? `<span class="listing-badge mint-available">${listing.badge}</span>` 
+  : '';
+
+// Determine action button
+const actionButtonHtml = listing.isMinted
+  ? `<button class="btn btn-secondary offer-btn" data-token-id="${tokenId}">
+       Make Offer
+     </button>`
+  : `<a href="https://aftermint.trade/mint/based-guardians" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="btn btn-primary buy-now-btn">
+       <span class="btn-icon">🛒</span>
+       Buy Now - ${listing.price}
+       <span class="external-icon">↗</span>
+     </a>`;
+
+// Add price display for un-minted
+const priceHtml = !listing.isMinted
+  ? `<div class="listing-price">
+       <span class="price-label">Mint Price</span>
+       <span class="price-value">69,420 $BASED</span>
+     </div>`
+  : '';
+
+INSERT these into your existing card template where appropriate:
+- badgeHtml: Inside the image container or card header
+- priceHtml: In the card info section
+- actionButtonHtml: Replace or augment existing action buttons
+
+=== PART 3: CSS ADDITIONS (Add to existing, don't replace) ===
+
+/* === Listing Status Badges === */
+.listing-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 2;
+}
+
+.listing-badge.mint-available {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  color: white;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.4);
+  animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* === Buy Now Button Styling === */
+.buy-now-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.buy-now-btn:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.buy-now-btn .btn-icon {
+  font-size: 16px;
+}
+
+.buy-now-btn .external-icon {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* === Offer Button Styling === */
+.offer-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.offer-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* === Listing Price Display === */
+.listing-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.price-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.price-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* === Mobile: Max 4 columns === */
+@media (max-width: 1200px) {
+  .collection-grid,
+  .nft-grid,
+  [class*="grid"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .collection-grid,
+  .nft-grid,
+  [class*="grid"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .collection-grid,
+  .nft-grid,
+  [class*="grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+=== PART 4: DISCLAIMER BANNER ===
+
+Add a subtle disclaimer at the top of the Collection page:
+
+<div class="collection-disclaimer">
+  <span class="disclaimer-icon">ℹ️</span>
+  <span class="disclaimer-text">
+    NFTs marked "Mint Available" can be minted on 
+    <a href="https://aftermint.trade/mint/based-guardians" target="_blank">Aftermint.trade</a>. 
+    Minted NFTs can receive offers.
+  </span>
+  <span class="minted-count">
+    <strong id="collection-minted-count">--</strong> / 3,732 minted
+  </span>
+</div>
+
+CSS for disclaimer:
+.collection-disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.disclaimer-icon {
+  font-size: 16px;
+}
+
+.disclaimer-text {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.disclaimer-text a {
+  color: #06b6d4;
+  text-decoration: none;
+}
+
+.disclaimer-text a:hover {
+  text-decoration: underline;
+}
+
+.minted-count {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.minted-count strong {
+  color: #10b981;
+}
+
+JavaScript to update count in disclaimer:
+document.addEventListener('mintedCountUpdated', (e) => {
+  const countEl = document.getElementById('collection-minted-count');
+  if (countEl) {
+    countEl.textContent = e.detail.count.toLocaleString();
+  }
+});
+
+=== PART 5: PERFORMANCE - PAGINATION ===
+
+IMPORTANT: Do NOT load all 3,732 cards at once - this will crash mobile browsers.
+
+Implement pagination or infinite scroll:
+
+const ITEMS_PER_PAGE = 24; // 6 rows of 4
+let currentPage = 1;
+
+function loadCollectionPage(page) {
+  const start = (page - 1) * ITEMS_PER_PAGE + 1; // tokenId starts at 1
+  const end = Math.min(page * ITEMS_PER_PAGE, 3732);
+  
+  const cards = [];
+  for (let tokenId = start; tokenId <= end; tokenId++) {
+    cards.push(createNFTCard(tokenId));
+  }
+  
+  // Append to grid (for infinite scroll) or replace (for pagination)
+  const grid = document.querySelector('.collection-grid');
+  grid.innerHTML = cards.join('');
+}
+
+// Infinite scroll trigger
+function setupInfiniteScroll() {
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && currentPage * ITEMS_PER_PAGE < 3732) {
+      currentPage++;
+      loadCollectionPage(currentPage);
+    }
+  }, { threshold: 0.1 });
+  
+  const sentinel = document.getElementById('scroll-sentinel');
+  if (sentinel) observer.observe(sentinel);
+}
+
+Add at bottom of grid:
+<div id="scroll-sentinel" style="height: 1px;"></div>
+
+=== PART 6: OFFER BUTTON EVENT HANDLING ===
+
+Make sure offer buttons work with event delegation:
+
+document.addEventListener('click', (e) => {
+  // Handle offer button clicks
+  if (e.target.classList.contains('offer-btn') || e.target.closest('.offer-btn')) {
+    const btn = e.target.classList.contains('offer-btn') ? e.target : e.target.closest('.offer-btn');
+    const tokenId = btn.dataset.tokenId;
+    
+    if (tokenId) {
+      openOfferModal(tokenId);
+    }
+  }
+});
+
+=== TESTING CHECKLIST ===
+
+After implementation, verify:
+
+[ ] Un-minted NFT #7 shows:
+    - "Mint Available" cyan badge
+    - Price: "69,420 $BASED"
+    - "Buy Now" button that opens aftermint.trade in new tab
+    
+[ ] Minted NFT #6 shows:
+    - No "Mint Available" badge
+    - No price display
+    - "Make Offer" button that opens offer modal
+    
+[ ] Minted count updates in disclaimer
+[ ] Search/filter still works
+[ ] Sorting still works
+[ ] Grid responsive: 4 cols on tablet, 2 on mobile
+[ ] Pagination/infinite scroll works
+[ ] No console errors
+[ ] Mobile performance acceptable (not laggy)
+
+=== AFTERMINT.TRADE URL ===
+
+Replace this placeholder with the actual minting URL:
+https://aftermint.trade/mint/based-guardians
+
+If the URL is different, update all instances in the code above.

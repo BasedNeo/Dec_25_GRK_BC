@@ -58,6 +58,29 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
   const [directLoading, setDirectLoading] = useState(false);
   const [directError, setDirectError] = useState<string | null>(null);
   const [contractStats, setContractStats] = useState<{totalMinted: number} | null>(null);
+  
+  // --- Fetch totalMinted from contract (for live minting status) ---
+  useEffect(() => {
+    const fetchTotalMinted = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+        const contract = new ethers.Contract(
+          '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+          ['function totalMinted() view returns (uint256)'],
+          provider
+        );
+        const totalMinted = await contract.totalMinted();
+        setContractStats({ totalMinted: Number(totalMinted) });
+        console.log('[Collection] Total minted from contract:', Number(totalMinted));
+      } catch (error) {
+        console.error('[Collection] Failed to fetch totalMinted:', error);
+      }
+    };
+    fetchTotalMinted();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchTotalMinted, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Mock Received Offers (for Seller Dashboard)
   const [receivedOffers, setReceivedOffers] = useState([
@@ -835,6 +858,25 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
             <TabsContent value="buy" className="space-y-8">
                 {displayedItems.length > 0 ? (
                     <>
+                        {/* Live Minting Status Banner */}
+                        {contractStats && (
+                            <div className="p-4 rounded-lg bg-gradient-to-r from-[#6cff61]/10 to-cyan-500/10 border border-[#6cff61]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" data-testid="minting-status-banner">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full bg-[#6cff61] animate-pulse"></div>
+                                    <div>
+                                        <span className="text-white font-orbitron text-sm">LIVE MINTING STATUS</span>
+                                        <p className="text-[#6cff61] font-mono text-lg font-bold">
+                                            {contractStats.totalMinted.toLocaleString()} / 3,732 MINTED
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Info size={12} />
+                                    <span>NFTs with "MINT AVAILABLE" badge can be minted at 69,420 $BASED</span>
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className={`grid gap-6 transition-all duration-300 ${
                             gridCols === 1 ? 'grid-cols-1' : 
                             gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
@@ -849,7 +891,8 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                                     onOffer={() => handleOffer(item)}
                                     onClick={() => setSelectedNFT(item)} 
                                     isAdmin={isAdmin} 
-                                    onCancel={() => handleAdminCancel(item)} 
+                                    onCancel={() => handleAdminCancel(item)}
+                                    totalMinted={contractStats?.totalMinted}
                                 />
                             ))}
                         </div>
@@ -899,7 +942,7 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                         'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
                     }`}>
                         {displayedItems.map((item) => (
-                            <MarketCard key={item.id} item={item} onBuy={() => {}} onOffer={() => handleOffer(item)} onClick={() => setSelectedNFT(item)} isOwner={true} />
+                            <MarketCard key={item.id} item={item} onBuy={() => {}} onOffer={() => handleOffer(item)} onClick={() => setSelectedNFT(item)} isOwner={true} totalMinted={contractStats?.totalMinted} />
                         ))}
                      </div>
                 ) : (
@@ -1009,9 +1052,15 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
 import { NFTImage } from "./NFTImage";
 
 // Helper Card Component
-function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void }) {
+function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const hasPrice = item.price && item.price > 0;
+    
+    // Determine if this NFT is minted (tokenId <= totalMinted)
+    const isMinted = totalMinted !== undefined && item.id <= totalMinted;
+    const isUnminted = totalMinted !== undefined && item.id > totalMinted;
+    const MINT_PRICE = 69420; // 69,420 $BASED
+    const AFTERMINT_URL = "https://aftermint.trade/mint/based-guardians";
     
     return (
         <Card className="nft-card bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-all duration-300 group cursor-pointer relative" onClick={onClick} data-token-id={item.id}>
@@ -1023,6 +1072,13 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     id={item.id}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
+                
+                {/* Mint Available Badge for unminted NFTs */}
+                {isUnminted && (
+                    <Badge className="absolute top-2 left-2 bg-[#6cff61]/20 text-[#6cff61] border-[#6cff61]/50 backdrop-blur-md animate-pulse" data-testid={`badge-mint-available-${item.id}`}>
+                        <Zap size={10} className="mr-1" /> MINT AVAILABLE
+                    </Badge>
+                )}
                 
                 {isRare && (
                     <Badge className="absolute top-2 right-2 bg-purple-500/20 text-purple-400 border-purple-500/50 backdrop-blur-md">
@@ -1041,7 +1097,12 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
             {/* Details */}
             <div className="nft-info p-4 space-y-4">
                 <div className="flex justify-between items-center min-h-[3rem]">
-                    {hasPrice ? (
+                    {isUnminted ? (
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
+                            <span className="text-lg font-bold text-[#6cff61] font-mono">{MINT_PRICE.toLocaleString()} $BASED</span>
+                        </div>
+                    ) : hasPrice ? (
                         <div className="flex flex-col">
                             <span className="text-[10px] text-muted-foreground uppercase">Price</span>
                             <span className="text-lg font-bold text-primary font-mono" data-price={item.price}>{item.price} $BASED</span>
@@ -1059,6 +1120,21 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                         <Button className="w-full bg-white/10 hover:bg-white/20 text-white" variant="outline">
                             List / Delist
                         </Button>
+                    ) : isUnminted ? (
+                        <a 
+                            href={AFTERMINT_URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="w-full"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Button 
+                                className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
+                                data-testid={`button-buy-now-${item.id}`}
+                            >
+                                <Zap size={14} className="mr-2" /> BUY NOW
+                            </Button>
+                        </a>
                     ) : (
                         <>
                             {hasPrice && (
@@ -1076,6 +1152,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                                     onOffer();
                                 }}
                                 variant={!hasPrice ? 'default' : 'outline'}
+                                data-testid={`button-offer-${item.id}`}
                             >
                                 OFFER
                             </Button>
