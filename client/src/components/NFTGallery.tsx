@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid, ExternalLink } from "lucide-react";
-import { Guardian, MOCK_GUARDIANS, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
+import { Guardian, calculateBackedValue, RARITY_CONFIG } from "@/lib/mockData";
 import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";

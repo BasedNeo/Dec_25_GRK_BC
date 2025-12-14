@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
-import { Guardian } from "@/lib/mockData";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RarityChartProps {

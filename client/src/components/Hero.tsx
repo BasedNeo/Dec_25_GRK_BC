@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw, Wallet } from "lucide-react";
-import { MOCK_GUARDIANS, MINT_PRICE, MINTED_COUNT, TOTAL_SUPPLY, MOCK_POOL_BALANCE, calculateBackedValue, Guardian } from "@/lib/mockData";
+import { MINT_PRICE, TOTAL_SUPPLY, calculateBackedValue, Guardian } from "@/lib/mockData";
 import { NFT_SYMBOL, BLOCK_EXPLORER } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";

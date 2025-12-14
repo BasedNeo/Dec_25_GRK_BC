@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MOCK_POOL_BALANCE, TOTAL_SUPPLY, calculateBackedValue } from "@/lib/mockData";
+import { calculateBackedValue } from "@/lib/mockData";
 import { TrendingUp, DollarSign, Activity, RefreshCw } from "lucide-react";
 import { useBalance } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
