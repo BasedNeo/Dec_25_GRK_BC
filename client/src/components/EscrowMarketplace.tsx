@@ -757,24 +757,26 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
 
                <Button 
                  variant="outline" 
+                 size="icon"
                  onClick={() => setShowFilters(!showFilters)}
-                 className={`border-white/10 ${showFilters ? 'bg-primary/20 border-primary/50 text-primary' : 'text-muted-foreground'}`}
+                 className={`border-white/10 w-10 h-10 md:w-auto md:px-4 ${showFilters ? 'bg-primary/20 border-primary/50 text-primary' : 'text-muted-foreground'}`}
                >
-                 <Filter size={16} className="mr-2" /> Filters
+                 <Filter size={16} />
+                 <span className="hidden md:inline ml-2">Filters</span>
                </Button>
                <Select value={sortBy} onValueChange={setSortBy}>
-                 <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
-                   <ArrowUpDown size={16} className="mr-2 text-muted-foreground" />
-                   <SelectValue placeholder="Sort By" />
+                 <SelectTrigger className="w-[100px] md:w-[160px] bg-white/5 border-white/10 text-white text-xs md:text-sm">
+                   <ArrowUpDown size={14} className="mr-1 md:mr-2 text-muted-foreground flex-shrink-0" />
+                   <SelectValue placeholder="Sort" />
                  </SelectTrigger>
                  <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
-                   <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                   <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                   <SelectItem value="floor-price">Floor Price (Lowest)</SelectItem>
-                   <SelectItem value="rarity-desc">Rarity: High to Low</SelectItem>
-                   <SelectItem value="rarity-asc">Rarity: Low to High</SelectItem>
-                   <SelectItem value="id-asc">ID: Low to High</SelectItem>
-                   <SelectItem value="id-desc">ID: High to Low</SelectItem>
+                   <SelectItem value="price-asc">Price: Low</SelectItem>
+                   <SelectItem value="price-desc">Price: High</SelectItem>
+                   <SelectItem value="floor-price">Floor Price</SelectItem>
+                   <SelectItem value="rarity-desc">Rarity: High</SelectItem>
+                   <SelectItem value="rarity-asc">Rarity: Low</SelectItem>
+                   <SelectItem value="id-asc">ID: Low</SelectItem>
+                   <SelectItem value="id-desc">ID: High</SelectItem>
                  </SelectContent>
                </Select>
              </div>
