@@ -20,6 +20,7 @@ import { Security } from "@/lib/security";
 import { getRarityClass } from "@/lib/utils";
 import { BuyButton } from "./BuyButton";
 import { NFTImage } from "./NFTImage";
+import { ShareAchievementModal } from "./ShareAchievementModal";
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface NFTDetailModalProps {
 export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const [backedValue, setBackedValue] = useState(calculateBackedValue());
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     // Reset state on open if needed
@@ -345,7 +347,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                      <Button variant="outline" onClick={handleTwitterShare} className="border-white/10 hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2] hover:border-[#1DA1F2]/50 text-xs font-mono">
                         <Twitter size={14} className="mr-2" /> <span className="hidden sm:inline">TWEET</span>
                      </Button>
-                     <Button variant="outline" onClick={handleShare} className="border-white/10 hover:bg-white/5 text-xs font-mono">
+                     <Button variant="outline" onClick={() => setShowShareModal(true)} className="border-white/10 hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-xs font-mono" data-testid="open-share-modal-btn">
                         <Share2 size={14} className="mr-2" /> <span className="hidden sm:inline">SHARE</span>
                      </Button>
                      <Button variant="default" asChild className="bg-white/5 text-white hover:bg-white/10 text-xs font-orbitron tracking-wider cursor-pointer border border-white/10">
@@ -357,6 +359,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             </div>
         </div>
       </DialogContent>
+
+      <ShareAchievementModal 
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        nft={nft}
+        achievementType="owned"
+      />
     </Dialog>
   );
 }
