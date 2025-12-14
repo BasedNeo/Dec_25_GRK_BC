@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { EscrowMarketplace } from "@/components/EscrowMarketplace";
+import { ActivityFeed } from "@/components/ActivityFeed";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -105,6 +106,19 @@ export default function Home() {
               className="pt-8"
             >
               <PoolTracker />
+            </motion.div>
+          )}
+
+          {activeTab === "activity" && (
+            <motion.div
+              key="activity"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="pt-8"
+            >
+              <ActivityFeed limit={30} showStats={true} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -133,6 +133,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'voting', label: 'VOTING' }, 
     { id: 'escrow', label: 'COLLECTION' },
     { id: 'pool', label: 'POOL' },
+    { id: 'activity', label: 'ACTIVITY' },
   ];
 
   return (
@@ -206,6 +207,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               { id: 'voting', label: 'VOTING' }, 
               { id: 'escrow', label: 'COLLECTION' },
               { id: 'pool', label: 'POOL' },
+              { id: 'activity', label: 'ACTIVITY' },
             ].map((item) => (
               <button
                 key={item.id}
