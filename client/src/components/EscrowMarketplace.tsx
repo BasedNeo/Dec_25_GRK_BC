@@ -1208,7 +1208,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
 
                 <DialogFooter className="flex gap-2 sm:gap-2 flex-col sm:flex-row pb-6 sm:pb-0">
                     <Button variant="ghost" onClick={onClose} className="flex-1 w-full">CANCEL</Button>
-                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 w-full bg-primary text-black hover:bg-primary/90 font-bold font-orbitron">
+                    <Button onClick={() => onSubmit(amount, duration)} className="flex-1 w-full bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-bold font-orbitron">
                         SUBMIT OFFER
                     </Button>
                 </DialogFooter>
