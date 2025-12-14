@@ -80,7 +80,6 @@ class ContractServiceClass {
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          console.log(`[ContractService] Connecting to ${rpcUrl} (attempt ${attempt + 1})`);
 
           this.provider = new ethers.JsonRpcProvider(rpcUrl, {
             chainId: this.config.chainId,
@@ -104,18 +103,15 @@ class ContractServiceClass {
 
           this.isInitialized = true;
           this.currentRpcIndex = rpcIndex;
-          console.log(`[ContractService] Connected successfully to ${rpcUrl}`);
           return true;
 
         } catch (error: any) {
-          console.warn(`[ContractService] Attempt ${attempt + 1} failed for ${rpcUrl}:`, error.message);
           await this._delay(1000 * (attempt + 1));
         }
       }
     }
 
     this.initPromise = null;
-    console.error('[ContractService] Failed to connect after all retries');
     return false;
   }
 
@@ -179,7 +175,6 @@ class ContractServiceClass {
       CacheService.set(CACHE_KEYS.CONTRACT_STATS, stats);
       return stats;
     } catch (error) {
-      console.error('[ContractService] getContractStats failed:', error);
       return null;
     }
   }
@@ -225,7 +220,6 @@ class ContractServiceClass {
 
       return { nfts, total: totalMinted, hasMore: start > 0 };
     } catch (error) {
-      console.error('[ContractService] getMintedNFTs failed:', error);
       return { nfts: [], total: 0, hasMore: false };
     }
   }
@@ -245,7 +239,6 @@ class ContractServiceClass {
         index
       };
     } catch (e) {
-      console.warn(`[ContractService] Failed to fetch token at index ${index}`);
       return null;
     }
   }
@@ -260,7 +253,6 @@ class ContractServiceClass {
       if (!response.ok) throw new Error('Metadata fetch failed');
       return await response.json();
     } catch (error) {
-      console.warn(`[ContractService] Metadata fetch failed for token ${tokenId}`);
       return null;
     }
   }
@@ -298,7 +290,6 @@ class ContractServiceClass {
 
       return nfts;
     } catch (error) {
-      console.error('[ContractService] getUserNFTs failed:', error);
       return [];
     }
   }
@@ -311,7 +302,6 @@ class ContractServiceClass {
       const owner = await this.callContract<string>('ownerOf', tokenId);
       return owner;
     } catch (error) {
-      console.warn(`[ContractService] getTokenOwner failed for token ${tokenId}`);
       return null;
     }
   }
@@ -327,7 +317,6 @@ class ContractServiceClass {
         return Number(await this.callContract<bigint>('totalMinted'));
       }
     } catch (error) {
-      console.error('[ContractService] getTotalMinted failed:', error);
       return 0;
     }
   }

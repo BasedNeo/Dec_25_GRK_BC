@@ -86,7 +86,6 @@ export function Hero() {
         setSecondsAgo(0);
 
     } catch (e) {
-        console.error("Failed to fetch all minted data:", e);
         setMintedData(prev => ({ ...prev, isLoading: false }));
     }
   };

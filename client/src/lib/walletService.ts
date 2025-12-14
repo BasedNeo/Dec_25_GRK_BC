@@ -59,7 +59,6 @@ class WalletServiceClass {
     this.initialized = true;
 
     if (typeof window === 'undefined' || typeof window.ethereum === 'undefined') {
-      console.log('[WalletService] No wallet detected');
       return false;
     }
 
@@ -75,7 +74,7 @@ class WalletServiceClass {
         return true;
       }
     } catch (error) {
-      console.warn('[WalletService] Init check failed:', error);
+      // Wallet init check failed silently
     }
 
     const savedAddress = localStorage.getItem('wallet_address');
@@ -155,7 +154,6 @@ class WalletServiceClass {
 
     localStorage.setItem('wallet_address', address);
 
-    console.log('[WalletService] Connected:', this.getShortAddress());
     this._notify('connected', { address: this.address, chainId: this.chainId });
   }
 
@@ -167,7 +165,6 @@ class WalletServiceClass {
 
     localStorage.removeItem('wallet_address');
 
-    console.log('[WalletService] Disconnected');
     this._notify('disconnected', {});
   }
 
@@ -222,7 +219,7 @@ class WalletServiceClass {
       try {
         callback(event, data);
       } catch (e) {
-        console.error('[WalletService] Listener error:', e);
+        // Listener error silently caught
       }
     });
   }

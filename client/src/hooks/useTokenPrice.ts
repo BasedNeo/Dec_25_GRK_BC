@@ -20,7 +20,6 @@ export function useTokenPrice() {
       // 1. Check LocalStorage Cache first (60s validity)
       const cached = getCached<PriceData>(CACHE_KEYS.PRICE_DATA, 60 * 1000);
       if (cached) {
-          console.log("Using cached price data");
           lastKnownPrice = cached;
           return cached;
       }
@@ -47,7 +46,6 @@ export function useTokenPrice() {
         // Explicitly ensuring float division
         const basedL1Price = ethPrice / 1000.0;
         
-        console.log("Price Debug:", { ethPrice, basedL1Price });
 
         const newPrice = {
           ethPrice,
@@ -62,7 +60,6 @@ export function useTokenPrice() {
         return newPrice;
 
       } catch (e) {
-        console.warn("Price fetch failed, using fallback data");
         
         // Return last known price if available, otherwise fallback data
         if (lastKnownPrice) {

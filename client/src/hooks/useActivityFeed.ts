@@ -181,7 +181,6 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
 
       } catch (marketplaceError) {
         // Marketplace might not have events yet, that's okay
-        console.log('[ActivityFeed] No marketplace events yet');
       }
 
       // Sort by timestamp descending (newest first)
@@ -195,7 +194,6 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       setError(null);
       
     } catch (err: any) {
-      console.error('[ActivityFeed] Error fetching activities:', err);
       setError(err.message || 'Failed to fetch activity');
     } finally {
       setIsLoading(false);

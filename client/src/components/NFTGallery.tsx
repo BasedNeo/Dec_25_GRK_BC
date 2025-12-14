@@ -82,10 +82,7 @@ export function NFTGallery({
   const handleInstallClick = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult: any) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('User accepted the install prompt');
-        }
+      deferredPrompt.userChoice.then(() => {
         setDeferredPrompt(null);
       });
     } else {

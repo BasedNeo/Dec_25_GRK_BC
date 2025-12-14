@@ -58,7 +58,6 @@ export function getCached<T>(key: string, maxAge: number): T | null {
     setMemoryCache(key, data);
     return data;
   } catch (e) {
-    console.warn('Error reading from cache:', e);
     return null;
   }
 }
@@ -73,7 +72,6 @@ export function setCache<T>(key: string, data: T): void {
     };
     localStorage.setItem(key, JSON.stringify(entry));
   } catch (e) {
-    console.warn('Error writing to cache, clearing old entries:', e);
     clearOldCache();
     try {
       localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
@@ -104,11 +102,9 @@ export async function withCache<T>(
     : getMemoryCached<T>(key, duration);
 
   if (cached !== null) {
-    console.log(`[Cache] HIT: ${key}`);
     return cached;
   }
 
-  console.log(`[Cache] MISS: ${key}`);
   const data = await fn();
 
   if (data !== null && data !== undefined) {
