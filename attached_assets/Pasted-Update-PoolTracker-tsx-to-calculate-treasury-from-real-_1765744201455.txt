@@ -1,0 +1,55 @@
+Update PoolTracker.tsx to calculate treasury from real minted count (not mock data):
+
+1. In `client/src/components/PoolTracker.tsx`:
+
+   - Keep all the existing emission calculation logic (EMISSION_SCHEDULE, calculatePassiveEmissions, etc.)
+   - But fetch the REAL totalMinted from the NFT contract instead of using MINTED_COUNT from mockData
+   
+   Add this near the top of the component (after the state declarations around line 54):
+
+   // Fetch real minted count from contract
+   useEffect(() => {
+     const fetchMintedCount = async () => {
+       try {
+         const provider = new ethers.JsonRpcProvider(RPC_URL);
+         const contract = new ethers.Contract(
+           '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+           ['function totalMinted() view returns (uint256)'],
+           provider
+         );
+         const total = await contract.totalMinted();
+         setMintedCount(Number(total));
+       } catch (error) {
+         console.error('Failed to fetch minted count:', error);
+         setMintedCount(0);
+       }
+     };
+     fetchMintedCount();
+     const interval = setInterval(fetchMintedCount, 60000); // Refresh every minute
+     return () => clearInterval(interval);
+   }, []);
+      - Update the treasury calculation to use real mintedCount:
+
+   // Calculate treasury from REAL minted count
+   const MINT_PRICE = 69420;
+   const TREASURY_PERCENT = 0.51;
+   
+   const calculatedMintRevenue = (mintedCount || 0) * MINT_PRICE * TREASURY_PERCENT;
+   const passiveEmissions = calculatePassiveEmissions();
+   const calculatedTreasury = calculatedMintRevenue + passiveEmissions.total;
+      - Display `calculatedTreasury` instead of `MOCK_POOL_BALANCE`
+   - Show breakdown: "From Mints: X $BASED" and "From Emissions: Y $BASED"
+
+2. Keep using the emission schedule from mockData.ts - that logic is correct:
+   - Pre-halving: 5,000 $BASED/day
+   - Post-halving 1: 2,500 $BASED/day
+   - etc.
+
+3. The "Backed Value Per NFT" should be: calculatedTreasury / 3732 (total supply)
+
+4. Remove the MOCK_POOL_BALANCE import if no longer needed, but keep calculatePassiveEmissions and EMISSION_SCHEDULE imports.
+
+This makes the treasury display show:
+- Real mint revenue based on actual minted NFTs from the contract
+- Plus time-based passive emissions
+- No actual wallet balance lookup needed

@@ -1,4 +1,8 @@
-import { MINT_PRICE, getTreasuryMetrics, TOTAL_SUPPLY } from "@/lib/mockData";
+import { getTreasuryMetrics, TOTAL_SUPPLY } from "@/lib/mockData";
+
+// Local constants for treasury calculation
+const MINT_PRICE = 69420;
+const TREASURY_PERCENT = 0.51;
 import { motion } from "framer-motion";
 import { Database, ArrowUpRight, TrendingUp, RefreshCw, Info, ExternalLink, Timer, Zap, Brain, AlertTriangle } from "lucide-react";
 import { Line } from "react-chartjs-2";
@@ -224,7 +228,7 @@ export function PoolTracker() {
       setMintedCount(currentMinted);
       
       // Calculate Mint Revenue: 51% of 69,420 * minted
-      const revenue = 0.51 * MINT_PRICE * currentMinted;
+      const revenue = TREASURY_PERCENT * MINT_PRICE * currentMinted;
       setMintRevenue(revenue);
       
       setLastUpdated(new Date());
@@ -378,6 +382,15 @@ export function PoolTracker() {
               <p className="text-xs text-muted-foreground mt-1">Set VITE_POOL_WALLET environment variable</p>
             </div>
           )}
+
+          {/* Backed Value Per NFT */}
+          <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl max-w-md mx-auto">
+            <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Backed Value Per NFT</span>
+            <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2">
+              {((mintRevenue + displayedPoolShare) / TOTAL_SUPPLY).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} <span className="text-lg text-primary">$BASED</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Based on {TOTAL_SUPPLY.toLocaleString()} total supply</p>
+          </div>
 
           {/* Treasury Breakdown Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 w-full max-w-6xl mx-auto">
