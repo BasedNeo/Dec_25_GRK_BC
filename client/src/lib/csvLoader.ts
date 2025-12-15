@@ -62,8 +62,8 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                     }
                 }
 
-                // Start unminted NFTs at ID 300
-                const nftId = index + 300;
+                // Token ID matches row index (1-based)
+                const nftId = index + 1;
                 
                 return {
                   id: nftId,
