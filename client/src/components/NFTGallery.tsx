@@ -66,7 +66,7 @@ export function NFTGallery({
   const [useCsvData, setUseCsvData] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
-  const { nfts: ownedNFTs, isLoading: isLoadingOwned } = useOwnedNFTs();
+  const { nfts: ownedNFTs, isLoading: isLoadingOwned, refetch: refetchOwned, balance: ownedBalance } = useOwnedNFTs();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // PWA Install Prompt
@@ -264,9 +264,22 @@ export function NFTGallery({
                            <span className="text-4xl md:text-5xl font-black font-orbitron text-white text-glow">
                               {Math.floor(userTotalValue).toLocaleString()} <span className="text-2xl text-primary font-bold">$BASED</span>
                            </span>
-                           <span className="text-xs text-muted-foreground mt-2 font-mono bg-white/5 px-2 py-1 rounded">
-                              {displayNfts.length} Guardians
-                           </span>
+                           <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-1 rounded">
+                                 {displayNfts.length} Guardians (Chain: {ownedBalance})
+                              </span>
+                              <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => {
+                                    refetchOwned();
+                                 }}
+                                 className="h-6 px-2 text-xs text-primary hover:bg-primary/10"
+                                 disabled={isLoadingOwned}
+                              >
+                                 <RefreshCw size={12} className={isLoadingOwned ? 'animate-spin' : ''} />
+                              </Button>
+                           </div>
                        </div>
                        
                        <div className="flex flex-col items-center md:items-start pl-2">
