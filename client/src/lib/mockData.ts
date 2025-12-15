@@ -93,6 +93,34 @@ export const MOCK_GUARDIANS: Guardian[] = Array.from({ length: 20 }, (_, i) => g
 export const MOCK_PROPOSALS: Proposal[] = [
   {
     id: 1,
+    title: "Should the Guardians have a Telegram channel once minting has ended?",
+    description: "This proposal seeks community input on whether we should create an official Telegram channel for the Based Guardians community after the minting phase is complete. A Telegram channel would provide another platform for community engagement, announcements, and discussions.",
+    type: 'binary',
+    options: [
+        { id: 'yes', label: 'For', votes: 0 },
+        { id: 'no', label: 'Against', votes: 0 },
+        { id: 'abstain', label: 'Abstain', votes: 0 }
+    ],
+    status: 'Active',
+    endTime: new Date(Date.now() + 86400000 * 90).toISOString(), // 90 days from now
+    totalVotes: 0
+  },
+  {
+    id: 2,
+    title: "Kek.space Integration: Crashed Spacecraft or Guardian Brain Planet?",
+    description: "Should the Guardians have the opportunity to build in Kek.space? Would you like our region to be a crashed spacecraft, or would you like to be beamed from the existing Kek.space map to a Guardian Brain Planet in the Giga Brain Galaxy?",
+    type: 'multiple',
+    options: [
+        { id: 'spacecraft', label: 'Crashed Spacecraft', votes: 0 },
+        { id: 'planet', label: 'Guardian Brain Planet in Giga Brain Galaxy', votes: 0 },
+        { id: 'abstain', label: 'Abstain', votes: 0 }
+    ],
+    status: 'Active',
+    endTime: new Date(Date.now() + 86400000 * 90).toISOString(), // 90 days from now
+    totalVotes: 0
+  },
+  {
+    id: 3,
     title: "Community Treasury Allocation: Marketing Fund",
     description: "Allocate 50,000 $BASED from the community treasury to fund marketing initiatives including Twitter/X campaigns, influencer partnerships, and community contests to grow the Based Guardians ecosystem.",
     type: 'binary',
@@ -101,12 +129,12 @@ export const MOCK_PROPOSALS: Proposal[] = [
         { id: 'no', label: 'Against', votes: 89 },
         { id: 'abstain', label: 'Abstain', votes: 12 }
     ],
-    status: 'Active',
-    endTime: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 days from now
+    status: 'Passed',
+    endTime: "2025-11-20T12:00:00Z",
     totalVotes: 346
   },
   {
-    id: 2,
+    id: 4,
     title: "Proposal: Traditional Website vs. App Development",
     description: "Should we create a traditional website or put those resources into further developing this app? The traditional website would serve as a landing page with basic info, while app development would add features like staking, leaderboards, and enhanced marketplace.",
     type: 'multiple',
@@ -116,12 +144,12 @@ export const MOCK_PROPOSALS: Proposal[] = [
         { id: 'both', label: 'Do Both', votes: 350 },
         { id: 'abstain', label: 'Abstain', votes: 50 }
     ],
-    status: 'Active',
-    endTime: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
+    status: 'Passed',
+    endTime: "2025-11-15T12:00:00Z",
     totalVotes: 2100
   },
   {
-    id: 3,
+    id: 5,
     title: "Feature Request: Offers & Listings in Series",
     description: "Add the ability to make offers in the 'Series' section and the ability to set a price to sell NFTs. This would allow holders to list their NFTs directly from the collection view.",
     type: 'binary',
@@ -135,7 +163,7 @@ export const MOCK_PROPOSALS: Proposal[] = [
     totalVotes: 1440
   },
   {
-    id: 4,
+    id: 6,
     title: "Timeline Adjustment: Postpone Launch",
     description: "Wait to launch the App until April to ensure all features are properly tested and audited.",
     type: 'binary',
@@ -149,7 +177,7 @@ export const MOCK_PROPOSALS: Proposal[] = [
     totalVotes: 1550
   },
   {
-    id: 5,
+    id: 7,
     title: "Partnership: BasedAI DEX Integration",
     description: "Should we pursue integration with the upcoming BasedAI decentralized exchange to enable direct $BASED swaps within the Guardian app?",
     type: 'binary',
