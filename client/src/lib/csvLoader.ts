@@ -40,11 +40,8 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                         const rarityTrait = traits.find(t => t.type === 'Rarity Level');
                         if (rarityTrait) rarity = rarityTrait.value;
 
-                        // LIVE CONTRACT STATE OVERRIDES (To match Explorer/Chart)
-                        const id = index + 1;
-                        if ([1282, 3002, 149].includes(id)) rarity = 'Rare';
-                        else if (id === 183) rarity = 'Common';
-                        else if ([1059, 1166].includes(id)) rarity = 'Most Common';
+                        // Note: Rarity overrides only apply to minted NFTs (IDs < 300)
+                        // CSV NFTs start at ID 300, so no overrides needed here
 
                     } catch (e) {
                         // Fallback: try manual cleanup if standard parse fails
@@ -61,14 +58,17 @@ export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
                     }
                 }
 
+                // Start unminted NFTs at ID 300
+                const nftId = index + 300;
+                
                 return {
-                  id: index + 1, // Assign ID based on row index (1-based)
-                  name: csvRow.Name || `Guardian #${index + 1}`,
+                  id: nftId,
+                  name: csvRow.Name || `Guardian #${nftId}`,
                   image: csvRow.Image,
                   rarity: rarity,
                   traits: traits,
-                  isListed: true, // Default to listed for marketplace view
-                  price: 420 + (index % 100), // Mock price
+                  isListed: false, // Will be set by marketplace data
+                  price: 0,
                   currency: '$BASED'
                 };
               });

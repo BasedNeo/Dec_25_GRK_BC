@@ -269,12 +269,21 @@ export function useGuardians(
              };
              
              allGuardians.sort((a, b) => {
-                 // Listed NFTs always come first
-                 const aListed = a.isListed ? 1 : 0;
-                 const bListed = b.isListed ? 1 : 0;
-                 if (aListed !== bListed) return bListed - aListed;
+                 // For listed-price-asc: Only show listed NFTs, sorted by price
+                 if (filters.sortBy === 'listed-price-asc') {
+                    // Listed NFTs come first
+                    const aListed = a.isListed ? 1 : 0;
+                    const bListed = b.isListed ? 1 : 0;
+                    if (aListed !== bListed) return bListed - aListed;
+                    // Both listed: sort by price ascending
+                    if (a.isListed && b.isListed) {
+                       return (a.price || 0) - (b.price || 0);
+                    }
+                    // Neither listed: sort by ID
+                    return a.id - b.id;
+                 }
                  
-                 // Then apply the selected sort
+                 // For other sorts: apply directly without prioritizing listed
                  switch (filters.sortBy) {
                     case 'price-asc': return (a.price || 0) - (b.price || 0);
                     case 'price-desc': return (b.price || 0) - (a.price || 0);
