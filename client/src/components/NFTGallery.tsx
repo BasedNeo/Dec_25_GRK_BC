@@ -10,6 +10,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
+import { useOffersForOwner } from "@/hooks/useOffers";
+import { useListing } from "@/hooks/useMarketplace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -70,6 +72,7 @@ export function NFTGallery({
   const [showFilters, setShowFilters] = useState(false);
   
   const { nfts: ownedNFTs, isLoading: isLoadingOwned, refetch: refetchOwned, balance: ownedBalance } = useOwnedNFTs();
+  const { offers: allOffers } = useOffersForOwner();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
   // PWA Install Prompt
@@ -538,7 +541,7 @@ export function NFTGallery({
                       >
                         {displayNfts.map((guardian, idx) => (
                           <motion.div key={`${guardian.id}-${idx}`} variants={item}>
-                            <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} />
+                            <GuardianCard guardian={guardian} onClick={() => setSelectedNFT(guardian)} tokenOffers={allOffers.get(guardian.id)} />
                           </motion.div>
                         ))}
                       </motion.div>
@@ -574,7 +577,23 @@ export function NFTGallery({
 import { NFTImage } from "./NFTImage";
 import { BuyButton } from "./BuyButton";
 
-function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () => void }) {
+interface OfferData {
+  tokenId: number;
+  offerer: string;
+  amount: string;
+  expiresAt: number;
+  active: boolean;
+}
+
+function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, onClick: () => void, tokenOffers?: OfferData[] }) {
+  // Fetch real listing data from blockchain
+  const { listing, isLoading: listingLoading } = useListing(guardian.id);
+  
+  // Get highest offer from passed offers
+  const highestOffer = tokenOffers?.length 
+    ? tokenOffers.reduce((max, offer) => Number(offer.amount) > Number(max.amount) ? offer : max, tokenOffers[0])
+    : null;
+
   if (guardian.isError) {
       return (
         <Card className="bg-red-950/20 border-red-500/20 h-full flex flex-col items-center justify-center p-6 text-center">
@@ -597,10 +616,13 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
 
   // Find config, handle casing or partial matches if needed, but exact match is preferred
   const rarityConfig = RARITY_CONFIG[normalizedRarity] || RARITY_CONFIG['Common'];
-  const isCommon = normalizedRarity === 'Common' || normalizedRarity === 'Most Common';
 
   // Calculate Value with Rarity Boost
   const backedValue = calculateBackedValue(normalizedRarity);
+  
+  // Check if listed on-chain (real data takes priority)
+  const isListedOnChain = listing && listing.active;
+  const listingPrice = listing?.price ? Number(listing.price) : null;
 
   return (
     <Card 
@@ -617,6 +639,15 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
             id={guardian.id}
             className="nft-image w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
+        
+        {/* Listed Badge - Top Left */}
+        {isListedOnChain && (
+          <div className="absolute top-2 left-2 z-20">
+            <Badge className="bg-yellow-500/90 text-black border-yellow-400 font-bold text-[10px]">
+              FOR SALE
+            </Badge>
+          </div>
+        )}
         
         {/* Rarity Badge */}
         <div className="absolute top-2 right-2 z-20">
@@ -656,11 +687,12 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         </div>
         
         <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
+             {/* Left column: Listing Price or Backed Value */}
              <div className="flex flex-col">
-                 {guardian.isListed && guardian.price ? (
+                 {isListedOnChain && listingPrice ? (
                    <>
-                     <span className="text-[9px] text-yellow-400 uppercase font-bold">Listed For</span>
-                     <span className="text-xs font-mono text-yellow-400 font-bold">{Number(guardian.price).toLocaleString()}</span>
+                     <span className="text-[9px] text-yellow-400 uppercase font-bold">Sale Price</span>
+                     <span className="text-xs font-mono text-yellow-400 font-bold">{listingPrice.toLocaleString()}</span>
                    </>
                  ) : (
                    <>
@@ -669,17 +701,28 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
                    </>
                  )}
              </div>
+             
+             {/* Right column: Highest Offer or Rarity */}
              <div className="flex flex-col items-end">
-                 <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
-                 <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
+                 {highestOffer ? (
+                   <>
+                     <span className="text-[9px] text-green-400 uppercase font-bold">Best Offer</span>
+                     <span className="text-xs font-mono text-green-400 font-bold">{Number(highestOffer.amount).toLocaleString()}</span>
+                   </>
+                 ) : (
+                   <>
+                     <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
+                     <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
+                   </>
+                 )}
              </div>
              
-             {/* Buy Button for Listed Items */}
-             {guardian.isListed && guardian.price && (
+             {/* Buy Button for Listed Items (for Collection view - other people's NFTs) */}
+             {isListedOnChain && listingPrice && (
                 <div className="nft-actions col-span-2 mt-2">
                     <BuyButton 
                         tokenId={guardian.id}
-                        price={guardian.price}
+                        price={listingPrice.toString()}
                         size="small"
                         className="w-full h-8 text-xs"
                         compact
