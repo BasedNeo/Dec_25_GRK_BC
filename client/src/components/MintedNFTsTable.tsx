@@ -213,10 +213,10 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
         </Button>
       </div>
       
-      {/* Direct Mint Testing Panel */}
+      {/* Direct Mint Panel */}
       <div className="flex flex-col gap-3 p-4 bg-green-500/10 border-b border-green-500/30">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-mono text-green-400">DIRECT MINT (TESTING)</span>
+          <span className="text-sm font-mono text-green-400">DIRECT MINT</span>
           <span className="text-xs text-muted-foreground">
             {totalMintedFromHook || totalMinted} / {maxSupply || 3732} minted
           </span>
