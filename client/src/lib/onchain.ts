@@ -2,6 +2,10 @@ import { createPublicClient, http, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { RPC_URL, CHAIN_ID, NFT_CONTRACT } from './constants';
 
+// Debug logging - auto-enable in development only
+const DEBUG = import.meta.env.DEV;
+const log = (...args: any[]) => DEBUG && console.log(...args);
+
 // Define the custom chain
 const basedChain = {
   ...mainnet,
@@ -105,7 +109,7 @@ export async function fetchTokenURI(tokenId: number): Promise<string | null> {
         });
         return uri as string;
     } catch (error) {
-        console.error(`Error fetching token URI for ${tokenId}:`, error);
+        log(`Error fetching token URI for ${tokenId}:`, error);
         return null;
     }
 }
@@ -120,7 +124,7 @@ export async function fetchTotalSupply(): Promise<number | null> {
     });
     return Number(data);
   } catch (error) {
-    console.error("Error fetching total supply:", error);
+    log("Error fetching total supply:", error);
     return null;
   }
 }
@@ -147,7 +151,7 @@ export async function fetchContractStats() {
             isPaused: isPaused.result
         };
     } catch (error) {
-        console.error("Error fetching contract stats:", error);
+        log("Error fetching contract stats:", error);
         return null;
     }
 }
@@ -179,7 +183,7 @@ export async function fetchTokenByIndex(index: number): Promise<number | null> {
         });
         return Number(tokenId);
     } catch (error) {
-        console.error(`Error fetching token by index ${index}:`, error);
+        log(`Error fetching token by index ${index}:`, error);
         return null;
     }
 }

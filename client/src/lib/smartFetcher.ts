@@ -3,6 +3,10 @@ import { NFT_CONTRACT } from './constants';
 import { Guardian } from './mockData';
 import { fetchGuardianMetadata } from './ipfs';
 
+// Debug logging - disabled in production
+const DEBUG = false;
+const log = (...args: any[]) => DEBUG && console.log(...args);
+
 // Rate Limiter
 const RateLimiter = {
   calls: [] as number[],
@@ -13,7 +17,7 @@ const RateLimiter = {
     const now = Date.now();
     this.calls = this.calls.filter(t => now - t < this.window);
     if (this.calls.length >= this.limit) {
-      console.warn('Rate limit reached');
+      log('Rate limit reached');
       return false;
     }
     this.calls.push(now);
@@ -36,7 +40,7 @@ if (typeof window !== 'undefined') {
     const storedOwners = localStorage.getItem(OWNERS_CACHE_KEY);
     if (storedOwners) ownersCache = JSON.parse(storedOwners);
   } catch (e) {
-    console.error("Failed to load owners cache", e);
+    // Silent fail for cache loading
   }
 }
 
@@ -106,7 +110,6 @@ export async function fetchSmartMintedData() {
         totalSupply = Number(supply);
         statsCache = { data: totalSupply, timestamp: Date.now() };
     } catch (e) {
-        console.warn("Failed to fetch live supply, defaulting to 0", e);
         // Throwing here allows ErrorBoundary to catch it if it's the initial load
         throw e;
     }
@@ -173,7 +176,7 @@ export async function fetchSmartMintedData() {
               }
           });
       } catch (e) {
-          console.error("Batch fetch tokenByIndex failed", e);
+          log("Batch fetch tokenByIndex failed", e);
       }
   }
 
@@ -205,7 +208,7 @@ export async function fetchSmartMintedData() {
               }
           });
       } catch (e) {
-         console.error("Batch fetch ownerOf failed", e);
+         log("Batch fetch ownerOf failed", e);
       }
   }
 
@@ -253,7 +256,7 @@ export async function fetchSmartMintedData() {
               }
               return data;
           } catch (e) {
-              console.warn(`Failed to fetch metadata for #${id}`);
+              log(`Failed to fetch metadata for #${id}`);
               return null;
           }
       });

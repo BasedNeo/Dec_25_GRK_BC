@@ -1,0 +1,118 @@
+const DEBUG = import.meta.env.DEV; // Auto-enable in development onlydOffers state in EscrowMarketplace.tsx is empty and never populated. Add real offer fetching.
+
+### 1. Create a new hook for batch offer fetching in `client/src/hooks/useOffers.ts`:
+
+/**
+ * useOffers - Fetch offers for multiple NFTs efficiently
+ */
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { MARKETPLACE_CONTRACT, RPC_URL } from '@/lib/constants';
+import { useAccount } from 'wagmi';
+
+interface OfferData {
+  tokenId: number;
+  offerer: string;
+  amount: string;
+  expiresAt: number;
+  active: boolean;
+}
+
+const MARKETPLACE_ABI = [
+  'event OfferMade(uint256 indexed tokenId, address indexed offerer, uint256 amount, uint256 expiresAt)',
+  'function getOffer(uint256 tokenId, address offerer) view returns (uint256 amount, uint256 expiresAt, bool active)'
+];
+
+export function useOffersForOwner() {
+  const { address } = useAccount();
+  const [offers, setOffers] = useState<Map<number, OfferData[]>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!address) {
+      setOffers(new Map());
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchOffers = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
+        
+        // Fetch OfferMade events for last 10000 blocks
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(0, currentBlock - 10000);
+        
+        const filter = contract.filters.OfferMade();
+        const events = await contract.queryFilter(filter, fromBlock, currentBlock);
+        
+        const offerMap = new Map<number, OfferData[]>();
+        
+        for (const event of events) {
+          const log = event as ethers.EventLog;
+          const tokenId = Number(log.args[0]);
+          const offerer = log.args[1] as string;
+          const amount = ethers.formatEther(log.args[2]);
+          const expiresAt = Number(log.args[3]);
+          
+          // Check if offer is still active
+          const now = Math.floor(Date.now() / 1000);
+          if (expiresAt < now) continue;
+          
+          // Verify offer is still active on-chain
+          try {
+            const offerData = await contract.getOffer(tokenId, offerer);
+            if (!offerData[2]) continue; // Not active
+            
+            const existing = offerMap.get(tokenId) || [];
+            existing.push({ tokenId, offerer, amount, expiresAt, active: true });
+            offerMap.set(tokenId, existing);
+          } catch {
+            // Offer no longer exists
+          }
+        }
+        
+        setOffers(offerMap);
+      } catch (error) {
+        console.error('[useOffers] Failed to fetch offers:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOffers();
+    const interval = setInterval(fetchOffers, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [address]);
+
+  return { offers, isLoading };
+}### 2. In `client/src/components/EscrowMarketplace.tsx`:
+
+Add the import at the top:
+import { useOffersForOwner } from '@/hooks/useOffers';Replace the empty receivedOffers state (around line 90-98) with the hook:
+// Remove this:
+// const [receivedOffers, setReceivedOffers] = useState<...>([]);
+
+// Add this:
+const { offers: offersByToken, isLoading: offersLoading } = useOffersForOwner();
+
+// Convert to array for the Offers tab
+const receivedOffers = useMemo(() => {
+  const result: any[] = [];
+  offersByToken.forEach((offers, tokenId) => {
+    offers.forEach((offer, idx) => {
+      result.push({
+        id: `${tokenId}-${offer.offerer}-${idx}`,
+        nftId: tokenId,
+        nftName: `Guardian #${tokenId}`,
+        offerer: offer.offerer,
+        amount: Number(offer.amount),
+        expiresAt: offer.expiresAt,
+        time: new Date(offer.expiresAt * 1000).toLocaleDateString(),
+        status: 'active'
+      });
+    });
+  });
+  return result.sort((a, b) => b.expiresAt - a.expiresAt);
+}, [offersByToken]);This connects real blockchain offers to the UI without breaking anything.

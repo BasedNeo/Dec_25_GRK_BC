@@ -78,7 +78,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         const totalMinted = await contract.totalMinted();
         setContractStats({ totalMinted: Number(totalMinted) });
       } catch (error) {
-        console.error('[Collection] Failed to fetch totalMinted:', error);
+        // Error silently handled - collection still displays
       }
     };
     fetchTotalMinted();
@@ -103,7 +103,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     if (saved) {
         try {
             setSavedSearches(JSON.parse(saved));
-        } catch(e) { console.error("Failed to load saved searches"); }
+        } catch(e) { /* Silent fail for non-critical feature */ }
     }
   }, []);
 
@@ -171,8 +171,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                 const totalMinted = await contract.totalMinted();
                 return Number(totalMinted);
             } catch (error: any) {
-                console.error('❌ ERROR:', error.message);
-                setDirectError(`Debug Connection Failed: ${error.message}`);
+                setDirectError(`Connection Failed: ${error.message}`);
                 return 0;
             }
         };
@@ -218,7 +217,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     try {
                         tokenUri = await contract.tokenURI(tokenId);
                     } catch (e) {
-                        console.warn(`Failed to fetch tokenURI for #${tokenId}, using pre-reveal`);
                         tokenUri = PRE_REVEAL_URI;
                     }
 
@@ -244,7 +242,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                             metadata = await res.json();
                         }
                     } catch (e) {
-                        console.warn(`Failed to fetch metadata for #${tokenId}`);
                         // If fetch fails, populate with basic info so it still shows up
                         metadata = { 
                             name: `Guardian #${tokenId}`, 
@@ -285,14 +282,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     });
 
                 } catch (err) {
-                    console.error(`Failed to fetch token at index ${i}`, err);
+                    // Skip failed tokens silently
                 }
             }
 
             setDirectNFTs(fetchedNFTs);
 
         } catch (error: any) {
-            console.error("Critical Fetch Error:", error);
             setDirectError(error.message || "Failed to load collection");
         } finally {
             setDirectLoading(false);
