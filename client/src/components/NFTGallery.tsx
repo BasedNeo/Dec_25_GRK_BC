@@ -147,12 +147,18 @@ export function NFTGallery({
   // Extract Traits
   const availableTraits = useMemo(() => {
       const traits: Record<string, Set<string>> = {};
+      const excludedTypes = ['Flying Style', 'Special Meta', 'What they like to do', 'NFT Vol.'];
       
       if (displayNfts.length > 0) {
         displayNfts.forEach(item => {
             item.traits?.forEach((t: any) => {
+                if (excludedTypes.includes(t.type)) return;
                 if (!traits[t.type]) traits[t.type] = new Set();
-                traits[t.type].add(t.value);
+                let value = t.value;
+                if (t.type === 'Character Type' && value === 'Based Creature') {
+                  value = 'Based Creatures';
+                }
+                traits[t.type].add(value);
             });
         });
       }
@@ -404,9 +410,6 @@ export function NFTGallery({
                                   <SelectItem value="all">All Values</SelectItem>
                                   {traitTypeFilter !== "all" && (() => {
                                       const values = Array.from(availableTraits[traitTypeFilter] || []);
-                                      if (traitTypeFilter === "Character Type" && !values.includes("Based Creature")) {
-                                          values.push("Based Creature");
-                                      }
                                       return values.sort().map(val => (
                                           <SelectItem key={val} value={val}>{val}</SelectItem>
                                       ));
@@ -418,7 +421,7 @@ export function NFTGallery({
                       {/* Character Type Shortcuts */}
                       <div className="col-span-1 md:col-span-3 pt-4 border-t border-white/5 flex gap-2 flex-wrap">
                           <span className="text-xs text-muted-foreground mr-2 py-1">QUICK FILTERS:</span>
-                          {['Based Frog', 'Based Guardian', 'Based Creature'].map(type => (
+                          {['Based Frog', 'Based Guardian', 'Based Creatures'].map(type => (
                               <Badge 
                                   key={type}
                                   variant="outline" 
