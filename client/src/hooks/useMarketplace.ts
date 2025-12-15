@@ -333,10 +333,22 @@ export function useMarketplace() {
   const listNFT = useCallback(async (tokenId: number, priceInBased: number) => {
     if (!checkNetwork()) return;
 
-    if (!isApproved) {
+    // Refetch approval status before listing to ensure we have latest
+    const { data: currentApproval } = await refetchApproval();
+    
+    console.log('=== LISTING DEBUG ===');
+    console.log('Token ID:', tokenId);
+    console.log('Price in $BASED:', priceInBased);
+    console.log('Is Approved (cached):', isApproved);
+    console.log('Is Approved (fresh):', currentApproval);
+    console.log('User Address:', address);
+    console.log('Marketplace:', MARKETPLACE_CONTRACT);
+    console.log('NFT Contract:', NFT_CONTRACT);
+
+    if (!currentApproval && !isApproved) {
       toast({ 
         title: "Approval Required", 
-        description: "Please approve the marketplace first", 
+        description: "Please approve the marketplace first. Click 'Approve Marketplace' and wait for confirmation.", 
         variant: "destructive" 
       });
       return;
@@ -352,6 +364,7 @@ export function useMarketplace() {
     });
 
     const priceWei = parseEther(String(priceInBased));
+    console.log('Price in Wei:', priceWei.toString());
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
@@ -360,7 +373,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId), priceWei],
       chainId: CHAIN_ID,
     });
-  }, [checkNetwork, isApproved, toast, writeContract]);
+  }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
   const delistNFT = useCallback(async (tokenId: number) => {
     if (!checkNetwork()) return;
