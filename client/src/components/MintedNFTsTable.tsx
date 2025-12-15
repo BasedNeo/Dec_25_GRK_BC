@@ -180,7 +180,7 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
     <div className="w-full mt-8 bg-black/40 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
       <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/60">
         <h3 className="font-orbitron text-white text-lg flex items-center gap-2">
-           Minted NFT Details ({totalMinted} Total)
+           Minted NFT Details
            {isInitializing && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
         </h3>
         <Button 
