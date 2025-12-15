@@ -270,10 +270,15 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
               
               {(actualStatus === 'success' || actualStatus === 'error') && (
                 <Button
-                  onClick={onClose}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose();
+                  }}
                   variant="outline"
-                  className="border-white/20"
+                  className="border-white/20 pointer-events-auto cursor-pointer min-w-[100px] min-h-[44px] relative z-[10001]"
                   data-testid="button-close-overlay"
+                  type="button"
                 >
                   CLOSE
                 </Button>
