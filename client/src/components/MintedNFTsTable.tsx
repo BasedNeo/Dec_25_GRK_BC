@@ -18,6 +18,9 @@ import { fetchTokenOwner, fetchTotalSupply, fetchTokenByIndex, fetchTokenURI } f
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 import { useState, useEffect, useCallback } from "react";
 import { getRarityClass } from "@/lib/utils";
+import { useMint } from '@/hooks/useMint';
+import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 
 interface MintedNFTsTableProps {
   nfts?: Guardian[]; // Keeping for compatibility but ignoring
@@ -33,6 +36,24 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  
+  // Direct Mint Hooks
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { 
+    mint, 
+    state: mintState,
+    canAfford,
+    balance,
+    publicMintEnabled,
+    isPaused: mintIsPaused,
+    isSoldOut,
+    totalMinted: totalMintedFromHook,
+    maxSupply,
+    remainingSupply
+  } = useMint();
+  const [mintQuantity, setMintQuantity] = useState(1);
+  const isMinting = mintState.isPending || mintState.isConfirming;
 
   // Initialize and fetch Total Supply
   const init = useCallback(async () => {
@@ -192,6 +213,82 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
         >
             <RefreshCw size={14} className={isInitializing ? "animate-spin" : ""} />
         </Button>
+      </div>
+      
+      {/* Direct Mint Testing Panel */}
+      <div className="flex flex-col gap-3 p-4 bg-green-500/10 border-b border-green-500/30">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-mono text-green-400">DIRECT MINT (TESTING)</span>
+          <span className="text-xs text-muted-foreground">
+            {totalMintedFromHook || totalMinted} / {maxSupply || 3732} minted
+          </span>
+        </div>
+        
+        {/* Quantity Selector */}
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setMintQuantity(Math.max(1, mintQuantity - 1))}
+            disabled={mintQuantity <= 1}
+            className="border-green-500/50"
+          >
+            -
+          </Button>
+          <span className="w-8 text-center font-mono text-white">{mintQuantity}</span>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setMintQuantity(Math.min(10, mintQuantity + 1))}
+            disabled={mintQuantity >= 10}
+            className="border-green-500/50"
+          >
+            +
+          </Button>
+          <span className="text-sm text-muted-foreground ml-2">
+            = {(69420 * mintQuantity).toLocaleString()} $BASED
+          </span>
+        </div>
+        
+        {/* Mint Button */}
+        <Button 
+          className="w-full bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron shadow-[0_0_20px_rgba(34,197,94,0.4)]"
+          onClick={() => {
+            if (!isConnected) {
+              openConnectModal?.();
+              return;
+            }
+            mint(mintQuantity);
+          }}
+          disabled={isMinting || mintIsPaused || isSoldOut || !publicMintEnabled || (isConnected && !canAfford(mintQuantity))}
+        >
+          {!isConnected ? 'CONNECT WALLET' :
+           isMinting ? 'MINTING...' :
+           mintIsPaused ? 'MINTING PAUSED' :
+           isSoldOut ? 'SOLD OUT' :
+           !publicMintEnabled ? 'MINT NOT OPEN' :
+           !canAfford(mintQuantity) ? 'INSUFFICIENT BALANCE' :
+           `MINT ${mintQuantity} NFT${mintQuantity > 1 ? 'S' : ''}`}
+        </Button>
+        
+        {/* Balance Display */}
+        {isConnected && (
+          <p className="text-xs text-center text-muted-foreground">
+            Your balance: {balance ? Number(balance).toLocaleString() : '0'} $BASED
+          </p>
+        )}
+        
+        {/* Status Messages */}
+        {mintState.isSuccess && (
+          <p className="text-xs text-center text-green-400 animate-pulse">
+            ✅ Mint successful! Check your wallet.
+          </p>
+        )}
+        {mintState.isError && (
+          <p className="text-xs text-center text-red-400">
+            ❌ {mintState.error}
+          </p>
+        )}
       </div>
       
       {isInitializing && mintedNFTs.length === 0 ? (
