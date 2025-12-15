@@ -1,10 +1,10 @@
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useBalance } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { CHAIN_ID, BLOCK_EXPLORER } from '@/lib/constants';
+import { CHAIN_ID } from '@/lib/constants';
 import { useContractData } from './useContractData';
-import { savePendingTx } from '@/hooks/usePendingTransactions';
+import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 
 const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
@@ -16,6 +16,8 @@ const MINT_ABI = [
 export function useMint() {
   const { toast } = useToast();
   const { address, isConnected, chain } = useAccount();
+  const { showTransaction, showError } = useTransactionContext();
+  const lastQuantityRef = useRef(1);
   
   const { 
     totalMinted, maxSupply, mintPrice,
@@ -40,14 +42,18 @@ export function useMint() {
   const { writeContract, data: txHash, isPending, isError: isWriteError, error: writeError, reset: resetWrite } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash });
 
+  const retryMint = useCallback(() => {
+    mint(lastQuantityRef.current);
+  }, []);
+
   useEffect(() => {
     setState(prev => ({ ...prev, isPending, isConfirming, isSuccess: isConfirmed, txHash }));
     
+    if (txHash && !state.txHash) {
+      showTransaction(txHash, 'mint', `Minting ${lastQuantityRef.current} Guardian NFT${lastQuantityRef.current > 1 ? 's' : ''}`, retryMint);
+    }
+    
     if (isConfirmed && txHash) {
-      toast({
-        title: "Mint Successful!",
-        description: `Your Based Guardian has been minted! View transaction: ${BLOCK_EXPLORER}/tx/${txHash}`,
-      });
       refetchContractData();
       refetchBalance();
     }
@@ -57,15 +63,11 @@ export function useMint() {
     if (isWriteError || isReceiptError) {
       const friendly = parseContractError(writeError || receiptError);
       setState(prev => ({ ...prev, isError: true, error: friendly }));
-      toast({ title: "Mint Failed", description: friendly, variant: "destructive" });
+      if (!txHash) {
+        showError(friendly, 'mint', `Minting ${lastQuantityRef.current} Guardian NFT${lastQuantityRef.current > 1 ? 's' : ''}`, retryMint);
+      }
     }
   }, [isWriteError, isReceiptError, writeError, receiptError]);
-
-  useEffect(() => {
-    if (txHash && !state.isSuccess && !state.isError) {
-      savePendingTx(txHash, 'mint', 'Minting Guardian NFT(s)');
-    }
-  }, [txHash, state.isSuccess, state.isError]);
 
   const canAfford = (qty: number) => {
     if (!balanceData) return false;
@@ -106,6 +108,7 @@ export function useMint() {
     }
 
     const totalCost = parseEther(String(mintPrice * quantity));
+    lastQuantityRef.current = quantity;
     toast({ title: "Confirm Transaction", description: "Please confirm in your wallet..." });
 
     try {

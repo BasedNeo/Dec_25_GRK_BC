@@ -13,10 +13,10 @@
 
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
-import { savePendingTx } from '@/hooks/usePendingTransactions';
+import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 
 // Marketplace ABI - all the functions we need
@@ -192,6 +192,8 @@ export interface MarketplaceState {
 export function useMarketplace() {
   const { toast } = useToast();
   const { address, isConnected, chain } = useAccount();
+  const { showTransaction, showError } = useTransactionContext();
+  const lastActionRef = useRef<{ action: string; description: string; retryFn?: () => void }>({ action: 'idle', description: '' });
 
   const checkNetwork = (): boolean => {
     if (!isConnected) {
@@ -259,6 +261,7 @@ export function useMarketplace() {
   });
 
   useEffect(() => {
+    const prevTxHash = state.txHash;
     setState(prev => ({
       ...prev,
       isPending: isWritePending,
@@ -267,33 +270,17 @@ export function useMarketplace() {
       txHash: txHash,
     }));
 
-    if (txHash && isConfirming && !isConfirmed) {
-      const desc: Record<string, string> = { approve: 'Approving marketplace', list: 'Listing NFT', delist: 'Delisting NFT', buy: 'Buying NFT', offer: 'Making offer', acceptOffer: 'Accepting offer', cancelOffer: 'Cancelling offer' };
-      savePendingTx(txHash, state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list', desc[state.action] || 'Marketplace action');
+    if (txHash && !prevTxHash && lastActionRef.current.description) {
+      const txType = state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list';
+      showTransaction(txHash, txType, lastActionRef.current.description, lastActionRef.current.retryFn);
     }
 
     if (isConfirmed && txHash) {
-      const actionMessages: Record<string, string> = {
-        approve: 'Marketplace approved! You can now list NFTs.',
-        list: 'NFT listed successfully!',
-        delist: 'NFT delisted and returned to your wallet.',
-        buy: 'Purchase successful! NFT transferred to your wallet.',
-        offer: 'Offer submitted successfully!',
-        acceptOffer: 'Offer accepted! NFT sold.',
-        cancelOffer: 'Offer cancelled and funds refunded.',
-      };
-
-      toast({
-        title: "✅ Transaction Confirmed!",
-        description: actionMessages[state.action] || 'Transaction successful!',
-        className: "bg-black border-green-500 text-green-500 font-orbitron",
-      });
-
       refetchApproval();
       refetchListings();
       refetchListingCount();
     }
-  }, [isWritePending, isConfirming, isConfirmed, txHash, state.action, toast]);
+  }, [isWritePending, isConfirming, isConfirmed, txHash, state.action]);
 
   useEffect(() => {
     if (isWriteError || isReceiptError) {
@@ -305,18 +292,18 @@ export function useMarketplace() {
         error: friendlyError,
       }));
 
-      toast({
-        title: "Transaction Failed",
-        description: friendlyError,
-        variant: "destructive",
-      });
+      if (!txHash && lastActionRef.current.description) {
+        const txType = state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list';
+        showError(friendlyError, txType, lastActionRef.current.description, lastActionRef.current.retryFn);
+      }
     }
-  }, [isWriteError, isReceiptError, writeError, receiptError, toast]);
+  }, [isWriteError, isReceiptError, writeError, receiptError]);
 
-  const approveMarketplace = async () => {
+  const approveMarketplace = useCallback(async () => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'approve' }));
+    lastActionRef.current = { action: 'approve', description: 'Approving marketplace for NFT transfers', retryFn: () => approveMarketplace() };
     
     toast({
       title: "Approve Marketplace",
@@ -331,9 +318,9 @@ export function useMarketplace() {
       args: [MARKETPLACE_CONTRACT as `0x${string}`, true],
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, toast, writeContract]);
 
-  const listNFT = async (tokenId: number, priceInBased: number) => {
+  const listNFT = useCallback(async (tokenId: number, priceInBased: number) => {
     if (!checkNetwork()) return;
 
     if (!isApproved) {
@@ -346,6 +333,7 @@ export function useMarketplace() {
     }
 
     setState(prev => ({ ...prev, action: 'list' }));
+    lastActionRef.current = { action: 'list', description: `Listing Guardian #${tokenId} for ${priceInBased.toLocaleString()} $BASED`, retryFn: () => listNFT(tokenId, priceInBased) };
 
     toast({
       title: "List NFT",
@@ -362,12 +350,13 @@ export function useMarketplace() {
       args: [BigInt(tokenId), priceWei],
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, isApproved, toast, writeContract]);
 
-  const delistNFT = async (tokenId: number) => {
+  const delistNFT = useCallback(async (tokenId: number) => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'delist' }));
+    lastActionRef.current = { action: 'delist', description: `Delisting Guardian #${tokenId} from marketplace`, retryFn: () => delistNFT(tokenId) };
 
     toast({
       title: "Delist NFT",
@@ -382,14 +371,14 @@ export function useMarketplace() {
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, toast, writeContract]);
 
-  const buyNFT = async (tokenId: number, priceWei: bigint) => {
+  const buyNFT = useCallback(async (tokenId: number, priceWei: bigint) => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'buy' }));
-
     const priceFormatted = formatEther(priceWei);
+    lastActionRef.current = { action: 'buy', description: `Buying Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED`, retryFn: () => buyNFT(tokenId, priceWei) };
 
     toast({
       title: "Buy NFT",
@@ -405,12 +394,13 @@ export function useMarketplace() {
       value: priceWei,
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, toast, writeContract]);
 
-  const makeOffer = async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
+  const makeOffer = useCallback(async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'offer' }));
+    lastActionRef.current = { action: 'offer', description: `Making offer of ${offerAmountBased.toLocaleString()} $BASED for Guardian #${tokenId}`, retryFn: () => makeOffer(tokenId, offerAmountBased, expirationDays) };
 
     toast({
       title: "Make Offer",
@@ -428,12 +418,13 @@ export function useMarketplace() {
       value: offerWei,
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, toast, writeContract]);
 
-  const cancelOffer = async (tokenId: number) => {
+  const cancelOffer = useCallback(async (tokenId: number) => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'cancelOffer' }));
+    lastActionRef.current = { action: 'cancelOffer', description: `Cancelling offer for Guardian #${tokenId}`, retryFn: () => cancelOffer(tokenId) };
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
@@ -442,12 +433,13 @@ export function useMarketplace() {
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, writeContract]);
 
-  const acceptOffer = async (tokenId: number, offererAddress: string) => {
+  const acceptOffer = useCallback(async (tokenId: number, offererAddress: string) => {
     if (!checkNetwork()) return;
 
     setState(prev => ({ ...prev, action: 'acceptOffer' }));
+    lastActionRef.current = { action: 'acceptOffer', description: `Accepting offer for Guardian #${tokenId}`, retryFn: () => acceptOffer(tokenId, offererAddress) };
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
@@ -456,7 +448,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId), offererAddress as `0x${string}`],
       chainId: CHAIN_ID,
     });
-  };
+  }, [checkNetwork, writeContract]);
 
   const reset = () => {
     resetWrite();
