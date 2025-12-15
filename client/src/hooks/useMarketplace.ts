@@ -333,6 +333,16 @@ export function useMarketplace() {
   const listNFT = useCallback(async (tokenId: number, priceInBased: number) => {
     if (!checkNetwork()) return;
 
+    // Validate price - must be at least 1 $BASED
+    if (priceInBased < 1) {
+      toast({ 
+        title: "Price Too Low", 
+        description: "Minimum listing price is 1 $BASED", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     // Refetch approval status before listing to ensure we have latest
     // Try multiple times with small delays to ensure blockchain state has propagated
     let approvalConfirmed = isApproved;
@@ -364,6 +374,17 @@ export function useMarketplace() {
     });
 
     const priceWei = parseEther(String(priceInBased));
+
+    // Debug log for development
+    if (import.meta.env.DEV) {
+      console.log('[listNFT] Calling marketplace contract:', {
+        marketplace: MARKETPLACE_CONTRACT,
+        tokenId: BigInt(tokenId).toString(),
+        priceWei: priceWei.toString(),
+        priceInBased,
+        caller: address
+      });
+    }
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
