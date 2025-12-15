@@ -192,7 +192,7 @@ export const MOCK_PROPOSALS: Proposal[] = [
   }
 ];
 
-export const MINTED_COUNT = 6; 
+export const MINTED_COUNT = 7; // Current minted NFTs on chain 
    
    // Backing Value Constants & Logic
 // Replaced with new Emission Schedule Logic provided
@@ -280,18 +280,20 @@ export const calculatePassiveEmissions = () => {
 export const calculateEmissions = () => calculatePassiveEmissions().total;
 
 export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
-  // 1. Base per-NFT from mints: 51% of 69,420
+  // 1. Base per-NFT from mints: 51% of 69,420 = 35,404.20
   const mintShare = MINT_PRICE * NFT_MINT_TREASURY_PERCENT; 
   
-  // 2. Passive Emissions Accrual (Per NFT)
+  // 2. Community Pool Accrual divided by MINTED NFTs (not total)
+  // Pool = Passive Emissions + Royalty Share + Staking Emissions
   const passiveStats = calculatePassiveEmissions();
-  const accruedEmissionsPerNFT = passiveStats.total / TOTAL_NFTS;
+  const totalPool = passiveStats.total; // Includes passive, royalty, staking
+  const poolPerMintedNFT = totalPool / MINTED_COUNT;
   
-  // 3. Apply Rarity Multiplier to Emissions ONLY
+  // 3. Apply Rarity Multiplier to pool share ONLY
   const multiplier = RARITY_CONFIG[rarityLevel]?.multiplier || 0;
-  const boostedEmissions = accruedEmissionsPerNFT * (1 + multiplier);
+  const boostedPoolShare = poolPerMintedNFT * (1 + multiplier);
   
-  return Math.floor(mintShare + boostedEmissions);
+  return Math.floor(mintShare + boostedPoolShare);
 };
 
 export const calculatePoolBalance = () => {

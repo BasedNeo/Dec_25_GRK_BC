@@ -15,11 +15,11 @@ export function ValueEstimation() {
   // Use the centralized harmonized value logic
   const [baseValuePerNFT, setBaseValuePerNFT] = useState(calculateBackedValue());
 
-  // Live Ticker
+  // Live Ticker - updates every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
         setBaseValuePerNFT(calculateBackedValue());
-    }, 1000);
+    }, 60000); // Update every minute
     return () => clearInterval(interval);
   }, []);
 
