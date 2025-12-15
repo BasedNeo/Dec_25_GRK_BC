@@ -2,7 +2,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, getDefaultWallets } from "@rainbow-me/rainbowkit";
 import { rabbyWallet, trustWallet, okxWallet } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
-import { http } from 'wagmi';
+import { http, fallback } from 'wagmi';
 
 const basedL1 = {
   id: 32323,
@@ -36,7 +36,17 @@ export const config = getDefaultConfig({
   projectId: projectId,
   chains: [basedL1],
   transports: {
-    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/'),
+    [basedL1.id]: fallback([
+      http('https://mainnet.basedaibridge.com/rpc/', {
+        timeout: 10000,
+        retryCount: 3,
+        retryDelay: 1000,
+      }),
+      http('https://rpc.basedaibridge.com/', {
+        timeout: 10000,
+        retryCount: 2,
+      }),
+    ]),
   },
   ssr: false,
   wallets: [

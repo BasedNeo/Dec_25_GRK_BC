@@ -16,13 +16,14 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ShoppingBag, Loader2, CheckCircle } from "lucide-react";
+import { ShoppingBag, Loader2, CheckCircle, Clock } from "lucide-react";
 import { useListing, useMarketplace } from "@/hooks/useMarketplace";
 import { useAccount } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useToast } from "@/hooks/use-toast";
 import { formatEther } from 'viem';
 import { CHAIN_ID } from '@/lib/constants';
+import { useButtonCooldown } from '@/hooks/useButtonCooldown';
 
 interface BuyButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   tokenId: number | string;
@@ -58,6 +59,7 @@ export function BuyButton({
   
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [verified, setVerified] = useState(false);
+  const { isCoolingDown, remainingTime, startCooldown } = useButtonCooldown({ cooldownMs: 5000 });
   
   const onChainPriceFormatted = listing?.price;
   const displayPrice = onChainPriceFormatted || propPrice;
@@ -71,6 +73,14 @@ export function BuyButton({
 
   const handleBuyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    if (isCoolingDown) {
+      toast({
+        title: "Please Wait",
+        description: `You can try again in ${remainingTime} seconds`,
+      });
+      return;
+    }
     
     if (!isConnected) {
       openConnectModal?.();
@@ -88,6 +98,7 @@ export function BuyButton({
     
     if (verifyOnChain) {
       setIsPurchasing(true);
+      startCooldown();
       
       try {
         const { data: freshListing } = await refetchListing();
@@ -168,7 +179,7 @@ export function BuyButton({
         className
       )}
       onClick={handleBuyClick}
-      disabled={!displayPrice || isPurchasing || isVerifying || (verifyOnChain && !isActive)}
+      disabled={!displayPrice || isPurchasing || isVerifying || isCoolingDown || (verifyOnChain && !isActive)}
       data-token-id={tokenId}
       data-price={displayPrice}
       data-verified={verified}
@@ -180,7 +191,12 @@ export function BuyButton({
       )}
       
       <div className="relative flex items-center justify-center gap-1.5 z-10 w-full">
-        {isPurchasing ? (
+        {isCoolingDown ? (
+          <>
+            <Clock size={14} />
+            {!compact && <span>WAIT {remainingTime}s</span>}
+          </>
+        ) : isPurchasing ? (
           <>
             <Loader2 size={14} className="animate-spin" />
             {!compact && <span>BUYING...</span>}

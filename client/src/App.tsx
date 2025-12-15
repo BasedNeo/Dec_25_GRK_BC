@@ -23,6 +23,7 @@ import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
 import { PendingTxBanner } from "@/components/PendingTxBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
+import { HealthCheckBanner } from "@/components/HealthCheckBanner";
 import { RefreshCw } from "lucide-react";
 
 function GlobalErrorFallback() {
@@ -77,6 +78,7 @@ function App() {
             <SecurityProvider>
               <TransactionProvider>
                 <TooltipProvider>
+                  <HealthCheckBanner />
                   <NetworkSwitchBanner />
                   <SpaceBackground />
                   <Router />
