@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import Odyssey from "@/pages/Odyssey";
 import NotFound from "@/pages/not-found";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/terms" component={TermsOfService} />
       <Route path="/privacy" component={PrivacyPolicy} />
+      <Route path="/odyssey" component={Odyssey} />
       <Route component={NotFound} />
     </Switch>
   );

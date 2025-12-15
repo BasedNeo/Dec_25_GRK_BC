@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2 } from "lucide-react";
+import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
+import { Link } from "wouter";
 
 interface UniverseTabProps {
   onMintClick: () => void;
@@ -218,6 +219,18 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
         <p className="text-xs font-mono text-cyan-500/60 max-w-4xl mx-auto px-4">
           A hopeful bond that grows with every passing star.
         </p>
+        
+        {/* Easter Egg Icons */}
+        <div className="flex items-center justify-center gap-6 mt-6 opacity-30 hover:opacity-100 transition-opacity duration-500">
+          <Link href="/odyssey">
+            <button 
+              className="p-2 rounded-full hover:bg-cyan-500/10 transition-colors group"
+              title="Discover more..."
+            >
+              <Cpu className="w-5 h-5 text-cyan-500/50 group-hover:text-cyan-400 transition-colors" />
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Main Footer */}
