@@ -486,10 +486,10 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
           <div className="max-w-7xl mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                      { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future.", link: "https://www.destinyrescue.org/" },
-                      { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe.", link: null },
-                      { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian.", link: null },
-                      { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool.", link: null },
+                      { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future.", link: "https://www.destinyrescue.org/", tab: null },
+                      { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe.", link: null, tab: null },
+                      { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian.", link: null, tab: null },
+                      { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool.", link: null, tab: "escrow" },
                   ].map((feature, idx) => {
                       const content = (
                           <>
@@ -504,22 +504,43 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                           </>
                       );
 
-                      return feature.link ? (
-                          <motion.a 
-                              key={idx}
-                              href={feature.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              whileHover={{ y: -5, scale: 1.02 }}
-                              whileInView={{ opacity: 1, y: 0 }}
-                              initial={{ opacity: 0, y: 30 }}
-                              transition={{ delay: idx * 0.1, duration: 0.5 }}
-                              viewport={{ once: true }}
-                              className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm cursor-pointer block"
-                          >
-                              {content}
-                          </motion.a>
-                      ) : (
+                      if (feature.link) {
+                          return (
+                              <motion.a 
+                                  key={idx}
+                                  href={feature.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  whileHover={{ y: -5, scale: 1.02 }}
+                                  whileInView={{ opacity: 1, y: 0 }}
+                                  initial={{ opacity: 0, y: 30 }}
+                                  transition={{ delay: idx * 0.1, duration: 0.5 }}
+                                  viewport={{ once: true }}
+                                  className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm cursor-pointer block"
+                              >
+                                  {content}
+                              </motion.a>
+                          );
+                      }
+                      
+                      if (feature.tab) {
+                          return (
+                              <motion.button 
+                                  key={idx}
+                                  onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: feature.tab }))}
+                                  whileHover={{ y: -5, scale: 1.02 }}
+                                  whileInView={{ opacity: 1, y: 0 }}
+                                  initial={{ opacity: 0, y: 30 }}
+                                  transition={{ delay: idx * 0.1, duration: 0.5 }}
+                                  viewport={{ once: true }}
+                                  className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm cursor-pointer text-left"
+                              >
+                                  {content}
+                              </motion.button>
+                          );
+                      }
+                      
+                      return (
                           <motion.div 
                               key={idx}
                               whileHover={{ y: -5, scale: 1.02 }}

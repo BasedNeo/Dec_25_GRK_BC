@@ -25,6 +25,17 @@ export default function Home() {
     document.body.scrollTop = 0;
   }, [activeTab]);
 
+  // Listen for tab navigation events from child components
+  useEffect(() => {
+    const handleNavigateTab = (e: CustomEvent) => {
+      if (e.detail) {
+        setActiveTab(e.detail);
+      }
+    };
+    window.addEventListener('navigate-tab', handleNavigateTab as EventListener);
+    return () => window.removeEventListener('navigate-tab', handleNavigateTab as EventListener);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
       <OnboardingTour />
