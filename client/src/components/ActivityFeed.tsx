@@ -18,11 +18,15 @@ import {
   RefreshCw, 
   ExternalLink, 
   Activity as ActivityIcon,
-  Rocket,
   Coins,
   ScrollText,
   Orbit,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart,
+  Tag,
+  ArrowRightLeft,
+  X,
+  Gavel
 } from 'lucide-react';
 import { 
   useActivityFeed, 
@@ -102,7 +106,7 @@ export function ActivityFeed({
             <StatCard 
               label="Total Minted" 
               value={stats.totalMinted || 0} 
-              icon={<Rocket className="w-5 h-5 text-[#6cff61]" />} 
+              icon={<GuardianMintIcon className="w-6 h-6 text-[#6cff61]" />} 
               color="text-[#6cff61]" 
             />
             
@@ -146,7 +150,7 @@ export function ActivityFeed({
             <Badge
               key={type}
               variant="outline"
-              className={`cursor-pointer capitalize whitespace-nowrap transition-all ${
+              className={`cursor-pointer capitalize whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 filterType === type 
                   ? 'bg-primary/20 text-primary border-primary' 
                   : 'text-muted-foreground hover:text-white border-white/10'
@@ -154,7 +158,17 @@ export function ActivityFeed({
               onClick={() => setFilterType(type)}
               data-testid={`activity-filter-${type}`}
             >
-              {type === 'all' ? '🔥 All' : getActivityDisplay(type).emoji} {type}
+              {type === 'all' ? (
+                <><ActivityIcon className="w-3 h-3" /> All</>
+              ) : type === 'mint' ? (
+                <><GuardianMintIcon className="w-4 h-4" /> Mint</>
+              ) : type === 'sale' ? (
+                <><ShoppingCart className="w-3 h-3" /> Sale</>
+              ) : type === 'list' ? (
+                <><Tag className="w-3 h-3" /> List</>
+              ) : (
+                <><ArrowRightLeft className="w-3 h-3" /> Transfer</>
+              )}
             </Badge>
           ))}
         </div>
@@ -215,6 +229,51 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
   );
 }
 
+function GuardianMintIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path 
+        d="M12 2L4 5V11.09C4 16.14 7.41 20.85 12 22C16.59 20.85 20 16.14 20 11.09V5L12 2Z" 
+        fill="currentColor" 
+        fillOpacity="0.2"
+        stroke="currentColor" 
+        strokeWidth="1.5"
+      />
+      <path 
+        d="M12 6L9 8V10.5C9 12.5 10.5 14.5 12 15C13.5 14.5 15 12.5 15 10.5V8L12 6Z" 
+        fill="currentColor"
+      />
+      <circle cx="12" cy="10" r="1.5" fill="black" />
+      <path d="M10 17H14" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      <path d="M9 19H15" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function getActivityIcon(type: ActivityType): React.ReactNode {
+  switch (type) {
+    case 'mint':
+      return <GuardianMintIcon className="w-7 h-7 text-[#6cff61]" />;
+    case 'sale':
+      return <ShoppingCart className="w-6 h-6 text-yellow-400" />;
+    case 'list':
+      return <Tag className="w-6 h-6 text-cyan-400" />;
+    case 'delist':
+      return <X className="w-6 h-6 text-red-400" />;
+    case 'offer':
+      return <Gavel className="w-6 h-6 text-purple-400" />;
+    case 'transfer':
+      return <ArrowRightLeft className="w-6 h-6 text-blue-400" />;
+    default:
+      return <ActivityIcon className="w-6 h-6 text-gray-400" />;
+  }
+}
+
 function ActivityRow({ activity, compact }: { activity: Activity; compact: boolean }) {
   const display = getActivityDisplay(activity.type);
   const shortenAddress = (addr: string) => 
@@ -223,7 +282,9 @@ function ActivityRow({ activity, compact }: { activity: Activity; compact: boole
   return (
     <div className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/5 transition-colors group" data-testid={`activity-row-${activity.id}`}>
       <div className="flex items-center gap-4">
-        <div className="text-2xl">{display.emoji}</div>
+        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+          {getActivityIcon(activity.type)}
+        </div>
         <div>
           <div className="flex items-center gap-2">
             <span className={`font-bold ${display.color}`}>{display.label}</span>
