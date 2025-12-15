@@ -657,8 +657,17 @@ function GuardianCard({ guardian, onClick }: { guardian: Guardian, onClick: () =
         
         <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
              <div className="flex flex-col">
-                 <span className="text-[9px] text-muted-foreground uppercase">Backed Based</span>
-                 <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
+                 {guardian.isListed && guardian.price ? (
+                   <>
+                     <span className="text-[9px] text-yellow-400 uppercase font-bold">Listed For</span>
+                     <span className="text-xs font-mono text-yellow-400 font-bold">{Number(guardian.price).toLocaleString()}</span>
+                   </>
+                 ) : (
+                   <>
+                     <span className="text-[9px] text-muted-foreground uppercase">Backed Based</span>
+                     <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
+                   </>
+                 )}
              </div>
              <div className="flex flex-col items-end">
                  <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
