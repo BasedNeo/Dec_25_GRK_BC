@@ -372,7 +372,29 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     </Button>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                /* Unminted NFT - Show Mint Button */
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-mono">MINT PRICE</p>
+                      <p className="text-lg font-orbitron text-purple-400 font-bold">
+                        {MINT_PRICE.toLocaleString()} $BASED
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:from-purple-500 hover:to-cyan-400 font-orbitron font-bold text-sm h-10"
+                    onClick={() => setShowMintExplainerModal(true)}
+                    data-testid="button-mint-nft-mobile"
+                  >
+                    MINT AN NFT
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground text-center font-mono">
+                    Random mint - you'll receive a random Guardian
+                  </p>
+                </div>
+              )}
             </div>
         </div>
 
@@ -704,6 +726,31 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         MAKE OFFER
                       </Button>
                     )}
+                  </div>
+                )}
+
+                {/* UNMINTED NFT CONTROLS - Desktop only, show MINT button for unminted NFTs */}
+                {!isOwner && !nft.owner && (
+                  <div className="hidden md:block space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                      <div>
+                        <p className="text-xs text-muted-foreground font-mono">MINT PRICE</p>
+                        <p className="text-xl font-orbitron text-purple-400 font-bold">
+                          {MINT_PRICE.toLocaleString()} $BASED
+                        </p>
+                      </div>
+                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">AVAILABLE</Badge>
+                    </div>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:from-purple-500 hover:to-cyan-400 font-orbitron font-bold py-3"
+                      onClick={() => setShowMintExplainerModal(true)}
+                      data-testid="button-mint-nft-desktop"
+                    >
+                      MINT AN NFT
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center font-mono">
+                      Random mint - you'll receive a random Guardian from the unminted pool
+                    </p>
                   </div>
                 )}
 
