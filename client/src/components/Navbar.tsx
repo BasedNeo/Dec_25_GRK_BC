@@ -177,9 +177,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       <div className="flex items-center gap-1">
                           <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
                           <span className="font-bold text-white font-mono">
-                            {priceData && priceData.usdPrice > 0 
-                              ? `$${priceData.usdPrice.toFixed(4)}` 
-                              : <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                            {priceData === undefined 
+                              ? <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                              : priceData.usdPrice > 0 
+                                ? `$${priceData.usdPrice.toFixed(4)}` 
+                                : '—'
                             }
                           </span>
                       </div>
@@ -194,9 +196,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
                       <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
                       <span className="font-bold text-cyan-400 font-mono">
-                        {priceData && priceData.basedL1Price > 0 
-                          ? `$${priceData.basedL1Price.toFixed(7)}` 
-                          : <div className="h-3 w-16 rounded skeleton inline-block align-middle" />
+                        {priceData === undefined 
+                          ? <div className="h-3 w-16 rounded skeleton inline-block align-middle" />
+                          : priceData.basedL1Price > 0 
+                            ? `$${priceData.basedL1Price.toFixed(7)}` 
+                            : '—'
                         }
                       </span>
                   </div>

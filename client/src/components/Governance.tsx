@@ -213,7 +213,12 @@ export function Governance() {
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
                 <Vote className="w-5 h-5 text-primary" /> PROPOSALS
               </h2>
-              {governance.proposalCount === 0 ? (
+              {governance.isLoadingCount ? (
+                <Card className="p-8 bg-white/5 border-white/10 text-center">
+                  <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
+                  <p className="text-muted-foreground">Loading proposals...</p>
+                </Card>
+              ) : governance.proposalCount === 0 ? (
                 <Card className="p-8 bg-white/5 border-white/10 text-center">
                   <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>

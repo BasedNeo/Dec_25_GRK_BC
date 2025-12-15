@@ -74,7 +74,7 @@ export function useGovernance() {
   };
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const { data: proposalCount, refetch: refetchCount } = useReadContract({ 
+  const { data: proposalCount, refetch: refetchCount, isLoading: isLoadingCount } = useReadContract({ 
     address: GOVERNANCE_CONTRACT as `0x${string}`, 
     abi: GOVERNANCE_ABI, 
     functionName: 'proposalCount',
@@ -173,7 +173,7 @@ export function useGovernance() {
     isConnected, address, pendingAction, isPending, isConfirming, isSuccess, txHash, error: writeError, reset,
     proposalCount: proposalCount ? Number(proposalCount) : 0, votingPower: votingPower ? Number(votingPower) : 0,
     minNFTsToPropose: minNFTsToPropose ? Number(minNFTsToPropose) : 1, quorumPercentage: quorumPercentage ? Number(quorumPercentage) : 10,
-    activeProposalIds: activeProposalIds || [], canCreateProposal,
+    activeProposalIds: activeProposalIds || [], canCreateProposal, isLoadingCount,
     createProposal, vote, finalizeProposal, cancelProposal, refetchCount, refetchActive
   };
 }
