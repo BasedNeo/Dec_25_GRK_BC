@@ -399,11 +399,11 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         </div>
 
         {/* Right Side: Details */}
-        <div className="w-full md:w-1/2 flex flex-col h-[60vh] md:h-full bg-card/50 relative overflow-hidden">
-            {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
-                <div className="pr-16">
-                    <h2 className="text-2xl md:text-5xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-2">
+        <div className="w-full md:w-1/2 flex flex-col h-[60vh] md:h-full bg-card/50 relative">
+            {/* Header - Compact */}
+            <div className="p-4 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
+                <div className="pr-12">
+                    <h2 className="text-xl md:text-3xl font-black text-white font-orbitron tracking-wide uppercase leading-tight mb-1">
                         {safeSanitize(nft.name)}
                     </h2>
                     <div className="flex flex-wrap items-center gap-2">
@@ -420,15 +420,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="hidden md:flex absolute top-4 right-4 h-14 w-14 text-white hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/20 hover:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] z-50 group"
+                        className="hidden md:flex absolute top-3 right-3 h-10 w-10 text-white hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/20 hover:border-red-500 z-50 group"
                     >
-                        <X size={32} className="group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
+                        <X size={20} className="group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
                     </Button>
                 </DialogClose>
             </div>
 
-            {/* Scrollable Attributes */}
-            <ScrollArea className="flex-1 p-6">
+            {/* Scrollable Attributes - Using overflow-y-auto instead of ScrollArea for reliability */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ maxHeight: 'calc(100% - 180px)' }}>
                 <div className="space-y-6">
                     {/* Premium Backed Value Display (Scrollable) */}
                     <div className="p-4 bg-gradient-to-r from-green-500/10 to-transparent border-l-4 border-green-500 rounded-r-lg">
