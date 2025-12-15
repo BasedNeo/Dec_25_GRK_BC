@@ -143,28 +143,28 @@ export function useGovernance() {
     if (!checkNetwork()) return;
     setPendingAction('createProposal');
     toast({ title: "Creating Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'createProposal', args: [title, description, category], chainId: CHAIN_ID });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'createProposal', args: [title, description, category], chainId: CHAIN_ID, gas: BigInt(500000) });
   }, [isConnected, chain, writeContract, toast]);
 
   const vote = useCallback(async (proposalId: number, support: boolean) => {
     if (!checkNetwork()) return;
     setPendingAction('vote');
     toast({ title: support ? "Voting For" : "Voting Against", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'vote', args: [BigInt(proposalId), support], chainId: CHAIN_ID });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'vote', args: [BigInt(proposalId), support], chainId: CHAIN_ID, gas: BigInt(200000) });
   }, [isConnected, chain, writeContract, toast]);
 
   const finalizeProposal = useCallback(async (proposalId: number) => {
     if (!checkNetwork()) return;
     setPendingAction('finalize');
     toast({ title: "Finalizing Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'finalizeProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'finalizeProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID, gas: BigInt(300000) });
   }, [isConnected, chain, writeContract, toast]);
 
   const cancelProposal = useCallback(async (proposalId: number) => {
     if (!checkNetwork()) return;
     setPendingAction('cancel');
     toast({ title: "Cancelling Proposal", description: "Please confirm in your wallet...", className: "bg-black border-cyan-500 text-cyan-500" });
-    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'cancelProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID });
+    writeContract({ address: GOVERNANCE_CONTRACT as `0x${string}`, abi: GOVERNANCE_ABI, functionName: 'cancelProposal', args: [BigInt(proposalId)], chainId: CHAIN_ID, gas: BigInt(200000) });
   }, [isConnected, chain, writeContract, toast]);
 
   const canCreateProposal = isConnected && votingPower !== undefined && minNFTsToPropose !== undefined && votingPower >= minNFTsToPropose;

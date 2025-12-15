@@ -119,6 +119,7 @@ export function useMint() {
         args: [BigInt(quantity)],
         value: totalCost,
         chainId: CHAIN_ID,
+        gas: BigInt(500000),
       });
     } catch (err: any) {
       setState(prev => ({ ...prev, isError: true, error: err.message }));

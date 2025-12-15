@@ -327,7 +327,7 @@ export function useMarketplace() {
       functionName: 'setApprovalForAll',
       args: [MARKETPLACE_CONTRACT as `0x${string}`, true],
       chainId: CHAIN_ID,
-      gas: BigInt(100000),
+      gas: BigInt(200000),
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -416,6 +416,7 @@ export function useMarketplace() {
       functionName: 'listNFT',
       args: [BigInt(tokenId), priceWei],
       chainId: CHAIN_ID,
+      gas: BigInt(500000),
     });
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
@@ -437,6 +438,7 @@ export function useMarketplace() {
       functionName: 'delistNFT',
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
+      gas: BigInt(300000),
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -460,6 +462,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId)],
       value: priceWei,
       chainId: CHAIN_ID,
+      gas: BigInt(500000),
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -484,6 +487,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId), BigInt(expirationDays)],
       value: offerWei,
       chainId: CHAIN_ID,
+      gas: BigInt(300000),
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -499,6 +503,7 @@ export function useMarketplace() {
       functionName: 'cancelOffer',
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
+      gas: BigInt(200000),
     });
   }, [checkNetwork, writeContract]);
 
@@ -514,6 +519,7 @@ export function useMarketplace() {
       functionName: 'acceptOffer',
       args: [BigInt(tokenId), offererAddress as `0x${string}`],
       chainId: CHAIN_ID,
+      gas: BigInt(500000),
     });
   }, [checkNetwork, writeContract]);
 

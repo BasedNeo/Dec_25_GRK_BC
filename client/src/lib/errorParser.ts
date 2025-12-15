@@ -20,6 +20,14 @@ export function parseContractError(error: any): string {
   // User-initiated cancellations
   if (message.includes('user rejected') || message.includes('User rejected') || message.includes('User denied')) return 'Transaction cancelled';
   
+  // Gas limit errors (BasedAI network specific)
+  if (message.includes('exceeds block gas limit')) return 'Transaction failed - please try again';
+  
+  // Marketplace-specific errors
+  if (message.includes('InsufficientPayment')) return 'Insufficient $BASED balance';
+  if (message.includes('NotSeller')) return 'Only the owner can perform this action';
+  if (message.includes('CannotBuyOwnListing')) return 'You cannot buy your own listing';
+  
   // Insufficient funds
   if (message.includes('insufficient funds')) return 'Not enough $BASED';
   
