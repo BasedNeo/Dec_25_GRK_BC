@@ -326,8 +326,8 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
         </div>
       ) : (
         <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Desktop Table View - Scrollable with max 10 visible */}
+            <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
                 <Table>
                 <TableHeader className="bg-white/5">
                     <TableRow className="border-white/10 hover:bg-transparent">
@@ -381,8 +381,8 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                 </Table>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden flex flex-col gap-2 p-4">
+            {/* Mobile Card View - Scrollable with max 10 visible */}
+            <div className="md:hidden flex flex-col gap-2 p-4 max-h-[600px] overflow-y-auto">
                  {mintedNFTs.map((guardian, idx) => {
                     const bioType = guardian.traits?.find(t => t.type === 'Character Type' || t.type === 'Biological Type')?.value || 'Unknown';
                     const owner = guardian.owner || "Loading...";
