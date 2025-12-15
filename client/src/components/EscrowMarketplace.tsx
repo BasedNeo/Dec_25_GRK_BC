@@ -66,13 +66,16 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [directError, setDirectError] = useState<string | null>(null);
   const [contractStats, setContractStats] = useState<{totalMinted: number} | null>(null);
   const [mintedTokenIdsList, setMintedTokenIdsList] = useState<number[]>([]);
+  const [directListingIds, setDirectListingIds] = useState<number[]>([]);
   
-  // --- Fetch totalMinted AND all minted token IDs from contract ---
+  // --- Fetch totalMinted, minted token IDs, AND active listings directly via ethers.js ---
   useEffect(() => {
-    const fetchMintedData = async () => {
+    const fetchContractData = async () => {
       try {
         const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
-        const contract = new ethers.Contract(
+        
+        // NFT Contract for minted tokens
+        const nftContract = new ethers.Contract(
           '0xaE51dc5fD1499A129f8654963560f9340773ad59',
           [
             'function totalMinted() view returns (uint256)',
@@ -80,7 +83,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           ],
           provider
         );
-        const totalMinted = await contract.totalMinted();
+        
+        // Marketplace Contract for listings
+        const marketplaceContract = new ethers.Contract(
+          MARKETPLACE_CONTRACT,
+          [
+            'function getActiveListings() view returns (uint256[])'
+          ],
+          provider
+        );
+        
+        // Fetch minted data
+        const totalMinted = await nftContract.totalMinted();
         const totalMintedNum = Number(totalMinted);
         setContractStats({ totalMinted: totalMintedNum });
         
@@ -89,7 +103,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           const tokenIds: number[] = [];
           for (let i = 0; i < totalMintedNum; i++) {
             try {
-              const tokenId = await contract.tokenByIndex(i);
+              const tokenId = await nftContract.tokenByIndex(i);
               tokenIds.push(Number(tokenId));
             } catch (e) {
               // Skip failed tokens
@@ -98,13 +112,24 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           setMintedTokenIdsList(tokenIds);
           console.log('[EscrowMarketplace] Fetched minted token IDs:', tokenIds);
         }
+        
+        // Fetch active listings directly from marketplace contract
+        try {
+          const activeListings = await marketplaceContract.getActiveListings();
+          const listingIds = activeListings.map((id: bigint) => Number(id));
+          setDirectListingIds(listingIds);
+          console.log('[EscrowMarketplace] Fetched active listing IDs (direct):', listingIds);
+        } catch (listingError) {
+          console.error('[EscrowMarketplace] Error fetching active listings:', listingError);
+        }
+        
       } catch (error) {
-        console.error('[EscrowMarketplace] Error fetching minted data:', error);
+        console.error('[EscrowMarketplace] Error fetching contract data:', error);
       }
     };
-    fetchMintedData();
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchMintedData, 60000);
+    fetchContractData();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchContractData, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -368,11 +393,19 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const mintedTokenIds = useMemo(() => {
     // Prefer the directly fetched list (works in both CSV and Live mode)
     if (mintedTokenIdsList.length > 0) {
+      console.log('[EscrowMarketplace] Using mintedTokenIdsList:', mintedTokenIdsList);
       return new Set<number>(mintedTokenIdsList);
     }
     // Fallback to directNFTs for live mode
+    console.log('[EscrowMarketplace] Using directNFTs fallback, count:', directNFTs.length);
     return new Set<number>(directNFTs.map(n => n.id));
   }, [mintedTokenIdsList, directNFTs]);
+  
+  // Log marketplace listing data
+  useEffect(() => {
+    console.log('[EscrowMarketplace] Direct listing IDs:', directListingIds);
+    console.log('[EscrowMarketplace] Wagmi activeListingIds:', marketplace.activeListingIds);
+  }, [directListingIds, marketplace.activeListingIds]);
 
   const allItems = useMemo(() => {
      // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
@@ -385,11 +418,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      const MINT_PRICE = 69420;
      
      // Create a Set of actively listed token IDs for O(1) lookup
-     const listedTokenIds = new Set<number>(
-       (marketplace.activeListingIds || []).map(id => Number(id))
-     );
+     // Prefer directListingIds (ethers.js) over wagmi hook for reliability without wallet
+     const wagmiListings = (marketplace.activeListingIds || []).map(id => Number(id));
+     const combinedListings = directListingIds.length > 0 ? directListingIds : wagmiListings;
+     const listedTokenIds = new Set<number>(combinedListings);
      
-     console.log('[EscrowMarketplace] Active listing IDs from marketplace:', Array.from(listedTokenIds));
+     console.log('[EscrowMarketplace] Active listing IDs (using direct):', Array.from(listedTokenIds));
      console.log('[EscrowMarketplace] Minted token IDs:', Array.from(mintedTokenIds));
      
      // Flatten pages and determine real status based on contract data
@@ -443,7 +477,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      }
      
      return items;
-  }, [data, directNFTs, useCsvData, mintedTokenIds, marketplace.activeListingIds, sortBy]);
+  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, sortBy]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
