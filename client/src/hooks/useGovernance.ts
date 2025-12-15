@@ -81,13 +81,13 @@ export function useGovernance() {
     chainId: CHAIN_ID,
     query: { refetchInterval: 30000 }
   });
-  const { data: votingPower } = useReadContract({ 
+  const { data: votingPower, refetch: refetchVotingPower } = useReadContract({ 
     address: GOVERNANCE_CONTRACT as `0x${string}`, 
     abi: GOVERNANCE_ABI, 
     functionName: 'getVotingPower', 
     args: address ? [address] : undefined,
     chainId: CHAIN_ID,
-    query: { enabled: !!address, refetchInterval: 30000 }
+    query: { enabled: !!address, refetchInterval: 15000 }
   });
   const { data: minNFTsToPropose } = useReadContract({ 
     address: GOVERNANCE_CONTRACT as `0x${string}`, 

@@ -83,5 +83,14 @@ export function useOwnedNFTs() {
 
   useEffect(() => { fetchOwnedNFTs(); }, [fetchOwnedNFTs]);
 
+  // Auto-refresh every 15 seconds to catch ownership changes
+  useEffect(() => {
+    if (!isConnected || !address) return;
+    const interval = setInterval(() => {
+      fetchOwnedNFTs();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isConnected, address, fetchOwnedNFTs]);
+
   return { nfts, isLoading, error, balance, refetch: fetchOwnedNFTs };
 }
