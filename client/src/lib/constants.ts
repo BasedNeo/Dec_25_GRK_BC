@@ -20,9 +20,9 @@ export const ROYALTY_WALLET = "0xb1362caf09189887599ed40f056712b1a138210c";     
 export const CREATOR_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";      // 49% of mint, 4% of royalty, 1% platform fee
 export const ADMIN_WALLET = COMMUNITY_TREASURY; // Alias for backward compatibility
 
-// === SPLITTER CONTRACTS (add addresses after deployment) ===
-export const MINT_SPLITTER = "";      // TODO: Add after deploying
-export const ROYALTY_SPLITTER = "";   // TODO: Add after deploying
+// === SPLITTER CONTRACTS ===
+export const MINT_SPLITTER = "0x371c67FE6e839F921279FcdD7dCb1Fd74eeD1d76";
+export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
 
 // === REVENUE SPLIT CONFIGURATION ===
 export const MINT_SPLIT = {
