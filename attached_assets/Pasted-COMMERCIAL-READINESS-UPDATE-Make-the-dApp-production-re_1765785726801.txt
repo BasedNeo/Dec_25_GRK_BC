@@ -1,0 +1,107 @@
+COMMERCIAL READINESS UPDATE - Make the dApp production-ready.
+
+=== PART 1: CRITICAL - UPDATE CONTRACT ADDRESSES ===
+
+Find constants.ts (or wherever contracts are defined) and update with these FINAL addresses:
+
+// Core Contracts
+export const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+export const MARKETPLACE_CONTRACT = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c";
+
+// Revenue Splitters  
+export const MINT_SPLITTER = "0x371c67FE6e839F921279FcdD7dCb1Fd74eeD1d76";
+export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
+
+// Ecosystem Wallets
+export const COMMUNITY_TREASURY = "0xae543104fdbe456478e19894f7f0e01f0971c9b4";
+export const ROYALTY_WALLET = "0xb1362caf09189887599ed40f056712b1a138210c";
+export const CREATOR_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";
+
+// Chain Config
+export const CHAIN_ID = 32323;
+export const RPC_URL = "https://mainnet.basedaibridge.com/rpc/";
+
+IMPORTANT: Search and remove ALL references to old marketplace:
+- 0x88161576266dCDedb19342aC2197267282520793 (OLD - REMOVE)
+- 0xaf13b369189be79e5b5f5e9072648f1b4621b6a2 (V1 - REMOVE)
+
+=== PART 2: MARKETPLACE V2 FEATURES ===
+
+The V2 marketplace is APPROVAL-BASED (like OpenSea):
+- NFTs stay in owner's wallet when listed
+- Only transfers when sold
+- Requires setApprovalForAll before first listing
+
+Ensure the app:
+1. Checks if user has approved marketplace before listing
+2. Shows "Approve Marketplace" button if not approved
+3. After approval, shows "List for Sale" button
+4. Listed NFTs show "LISTED" badge but stay in Portfolio
+5. Owner can delist at any time
+
+=== PART 3: USER EXPERIENCE IMPROVEMENTS ===
+
+1. TRANSACTION STATES:
+   - Show "Confirming..." while waiting for wallet signature
+   - Show "Processing..." with TX hash while mining
+   - Show success/error message when complete
+   - Persist pending transactions across page refreshes
+
+2. ERROR HANDLING:
+   - Parse contract revert reasons into human-readable messages
+   - Common errors: "Not enough $BASED", "Not the owner", "Already listed", "Not approved"
+   - Show helpful suggestions for each error
+
+3. GAS LIMITS:
+   - Add explicit gas limits to all contract calls (BasedAI network needs this)
+   - Approve: 200000
+   - List/Delist: 300000
+   - Buy: 500000
+   - Mint: 500000
+
+4. LOADING STATES:
+   - Show skeleton loaders while fetching NFTs
+   - Show loading spinners on buttons during transactions
+
+=== PART 4: ACTIVITY FEED ===
+
+Make activity feed show accurate real-time data:
+1. Total Minted: Call totalSupply() on NFT contract (not event counting)
+2. Recent Sales: Query NFTSold events from marketplace
+3. Recent Listings: Query NFTListed events from marketplace
+4. Show prices in $BASED with proper formatting
+
+=== PART 5: WALLET CONNECTION ===
+
+Ensure these wallets work:
+- MetaMask (desktop & mobile)
+- Rabby
+- Coinbase Wallet
+- WalletConnect
+
+Add network auto-switch:
+- If user is on wrong network, show banner to switch to BasedAI (32323)
+- Include "Switch Network" button that triggers wallet switch
+
+=== PART 6: PORTFOLIO ===
+
+Portfolio should show:
+1. All NFTs owned by connected wallet (from tokenOfOwnerByIndex)
+2. Listed NFTs with "LISTED" badge and price
+3. Quick actions: List, Delist, Transfer
+4. Refresh button to reload NFT data
+
+=== TESTING CHECKLIST ===
+
+After updates, test these flows:
+[ ] Connect wallet
+[ ] View Portfolio (shows owned NFTs)
+[ ] Approve marketplace (one-time)
+[ ] List NFT for sale (stays in wallet)
+[ ] View listed NFT in marketplace
+[ ] Delist NFT
+[ ] Buy NFT (with second wallet)
+[ ] Verify royalties distributed correctly
+[ ] Make offer on NFT
+[ ] Accept offer
+[ ] Governance voting
