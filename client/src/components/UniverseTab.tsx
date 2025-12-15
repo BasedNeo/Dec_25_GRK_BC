@@ -2,10 +2,240 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
 import { Link } from "wouter";
+
+function AnimatedStarfield() {
+  const stars = useMemo(() => 
+    Array.from({ length: 150 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 2 + 1,
+      duration: Math.random() * 3 + 2,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.7 + 0.3,
+    })), []
+  );
+
+  const shootingStars = useMemo(() => 
+    Array.from({ length: 5 }, (_, i) => ({
+      id: i,
+      delay: i * 4 + Math.random() * 2,
+      duration: 1.5 + Math.random(),
+      startX: Math.random() * 80 + 10,
+      startY: Math.random() * 30,
+    })), []
+  );
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {stars.map((star) => (
+        <motion.div
+          key={star.id}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${star.x}%`,
+            top: `${star.y}%`,
+            width: star.size,
+            height: star.size,
+          }}
+          animate={{
+            opacity: [star.opacity, star.opacity * 0.3, star.opacity],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: star.duration,
+            delay: star.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      {shootingStars.map((star) => (
+        <motion.div
+          key={`shooting-${star.id}`}
+          className="absolute w-1 h-1 bg-white rounded-full"
+          style={{
+            left: `${star.startX}%`,
+            top: `${star.startY}%`,
+            boxShadow: "0 0 6px 2px rgba(255,255,255,0.8), -30px 0 20px 2px rgba(255,255,255,0.4)",
+          }}
+          animate={{
+            x: [0, 200],
+            y: [0, 150],
+            opacity: [0, 1, 0],
+          }}
+          transition={{
+            duration: star.duration,
+            delay: star.delay,
+            repeat: Infinity,
+            repeatDelay: 8 + Math.random() * 4,
+            ease: "easeOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FloatingParticles() {
+  const particles = useMemo(() =>
+    Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      size: Math.random() * 4 + 2,
+      duration: Math.random() * 20 + 15,
+      delay: Math.random() * 10,
+      color: i % 3 === 0 ? "cyan" : i % 3 === 1 ? "purple" : "indigo",
+    })), []
+  );
+
+  const colorMap = {
+    cyan: "bg-cyan-500/30",
+    purple: "bg-purple-500/30",
+    indigo: "bg-indigo-500/30",
+  };
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className={`absolute rounded-full ${colorMap[particle.color as keyof typeof colorMap]} blur-sm`}
+          style={{
+            left: `${particle.x}%`,
+            width: particle.size,
+            height: particle.size,
+          }}
+          animate={{
+            y: ["110vh", "-10vh"],
+            x: [0, Math.sin(particle.id) * 50, 0],
+            opacity: [0, 0.8, 0],
+          }}
+          transition={{
+            duration: particle.duration,
+            delay: particle.delay,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function NebulaEffect() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <motion.div
+        className="absolute w-[800px] h-[800px] rounded-full opacity-20"
+        style={{
+          background: "radial-gradient(circle, rgba(34,211,238,0.3) 0%, rgba(34,211,238,0) 70%)",
+          left: "-20%",
+          top: "10%",
+          filter: "blur(60px)",
+        }}
+        animate={{
+          scale: [1, 1.2, 1],
+          x: [0, 50, 0],
+          y: [0, 30, 0],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-[600px] h-[600px] rounded-full opacity-15"
+        style={{
+          background: "radial-gradient(circle, rgba(139,92,246,0.4) 0%, rgba(139,92,246,0) 70%)",
+          right: "-10%",
+          top: "30%",
+          filter: "blur(80px)",
+        }}
+        animate={{
+          scale: [1.2, 1, 1.2],
+          x: [0, -40, 0],
+          y: [0, -20, 0],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-[500px] h-[500px] rounded-full opacity-10"
+        style={{
+          background: "radial-gradient(circle, rgba(236,72,153,0.3) 0%, rgba(236,72,153,0) 70%)",
+          left: "30%",
+          bottom: "-10%",
+          filter: "blur(70px)",
+        }}
+        animate={{
+          scale: [1, 1.3, 1],
+          rotate: [0, 360],
+        }}
+        transition={{
+          duration: 30,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
+    </div>
+  );
+}
+
+function GlowingOrbs() {
+  const orbs = useMemo(() => [
+    { x: 15, y: 20, size: 120, color: "cyan", delay: 0 },
+    { x: 80, y: 15, size: 80, color: "purple", delay: 2 },
+    { x: 60, y: 70, size: 100, color: "indigo", delay: 4 },
+    { x: 25, y: 80, size: 60, color: "pink", delay: 6 },
+    { x: 90, y: 60, size: 90, color: "cyan", delay: 3 },
+  ], []);
+
+  const colorStyles = {
+    cyan: "rgba(34,211,238,0.15)",
+    purple: "rgba(139,92,246,0.15)",
+    indigo: "rgba(99,102,241,0.15)",
+    pink: "rgba(236,72,153,0.12)",
+  };
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {orbs.map((orb, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${orb.x}%`,
+            top: `${orb.y}%`,
+            width: orb.size,
+            height: orb.size,
+            background: `radial-gradient(circle, ${colorStyles[orb.color as keyof typeof colorStyles]} 0%, transparent 70%)`,
+            filter: "blur(30px)",
+          }}
+          animate={{
+            scale: [1, 1.4, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            delay: orb.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function FoxIcon({ className }: { className?: string }) {
   return (
@@ -63,7 +293,15 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 relative overflow-hidden">
+      {/* Global Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <AnimatedStarfield />
+        <NebulaEffect />
+        <FloatingParticles />
+        <GlowingOrbs />
+      </div>
+
       {/* Hero Section */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-white/10">
         {/* Parallax Background */}
@@ -73,9 +311,9 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 2 }}
-            className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5980?q=80&w=3272&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-screen"
+            className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5980?q=80&w=3272&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-screen"
             style={{ 
-               transform: "translateZ(-1px) scale(1.5)" // Simple CSS parallax simulation
+               transform: "translateZ(-1px) scale(1.5)"
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/80" />
