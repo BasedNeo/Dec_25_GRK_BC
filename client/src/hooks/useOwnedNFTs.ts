@@ -22,19 +22,26 @@ export function useOwnedNFTs() {
     setIsLoading(true);
     setError(null);
 
+    console.log('[Portfolio Debug] Fetching NFTs for wallet:', address);
+
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const balanceBigInt = await contract.balanceOf(address);
       const userBalance = Number(balanceBigInt);
+      console.log('[Portfolio Debug] balanceOf result:', userBalance);
       setBalance(userBalance);
 
-      if (userBalance === 0) { setNfts([]); setIsLoading(false); return; }
+      if (userBalance === 0) { 
+        console.log('[Portfolio Debug] Balance is 0, returning empty');
+        setNfts([]); setIsLoading(false); return; 
+      }
 
       let tokenIds: number[] = [];
       try {
         const tokenIdsBigInt = await contract.tokensOfOwner(address);
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
+        console.log('[Portfolio Debug] tokensOfOwner result:', tokenIds);
       } catch (e) {
         setError('Could not fetch owned tokens');
         setIsLoading(false);
