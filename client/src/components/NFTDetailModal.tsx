@@ -44,7 +44,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   
   const { address, isConnected } = useAccount();
   const marketplace = useMarketplace();
-  const { listing, isLoading: isLoadingListing } = useListing(nft?.id);
+  const { listing, isLoading: isLoadingListing, refetch: refetchListing } = useListing(nft?.id);
   
   // Fetch actual owner from NFT contract for real-time accuracy
   const { data: actualOwner, refetch: refetchOwner } = useReadContract({
@@ -74,10 +74,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   // Auto-refresh after successful transactions
   useEffect(() => {
     if (marketplace.state.isSuccess) {
+      // Refresh all marketplace data
       refetchOwner();
+      refetchListing();
+      marketplace.refresh();
+      
+      // Reset state after 3 seconds
       setTimeout(() => marketplace.reset(), 3000);
     }
-  }, [marketplace.state.isSuccess, refetchOwner]);
+  }, [marketplace.state.isSuccess, refetchOwner, refetchListing]);
   
   const handleAcceptOffer = async (offer: any) => {
     if (!nft) return;
