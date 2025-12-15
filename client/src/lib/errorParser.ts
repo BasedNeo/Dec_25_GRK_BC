@@ -35,7 +35,7 @@ export function parseContractError(error: any): string {
   if (message.includes('NotTokenOwner') || message.includes('Not token owner') || message.includes('not owner') || message.includes('caller is not owner')) return 'You do not own this NFT';
   
   // Listing errors
-  if (message.includes('ListingNotActive') || message.includes('Listing not active')) return 'This listing no longer exists';
+  if (message.includes('ListingNotActive') || message.includes('Listing not active')) return 'This NFT is no longer listed';
   
   // Approval errors - check for ERC721 transfer errors which indicate approval issues
   if (message.includes('Not approved') || message.includes('not approved')) return 'Please approve marketplace first';
@@ -43,7 +43,7 @@ export function parseContractError(error: any): string {
   if (message.includes('ERC721InsufficientApproval')) return 'Please approve marketplace first - click Approve and wait for confirmation';
   
   // Price errors
-  if (message.includes('PriceTooLow') || message.includes('price too low') || message.includes('Price too low')) return 'Price must be at least 1 $BASED';
+  if (message.includes('PriceTooLow') || message.includes('price too low') || message.includes('Price too low')) return 'Minimum price is 1 $BASED';
   if (message.includes('PriceMismatch') || message.includes('price mismatch')) return 'Price has changed - please refresh and try again';
   
   // Other marketplace errors
