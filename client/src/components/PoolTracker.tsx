@@ -142,7 +142,8 @@ export function PoolTracker() {
     return formatNumber(value, decimals);
   };
 
-  const formatNumber = (num: number, decimals: number = 0) => {
+  const formatNumber = (num: number | null | undefined, decimals: number = 0) => {
+    if (num === null || num === undefined) return "---";
     return num.toLocaleString(undefined, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals
