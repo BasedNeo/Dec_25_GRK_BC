@@ -314,14 +314,15 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 text-center">
-                        <p className="text-lg font-orbitron text-green-400 font-bold">
-                          {currentListingPrice?.toLocaleString()} $BASED
+                    <div className="flex items-center justify-between gap-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-[10px] text-muted-foreground font-mono mb-0.5">LISTED FOR</p>
+                        <p className="text-xl font-orbitron text-green-400 font-bold tracking-tight">
+                          {currentListingPrice?.toLocaleString()} <span className="text-sm">$BASED</span>
                         </p>
                       </div>
                       <Button 
-                        className="bg-red-500/80 text-white hover:bg-red-500 font-bold font-orbitron text-sm h-10 px-4"
+                        className="bg-red-500 text-white hover:bg-red-600 font-bold font-orbitron text-sm h-10 px-5 shrink-0"
                         onClick={() => marketplace.delistNFT(nft.id)}
                         disabled={marketplace.state.isPending}
                       >
