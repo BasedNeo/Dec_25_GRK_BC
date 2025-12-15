@@ -32,7 +32,7 @@ import {
   calculateVotePercentage,
   Proposal
 } from '@/hooks/useGovernance';
-import { MOCK_PROPOSALS } from '@/lib/mockData';
+import { MOCK_PROPOSALS, Proposal as MockProposal } from '@/lib/mockData';
 
 const CATEGORIES = ['Community', 'Treasury', 'Roadmap', 'Partnership', 'Other'];
 
@@ -47,6 +47,25 @@ export function Governance() {
   const [newDescription, setNewDescription] = useState('');
   const [newExpirationDays, setNewExpirationDays] = useState('7');
   const [expandedProposal, setExpandedProposal] = useState<number | null>(null);
+  const [proposals, setProposals] = useState<MockProposal[]>(MOCK_PROPOSALS);
+
+  const handleVote = (proposalId: number, optionId: string, votePower: number) => {
+    setProposals(prevProposals => 
+      prevProposals.map(p => {
+        if (p.id === proposalId) {
+          const newOptions = p.options.map(o => 
+            o.id === optionId ? { ...o, votes: o.votes + votePower } : o
+          );
+          return {
+            ...p,
+            options: newOptions,
+            totalVotes: p.totalVotes + votePower
+          };
+        }
+        return p;
+      })
+    );
+  };
 
   const isAllowedCreator = governance.isConnected && governance.address && 
     PROPOSAL_CREATOR_WALLETS.some(wallet => wallet.toLowerCase() === governance.address?.toLowerCase());
@@ -229,19 +248,21 @@ export function Governance() {
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
                 <Vote className="w-5 h-5 text-primary" /> PROPOSALS
               </h2>
-              {MOCK_PROPOSALS.length === 0 ? (
+              {proposals.length === 0 ? (
                 <Card className="p-8 bg-white/5 border-white/10 text-center">
                   <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>
                 </Card>
               ) : (
-                MOCK_PROPOSALS.map(proposal => (
+                proposals.map(proposal => (
                   <MockProposalCard 
                     key={proposal.id}
                     proposal={proposal}
                     isExpanded={expandedProposal === proposal.id}
                     onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
                     quorumPercentage={governance.quorumPercentage}
+                    onVote={handleVote}
+                    votePower={governance.votingPower}
                   />
                 ))
               )}
@@ -583,28 +604,29 @@ function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage, on
 
                 {hasVoted ? (
                   <div className="p-3 rounded bg-white/5 border border-green-500/30 text-center text-sm">
-                    <span className="text-muted-foreground">You voted </span>
-                    <span className={userVoteFor ? 'text-green-400' : 'text-red-400'}>
-                      {userVoteFor ? 'FOR' : 'AGAINST'}
+                    <span className="text-muted-foreground">You voted for </span>
+                    <span className="text-green-400 font-semibold">
+                      "{proposal.options.find(o => o.id === userVoteFor)?.label || userVoteFor}"
                     </span>
-                    <span className="text-muted-foreground"> this proposal</span>
                   </div>
                 ) : isActive ? (
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => handleLocalVote(true)}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      data-testid={`vote-for-${proposal.id}`}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" /> VOTE FOR
-                    </Button>
-                    <Button 
-                      onClick={() => handleLocalVote(false)}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      data-testid={`vote-against-${proposal.id}`}
-                    >
-                      <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
-                    </Button>
+                  <div className="flex flex-wrap gap-2">
+                    {proposal.options.map(option => (
+                      <Button 
+                        key={option.id}
+                        onClick={() => handleLocalVote(option.id)}
+                        className={`flex-1 min-w-[120px] ${
+                          option.id === 'yes' || option.id === 'spacecraft' 
+                            ? 'bg-green-600 hover:bg-green-700' 
+                            : option.id === 'no' || option.id === 'planet'
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-gray-600 hover:bg-gray-700'
+                        } text-white`}
+                        data-testid={`vote-${option.id}-${proposal.id}`}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
                   </div>
                 ) : (
                   <div className="p-3 rounded bg-white/5 border border-white/10 text-center text-sm text-muted-foreground">

@@ -1,0 +1,79 @@
+## DEBUG & FIX: NFT Listing Fails After Approval
+
+The listing is failing with "Transaction failed". The issue is likely in the approval or listing flow. Here's how to debug and fix:
+
+### 1. First, verify the approval is calling the CORRECT contract
+
+In your `useMarketplace.ts` or wherever `approveMarketplace` is defined, check:
+
+// CORRECT: Approval must be on the NFT CONTRACT, not marketplace
+const approveMarketplace = async () => {
+  writeContract({
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`,  // NFT Contract
+    abi: [{
+      name: 'setApprovalForAll',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'operator', type: 'address' },
+        { name: 'approved', type: 'bool' }
+      ],
+      outputs: []
+    }],
+    functionName: 'setApprovalForAll',
+    args: ['0x88161576266dCDedb19342aC2197267282520793', true],  // Marketplace address as operator
+    chainId: 32323,
+  });
+};### 2. Verify the listNFT function sends the price in wei
+
+The contract requires `price >= 1 ether` (1 $BASED). Make sure price is converted to wei:
+
+import { parseEther } from 'viem';
+
+const listNFT = async (tokenId: number, priceInBased: number) => {
+  // Price must be at least 1 $BASED
+  if (priceInBased < 1) {
+    toast({ title: "Price Too Low", description: "Minimum price is 1 $BASED", variant: "destructive" });
+    return;
+  }
+
+  // Convert to wei (1 $BASED = 10^18 wei)
+  const priceWei = parseEther(String(priceInBased));
+
+  writeContract({
+    address: '0x88161576266dCDedb19342aC2197267282520793' as `0x${string}`,  // Marketplace
+    abi: [{
+      name: 'listNFT',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'tokenId', type: 'uint256' },
+        { name: 'price', type: 'uint256' }
+      ],
+      outputs: []
+    }],
+    functionName: 'listNFT',
+    args: [BigInt(tokenId), priceWei],
+    chainId: 32323,
+  });
+};### 3. Add better error parsing to show what went wrong
+
+When catching errors, parse the revert reason:
+
+// In your error handling:
+if (errorMessage.includes('NotTokenOwner')) {
+  return 'You do not own this NFT';
+} else if (errorMessage.includes('PriceTooLow')) {
+  return 'Minimum listing price is 1 $BASED';
+} else if (errorMessage.includes('ERC721: caller is not token owner or approved')) {
+  return 'Please approve the marketplace first (Step 1)';
+}### 4. Verify the approval worked before enabling the List button
+
+After approval transaction confirms, refetch the approval status:
+
+// After approval confirms, refetch
+useEffect(() => {
+  if (isConfirmed && state.action === 'approve') {
+    refetchApproval(); // This should update isApproved
+  }
+}, [isConfirmed]);The List button should only be enabled when `isApproved === true` from the contract read.
