@@ -571,7 +571,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         )}
                     </div>
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0 space-y-4">
