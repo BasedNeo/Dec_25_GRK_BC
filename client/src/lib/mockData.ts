@@ -93,22 +93,37 @@ export const MOCK_GUARDIANS: Guardian[] = Array.from({ length: 20 }, (_, i) => g
 export const MOCK_PROPOSALS: Proposal[] = [
   {
     id: 1,
-    title: "Proposal: Traditional Website vs. App Development",
-    description: "Should we create a traditional website or put those resources into further developing this app?",
-    type: 'multiple',
+    title: "Community Treasury Allocation: Marketing Fund",
+    description: "Allocate 50,000 $BASED from the community treasury to fund marketing initiatives including Twitter/X campaigns, influencer partnerships, and community contests to grow the Based Guardians ecosystem.",
+    type: 'binary',
     options: [
-        { id: 'for', label: 'For', votes: 1500 },
-        { id: 'against', label: 'Against', votes: 200 },
-        { id: 'abstain', label: 'Abstain', votes: 50 }
+        { id: 'yes', label: 'For', votes: 245 },
+        { id: 'no', label: 'Against', votes: 89 },
+        { id: 'abstain', label: 'Abstain', votes: 12 }
     ],
     status: 'Active',
-    endTime: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days from now
-    totalVotes: 1750
+    endTime: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 days from now
+    totalVotes: 346
   },
   {
     id: 2,
+    title: "Proposal: Traditional Website vs. App Development",
+    description: "Should we create a traditional website or put those resources into further developing this app? The traditional website would serve as a landing page with basic info, while app development would add features like staking, leaderboards, and enhanced marketplace.",
+    type: 'multiple',
+    options: [
+        { id: 'app', label: 'Focus on App', votes: 1500 },
+        { id: 'website', label: 'Traditional Website', votes: 200 },
+        { id: 'both', label: 'Do Both', votes: 350 },
+        { id: 'abstain', label: 'Abstain', votes: 50 }
+    ],
+    status: 'Active',
+    endTime: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
+    totalVotes: 2100
+  },
+  {
+    id: 3,
     title: "Feature Request: Offers & Listings in Series",
-    description: "Add the ability to make offers in the 'Series' section and the ability to set a price to sell NFTs.",
+    description: "Add the ability to make offers in the 'Series' section and the ability to set a price to sell NFTs. This would allow holders to list their NFTs directly from the collection view.",
     type: 'binary',
     options: [
         { id: 'yes', label: 'For', votes: 890 },
@@ -120,9 +135,9 @@ export const MOCK_PROPOSALS: Proposal[] = [
     totalVotes: 1440
   },
   {
-    id: 3,
+    id: 4,
     title: "Timeline Adjustment: Postpone Launch",
-    description: "Wait to launch the App until April.",
+    description: "Wait to launch the App until April to ensure all features are properly tested and audited.",
     type: 'binary',
     options: [
         { id: 'yes', label: 'For', votes: 300 },
@@ -132,6 +147,20 @@ export const MOCK_PROPOSALS: Proposal[] = [
     status: 'Rejected',
     endTime: "2025-11-15T12:00:00Z",
     totalVotes: 1550
+  },
+  {
+    id: 5,
+    title: "Partnership: BasedAI DEX Integration",
+    description: "Should we pursue integration with the upcoming BasedAI decentralized exchange to enable direct $BASED swaps within the Guardian app?",
+    type: 'binary',
+    options: [
+        { id: 'yes', label: 'For', votes: 1823 },
+        { id: 'no', label: 'Against', votes: 156 },
+        { id: 'abstain', label: 'Abstain', votes: 89 }
+    ],
+    status: 'Executed',
+    endTime: "2025-12-01T12:00:00Z",
+    totalVotes: 2068
   }
 ];
 
