@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
@@ -41,6 +41,12 @@ interface UniverseTabProps {
 export function UniverseTab({ onMintClick }: UniverseTabProps) {
   const [loading, setLoading] = useState(true);
   const { isConnected } = useAccount();
+  
+  const { scrollYProgress } = useScroll();
+  
+  const backgroundY = useTransform(scrollYProgress, [0, 0.5, 1], ["0%", "15%", "30%"]);
+  const featuresY = useTransform(scrollYProgress, [0.2, 0.6], ["0%", "-8%"]);
+  const timelineY = useTransform(scrollYProgress, [0.4, 0.8], ["0%", "-12%"]);
 
   useEffect(() => {
     // Simulate loading for "rich, lore-driven overview"
@@ -140,37 +146,59 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-20 bg-gradient-to-b from-black to-indigo-950/20">
-        <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future." },
-                    { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe." },
-                    { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian." },
-                    { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool." },
-                ].map((feature, idx) => (
-                    <motion.div 
-                        key={idx}
-                        whileHover={{ y: -5 }}
-                        className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group"
-                    >
-                        <div className="w-12 h-12 rounded-full bg-cyan-900/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
-                            <feature.icon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-200" />
-                        </div>
-                        <h4 className="text-lg font-bold text-white mb-1 font-orbitron">{feature.title}</h4>
-                        <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">{feature.sub}</p>
-                        <p className="text-sm text-gray-400 leading-relaxed">
-                            {feature.desc}
-                        </p>
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-      </section>
+      {/* Parallax Container for content below video */}
+      <div className="relative overflow-hidden">
+        {/* Floating parallax background elements */}
+        <motion.div 
+          style={{ y: backgroundY }}
+          className="absolute inset-0 pointer-events-none z-0"
+        >
+          <div className="absolute top-20 left-10 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
+          <div className="absolute top-40 right-20 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl" />
+        </motion.div>
 
-      {/* Timeline Section */}
-      <section className="py-20 border-b border-white/10 bg-black/80 backdrop-blur-sm">
+        {/* Features Grid with Parallax */}
+        <motion.section 
+          style={{ y: featuresY }}
+          className="py-20 bg-gradient-to-b from-black to-indigo-950/20 relative z-10"
+        >
+          <div className="max-w-7xl mx-auto px-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[
+                      { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future." },
+                      { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe." },
+                      { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian." },
+                      { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool." },
+                  ].map((feature, idx) => (
+                      <motion.div 
+                          key={idx}
+                          whileHover={{ y: -5, scale: 1.02 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          initial={{ opacity: 0, y: 30 }}
+                          transition={{ delay: idx * 0.1, duration: 0.5 }}
+                          viewport={{ once: true }}
+                          className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm"
+                      >
+                          <div className="w-12 h-12 rounded-full bg-cyan-900/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
+                              <feature.icon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-200" />
+                          </div>
+                          <h4 className="text-lg font-bold text-white mb-1 font-orbitron">{feature.title}</h4>
+                          <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">{feature.sub}</p>
+                          <p className="text-sm text-gray-400 leading-relaxed">
+                              {feature.desc}
+                          </p>
+                      </motion.div>
+                  ))}
+              </div>
+          </div>
+        </motion.section>
+
+        {/* Timeline Section with Parallax */}
+        <motion.section 
+          style={{ y: timelineY }}
+          className="py-20 border-b border-white/10 bg-black/80 backdrop-blur-sm relative z-10"
+        >
         <div className="max-w-6xl mx-auto px-6">
             <h3 className="text-2xl font-orbitron text-white mb-12 text-center">MISSION TIMELINE</h3>
             <div className="relative mb-16">
@@ -239,7 +267,8 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                  </Button>
             </motion.div>
         </div>
-      </section>
+        </motion.section>
+      </div>
 
       {/* Universe-specific tagline */}
       <div className="py-4 border-t border-cyan-500/30 bg-black text-center">
