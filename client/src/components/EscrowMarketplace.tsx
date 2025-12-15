@@ -159,7 +159,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id-asc"); // Default to ID ascending, starting at #300
+  const [sortBy, setSortBy] = useState<string>("listed-price-asc"); // Default: listed items first, then by lowest price
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV (true) for reliability
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
@@ -449,7 +449,30 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // The hook knows about `sortBy`, but `price` is added HERE.
     // So we should sort by price here if needed.
     
-    if (sortBy === 'price-asc' || sortBy === 'price-desc' || sortBy === 'floor-price') {
+    // Default sort: Listed items first (by lowest price), then unlisted/unminted
+    if (sortBy === 'listed-price-asc') {
+         items.sort((a, b) => {
+             // Listed items come first
+             const aListed = a.isListed ? 1 : 0;
+             const bListed = b.isListed ? 1 : 0;
+             if (aListed !== bListed) return bListed - aListed; // Listed first
+             
+             // Among listed items, sort by price ascending
+             if (a.isListed && b.isListed) {
+                 const priceA = a.price || 0;
+                 const priceB = b.price || 0;
+                 return priceA - priceB;
+             }
+             
+             // Among unlisted, minted come before unminted
+             const aMinted = a.isMinted ? 1 : 0;
+             const bMinted = b.isMinted ? 1 : 0;
+             if (aMinted !== bMinted) return bMinted - aMinted;
+             
+             // Otherwise by ID
+             return a.id - b.id;
+         });
+    } else if (sortBy === 'price-asc' || sortBy === 'price-desc' || sortBy === 'floor-price') {
          items.sort((a, b) => {
              const priceA = a.price || 0;
              const priceB = b.price || 0;
@@ -829,6 +852,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                    <SelectValue placeholder="Sort" />
                  </SelectTrigger>
                  <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
+                   <SelectItem value="listed-price-asc">For Sale</SelectItem>
                    <SelectItem value="price-asc">Price: Low</SelectItem>
                    <SelectItem value="price-desc">Price: High</SelectItem>
                    <SelectItem value="floor-price">Floor Price</SelectItem>
