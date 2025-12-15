@@ -11,6 +11,7 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
 import { SecurityProvider } from "@/context/SecurityContext";
+import { TransactionProvider } from "@/context/TransactionContext";
 import { initAnalytics } from "@/lib/analytics";
 import { useEffect } from "react";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
@@ -74,18 +75,20 @@ function App() {
             initialChain={32323}
           >
             <SecurityProvider>
-              <TooltipProvider>
-                <NetworkSwitchBanner />
-                <SpaceBackground />
-                <Router />
-                <DisclaimerModal />
-                <OnboardingTour />
-                <GlobalBuyListener />
-                <WalletWatcher />
-                <PendingTxBanner />
-                <Toaster />
-                <DiagnosticPanel />
-              </TooltipProvider>
+              <TransactionProvider>
+                <TooltipProvider>
+                  <NetworkSwitchBanner />
+                  <SpaceBackground />
+                  <Router />
+                  <DisclaimerModal />
+                  <OnboardingTour />
+                  <GlobalBuyListener />
+                  <WalletWatcher />
+                  <PendingTxBanner />
+                  <Toaster />
+                  <DiagnosticPanel />
+                </TooltipProvider>
+              </TransactionProvider>
             </SecurityProvider>
           </RainbowKitProvider>
         </QueryClientProvider>
