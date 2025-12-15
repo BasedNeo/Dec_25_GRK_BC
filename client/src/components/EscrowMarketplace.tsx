@@ -344,6 +344,11 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       startOffset: needsFullCollection ? 0 : 299 // Start at 0 when filtering or sorting by listed
   }); 
 
+  // Get minted token IDs from directNFTs (which were fetched via tokenByIndex)
+  const mintedTokenIds = useMemo(() => {
+    return new Set<number>(directNFTs.map(n => n.id));
+  }, [directNFTs]);
+
   const allItems = useMemo(() => {
      // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
      if (!useCsvData) {
@@ -353,7 +358,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      if (!data) return [];
      
      const MINT_PRICE = 69420;
-     const totalMinted = contractStats?.totalMinted ?? 0;
      
      // Create a Set of actively listed token IDs for O(1) lookup
      const listedTokenIds = new Set<number>(
@@ -361,11 +365,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      );
      
      console.log('[EscrowMarketplace] Active listing IDs from marketplace:', Array.from(listedTokenIds));
+     console.log('[EscrowMarketplace] Minted token IDs:', Array.from(mintedTokenIds));
      
      // Flatten pages and determine real status based on contract data
      let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
         const tokenId = item.id;
-        const isMinted = tokenId <= totalMinted;
+        // Check if token is actually minted (exists in the minted set from tokenByIndex)
+        const isMinted = mintedTokenIds.has(tokenId);
         // Use marketplace activeListingIds for accurate listing status
         const isListed = isMinted && listedTokenIds.has(tokenId);
         
@@ -412,7 +418,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      }
      
      return items;
-  }, [data, directNFTs, useCsvData, contractStats?.totalMinted, marketplace.activeListingIds, sortBy]);
+  }, [data, directNFTs, useCsvData, mintedTokenIds, marketplace.activeListingIds, sortBy]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
