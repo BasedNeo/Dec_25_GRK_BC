@@ -1,7 +1,7 @@
 import { useAccount, useSwitchChain } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Loader2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CHAIN_ID } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,6 +9,14 @@ export function NetworkSwitchBanner() {
   const { isConnected, chain } = useAccount();
   const { switchChain, isPending } = useSwitchChain();
   const [dismissed, setDismissed] = useState(false);
+  const prevChainRef = useRef(chain?.id);
+  
+  useEffect(() => {
+    if (prevChainRef.current !== chain?.id) {
+      setDismissed(false);
+      prevChainRef.current = chain?.id;
+    }
+  }, [chain?.id]);
   
   const showBanner = isConnected && chain?.id !== CHAIN_ID && !dismissed;
   if (!showBanner) return null;

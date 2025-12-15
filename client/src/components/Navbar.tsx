@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, WifiOff, RefreshCcw } from "lucide-react";
+import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, WifiOff, RefreshCcw, Link2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount, useBlockNumber, useConnect } from "wagmi";
+import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
+import { CHAIN_ID } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +27,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   // const { toast } = useToast(); // Using custom toast
-  const { address, isConnected: wagmiConnected } = useAccount();
+  const { address, isConnected: wagmiConnected, chain } = useAccount();
   const { error: connectError } = useConnect();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const isWrongNetwork = wagmiConnected && chain?.id !== CHAIN_ID;
   const queryClient = useQueryClient();
   
   // RPC Connection Monitoring
@@ -261,6 +264,40 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             )}
 
             <div className="ml-4 flex items-center gap-3">
+              {/* Chain Indicator */}
+              {wagmiConnected && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div 
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border cursor-pointer transition-all ${
+                        isWrongNetwork 
+                          ? 'border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20' 
+                          : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400'
+                      }`}
+                      onClick={() => isWrongNetwork && switchChain({ chainId: CHAIN_ID })}
+                      data-testid="chain-indicator"
+                    >
+                      {isWrongNetwork ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-mono font-bold">
+                            {isSwitching ? 'SWITCHING...' : chain?.name?.slice(0, 8) || 'WRONG'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-mono font-bold">BASEDAI</span>
+                        </>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className={`font-orbitron ${isWrongNetwork ? 'bg-red-900 border-red-500 text-red-300' : 'bg-black border-cyan-500 text-cyan-400'}`}>
+                    {isWrongNetwork ? 'Click to switch to BasedAI (32323)' : 'Connected to BasedAI Mainnet'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              
               {/* Wallet Balance Display */}
               <WalletBalanceDisplay />
               
