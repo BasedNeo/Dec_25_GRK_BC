@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Cat, ArrowLeft, Heart, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import conceptArt from "@assets/Studio-Project_1765831611867.png";
+import foxArt from "@assets/Physicalk_Fox1.png_1765831628596.webp";
 
 export default function Creators() {
   return (
@@ -49,6 +51,22 @@ export default function Creators() {
         {/* Main Content */}
         <section className="py-24 px-6">
           <div className="max-w-4xl mx-auto space-y-12">
+            {/* Hero Image */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1 }}
+              className="relative w-full max-w-2xl mx-auto"
+            >
+              <div className="relative rounded-xl overflow-hidden border border-orange-500/30 shadow-[0_0_40px_rgba(251,146,60,0.2)]">
+                <img 
+                  src={foxArt} 
+                  alt="Based Guardian Fox Concept Art" 
+                  className="w-full h-auto"
+                />
+              </div>
+            </motion.div>
+
             {/* Title */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -115,10 +133,24 @@ export default function Creators() {
                 </h2>
               </div>
               <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/20 rounded-2xl p-8">
-                <h3 className="text-xl font-orbitron text-amber-400 mb-4">Bartholomew: A Quiet Creative Soul</h3>
-                <p className="text-lg text-gray-200 leading-relaxed font-rajdhani">
-                  Leading this effort is Bartholomew, a father who blends technology and art with a quiet passion. With skills in drawing, videography, and music, he's spent years exploring how digital and physical worlds can meet, now bringing that to blockchain. Growing up in the 1980s, he draws from childhood joys like Star Fox games and his two fox-like corgis. For Based Guardians, he uses a soft digital style with layered effects, echoing hand-drawn sketches and a gentle synth-wave touch from his '80s memories. With his daughter's heart alongside his, they invite you to share in this humble journey.
-                </p>
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  <div className="flex-shrink-0 w-full md:w-48">
+                    <div className="rounded-lg overflow-hidden border border-amber-500/30 shadow-[0_0_20px_rgba(251,146,60,0.15)]">
+                      <img 
+                        src={conceptArt} 
+                        alt="Concept Art #1" 
+                        className="w-full h-auto"
+                      />
+                    </div>
+                    <p className="text-xs text-amber-400/60 text-center mt-2 font-mono">Early Concept Art</p>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-orbitron text-amber-400 mb-4">Bartholomew: A Quiet Creative Soul</h3>
+                    <p className="text-lg text-gray-200 leading-relaxed font-rajdhani">
+                      Leading this effort is Bartholomew, a father who blends technology and art with a quiet passion. With skills in drawing, videography, and music, he's spent years exploring how digital and physical worlds can meet, now bringing that to blockchain. Growing up in the 1980s, he draws from childhood joys like Star Fox games and his two fox-like corgis. For Based Guardians, he uses a soft digital style with layered effects, echoing hand-drawn sketches and a gentle synth-wave touch from his '80s memories. With his daughter's heart alongside his, they invite you to share in this humble journey.
+                    </p>
+                  </div>
+                </div>
               </div>
             </motion.div>
 
