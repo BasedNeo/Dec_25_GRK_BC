@@ -241,9 +241,6 @@ export function Governance() {
                     proposal={proposal}
                     isExpanded={expandedProposal === proposal.id}
                     onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
-                    onVote={governance.vote}
-                    isPending={governance.isPending}
-                    isConfirming={governance.isConfirming}
                     quorumPercentage={governance.quorumPercentage}
                   />
                 ))
@@ -461,13 +458,13 @@ interface MockProposalCardProps {
   proposal: typeof MOCK_PROPOSALS[0];
   isExpanded: boolean;
   onToggle: () => void;
-  onVote: (id: number, support: boolean) => void;
-  isPending: boolean;
-  isConfirming: boolean;
   quorumPercentage: number;
 }
 
-function MockProposalCard({ proposal, isExpanded, onToggle, onVote, isPending, isConfirming, quorumPercentage }: MockProposalCardProps) {
+function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage }: MockProposalCardProps) {
+  const { toast } = useToast();
+  const [hasVoted, setHasVoted] = useState(false);
+  const [userVoteFor, setUserVoteFor] = useState<boolean | null>(null);
   const isActive = proposal.status === 'Active';
   const endTime = new Date(proposal.endTime);
   const now = new Date();
@@ -480,6 +477,20 @@ function MockProposalCard({ proposal, isExpanded, onToggle, onVote, isPending, i
   const totalVotes = proposal.totalVotes || (forVotes + againstVotes);
   const forPercent = totalVotes > 0 ? Math.round((forVotes / totalVotes) * 100) : 50;
   const againstPercent = totalVotes > 0 ? Math.round((againstVotes / totalVotes) * 100) : 50;
+  
+  const handleLocalVote = (support: boolean) => {
+    if (hasVoted) {
+      toast({ title: "Already Voted", description: "You have already cast your vote on this proposal", variant: "destructive" });
+      return;
+    }
+    setHasVoted(true);
+    setUserVoteFor(support);
+    toast({ 
+      title: "Vote Cast!", 
+      description: `You voted ${support ? 'FOR' : 'AGAINST'} this proposal`,
+      className: "bg-black border-green-500 text-green-500"
+    });
+  };
 
   const statusColors: Record<string, string> = {
     'Active': 'border-green-500 text-green-400',
@@ -562,24 +573,28 @@ function MockProposalCard({ proposal, isExpanded, onToggle, onVote, isPending, i
                   })}
                 </div>
 
-                {isActive ? (
+                {hasVoted ? (
+                  <div className="p-3 rounded bg-white/5 border border-green-500/30 text-center text-sm">
+                    <span className="text-muted-foreground">You voted </span>
+                    <span className={userVoteFor ? 'text-green-400' : 'text-red-400'}>
+                      {userVoteFor ? 'FOR' : 'AGAINST'}
+                    </span>
+                    <span className="text-muted-foreground"> this proposal</span>
+                  </div>
+                ) : isActive ? (
                   <div className="flex gap-2">
                     <Button 
-                      onClick={() => onVote(proposal.id, true)}
-                      disabled={isPending || isConfirming}
+                      onClick={() => handleLocalVote(true)}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                       data-testid={`vote-for-${proposal.id}`}
                     >
-                      {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       <CheckCircle2 className="w-4 h-4 mr-2" /> VOTE FOR
                     </Button>
                     <Button 
-                      onClick={() => onVote(proposal.id, false)}
-                      disabled={isPending || isConfirming}
+                      onClick={() => handleLocalVote(false)}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       data-testid={`vote-against-${proposal.id}`}
                     >
-                      {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
                     </Button>
                   </div>
