@@ -393,33 +393,48 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                   <div className="space-y-4">
                     {/* STEP 1: Approve Marketplace (if not already approved) */}
                     {!marketplace.isApproved ? (
-                      <Button 
-                        className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold font-orbitron"
-                        onClick={() => marketplace.approveMarketplace()}
-                        disabled={marketplace.state.isPending}
-                        data-testid="button-approve-marketplace"
-                      >
-                        {marketplace.state.isPending ? 'APPROVING...' : 'STEP 1: APPROVE MARKETPLACE'}
-                      </Button>
+                      <div className="space-y-3">
+                        <p className="text-xs text-amber-400 text-center font-mono">
+                          Step 1 of 2: Approve marketplace to list your NFTs
+                        </p>
+                        <Button 
+                          className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold font-orbitron"
+                          onClick={async () => {
+                            await marketplace.approveMarketplace();
+                            setTimeout(() => marketplace.refresh(), 3000);
+                          }}
+                          disabled={marketplace.state.isPending || marketplace.state.isConfirming}
+                          data-testid="button-approve-marketplace"
+                        >
+                          {marketplace.state.isPending ? 'CONFIRM IN WALLET...' :
+                           marketplace.state.isConfirming ? 'APPROVING...' :
+                           'APPROVE MARKETPLACE'}
+                        </Button>
+                      </div>
                     ) : !isListed ? (
                       /* STEP 2: List for Sale */
                       <div className="space-y-3">
-                        <Label className="text-xs text-muted-foreground font-mono">SET YOUR PRICE ($BASED)</Label>
-                        <Input 
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={listPrice || ''}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
-                            setListPrice(val ? parseInt(val, 10) : 0);
-                          }}
-                          placeholder="69420"
-                          className="bg-white/5 border-white/10 font-mono text-lg"
-                          data-testid="input-list-price"
-                        />
+                        <p className="text-xs text-green-400 text-center font-mono">
+                          ✓ Marketplace approved! Set your price:
+                        </p>
+                        <div className="flex gap-2 items-center">
+                          <Input 
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={listPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                              setListPrice(val ? parseInt(val, 10) : 0);
+                            }}
+                            placeholder="77000"
+                            className="flex-1 bg-white/5 border-white/10 font-mono text-lg"
+                            data-testid="input-list-price"
+                          />
+                          <span className="text-muted-foreground font-mono">$BASED</span>
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">
-                          You receive: {Math.floor(listPrice * 0.99).toLocaleString()} $BASED (after 1% fee)
+                          You'll receive {Math.floor(listPrice * 0.99).toLocaleString()} $BASED after 1% fee
                         </p>
                         <Button 
                           className="w-full bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron shadow-[0_0_15px_rgba(34,197,94,0.4)]"

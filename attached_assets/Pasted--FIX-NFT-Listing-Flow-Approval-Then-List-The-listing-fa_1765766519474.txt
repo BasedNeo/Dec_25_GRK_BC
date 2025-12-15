@@ -1,0 +1,135 @@
+## FIX: NFT Listing Flow - Approval Then List
+
+The listing fails because the approval and listing are two separate transactions that must happen in order:
+
+### STEP 1: Fix the approval check and flow
+
+In the marketplace/listing component, implement this flow:
+
+const { address } = useAccount();
+const marketplace = useMarketplace();
+
+// Check if marketplace is approved to transfer user's NFTs
+const { data: isApproved, refetch: refetchApproval } = useReadContract({
+  address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`, // NFT Contract
+  abi: [{
+    name: 'isApprovedForAll',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'operator', type: 'address' }
+    ],
+    outputs: [{ type: 'bool' }]
+  }],
+  functionName: 'isApprovedForAll',
+  args: address ? [address, '0x88161576266dCDedb19342aC2197267282520793'] : undefined, // Marketplace
+  query: { enabled: !!address, refetchInterval: 3000 }
+});### STEP 2: Show TWO separate buttons - Approve first, then List
+
+{/* LISTING CONTROLS FOR NFT OWNER */}
+{isOwner && !nft.isListed && (
+  <div className="space-y-3">
+    {/* STEP 1: Approve (if not approved) */}
+    {!isApproved ? (
+      <>
+        <p className="text-xs text-amber-400 text-center">
+          Step 1 of 2: Approve marketplace to list your NFTs
+        </p>
+        <Button 
+          className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold"
+          onClick={async () => {
+            await marketplace.approveMarketplace();
+            // Wait a moment then refetch approval status
+            setTimeout(() => refetchApproval(), 3000);
+          }}
+          disabled={marketplace.state.isPending || marketplace.state.isConfirming}
+        >
+          {marketplace.state.isPending ? 'CONFIRM IN WALLET...' :
+           marketplace.state.isConfirming ? 'APPROVING...' :
+           'APPROVE MARKETPLACE'}
+        </Button>
+      </>
+    ) : (
+      /* STEP 2: List (only shown after approval confirmed) */
+      <>
+        <p className="text-xs text-green-400 text-center">
+          ✓ Marketplace approved! Set your price:
+        </p>
+        <div className="flex gap-2">
+          <Input 
+            type="number"
+            value={listPrice}
+            onChange={(e) => setListPrice(Number(e.target.value))}
+            placeholder="77000"
+            className="flex-1 bg-white/5 border-white/10"
+          />
+          <span className="text-muted-foreground self-center">$BASED</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          You'll receive {(listPrice * 0.99).toLocaleString()} after 1% fee
+        </p>
+        <Button 
+          className="w-full bg-green-500 text-black hover:bg-green-400 font-bold"
+          onClick={() => marketplace.listNFT(nft.id, listPrice)}
+          disabled={listPrice < 1 || marketplace.state.isPending}
+        >
+          {marketplace.state.isPending ? 'LISTING...' : 'LIST FOR SALE'}
+        </Button>
+      </>
+    )}
+  </div>
+)}### STEP 3: In useMarketplace.ts, ensure approval calls the NFT contract (not marketplace)
+
+const approveMarketplace = async () => {
+  if (!checkNetwork()) return;
+
+  setState(prev => ({ ...prev, action: 'approve' }));
+  
+  toast({
+    title: "Approve Marketplace",
+    description: "Please confirm to allow marketplace to transfer your NFTs...",
+  });
+
+  // Call setApprovalForAll on the NFT CONTRACT (not marketplace)
+  writeContract({
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`, // NFT Contract
+    abi: [{
+      name: 'setApprovalForAll',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'operator', type: 'address' },
+        { name: 'approved', type: 'bool' }
+      ],
+      outputs: []
+    }],
+    functionName: 'setApprovalForAll',
+    args: ['0x88161576266dCDedb19342aC2197267282520793', true], // Marketplace address, true
+    chainId: 32323,
+  });
+};### STEP 4: After approval confirms, auto-refetch the approval status
+
+useEffect(() => {
+  if (state.action === 'approve' && state.isSuccess) {
+    // Wait for blockchain to update, then refetch
+    setTimeout(() => {
+      refetchApproval();
+    }, 2000);
+    
+    toast({
+      title: "✅ Marketplace Approved!",
+      description: "You can now list your NFTs for sale.",
+    });
+  }
+}, [state.isSuccess, state.action]);### KEY POINTS:
+1. Approval = call setApprovalForAll on NFT contract (0xaE51dc...59)
+2. Listing = call listNFT on Marketplace contract (0x88161...93)
+3. User must WAIT for approval to confirm before listing
+4. Show clear step 1/step 2 UI so user knows the flow
+5. Auto-refetch approval status after approval confirms
+
+After applying this fix, the user will:
+1. Click "Approve Marketplace" → confirm in wallet → wait for confirmation
+2. UI updates to show "✓ Marketplace approved!"
+3. Then enter price and click "List for Sale" → confirm in wallet → NFT listed
