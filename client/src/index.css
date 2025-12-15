@@ -237,6 +237,21 @@ replit-error-modal {
   display: none !important;
 }
 
+/* RainbowKit Modal Fix - Ensure wallet buttons are clickable */
+[data-rk] button,
+[data-rk] a,
+[data-rk] [role="button"],
+div[class*="iekbcc"] button,
+div[class*="iekbcc"] a {
+  min-height: auto !important;
+  min-width: auto !important;
+  pointer-events: auto !important;
+}
+
+[data-rk] * {
+  pointer-events: auto;
+}
+
 /* Force Buy Button Visibility and Styling */
 /* ========================================
    BUY BUTTON - SINGLE SOURCE OF TRUTH
