@@ -18,6 +18,7 @@ import {
   ChevronDown, ChevronUp, Loader2, AlertCircle, Shield
 } from 'lucide-react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { PROPOSAL_CREATOR_WALLETS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import {
   useGovernance,
@@ -40,7 +41,12 @@ export function Governance() {
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Community');
   const [newDescription, setNewDescription] = useState('');
+  const [newExpirationDays, setNewExpirationDays] = useState('7');
   const [expandedProposal, setExpandedProposal] = useState<number | null>(null);
+
+  // Check if connected wallet can create proposals
+  const isAllowedCreator = governance.isConnected && governance.address && 
+    PROPOSAL_CREATOR_WALLETS.some(wallet => wallet.toLowerCase() === governance.address?.toLowerCase());
 
   const handleCreateProposal = async () => {
     if (!newTitle.trim() || !newDescription.trim()) {
@@ -107,22 +113,24 @@ export function Governance() {
           </Card>
         ) : (
           <>
-            <div className="mb-8">
-              <Button 
-                onClick={() => setShowCreateForm(!showCreateForm)}
-                disabled={!governance.canCreateProposal}
-                className="bg-primary text-black hover:bg-primary/90 font-orbitron"
-                data-testid="create-proposal-btn"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                CREATE PROPOSAL
-              </Button>
-              {!governance.canCreateProposal && governance.isConnected && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  You need at least {governance.minNFTsToPropose} NFT(s) to create a proposal
-                </p>
-              )}
-            </div>
+            {isAllowedCreator && (
+              <div className="mb-8">
+                <Button 
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  disabled={!governance.canCreateProposal}
+                  className="bg-primary text-black hover:bg-primary/90 font-orbitron"
+                  data-testid="create-proposal-btn"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  CREATE PROPOSAL
+                </Button>
+                {!governance.canCreateProposal && governance.isConnected && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You need at least {governance.minNFTsToPropose} NFT(s) to create a proposal
+                  </p>
+                )}
+              </div>
+            )}
 
             <AnimatePresence>
               {showCreateForm && (
@@ -167,6 +175,21 @@ export function Governance() {
                         data-testid="proposal-description-input"
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground font-mono">EXPIRATION PERIOD</Label>
+                      <Select value={newExpirationDays} onValueChange={setNewExpirationDays}>
+                        <SelectTrigger className="bg-black/50 border-white/10 text-white" data-testid="proposal-expiration-select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black/95 border-white/10">
+                          <SelectItem value="3">3 Days</SelectItem>
+                          <SelectItem value="7">7 Days</SelectItem>
+                          <SelectItem value="14">14 Days</SelectItem>
+                          <SelectItem value="21">21 Days</SelectItem>
+                          <SelectItem value="30">30 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex gap-2">
                       <Button 
                         onClick={handleCreateProposal}
@@ -177,7 +200,7 @@ export function Governance() {
                         {(governance.isPending || governance.isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         Submit Proposal
                       </Button>
-                      <Button variant="outline" onClick={() => setShowCreateForm(false)} className="border-white/10">
+                      <Button variant="outline" onClick={() => setShowCreateForm(false)} className="border-white/20 text-white hover:text-white/80">
                         Cancel
                       </Button>
                     </div>
