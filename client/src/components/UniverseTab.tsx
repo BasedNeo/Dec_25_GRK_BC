@@ -8,13 +8,43 @@ import { Footer } from "./Footer";
 import { Link } from "wouter";
 
 function AnimatedStarfield() {
-  const stars = useMemo(() => 
-    Array.from({ length: 150 }, (_, i) => ({
+  const { scrollY } = useScroll();
+  
+  const farStarsY = useTransform(scrollY, [0, 3000], [0, 150]);
+  const midStarsY = useTransform(scrollY, [0, 3000], [0, 400]);
+  const nearStarsY = useTransform(scrollY, [0, 3000], [0, 700]);
+
+  const farStars = useMemo(() => 
+    Array.from({ length: 80 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
-      y: Math.random() * 100,
+      y: Math.random() * 200,
+      size: Math.random() * 1.5 + 0.5,
+      duration: Math.random() * 4 + 3,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.4 + 0.2,
+    })), []
+  );
+
+  const midStars = useMemo(() => 
+    Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 200,
       size: Math.random() * 2 + 1,
       duration: Math.random() * 3 + 2,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.5 + 0.3,
+    })), []
+  );
+
+  const nearStars = useMemo(() => 
+    Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 200,
+      size: Math.random() * 3 + 2,
+      duration: Math.random() * 2 + 1.5,
       delay: Math.random() * 5,
       opacity: Math.random() * 0.7 + 0.3,
     })), []
@@ -32,28 +62,80 @@ function AnimatedStarfield() {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {stars.map((star) => (
-        <motion.div
-          key={star.id}
-          className="absolute rounded-full bg-white"
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: star.size,
-            height: star.size,
-          }}
-          animate={{
-            opacity: [star.opacity, star.opacity * 0.3, star.opacity],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: star.duration,
-            delay: star.delay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+      <motion.div style={{ y: farStarsY }} className="absolute inset-0">
+        {farStars.map((star) => (
+          <motion.div
+            key={`far-${star.id}`}
+            className="absolute rounded-full bg-white/60"
+            style={{
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: star.size,
+              height: star.size,
+            }}
+            animate={{
+              opacity: [star.opacity, star.opacity * 0.4, star.opacity],
+            }}
+            transition={{
+              duration: star.duration,
+              delay: star.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </motion.div>
+
+      <motion.div style={{ y: midStarsY }} className="absolute inset-0">
+        {midStars.map((star) => (
+          <motion.div
+            key={`mid-${star.id}`}
+            className="absolute rounded-full bg-white/80"
+            style={{
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: star.size,
+              height: star.size,
+            }}
+            animate={{
+              opacity: [star.opacity, star.opacity * 0.3, star.opacity],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: star.duration,
+              delay: star.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </motion.div>
+
+      <motion.div style={{ y: nearStarsY }} className="absolute inset-0">
+        {nearStars.map((star) => (
+          <motion.div
+            key={`near-${star.id}`}
+            className="absolute rounded-full bg-white"
+            style={{
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: star.size,
+              height: star.size,
+              boxShadow: `0 0 ${star.size * 2}px rgba(255,255,255,0.5)`,
+            }}
+            animate={{
+              opacity: [star.opacity, star.opacity * 0.2, star.opacity],
+              scale: [1, 1.3, 1],
+            }}
+            transition={{
+              duration: star.duration,
+              delay: star.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </motion.div>
 
       {shootingStars.map((star) => (
         <motion.div
