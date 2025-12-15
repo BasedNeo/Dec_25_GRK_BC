@@ -321,11 +321,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     fetchDirectly();
   }, [useCsvData]); // Re-run if toggling CSV mode
 
-  // Determine if any filters are active (startOffset should be 0 when filtering)
-  const hasActiveFilters = 
+  // Determine if we need to start from offset 0 (for filters or when sorting by listed items)
+  const needsFullCollection = 
       !!debouncedSearch || 
       (rarityFilter && rarityFilter !== 'all') || 
-      (traitTypeFilter && traitTypeFilter !== 'all');
+      (traitTypeFilter && traitTypeFilter !== 'all') ||
+      sortBy === 'listed-price-asc'; // Always start from 0 when showing listed items first
 
   // Use infinite query for data with server-side (hook-side) filtering
   const { 
@@ -340,7 +341,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       traitType: traitTypeFilter,
       traitValue: traitValueFilter,
       sortBy,
-      startOffset: hasActiveFilters ? 0 : 299 // Start at 0 when filtering, else #300
+      startOffset: needsFullCollection ? 0 : 299 // Start at 0 when filtering or sorting by listed
   }); 
 
   const allItems = useMemo(() => {
