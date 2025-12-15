@@ -6,8 +6,84 @@ import { loadGuardiansFromCSV } from "@/lib/csvLoader";
 import Fuse from 'fuse.js';
 import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 import { fetchTokenByIndex, fetchTokenOwner, fetchTokenURI, fetchTotalSupply } from "@/lib/onchain";
-import { IPFS_ROOT } from "@/lib/constants";
+import { IPFS_ROOT, MARKETPLACE_CONTRACT, CHAIN_ID } from "@/lib/constants";
 import { ContractService } from "@/lib/contractService";
+import { createPublicClient, http, formatEther } from 'viem';
+
+// Marketplace ABI for fetching active listings
+const MARKETPLACE_ABI = [
+  {
+    name: 'getActiveListings',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256[]' }],
+  },
+  {
+    name: 'getListing',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'price', type: 'uint256' },
+      { name: 'listedAt', type: 'uint256' },
+      { name: 'active', type: 'bool' }
+    ],
+  },
+] as const;
+
+// Create public client for reading marketplace data
+const publicClient = createPublicClient({
+  chain: {
+    id: CHAIN_ID,
+    name: 'BasedAI',
+    nativeCurrency: { name: 'BASED', symbol: 'BASED', decimals: 18 },
+    rpcUrls: { default: { http: ['https://mainnet.basedaibridge.com/rpc/'] } },
+  },
+  transport: http('https://mainnet.basedaibridge.com/rpc/'),
+});
+
+// Fetch active listings from marketplace contract
+async function fetchActiveListings(): Promise<Map<number, { price: number; seller: string }>> {
+  const listingsMap = new Map<number, { price: number; seller: string }>();
+  
+  try {
+    const activeIds = await publicClient.readContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'getActiveListings',
+    }) as bigint[];
+    
+    if (activeIds && activeIds.length > 0) {
+      const listingPromises = activeIds.map(async (tokenId) => {
+        try {
+          const listing = await publicClient.readContract({
+            address: MARKETPLACE_CONTRACT as `0x${string}`,
+            abi: MARKETPLACE_ABI,
+            functionName: 'getListing',
+            args: [tokenId],
+          });
+          
+          if (listing && listing[3]) { // active
+            listingsMap.set(Number(tokenId), {
+              price: Number(formatEther(listing[1] as bigint)),
+              seller: listing[0] as string,
+            });
+          }
+        } catch (e) {
+          // Ignore individual listing errors
+        }
+      });
+      
+      await Promise.all(listingPromises);
+    }
+  } catch (e) {
+    console.error('[useGuardians] Failed to fetch active listings:', e);
+  }
+  
+  return listingsMap;
+}
 
 export interface GuardianFilters {
   search?: string;
@@ -168,30 +244,47 @@ export function useGuardians(
                  }
              }
 
-             // 4. Sorting
-             if (filters.sortBy) {
-                 const rarityScore: Record<string, number> = { 
-                   'Rarest-Legendary': 8, 
-                   'Very Rare': 7, 
-                   'More Rare': 6, 
-                   'Rare': 5, 
-                   'Less Rare': 4, 
-                   'Less Common': 3, 
-                   'Common': 2, 
-                   'Most Common': 1 
-                 };
-                 allGuardians.sort((a, b) => {
-                     switch (filters.sortBy) {
-                        case 'price-asc': return (a.price || 0) - (b.price || 0);
-                        case 'price-desc': return (b.price || 0) - (a.price || 0);
-                        case 'id-asc': return a.id - b.id;
-                        case 'id-desc': return b.id - a.id;
-                        case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
-                        case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
-                        default: return 0;
-                     }
-                 });
-             }
+             // 4. Fetch active listings and mark NFTs
+             const activeListings = await fetchActiveListings();
+             
+             // Mark listed NFTs with their listing data
+             allGuardians = allGuardians.map(g => {
+                 const listing = activeListings.get(g.id);
+                 if (listing) {
+                     return { ...g, isListed: true, price: listing.price };
+                 }
+                 return { ...g, isListed: false };
+             });
+             
+             // 5. Sorting - ALWAYS show listed NFTs first
+             const rarityScore: Record<string, number> = { 
+               'Rarest-Legendary': 8, 
+               'Very Rare': 7, 
+               'More Rare': 6, 
+               'Rare': 5, 
+               'Less Rare': 4, 
+               'Less Common': 3, 
+               'Common': 2, 
+               'Most Common': 1 
+             };
+             
+             allGuardians.sort((a, b) => {
+                 // Listed NFTs always come first
+                 const aListed = a.isListed ? 1 : 0;
+                 const bListed = b.isListed ? 1 : 0;
+                 if (aListed !== bListed) return bListed - aListed;
+                 
+                 // Then apply the selected sort
+                 switch (filters.sortBy) {
+                    case 'price-asc': return (a.price || 0) - (b.price || 0);
+                    case 'price-desc': return (b.price || 0) - (a.price || 0);
+                    case 'id-asc': return a.id - b.id;
+                    case 'id-desc': return b.id - a.id;
+                    case 'rarity-desc': return (rarityScore[b.rarity] || 0) - (rarityScore[a.rarity] || 0);
+                    case 'rarity-asc': return (rarityScore[a.rarity] || 0) - (rarityScore[b.rarity] || 0);
+                    default: return a.id - b.id; // Default to ID ascending
+                 }
+             });
 
              // Pagination logic
              const pageSize = 50; 
