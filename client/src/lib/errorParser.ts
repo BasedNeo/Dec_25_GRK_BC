@@ -13,8 +13,8 @@ export function parseContractError(error: any): string {
   if (message.includes('Pausable: paused') || message.includes('paused')) return 'Contract is paused';
   if (message.includes('exceeds max supply') || message.includes('Sold out')) return 'Sold out!';
   if (message.includes('Public mint not enabled') || message.includes('not enabled')) return 'Minting not started yet';
-  if (message.includes('Not token owner') || message.includes('not owner')) return 'You do not own this NFT';
-  if (message.includes('Listing not active') || message.includes('not active')) return 'This listing is no longer active';
+  if (message.includes('NotTokenOwner') || message.includes('Not token owner') || message.includes('not owner')) return 'You do not own this NFT';
+  if (message.includes('ListingNotActive') || message.includes('Listing not active') || message.includes('not active')) return 'This listing is no longer active';
   if (message.includes('Offer expired') || message.includes('expired')) return 'This offer has expired';
   if (message.includes('Already voted')) return 'You have already voted';
   if (message.includes('Voting ended') || message.includes('voting ended')) return 'Voting period has ended';

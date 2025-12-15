@@ -23,8 +23,9 @@ import { getRarityClass } from "@/lib/utils";
 import { BuyButton } from "./BuyButton";
 import { NFTImage } from "./NFTImage";
 import { ShareAchievementModal } from "./ShareAchievementModal";
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { useMarketplace, useListing } from '@/hooks/useMarketplace';
+import { CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -45,9 +46,38 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const marketplace = useMarketplace();
   const { listing, isLoading: isLoadingListing } = useListing(nft?.id);
   
-  const isOwner = nft && 'owner' in nft && address ? nft.owner?.toLowerCase() === address?.toLowerCase() : false;
+  // Fetch actual owner from NFT contract for real-time accuracy
+  const { data: actualOwner, refetch: refetchOwner } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: [{
+      name: 'ownerOf',
+      type: 'function',
+      stateMutability: 'view',
+      inputs: [{ name: 'tokenId', type: 'uint256' }],
+      outputs: [{ type: 'address' }]
+    }],
+    functionName: 'ownerOf',
+    args: nft?.id !== undefined ? [BigInt(nft.id)] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: nft?.id !== undefined && isOpen }
+  });
+  
+  // Use on-chain owner if available, fallback to nft.owner
+  const isOwner = address && actualOwner 
+    ? address.toLowerCase() === (actualOwner as string).toLowerCase()
+    : nft && 'owner' in nft && address 
+      ? nft.owner?.toLowerCase() === address?.toLowerCase() 
+      : false;
   const isListed = listing?.active ?? nft?.isListed ?? false;
   const currentListingPrice = listing?.price ? Number(listing.price) : nft?.price;
+  
+  // Auto-refresh after successful transactions
+  useEffect(() => {
+    if (marketplace.state.isSuccess) {
+      refetchOwner();
+      setTimeout(() => marketplace.reset(), 3000);
+    }
+  }, [marketplace.state.isSuccess, refetchOwner]);
   
   const handleAcceptOffer = async (offer: any) => {
     if (!nft) return;
@@ -388,9 +418,32 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0 space-y-4">
+                {/* TRANSACTION STATE FEEDBACK */}
+                {marketplace.state.isPending && (
+                  <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse">
+                    <p className="text-cyan-400 text-sm font-mono text-center">⏳ Confirm in your wallet...</p>
+                  </div>
+                )}
+                {marketplace.state.isConfirming && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse">
+                    <p className="text-amber-400 text-sm font-mono text-center">⏳ Transaction confirming on blockchain...</p>
+                  </div>
+                )}
+                {marketplace.state.isSuccess && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 text-sm font-mono text-center">✅ Transaction successful!</p>
+                  </div>
+                )}
+                {marketplace.state.isError && marketplace.state.error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-red-400 text-sm font-mono text-center">❌ {marketplace.state.error}</p>
+                  </div>
+                )}
+
                 {/* OWNER CONTROLS */}
                 {isOwner && (
-                  <div className="space-y-4">
+                  <div className="space-y-4 p-4 border border-green-500/30 rounded-lg bg-green-500/5">
+                    <p className="text-xs font-mono text-green-400 text-center">YOU OWN THIS NFT</p>
                     {/* STEP 1: Approve Marketplace (if not already approved) */}
                     {!marketplace.isApproved ? (
                       <div className="space-y-3">
