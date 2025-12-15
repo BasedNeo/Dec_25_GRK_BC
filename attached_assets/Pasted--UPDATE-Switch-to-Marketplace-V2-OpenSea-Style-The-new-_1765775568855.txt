@@ -1,0 +1,70 @@
+## UPDATE: Switch to Marketplace V2 (OpenSea Style)
+
+The new marketplace keeps NFTs in your wallet until sold. Update the app:
+
+### 1. Update `client/src/lib/constants.ts`:
+
+Change the MARKETPLACE_CONTRACT address:
+
+// OLD V1 (escrow-based) - DEPRECATED
+// export const MARKETPLACE_CONTRACT = "0x88161576266dCDedb19342aC2197267282520793";
+
+// NEW V2 (OpenSea-style - NFT stays in wallet!)
+export const MARKETPLACE_CONTRACT = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c";### 2. Update `client/src/hooks/useMarketplace.ts`:
+
+Add the new `isListingValid` function to the ABI (after getActiveListingCount):
+
+{
+  name: 'isListingValid',
+  type: 'function',
+  stateMutability: 'view',
+  inputs: [{ name: 'tokenId', type: 'uint256' }],
+  outputs: [{ name: '', type: 'bool' }],
+},### 3. Add gas limits to ALL writeContract calls (critical for BasedAI):
+
+// In approveMarketplace:
+gas: BigInt(200000),
+
+// In listNFT:
+gas: BigInt(300000),  // V2 uses less gas (no escrow transfer)
+
+// In delistNFT:
+gas: BigInt(150000),  // V2 uses less gas
+
+// In buyNFT:
+gas: BigInt(400000),
+
+// In makeOffer:
+gas: BigInt(300000),
+
+// In acceptOffer:
+gas: BigInt(400000),
+
+// In cancelOffer:
+gas: BigInt(200000),### 4. Update UI messaging in EscrowMarketplace.tsx:
+
+Find any text that says "held in escrow" and update:
+
+OLD: "NFT held in escrow until sold"
+NEW: "NFT stays in your wallet until sold"
+
+OLD: "Your NFT will be transferred to escrow"
+NEW: "Your NFT remains in your wallet. It will only transfer when someone buys it."
+
+### 5. Update the Portfolio tab:
+
+Since NFTs now stay in the wallet, they should still appear in the user's portfolio even when listed. Add a "LISTED" badge overlay on listed NFTs in the portfolio view.
+
+### 6. Important Notes:
+
+- All users need to re-approve the NEW marketplace address
+- Old approvals for V1 (0x8816...) don't work for V2
+- The app should prompt for approval automatically on first list attempt
+- Existing V1 listings are NOT migrated - users with V1 listings should delist from V1 first
+
+### Summary of Changes:
+| File | Change |
+|------|--------|
+| constants.ts | Update MARKETPLACE_CONTRACT to V2 address |
+| useMarketplace.ts | Add isListingValid to ABI, add gas limits |
+| EscrowMarketplace.tsx | Update messaging, show listed NFTs in portfolio |

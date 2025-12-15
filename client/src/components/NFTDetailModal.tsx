@@ -245,6 +245,123 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     {nft.rarity}
                 </div>
             </motion.div>
+
+            {/* MOBILE ONLY: Buyer Controls Right Below Image */}
+            <div className="md:hidden absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/95 to-transparent z-20">
+              {/* Transaction State Feedback - Mobile */}
+              {marketplace.state.isPending && (
+                <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse mb-2">
+                  <p className="text-cyan-400 text-xs font-mono text-center">⏳ Confirm in wallet...</p>
+                </div>
+              )}
+              {marketplace.state.isConfirming && (
+                <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse mb-2">
+                  <p className="text-amber-400 text-xs font-mono text-center">⏳ Confirming...</p>
+                </div>
+              )}
+              {marketplace.state.isSuccess && (
+                <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg mb-2">
+                  <p className="text-green-400 text-xs font-mono text-center">✅ Success!</p>
+                </div>
+              )}
+              
+              {/* Owner Controls - Mobile */}
+              {isOwner ? (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-mono text-green-400 text-center">YOU OWN THIS NFT</p>
+                  {!marketplace.isApproved ? (
+                    <Button 
+                      className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold font-orbitron text-sm py-2"
+                      onClick={async () => {
+                        await marketplace.approveMarketplace();
+                        setTimeout(() => marketplace.refresh(), 3000);
+                      }}
+                      disabled={marketplace.state.isPending || marketplace.state.isConfirming}
+                    >
+                      {marketplace.state.isPending ? 'CONFIRM...' : 'APPROVE MARKETPLACE'}
+                    </Button>
+                  ) : !isListed ? (
+                    <div className="flex gap-2 items-center">
+                      <Input 
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={listPrice || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                          setListPrice(val ? parseInt(val, 10) : 0);
+                        }}
+                        placeholder="77000"
+                        className="flex-1 bg-white/5 border-white/10 font-mono text-sm h-10"
+                      />
+                      <Button 
+                        className="bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron text-sm h-10 px-4"
+                        onClick={() => marketplace.listNFT(nft.id, listPrice)}
+                        disabled={listPrice < 1 || marketplace.state.isPending}
+                      >
+                        LIST
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 text-center">
+                        <p className="text-lg font-orbitron text-green-400 font-bold">
+                          {currentListingPrice?.toLocaleString()} $BASED
+                        </p>
+                      </div>
+                      <Button 
+                        className="bg-red-500/80 text-white hover:bg-red-500 font-bold font-orbitron text-sm h-10 px-4"
+                        onClick={() => marketplace.delistNFT(nft.id)}
+                        disabled={marketplace.state.isPending}
+                      >
+                        DELIST
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : nft.owner ? (
+                /* Buyer Controls - Mobile */
+                <div className="space-y-2">
+                  {isListed ? (
+                    <>
+                      <div className="flex items-center justify-between p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-mono">PRICE</p>
+                          <p className="text-lg font-orbitron text-cyan-400 font-bold">
+                            {currentListingPrice?.toLocaleString()} $BASED
+                          </p>
+                        </div>
+                        <BuyButton 
+                          tokenId={nft.id} 
+                          price={currentListingPrice || MINT_PRICE} 
+                          className="h-10"
+                          onBuy={(id, price) => {
+                              toast({ 
+                                  title: "Purchase Initiated", 
+                                  description: `Buying Guardian #${id}...`,
+                                  className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+                              });
+                          }}
+                        />
+                      </div>
+                      <Button 
+                        className="w-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 font-orbitron font-bold text-sm h-10"
+                        onClick={() => setShowOfferModal(true)}
+                      >
+                        MAKE OFFER
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-orbitron font-bold text-sm h-10"
+                      onClick={() => setShowOfferModal(true)}
+                    >
+                      MAKE OFFER
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </div>
         </div>
 
         {/* Right Side: Details */}
@@ -424,31 +541,33 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0 space-y-4">
-                {/* TRANSACTION STATE FEEDBACK */}
-                {marketplace.state.isPending && (
-                  <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse">
-                    <p className="text-cyan-400 text-sm font-mono text-center">⏳ Confirm in your wallet...</p>
-                  </div>
-                )}
-                {marketplace.state.isConfirming && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse">
-                    <p className="text-amber-400 text-sm font-mono text-center">⏳ Transaction confirming on blockchain...</p>
-                  </div>
-                )}
-                {marketplace.state.isSuccess && (
-                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-green-400 text-sm font-mono text-center">✅ Transaction successful!</p>
-                  </div>
-                )}
+                {/* TRANSACTION STATE FEEDBACK - Desktop only */}
+                <div className="hidden md:block space-y-4">
+                  {marketplace.state.isPending && (
+                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse">
+                      <p className="text-cyan-400 text-sm font-mono text-center">⏳ Confirm in your wallet...</p>
+                    </div>
+                  )}
+                  {marketplace.state.isConfirming && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse">
+                      <p className="text-amber-400 text-sm font-mono text-center">⏳ Transaction confirming on blockchain...</p>
+                    </div>
+                  )}
+                  {marketplace.state.isSuccess && (
+                    <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <p className="text-green-400 text-sm font-mono text-center">✅ Transaction successful!</p>
+                    </div>
+                  )}
+                </div>
                 {marketplace.state.isError && marketplace.state.error && (
                   <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                     <p className="text-red-400 text-sm font-mono text-center">❌ {marketplace.state.error}</p>
                   </div>
                 )}
 
-                {/* OWNER CONTROLS */}
+                {/* OWNER CONTROLS - Desktop only */}
                 {isOwner && (
-                  <div className="space-y-4 p-4 border border-green-500/30 rounded-lg bg-green-500/5">
+                  <div className="hidden md:block space-y-4 p-4 border border-green-500/30 rounded-lg bg-green-500/5">
                     <p className="text-xs font-mono text-green-400 text-center">YOU OWN THIS NFT</p>
                     {/* STEP 1: Approve Marketplace (if not already approved) */}
                     {!marketplace.isApproved ? (
@@ -531,9 +650,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                   </div>
                 )}
 
-                {/* BUYER CONTROLS - Only show if NOT owner AND NFT is minted */}
+                {/* BUYER CONTROLS - Desktop only, show if NOT owner AND NFT is minted */}
                 {!isOwner && nft.owner && (
-                  <div className="space-y-3">
+                  <div className="hidden md:block space-y-3">
                     {isListed ? (
                       <>
                         <div className="flex items-center justify-between p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
