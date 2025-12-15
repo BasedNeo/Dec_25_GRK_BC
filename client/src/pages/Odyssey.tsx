@@ -82,7 +82,7 @@ export default function Odyssey() {
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl sm:rounded-2xl blur-xl" />
               <div className="relative aspect-video rounded-lg sm:rounded-xl overflow-hidden border border-cyan-500/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] sm:shadow-[0_0_40px_rgba(0,255,255,0.15)]">
                 <iframe
-                  src="https://player.vimeo.com/video/1145979392?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&playsinline=1"
+                  src="https://player.vimeo.com/video/1145979392?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&playsinline=1&loop=1"
                   width="100%"
                   height="100%"
                   frameBorder="0"

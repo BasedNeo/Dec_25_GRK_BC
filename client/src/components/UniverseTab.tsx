@@ -450,7 +450,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                <h3 className="text-xl font-orbitron text-cyan-400 mb-4 text-center">Join the Ranks</h3>
                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
                    <iframe 
-                       src="https://player.vimeo.com/video/1146652270?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1" 
+                       src="https://player.vimeo.com/video/1146652270?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&loop=1" 
                        width="100%" 
                        height="100%" 
                        frameBorder="0" 
