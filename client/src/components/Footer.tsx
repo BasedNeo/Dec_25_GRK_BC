@@ -139,7 +139,7 @@ export function Footer() {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting || !feedback.trim()}
-                  className="bg-primary text-black hover:bg-primary/90 font-orbitron min-w-[120px]"
+                  className="bg-primary hover:bg-primary/90 font-orbitron min-w-[120px] text-[#34c4c9]"
                 >
                   {isSubmitting ? "SENDING..." : (
                     <>SEND <Send size={14} className="ml-2" /></>
