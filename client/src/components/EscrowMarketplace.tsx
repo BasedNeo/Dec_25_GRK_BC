@@ -65,26 +65,46 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [directLoading, setDirectLoading] = useState(false);
   const [directError, setDirectError] = useState<string | null>(null);
   const [contractStats, setContractStats] = useState<{totalMinted: number} | null>(null);
+  const [mintedTokenIdsList, setMintedTokenIdsList] = useState<number[]>([]);
   
-  // --- Fetch totalMinted from contract (for live minting status) ---
+  // --- Fetch totalMinted AND all minted token IDs from contract ---
   useEffect(() => {
-    const fetchTotalMinted = async () => {
+    const fetchMintedData = async () => {
       try {
         const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
         const contract = new ethers.Contract(
           '0xaE51dc5fD1499A129f8654963560f9340773ad59',
-          ['function totalMinted() view returns (uint256)'],
+          [
+            'function totalMinted() view returns (uint256)',
+            'function tokenByIndex(uint256 index) view returns (uint256)'
+          ],
           provider
         );
         const totalMinted = await contract.totalMinted();
-        setContractStats({ totalMinted: Number(totalMinted) });
+        const totalMintedNum = Number(totalMinted);
+        setContractStats({ totalMinted: totalMintedNum });
+        
+        // Fetch all minted token IDs
+        if (totalMintedNum > 0) {
+          const tokenIds: number[] = [];
+          for (let i = 0; i < totalMintedNum; i++) {
+            try {
+              const tokenId = await contract.tokenByIndex(i);
+              tokenIds.push(Number(tokenId));
+            } catch (e) {
+              // Skip failed tokens
+            }
+          }
+          setMintedTokenIdsList(tokenIds);
+          console.log('[EscrowMarketplace] Fetched minted token IDs:', tokenIds);
+        }
       } catch (error) {
-        // Error silently handled - collection still displays
+        console.error('[EscrowMarketplace] Error fetching minted data:', error);
       }
     };
-    fetchTotalMinted();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchTotalMinted, 30000);
+    fetchMintedData();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchMintedData, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -344,10 +364,15 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       startOffset: needsFullCollection ? 0 : 299 // Start at 0 when filtering or sorting by listed
   }); 
 
-  // Get minted token IDs from directNFTs (which were fetched via tokenByIndex)
+  // Get minted token IDs - use mintedTokenIdsList which is fetched from contract
   const mintedTokenIds = useMemo(() => {
+    // Prefer the directly fetched list (works in both CSV and Live mode)
+    if (mintedTokenIdsList.length > 0) {
+      return new Set<number>(mintedTokenIdsList);
+    }
+    // Fallback to directNFTs for live mode
     return new Set<number>(directNFTs.map(n => n.id));
-  }, [directNFTs]);
+  }, [mintedTokenIdsList, directNFTs]);
 
   const allItems = useMemo(() => {
      // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
