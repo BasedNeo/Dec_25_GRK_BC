@@ -41,8 +41,12 @@ export function PoolTracker() {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
       
+      // Get current block number and query only last 50000 blocks to avoid timeout
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 50000);
+      
       const filter = contract.filters.Sold();
-      const events = await contract.queryFilter(filter, 0, "latest");
+      const events = await contract.queryFilter(filter, fromBlock, "latest");
       
       let totalVolume = 0;
       for (const event of events) {

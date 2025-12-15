@@ -40,14 +40,14 @@ export function DisclaimerModal() {
             <AlertTriangle className="h-5 w-5" />
             BETA ENVIRONMENT
           </DialogTitle>
-          <DialogDescription className="text-gray-400 pt-4 font-rajdhani text-base leading-relaxed">
+          <div className="text-gray-400 pt-4 font-rajdhani text-base leading-relaxed">
             You are entering a <strong>Testnet Beta</strong> environment.
             <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-gray-500">
               <li>All funds and assets are on Base Sepolia (Testnet).</li>
               <li>Financial values shown are estimates and <strong>not real</strong>.</li>
               <li>Smart contracts are experimental and unaudited.</li>
             </ul>
-          </DialogDescription>
+          </div>
         </DialogHeader>
         <DialogFooter className="sm:justify-center mt-4">
           <Button
