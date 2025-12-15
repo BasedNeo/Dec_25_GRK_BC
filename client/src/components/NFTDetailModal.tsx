@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download, MessageCircle } from "lucide-react";
-import { Guardian, calculateBackedValue } from "@/lib/mockData";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check, Twitter, Disc, BarChart3, TrendingUp, Download, MessageCircle, Tag, XCircle } from "lucide-react";
+import { Guardian, calculateBackedValue, MINT_PRICE } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useEffect, useState, useMemo } from "react";
@@ -22,7 +24,7 @@ import { BuyButton } from "./BuyButton";
 import { NFTImage } from "./NFTImage";
 import { ShareAchievementModal } from "./ShareAchievementModal";
 import { useAccount } from 'wagmi';
-import { useMarketplace } from '@/hooks/useMarketplace';
+import { useMarketplace, useListing } from '@/hooks/useMarketplace';
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -35,11 +37,16 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [backedValue, setBackedValue] = useState(calculateBackedValue());
   const [showShareModal, setShowShareModal] = useState(false);
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [listPrice, setListPrice] = useState<number>(MINT_PRICE);
+  const [showOfferModal, setShowOfferModal] = useState(false);
   
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const marketplace = useMarketplace();
+  const { listing, isLoading: isLoadingListing } = useListing(nft?.id);
   
-  const isOwner = nft && 'owner' in nft ? nft.owner?.toLowerCase() === address?.toLowerCase() : false;
+  const isOwner = nft && 'owner' in nft && address ? nft.owner?.toLowerCase() === address?.toLowerCase() : false;
+  const isListed = listing?.active ?? nft?.isListed ?? false;
+  const currentListingPrice = listing?.price ? Number(listing.price) : nft?.price;
   
   const handleAcceptOffer = async (offer: any) => {
     if (!nft) return;
@@ -379,32 +386,121 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto shrink-0 space-y-4">
-                {/* Buy/Offer Section */}
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                {/* OWNER CONTROLS */}
+                {isOwner && (
+                  <div className="space-y-4">
+                    {/* STEP 1: Approve Marketplace (if not already approved) */}
+                    {!marketplace.isApproved ? (
+                      <Button 
+                        className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold font-orbitron"
+                        onClick={() => marketplace.approveMarketplace()}
+                        disabled={marketplace.state.isPending}
+                        data-testid="button-approve-marketplace"
+                      >
+                        {marketplace.state.isPending ? 'APPROVING...' : 'STEP 1: APPROVE MARKETPLACE'}
+                      </Button>
+                    ) : !isListed ? (
+                      /* STEP 2: List for Sale */
+                      <div className="space-y-3">
+                        <Label className="text-xs text-muted-foreground font-mono">SET YOUR PRICE ($BASED)</Label>
+                        <Input 
+                          type="number" 
+                          value={listPrice}
+                          onChange={(e) => setListPrice(Number(e.target.value))}
+                          placeholder="69420"
+                          className="bg-white/5 border-white/10 font-mono text-lg"
+                          data-testid="input-list-price"
+                        />
+                        <p className="text-xs text-muted-foreground font-mono">
+                          You receive: {Math.floor(listPrice * 0.99).toLocaleString()} $BASED (after 1% fee)
+                        </p>
+                        <Button 
+                          className="w-full bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                          onClick={() => marketplace.listNFT(nft.id, listPrice)}
+                          disabled={listPrice < 1 || marketplace.state.isPending}
+                          data-testid="button-list-nft"
+                        >
+                          <Tag size={16} className="mr-2" />
+                          {marketplace.state.isPending ? 'LISTING...' : 'LIST FOR SALE'}
+                        </Button>
+                      </div>
+                    ) : (
+                      /* Already Listed - Show Delist Button */
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                          <div>
+                            <p className="text-xs text-muted-foreground font-mono">LISTED FOR</p>
+                            <p className="text-xl font-orbitron text-green-400 font-bold">
+                              {currentListingPrice?.toLocaleString() || '—'} $BASED
+                            </p>
+                          </div>
+                          <Badge className="bg-green-500/20 text-green-400 border-green-500/50">ACTIVE</Badge>
+                        </div>
+                        <Button 
+                          className="w-full bg-red-500/80 text-white hover:bg-red-500 font-bold font-orbitron"
+                          onClick={() => marketplace.delistNFT(nft.id)}
+                          disabled={marketplace.state.isPending}
+                          data-testid="button-delist-nft"
+                        >
+                          <XCircle size={16} className="mr-2" />
+                          {marketplace.state.isPending ? 'REMOVING...' : 'REMOVE LISTING'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* BUYER CONTROLS - Only show if NOT owner */}
+                {!isOwner && (
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
                     <div className="flex-1 w-full">
-                         <div className="text-[10px] text-muted-foreground font-mono mb-1 uppercase tracking-wider">Current Price</div>
+                         <div className="text-[10px] text-muted-foreground font-mono mb-1 uppercase tracking-wider">
+                           {isListed ? 'Listed Price' : 'Mint Price'}
+                         </div>
                          <div className="text-2xl font-orbitron text-white font-bold flex items-baseline gap-1">
-                            69,420 <span className="text-sm text-primary">$BASED</span>
+                            {isListed ? currentListingPrice?.toLocaleString() : MINT_PRICE.toLocaleString()} <span className="text-sm text-primary">$BASED</span>
                          </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <BuyButton 
-                            tokenId={nft.id} 
-                            price={69420} 
-                            className="flex-1 sm:w-32"
-                            onBuy={(id, price) => {
-                                toast({ 
-                                    title: "Purchase Initiated", 
-                                    description: `Connecting to Escrow for Guardian #${id}...`,
-                                    className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
-                                });
-                            }}
-                        />
-                        <Button variant="outline" className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider">
+                        {isListed ? (
+                          <>
+                            <BuyButton 
+                              tokenId={nft.id} 
+                              price={currentListingPrice || MINT_PRICE} 
+                              className="flex-1 sm:w-32"
+                              onBuy={(id, price) => {
+                                  toast({ 
+                                      title: "Purchase Initiated", 
+                                      description: `Buying Guardian #${id} for ${price.toLocaleString()} $BASED...`,
+                                      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+                                  });
+                              }}
+                            />
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider"
+                              onClick={() => setShowOfferModal(true)}
+                              data-testid="button-make-offer"
+                            >
+                              MAKE OFFER
+                            </Button>
+                          </>
+                        ) : nft.owner ? (
+                          <Button 
+                            className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-orbitron font-bold"
+                            onClick={() => setShowOfferModal(true)}
+                            data-testid="button-make-offer"
+                          >
                             MAKE OFFER
-                        </Button>
+                          </Button>
+                        ) : (
+                          <Button className="w-full bg-green-500 text-black hover:bg-green-400 font-orbitron font-bold">
+                            MINT THIS NFT
+                          </Button>
+                        )}
                     </div>
-                </div>
+                  </div>
+                )}
 
                 <Separator className="bg-white/10" />
 

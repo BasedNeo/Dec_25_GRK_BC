@@ -1,0 +1,77 @@
+{isOwner && (
+  <div className="space-y-4">
+    {/* STEP 1: Approve Marketplace (if not already approved) */}
+    {!marketplace.isApproved ? (
+      <Button 
+        className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold"
+        onClick={() => marketplace.approveMarketplace()}
+        disabled={marketplace.state.isPending}
+      >
+        {marketplace.state.isPending ? 'APPROVING...' : 'STEP 1: APPROVE MARKETPLACE'}
+      </Button>
+    ) : !nft.isListed ? (
+      /* STEP 2: List for Sale */
+      <div className="space-y-3">
+        <Label className="text-xs text-muted-foreground">SET YOUR PRICE ($BASED)</Label>
+        <Input 
+          type="number" 
+          value={listPrice}
+          onChange={(e) => setListPrice(Number(e.target.value))}
+          placeholder="69420"
+          className="bg-white/5 border-white/10"
+        />
+        <p className="text-xs text-muted-foreground">
+          You receive: {Math.floor(listPrice * 0.99).toLocaleString()} $BASED (after 1% fee)
+        </p>
+        <Button 
+          className="w-full bg-green-500 text-black hover:bg-green-400 font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+          onClick={() => marketplace.listNFT(nft.id, listPrice)}
+          disabled={listPrice < 1 || marketplace.state.isPending}
+        >
+          {marketplace.state.isPending ? 'LISTING...' : 'LIST FOR SALE'}
+        </Button>
+      </div>
+    ) : (
+      /* Already Listed - Show Delist Button */
+      <div className="space-y-3">
+        <p className="text-sm text-green-400">✓ Listed for {nft.price?.toLocaleString()} $BASED</p>
+        <Button 
+          className="w-full bg-red-500/80 text-white hover:bg-red-500 font-bold"
+          onClick={() => marketplace.delistNFT(nft.id)}
+          disabled={marketplace.state.isPending}
+        >
+          {marketplace.state.isPending ? 'REMOVING...' : 'REMOVE LISTING'}
+        </Button>
+      </div>
+    )}
+    
+    {/* SHOW OFFERS RECEIVED ON THIS NFT */}
+    {receivedOffers.length > 0 && (
+      <div className="border-t border-white/10 pt-4 mt-4">
+        <h4 className="text-sm font-orbitron text-cyan-400 mb-3">OFFERS RECEIVED</h4>
+        <div className="space-y-2 max-h-40 overflow-y-auto">
+          {receivedOffers.map((offer) => (
+            <div key={offer.offerer} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+              <div>
+                <p className="font-mono text-white">{offer.amount.toLocaleString()} $BASED</p>
+                <p className="text-xs text-muted-foreground">
+                  From: {offer.offerer.slice(0,6)}...{offer.offerer.slice(-4)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Expires: {new Date(offer.expiresAt * 1000).toLocaleDateString()}
+                </p>
+              </div>
+              <Button 
+                size="sm"
+                className="bg-green-500 text-black hover:bg-green-400 font-bold"
+                onClick={() => marketplace.acceptOffer(nft.id, offer.offerer)}
+              >
+                ACCEPT
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
