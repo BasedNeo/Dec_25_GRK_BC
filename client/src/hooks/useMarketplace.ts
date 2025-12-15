@@ -327,6 +327,7 @@ export function useMarketplace() {
       functionName: 'setApprovalForAll',
       args: [MARKETPLACE_CONTRACT as `0x${string}`, true],
       chainId: CHAIN_ID,
+      gas: BigInt(100000),
     });
   }, [checkNetwork, toast, writeContract]);
 
