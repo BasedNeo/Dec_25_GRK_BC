@@ -107,7 +107,7 @@ export function Governance() {
           <Card className="p-8 bg-white/5 border-white/10 text-center">
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">Connect your wallet to participate in governance</p>
-            <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90 font-orbitron">
+            <Button onClick={openConnectModal} className="bg-primary hover:bg-primary/90 font-orbitron text-[#35bdb2]">
               CONNECT WALLET
             </Button>
           </Card>
