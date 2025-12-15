@@ -360,10 +360,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
        (marketplace.activeListingIds || []).map(id => Number(id))
      );
      
+     console.log('[EscrowMarketplace] Active listing IDs from marketplace:', Array.from(listedTokenIds));
+     
      // Flatten pages and determine real status based on contract data
-     return data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
+     let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
         const tokenId = item.id;
         const isMinted = tokenId <= totalMinted;
+        // Use marketplace activeListingIds for accurate listing status
         const isListed = isMinted && listedTokenIds.has(tokenId);
         
         // Price logic:
@@ -392,7 +395,24 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           owner: isMinted ? `0x${'?'.repeat(38)}` : undefined // Unknown owner for minted items
         };
      }) as unknown as MarketItem[];
-  }, [data, directNFTs, useCsvData, contractStats?.totalMinted, marketplace.activeListingIds]);
+     
+     // Re-sort to ensure listed items appear first when that sort is selected
+     if (sortBy === 'listed-price-asc') {
+       items = items.sort((a, b) => {
+         // Listed items come first
+         const aListed = a.isListed ? 1 : 0;
+         const bListed = b.isListed ? 1 : 0;
+         if (aListed !== bListed) return bListed - aListed;
+         // Both listed: sort by price (we don't have price here, so sort by ID)
+         if (a.isListed && b.isListed) return a.id - b.id;
+         // Neither listed: sort by ID
+         return a.id - b.id;
+       });
+       console.log('[EscrowMarketplace] Sorted items (listed first):', items.slice(0, 5).map(i => ({ id: i.id, isListed: i.isListed })));
+     }
+     
+     return items;
+  }, [data, directNFTs, useCsvData, contractStats?.totalMinted, marketplace.activeListingIds, sortBy]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
