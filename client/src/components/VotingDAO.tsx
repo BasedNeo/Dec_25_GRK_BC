@@ -163,7 +163,7 @@ export function VotingDAO({}: VotingDAOProps) {
                {/* Conditional Options inputs could go here for Multiple Choice, simplifying for prototype */}
                
                <div className="flex gap-4 pt-4">
-                 <Button type="submit" className="bg-primary text-black hover:bg-primary/90">SUBMIT ON-CHAIN</Button>
+                 <Button type="submit" className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]">SUBMIT ON-CHAIN</Button>
                  <Button type="button" variant="ghost" onClick={() => setShowProposalForm(false)} className="text-muted-foreground">CANCEL</Button>
                </div>
              </form>

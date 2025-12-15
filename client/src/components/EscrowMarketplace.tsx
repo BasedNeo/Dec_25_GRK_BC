@@ -1146,7 +1146,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                         <Wallet className="w-16 h-16 text-muted-foreground mb-4" />
                         <h3 className="text-xl font-orbitron text-white mb-2">CONNECT WALLET</h3>
                         <p className="text-muted-foreground mb-6">Connect your wallet to list your Guardians for sale.</p>
-                        <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90">CONNECT NOW</Button>
+                        <Button onClick={openConnectModal} className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]">CONNECT NOW</Button>
                      </div>
                 ) : displayedItems.length > 0 ? (
                      <div className={`grid gap-6 transition-all duration-300 ${
@@ -1174,7 +1174,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                         <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
                         <h3 className="text-xl font-orbitron text-white mb-2">CONNECT WALLET</h3>
                         <p className="text-muted-foreground mb-6">Connect to view offers on your Guardians.</p>
-                        <Button onClick={openConnectModal} className="bg-primary text-black hover:bg-primary/90">CONNECT NOW</Button>
+                        <Button onClick={openConnectModal} className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]">CONNECT NOW</Button>
                      </div>
                  ) : (
                      <div className="space-y-4">

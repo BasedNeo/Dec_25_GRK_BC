@@ -153,7 +153,7 @@ export function Governance() {
                 <Button 
                   onClick={() => setShowCreateForm(!showCreateForm)}
                   disabled={!governance.canCreateProposal}
-                  className="bg-primary text-black hover:bg-primary/90 font-orbitron"
+                  className="bg-cyan-500 text-white hover:bg-cyan-400 font-orbitron shadow-[0_0_15px_rgba(0,255,255,0.5)]"
                   data-testid="create-proposal-btn"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -229,7 +229,7 @@ export function Governance() {
                       <Button 
                         onClick={handleCreateProposal}
                         disabled={governance.isPending || governance.isConfirming}
-                        className="bg-primary text-black hover:bg-primary/90"
+                        className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]"
                         data-testid="submit-proposal-btn"
                       >
                         {(governance.isPending || governance.isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

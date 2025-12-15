@@ -90,7 +90,7 @@ export function OnboardingTour() {
                         if (step < steps.length - 1) setStep(step + 1);
                         else handleComplete();
                     }}
-                    className="bg-primary text-black hover:bg-primary/90 font-bold font-orbitron text-xs h-8"
+                    className="bg-cyan-500 text-white hover:bg-cyan-400 font-bold font-orbitron text-xs h-8 shadow-[0_0_15px_rgba(0,255,255,0.5)]"
                 >
                     {step < steps.length - 1 ? (
                         <>NEXT <ChevronRight size={14} className="ml-1" /></>
