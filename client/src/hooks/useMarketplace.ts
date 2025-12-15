@@ -335,15 +335,6 @@ export function useMarketplace() {
 
     // Refetch approval status before listing to ensure we have latest
     const { data: currentApproval } = await refetchApproval();
-    
-    console.log('=== LISTING DEBUG ===');
-    console.log('Token ID:', tokenId);
-    console.log('Price in $BASED:', priceInBased);
-    console.log('Is Approved (cached):', isApproved);
-    console.log('Is Approved (fresh):', currentApproval);
-    console.log('User Address:', address);
-    console.log('Marketplace:', MARKETPLACE_CONTRACT);
-    console.log('NFT Contract:', NFT_CONTRACT);
 
     if (!currentApproval && !isApproved) {
       toast({ 
@@ -364,7 +355,6 @@ export function useMarketplace() {
     });
 
     const priceWei = parseEther(String(priceInBased));
-    console.log('Price in Wei:', priceWei.toString());
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
