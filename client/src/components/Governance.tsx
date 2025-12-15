@@ -459,12 +459,14 @@ interface MockProposalCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   quorumPercentage: number;
+  onVote: (proposalId: number, optionId: string, votePower: number) => void;
+  votePower: number;
 }
 
-function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage }: MockProposalCardProps) {
+function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage, onVote, votePower }: MockProposalCardProps) {
   const { toast } = useToast();
   const [hasVoted, setHasVoted] = useState(false);
-  const [userVoteFor, setUserVoteFor] = useState<boolean | null>(null);
+  const [userVoteFor, setUserVoteFor] = useState<string | null>(null);
   const isActive = proposal.status === 'Active';
   const endTime = new Date(proposal.endTime);
   const now = new Date();
@@ -478,16 +480,22 @@ function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage }: 
   const forPercent = totalVotes > 0 ? Math.round((forVotes / totalVotes) * 100) : 50;
   const againstPercent = totalVotes > 0 ? Math.round((againstVotes / totalVotes) * 100) : 50;
   
-  const handleLocalVote = (support: boolean) => {
+  const handleLocalVote = (optionId: string) => {
     if (hasVoted) {
       toast({ title: "Already Voted", description: "You have already cast your vote on this proposal", variant: "destructive" });
       return;
     }
+    if (votePower === 0) {
+      toast({ title: "No Voting Power", description: "You need to own at least one Guardian NFT to vote", variant: "destructive" });
+      return;
+    }
     setHasVoted(true);
-    setUserVoteFor(support);
+    setUserVoteFor(optionId);
+    onVote(proposal.id, optionId, votePower);
+    const optionLabel = proposal.options.find(o => o.id === optionId)?.label || optionId;
     toast({ 
       title: "Vote Cast!", 
-      description: `You voted ${support ? 'FOR' : 'AGAINST'} this proposal`,
+      description: `You cast ${votePower} vote${votePower > 1 ? 's' : ''} for "${optionLabel}"`,
       className: "bg-black border-green-500 text-green-500"
     });
   };
