@@ -37,6 +37,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
 import { useMarketplace, useListing } from "@/hooks/useMarketplace";
+import { useOffersForOwner } from "@/hooks/useOffers";
 import { parseEther } from "viem";
 
 interface EscrowMarketplaceProps {
@@ -87,15 +88,37 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     return () => clearInterval(interval);
   }, []);
 
-  const [receivedOffers, setReceivedOffers] = useState<{
-    id: number;
-    nftId: number;
-    nftName: string;
-    offerer: string;
-    amount: number;
-    time: string;
-    status: string;
-  }[]>([]);
+  // Real offers from blockchain via useOffersForOwner hook
+  const { offers: offersByToken, isLoading: offersLoading } = useOffersForOwner();
+
+  // Convert to array for the Offers tab
+  const receivedOffers = useMemo(() => {
+    const result: {
+      id: string;
+      nftId: number;
+      nftName: string;
+      offerer: string;
+      amount: number;
+      expiresAt: number;
+      time: string;
+      status: string;
+    }[] = [];
+    offersByToken.forEach((offers, tokenId) => {
+      offers.forEach((offer, idx) => {
+        result.push({
+          id: `${tokenId}-${offer.offerer}-${idx}`,
+          nftId: tokenId,
+          nftName: `Guardian #${tokenId}`,
+          offerer: offer.offerer,
+          amount: Number(offer.amount),
+          expiresAt: offer.expiresAt,
+          time: new Date(offer.expiresAt * 1000).toLocaleDateString(),
+          status: 'active'
+        });
+      });
+    });
+    return result.sort((a, b) => b.expiresAt - a.expiresAt);
+  }, [offersByToken]);
 
   // Load saved searches on mount
   useEffect(() => {
@@ -516,10 +539,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       }
   };
 
-  const handleAcceptOffer = async (offerId: number, tokenId: number, offererAddress: string) => {
+  const handleAcceptOffer = async (offerId: string, tokenId: number, offererAddress: string) => {
       try {
           await marketplace.acceptOffer(tokenId, offererAddress);
-          setReceivedOffers(prev => prev.filter(o => o.id !== offerId));
+          // Offers will auto-refresh from blockchain via useOffersForOwner hook
           confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
           trackEvent('nft_accept_offer', 'Marketplace', `Item #${tokenId}`);
       } catch (error) {
@@ -527,11 +550,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       }
   };
 
-  const handleRejectOffer = (offerId: number) => {
-      setReceivedOffers(prev => prev.filter(o => o.id !== offerId));
+  const handleRejectOffer = (offerId: string) => {
+      // Note: Rejecting offers on-chain would require a contract call
+      // For now, this is informational - the offer will remain until expired
       toast({
           title: "Offer Rejected",
-          description: "The offer has been declined.",
+          description: "The offer has been declined. It will remain visible until it expires.",
           variant: "destructive"
       });
   };
