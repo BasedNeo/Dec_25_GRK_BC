@@ -41,9 +41,10 @@ import { parseEther } from "viem";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
+  onNavigateToPortfolio?: () => void;
 }
 
-export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) {
+export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: EscrowMarketplaceProps) {
   const { isConnected, address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { toast } = useToast();
@@ -897,9 +898,13 @@ export function EscrowMarketplace({ onNavigateToMint }: EscrowMarketplaceProps) 
                 >
                     <Zap size={14} className="mr-2" /> MINT NOW
                 </button>
-                <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron">
+                <button 
+                    onClick={() => onNavigateToPortfolio?.()}
+                    className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-orbitron border ${isConnected ? 'text-cyan-400 bg-black/50 border-cyan-500/50 hover:bg-cyan-500/10 hover:border-cyan-400' : 'text-gray-600 bg-black/50 border-white/10 cursor-not-allowed opacity-50'}`}
+                    disabled={!isConnected}
+                >
                     <Wallet size={14} className="mr-2" /> SELL (INVENTORY)
-                </TabsTrigger>
+                </button>
                 <TabsTrigger value="offers" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron relative">
                     <MessageCircle size={14} className="mr-2" /> OFFERS
                     {receivedOffers.length > 0 && (
