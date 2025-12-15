@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 
 const MINT_PRICE = 69420;
 
@@ -21,6 +23,7 @@ export function PoolTracker() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   
   const isDataReady = mintedCount !== null && salesVolume !== null;
 
@@ -169,27 +172,43 @@ export function PoolTracker() {
             <h2 className="text-4xl md:text-5xl font-black text-white font-orbitron text-center uppercase tracking-tight">
               Community Treasury
             </h2>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button className="text-muted-foreground hover:text-primary transition-colors">
-                    <Info size={20} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs bg-black/90 border-white/10 text-left">
-                  <div className="text-xs space-y-1">
-                    <p className="font-bold text-white mb-2">Revenue Split:</p>
-                    <p className="text-cyan-400">51% of mint fees → Community Treasury</p>
-                    <p className="text-muted-foreground">49% of mint fees → Creator</p>
-                    <p className="text-green-400 mt-2">10% royalty on sales:</p>
-                    <p className="text-green-300 pl-2">• 2% → Treasury</p>
-                    <p className="text-muted-foreground pl-2">• 4% → Royalty Wallet</p>
-                    <p className="text-muted-foreground pl-2">• 4% → Creator</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <button 
+              onClick={() => setShowInfoModal(true)}
+              className="text-muted-foreground hover:text-primary transition-colors"
+              data-testid="treasury-info-btn"
+            >
+              <Info size={20} />
+            </button>
           </div>
+
+          <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
+            <DialogContent className="bg-black/95 border border-cyan-500/50 max-w-md p-6">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-orbitron text-cyan-400 flex items-center justify-between">
+                  Treasury Information
+                  <button 
+                    onClick={() => setShowInfoModal(false)}
+                    className="text-muted-foreground hover:text-white transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="text-gray-300 mt-4">
+                <p className="text-base leading-relaxed">
+                  This calculation is an estimate based on certain factors that will be refined over time.
+                </p>
+              </div>
+              <div className="mt-6">
+                <Button 
+                  onClick={() => setShowInfoModal(false)}
+                  className="w-full bg-cyan-500 text-white hover:bg-cyan-400 font-orbitron"
+                >
+                  GOT IT
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl max-w-md mx-auto">
