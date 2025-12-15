@@ -159,7 +159,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("listed-price-asc"); // Default: listed items first, then by lowest price
+  const [sortBy, setSortBy] = useState<string>("id-asc"); // Default: start at NFT #300
   const [showFilters, setShowFilters] = useState(false);
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV (true) for reliability
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
