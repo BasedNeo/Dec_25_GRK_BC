@@ -22,6 +22,7 @@ import { CacheService } from "@/lib/cache";
 import { clearCSVCache } from "@/lib/csvLoader";
 
 import { NFTDetailModal } from "./NFTDetailModal";
+import { RetrieveOldListing } from "./RetrieveOldListing";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -314,6 +315,9 @@ export function NFTGallery({
                    </Card>
                 )}
               </div>
+
+              {/* Retrieve Old Listing - Only show in Portfolio mode */}
+              {filterByOwner && isConnected && <RetrieveOldListing />}
 
               <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                 <div className="w-full">
