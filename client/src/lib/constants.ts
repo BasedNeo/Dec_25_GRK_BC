@@ -38,3 +38,13 @@ export const PLATFORM_FEE_PERCENT = 1;
 
 // === TOKEN ADDRESSES ===
 export const BASED_TOKEN_ETH = "0x44971abf0251958492fee97da3e5c5ada88b9185";
+
+// === PROPOSAL CREATOR WALLETS ===
+// Only these wallets can create new proposals
+export const PROPOSAL_CREATOR_WALLETS = [
+  "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
+  "0xb1362caf09189887599ed40f056712b1a138210c",
+  "0xabce9e63a9ae51e215bb10c9648f4c0f400c5847",
+  "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
+  "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
+];

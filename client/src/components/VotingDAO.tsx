@@ -13,7 +13,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ADMIN_WALLET } from "@/lib/constants";
+import { PROPOSAL_CREATOR_WALLETS } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
 
@@ -33,8 +33,9 @@ export function VotingDAO({}: VotingDAOProps) {
   // Fix: guardiansData is InfiniteData, need to flatten
   const votePower = guardiansData?.pages.flatMap((page: any) => page.nfts).length || 0;
 
-  // Real Admin Check
-  const isAdmin = isConnected && address && address.toLowerCase() === ADMIN_WALLET.toLowerCase();
+  // Check if user can create proposals (is in allowed wallet list)
+  const canCreateProposal = isConnected && address && 
+    PROPOSAL_CREATOR_WALLETS.some(wallet => wallet.toLowerCase() === address.toLowerCase());
 
   // Mock Proposal Fetching with React Query
   const { data: proposals } = useQuery({
@@ -115,7 +116,7 @@ export function VotingDAO({}: VotingDAOProps) {
             </p>
           </div>
           
-          {isAdmin && !showProposalForm && (
+          {canCreateProposal && !showProposalForm && (
             <Button 
               onClick={() => setShowProposalForm(true)}
               disabled={isPaused}
@@ -325,13 +326,13 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
                 key={option.id}
                 onClick={() => handleVote(option.id)} 
                 variant="outline"
-                className="border-white/10 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all min-h-[44px]"
+                className="border-white/20 text-white hover:border-primary hover:text-primary hover:bg-primary/5 transition-all min-h-[44px]"
               >
                 {option.label}
               </Button>
             ))
           ) : (
-            <Button onClick={onConnect} variant="outline" className="col-span-2 w-full min-h-[44px]">
+            <Button onClick={onConnect} variant="outline" className="col-span-2 w-full min-h-[44px] border-white/20 text-white hover:border-primary hover:text-primary">
               Connect to Vote
             </Button>
           )}
