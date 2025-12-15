@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
+import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu, Cat } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
@@ -228,6 +228,14 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               title="Discover more..."
             >
               <Cpu className="w-5 h-5 text-cyan-500/50 group-hover:text-cyan-400 transition-colors" />
+            </button>
+          </Link>
+          <Link href="/creators">
+            <button 
+              className="p-2 rounded-full hover:bg-orange-500/10 transition-colors group"
+              title="Meet the creators..."
+            >
+              <Cat className="w-5 h-5 text-orange-500/50 group-hover:text-orange-400 transition-colors" />
             </button>
           </Link>
         </div>
