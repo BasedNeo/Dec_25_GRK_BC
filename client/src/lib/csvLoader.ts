@@ -10,6 +10,10 @@ interface CSVRow {
 
 let cachedGuardians: Guardian[] | null = null;
 
+export const clearCSVCache = () => {
+  cachedGuardians = null;
+};
+
 export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
   if (cachedGuardians) return cachedGuardians;
 

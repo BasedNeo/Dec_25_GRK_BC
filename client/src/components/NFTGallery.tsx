@@ -18,6 +18,8 @@ import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
 import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
 import { Security } from "@/lib/security";
+import { CacheService } from "@/lib/cache";
+import { clearCSVCache } from "@/lib/csvLoader";
 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -276,8 +278,26 @@ export function NFTGallery({
                                  }}
                                  className="h-6 px-2 text-xs text-primary hover:bg-primary/10"
                                  disabled={isLoadingOwned}
+                                 title="Refresh from blockchain"
                               >
                                  <RefreshCw size={12} className={isLoadingOwned ? 'animate-spin' : ''} />
+                              </Button>
+                              <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => {
+                                    CacheService.clearAll();
+                                    clearCSVCache();
+                                    refetchOwned();
+                                    toast({
+                                       title: "Cache Cleared",
+                                       description: "All cached data has been cleared. Fetching fresh data...",
+                                    });
+                                 }}
+                                 className="h-6 px-2 text-xs text-orange-400 hover:bg-orange-400/10"
+                                 title="Clear all caches and refresh"
+                              >
+                                 <AlertTriangle size={12} />
                               </Button>
                            </div>
                        </div>

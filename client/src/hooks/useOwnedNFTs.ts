@@ -25,19 +25,15 @@ export function useOwnedNFTs() {
 
     // Clear any cached user NFT data to ensure fresh fetch
     CacheService.invalidate(`${CACHE_KEYS.USER_NFTS}${address.toLowerCase()}`);
-    
-    console.log('[Portfolio Debug] Fetching NFTs for wallet:', address);
 
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const balanceBigInt = await contract.balanceOf(address);
       const userBalance = Number(balanceBigInt);
-      console.log('[Portfolio Debug] balanceOf result:', userBalance);
       setBalance(userBalance);
 
       if (userBalance === 0) { 
-        console.log('[Portfolio Debug] Balance is 0, returning empty');
         setNfts([]); setIsLoading(false); return; 
       }
 
@@ -45,7 +41,6 @@ export function useOwnedNFTs() {
       try {
         const tokenIdsBigInt = await contract.tokensOfOwner(address);
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
-        console.log('[Portfolio Debug] tokensOfOwner result:', tokenIds);
       } catch (e) {
         setError('Could not fetch owned tokens');
         setIsLoading(false);
@@ -84,10 +79,8 @@ export function useOwnedNFTs() {
           });
         } catch (e) {}
       }
-      console.log('[Portfolio Debug] Final NFT IDs to display:', fetchedNFTs.map(n => n.id));
       setNfts(fetchedNFTs);
     } catch (e: any) {
-      console.error('[Portfolio Debug] Error:', e);
       setError(e.message || 'Failed to fetch owned NFTs');
     } finally {
       setIsLoading(false);
