@@ -316,8 +316,8 @@ export function NFTGallery({
                 )}
               </div>
 
-              {/* Retrieve Old Listing - Only show in Portfolio mode */}
-              {filterByOwner && isConnected && <RetrieveOldListing />}
+              {/* Retrieve Old Listing - Hidden for now, kept for future use */}
+              {/* {filterByOwner && isConnected && <RetrieveOldListing />} */}
 
               <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                 <div className="w-full">
