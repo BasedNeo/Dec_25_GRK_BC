@@ -19,7 +19,7 @@ export function Footer() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedback.trim()) return;
 
@@ -32,16 +32,38 @@ export function Footer() {
     // Track feedback submission event
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setFeedback("");
-      setEmail("");
-      toast({
-        title: "Feedback Sent",
-        description: `Your suggestion has been securely sent to admin@basedguardians.com (Placeholder).`,
-        className: "bg-black border-primary text-primary font-orbitron",
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: safeFeedback,
+          email: safeEmail || null,
+          walletAddress: null,
+        }),
       });
-    }, 1500);
+
+      if (response.ok) {
+        setFeedback("");
+        setEmail("");
+        toast({
+          title: "Feedback Sent",
+          description: "Thank you! Your feedback has been saved and our team will review it.",
+          className: "bg-black border-primary text-primary font-orbitron",
+        });
+      } else {
+        throw new Error('Failed to submit');
+      }
+    } catch (error) {
+      console.error("Failed to submit feedback:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
