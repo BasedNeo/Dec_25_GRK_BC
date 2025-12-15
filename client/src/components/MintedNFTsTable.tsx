@@ -91,8 +91,6 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
     
     const startIndex = total - 1 - currentLoaded;
     const endIndex = Math.max(-1, startIndex - BATCH_SIZE);
-    
-    const newItems: Guardian[] = [];
 
     // Parallel fetching for the batch
     const promises = [];
