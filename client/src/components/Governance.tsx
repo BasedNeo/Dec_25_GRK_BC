@@ -20,6 +20,8 @@ import {
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { PROPOSAL_CREATOR_WALLETS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { Security } from '@/lib/security';
 import {
   useGovernance,
   useProposal,
@@ -37,6 +39,7 @@ export function Governance() {
   const { toast } = useToast();
   const { openConnectModal } = useConnectModal();
   const governance = useGovernance();
+  const { checkRateLimit, isRateLimited } = useRateLimit({ minInterval: 3000, message: 'Please wait before submitting again' });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Community');
@@ -44,17 +47,29 @@ export function Governance() {
   const [newExpirationDays, setNewExpirationDays] = useState('7');
   const [expandedProposal, setExpandedProposal] = useState<number | null>(null);
 
-  // Check if connected wallet can create proposals
   const isAllowedCreator = governance.isConnected && governance.address && 
     PROPOSAL_CREATOR_WALLETS.some(wallet => wallet.toLowerCase() === governance.address?.toLowerCase());
 
   const handleCreateProposal = async () => {
-    if (!newTitle.trim() || !newDescription.trim()) {
-      toast({ title: 'Error', description: 'Please fill in all fields', variant: 'destructive' });
+    if (!checkRateLimit()) return;
+    
+    const titleValidation = Security.validateProposalTitle(newTitle);
+    if (!titleValidation.valid) {
+      toast({ title: 'Invalid Title', description: titleValidation.error, variant: 'destructive' });
       return;
     }
+    
+    const descValidation = Security.validateProposalDescription(newDescription);
+    if (!descValidation.valid) {
+      toast({ title: 'Invalid Description', description: descValidation.error, variant: 'destructive' });
+      return;
+    }
+    
+    const sanitizedTitle = Security.sanitizeProposalInput(newTitle);
+    const sanitizedDesc = Security.sanitizeProposalInput(newDescription);
+    
     try {
-      await governance.createProposal(newTitle, newDescription, newCategory);
+      await governance.createProposal(sanitizedTitle, sanitizedDesc, newCategory);
       toast({ title: 'Proposal Submitted', description: 'Your proposal is being created on-chain' });
       setNewTitle('');
       setNewDescription('');
