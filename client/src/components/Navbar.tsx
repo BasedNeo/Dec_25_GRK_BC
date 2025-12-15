@@ -225,7 +225,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
                 onClick={() => onTabChange(item.id)}
                 className={`relative px-4 py-2 font-orbitron text-sm tracking-widest transition-colors ${
-                  activeTab === item.id ? 'text-primary' : item.id === 'gallery' ? 'text-cyan-400 hover:text-cyan-300' : 'text-foreground/80 hover:text-white'
+                  activeTab === item.id ? 'text-primary' : 'text-foreground/80 hover:text-white'
                 }`}
               >
                 {activeTab === item.id && (
