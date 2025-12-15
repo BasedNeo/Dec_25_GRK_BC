@@ -39,6 +39,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
   const [listPrice, setListPrice] = useState<number>(MINT_PRICE);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showMintExplainerModal, setShowMintExplainerModal] = useState(false);
   
   const { address, isConnected } = useAccount();
   const marketplace = useMarketplace();
@@ -494,8 +495,12 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                             MAKE OFFER
                           </Button>
                         ) : (
-                          <Button className="w-full bg-green-500 text-black hover:bg-green-400 font-orbitron font-bold">
-                            MINT THIS NFT
+                          <Button 
+                            className="w-full bg-green-500 text-black hover:bg-green-400 font-orbitron font-bold"
+                            onClick={() => setShowMintExplainerModal(true)}
+                            data-testid="button-mint-nft"
+                          >
+                            MINT an NFT
                           </Button>
                         )}
                     </div>
@@ -527,6 +532,49 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         nft={nft}
         achievementType="owned"
       />
+
+      {/* Mint Explainer Modal */}
+      <Dialog open={showMintExplainerModal} onOpenChange={setShowMintExplainerModal}>
+        <DialogContent className="bg-black/95 border border-cyan-500/50 max-w-md p-6">
+          <DialogTitle className="text-xl font-orbitron text-cyan-400 mb-4">
+            Random Mint Process
+          </DialogTitle>
+          <DialogDescription className="text-gray-300 space-y-4">
+            <p>
+              Based Guardians uses a <span className="text-cyan-400 font-semibold">random mint</span> system. 
+              This means you cannot choose a specific Guardian to mint.
+            </p>
+            <p>
+              When you mint, you'll receive a randomly assigned Guardian from the unminted pool. 
+              Each Guardian is unique with its own rarity and traits!
+            </p>
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mt-4">
+              <p className="text-cyan-400 font-orbitron text-sm">
+                Ready to mint? Click below to continue to the minting page.
+              </p>
+            </div>
+          </DialogDescription>
+          <div className="flex gap-3 mt-6">
+            <Button 
+              variant="outline" 
+              className="flex-1 border-white/20 text-white hover:bg-white/10 font-orbitron"
+              onClick={() => setShowMintExplainerModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1 bg-green-500 text-black hover:bg-green-400 font-orbitron font-bold"
+              onClick={() => {
+                setShowMintExplainerModal(false);
+                window.open('https://aftermint.trade', '_blank');
+              }}
+              data-testid="button-confirm-mint"
+            >
+              Continue to Mint
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
