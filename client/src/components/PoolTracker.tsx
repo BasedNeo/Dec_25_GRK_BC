@@ -1,4 +1,4 @@
-import { calculatePassiveEmissions } from "@/lib/mockData";
+import { calculatePassiveEmissions, calculateBackedValue } from "@/lib/mockData";
 import { motion } from "framer-motion";
 import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign, Info } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -115,7 +115,8 @@ export function PoolTracker() {
     
     const totalTreasury = mintRevenue + royaltyRevenue + passiveEmissions;
     
-    const backedValuePerNFT = minted > 0 ? totalTreasury / minted : 0;
+    // Use the same calculation as Hero and NFT cards for consistency
+    const backedValuePerNFT = calculateBackedValue();
     
     return {
       mintRevenue,
