@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import { NFT_CONTRACT, RPC_URL, IPFS_ROOT } from '@/lib/constants';
 import { Guardian } from '@/lib/mockData';
+import { CacheService, CACHE_KEYS } from '@/lib/cache';
 
 const NFT_ABI = [
   'function tokensOfOwner(address owner) view returns (uint256[])',
@@ -22,6 +23,9 @@ export function useOwnedNFTs() {
     setIsLoading(true);
     setError(null);
 
+    // Clear any cached user NFT data to ensure fresh fetch
+    CacheService.invalidate(`${CACHE_KEYS.USER_NFTS}${address.toLowerCase()}`);
+    
     console.log('[Portfolio Debug] Fetching NFTs for wallet:', address);
 
     try {
@@ -80,8 +84,10 @@ export function useOwnedNFTs() {
           });
         } catch (e) {}
       }
+      console.log('[Portfolio Debug] Final NFT IDs to display:', fetchedNFTs.map(n => n.id));
       setNfts(fetchedNFTs);
     } catch (e: any) {
+      console.error('[Portfolio Debug] Error:', e);
       setError(e.message || 'Failed to fetch owned NFTs');
     } finally {
       setIsLoading(false);
