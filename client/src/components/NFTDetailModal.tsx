@@ -406,9 +406,14 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                       <div className="space-y-3">
                         <Label className="text-xs text-muted-foreground font-mono">SET YOUR PRICE ($BASED)</Label>
                         <Input 
-                          type="number" 
-                          value={listPrice}
-                          onChange={(e) => setListPrice(Number(e.target.value))}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={listPrice || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                            setListPrice(val ? parseInt(val, 10) : 0);
+                          }}
                           placeholder="69420"
                           className="bg-white/5 border-white/10 font-mono text-lg"
                           data-testid="input-list-price"

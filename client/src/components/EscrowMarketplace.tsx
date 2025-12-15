@@ -1362,11 +1362,15 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground font-mono">SALE PRICE ($BASED)</Label>
                     <Input 
-                      type="number" 
-                      value={listPrice} 
-                      onChange={(e) => setListPrice(Number(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={listPrice || ''} 
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                        setListPrice(val ? parseInt(val, 10) : 0);
+                      }}
                       className="bg-white/5 border-white/10 text-white font-mono text-lg"
-                      min={1}
                       placeholder="69420"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -1526,10 +1530,13 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         <Label className="text-xs text-muted-foreground font-mono">OFFER AMOUNT ($BASED)</Label>
                         <div className="flex gap-2">
                              <Input 
-                                type="number" 
-                                value={amount} 
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={amount || ''} 
                                 onChange={(e) => {
-                                    setAmount(Number(e.target.value));
+                                    const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                                    setAmount(val ? parseInt(val, 10) : 0);
                                     setValidationError(null);
                                 }}
                                 className={`bg-white/5 border-white/10 text-white font-mono text-lg ${insufficientFunds ? 'border-red-500/50' : ''}`}
