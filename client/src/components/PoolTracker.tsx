@@ -16,10 +16,13 @@ const MARKETPLACE_ABI = [
 
 export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
-  const [salesVolume, setSalesVolume] = useState<number>(0);
+  const [salesVolume, setSalesVolume] = useState<number | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  const isDataReady = mintedCount !== null && salesVolume !== null;
 
   const fetchMintedCount = useCallback(async () => {
     try {
@@ -79,6 +82,7 @@ export function PoolTracker() {
       setError("Failed to update treasury data");
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -105,10 +109,11 @@ export function PoolTracker() {
 
   const treasuryData = useMemo(() => {
     const minted = mintedCount ?? 0;
+    const sales = salesVolume ?? 0;
     
     const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
     
-    const royaltyRevenue = salesVolume * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    const royaltyRevenue = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
     
     const emissionsData = calculatePassiveEmissions();
     const passiveEmissions = emissionsData.total;
@@ -128,9 +133,14 @@ export function PoolTracker() {
       nextHalvingIn: emissionsData.nextHalvingIn,
       nextHalvingRate: emissionsData.nextHalvingRate,
       minted,
-      salesVolume
+      salesVolume: sales
     };
   }, [mintedCount, salesVolume]);
+
+  const displayValue = (value: number, decimals: number = 0) => {
+    if (!isDataReady) return "---";
+    return formatNumber(value, decimals);
+  };
 
   const formatNumber = (num: number, decimals: number = 0) => {
     return num.toLocaleString(undefined, {
@@ -189,17 +199,17 @@ export function PoolTracker() {
             <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
             <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
             <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow" data-testid="text-total-treasury">
-              {formatNumber(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
+              {displayValue(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
             </div>
             <p className="text-xs text-muted-foreground mt-3 font-mono">
-              {mintedCount !== null ? `${formatNumber(mintedCount)} NFTs Minted` : 'Loading...'}
+              {isDataReady ? `${formatNumber(mintedCount!)} NFTs Minted` : 'Loading data...'}
             </p>
           </div>
 
           <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl max-w-md mx-auto">
             <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Backed Value Per NFT</span>
             <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2" data-testid="text-backed-value">
-              {formatNumber(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
+              {displayValue(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
             </div>
             <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted NFTs</p>
           </div>
@@ -212,10 +222,10 @@ export function PoolTracker() {
                 <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Mints ({MINT_SPLIT.TREASURY_PERCENT}%)</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-pink-400 mb-1" data-testid="text-mint-revenue">
-                {formatNumber(treasuryData.mintRevenue)} $BASED
+                {displayValue(treasuryData.mintRevenue)} $BASED
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                {formatNumber(treasuryData.minted)} × {formatNumber(MINT_PRICE)} × {MINT_SPLIT.TREASURY_PERCENT}%
+                {isDataReady ? `${formatNumber(treasuryData.minted)} × ${formatNumber(MINT_PRICE)} × ${MINT_SPLIT.TREASURY_PERCENT}%` : '--- × --- × ---'}
               </span>
             </div>
             
@@ -225,7 +235,7 @@ export function PoolTracker() {
                 <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Emissions</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-cyan-400 mb-1" data-testid="text-passive-emissions">
-                {formatNumber(treasuryData.passiveEmissions)} $BASED
+                {displayValue(treasuryData.passiveEmissions)} $BASED
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
                 Since Dec 10, 2025
@@ -238,10 +248,10 @@ export function PoolTracker() {
                 <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Royalties ({ROYALTY_SPLIT.TREASURY_PERCENT}%)</h3>
               </div>
               <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-revenue">
-                {formatNumber(treasuryData.royaltyRevenue)} $BASED
+                {displayValue(treasuryData.royaltyRevenue)} $BASED
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                From {formatNumber(treasuryData.salesVolume)} total sales volume
+                From {isDataReady ? formatNumber(treasuryData.salesVolume) : '---'} total sales volume
               </span>
             </div>
             
@@ -266,7 +276,7 @@ export function PoolTracker() {
                 <h3 className="text-xs font-bold text-white font-orbitron uppercase">Current Daily Emissions</h3>
               </div>
               <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
-                {formatNumber(treasuryData.currentDailyRate)} $BASED/day
+                {displayValue(treasuryData.currentDailyRate)} $BASED/day
               </span>
             </div>
             
