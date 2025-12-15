@@ -1,0 +1,92 @@
+## FIX: Listing Transaction Failing with JSON-RPC Error
+
+The listNFT function is failing. Debug and fix:
+
+### 1. Check the listNFT function in useMarketplace hook
+
+In `client/src/hooks/useMarketplace.ts`, find the listNFT function and ensure the price is converted to wei correctly:
+
+const listNFT = async (tokenId: number, priceInBased: number) => {
+  if (!checkNetwork()) return;
+
+  // Check approval first
+  if (!isApproved) {
+    toast({ 
+      title: "Approval Required", 
+      description: "Please approve the marketplace first. Click 'Approve Marketplace' button.", 
+      variant: "destructive" 
+    });
+    return;
+  }
+
+  setState(prev => ({ ...prev, action: 'list' }));
+
+  toast({
+    title: "List NFT",
+    description: `Listing Guardian #${tokenId} for ${priceInBased.toLocaleString()} $BASED...`,
+    className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+  });
+
+  // IMPORTANT: Convert price to wei (multiply by 10^18)
+  const priceWei = parseEther(String(priceInBased));
+
+  console.log('Listing NFT:', { tokenId, priceInBased, priceWei: priceWei.toString() });
+
+  try {
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'listNFT',
+      args: [BigInt(tokenId), priceWei],
+      chainId: CHAIN_ID,
+    });
+  } catch (error) {
+    console.error('List error:', error);
+  }
+};### 2. Ensure marketplace approval happens BEFORE listing
+
+The flow must be:
+1. User clicks "Approve Marketplace" → wallet confirms → wait for confirmation
+2. ONLY THEN can user click "List for Sale"
+
+Add a check that waits for approval confirmation:
+
+// After approval transaction confirms, refetch approval status
+useEffect(() => {
+  if (state.action === 'approve' && state.isSuccess) {
+    refetchApproval();
+  }
+}, [state.isSuccess, state.action]);### 3. Add better error parsing for listing errors
+
+// In the error handling useEffect, add these cases:
+if (errorMessage.includes('NotTokenOwner') || errorMessage.includes('not owner')) {
+  friendlyError = 'You do not own this NFT';
+} else if (errorMessage.includes('not approved') || errorMessage.includes('ERC721')) {
+  friendlyError = 'Marketplace not approved. Please approve first, then try listing again.';
+} else if (errorMessage.includes('PriceTooLow')) {
+  friendlyError = 'Price must be at least 1 $BASED';
+} else if (errorMessage.includes('already listed')) {
+  friendlyError = 'This NFT is already listed';
+}### 4. Verify the approval status is being read correctly
+
+Make sure isApproved is checking the right thing:
+
+const { data: isApproved, refetch: refetchApproval } = useReadContract({
+  address: NFT_CONTRACT as `0x${string}`,
+  abi: NFT_ABI,
+  functionName: 'isApprovedForAll',
+  args: address ? [address, MARKETPLACE_CONTRACT as `0x${string}`] : undefined,
+  chainId: CHAIN_ID,
+  query: { 
+    enabled: !!address, 
+    refetchInterval: 5000  // Check more frequently
+  },
+});### 5. Add console logging to debug
+
+Temporarily add this before the writeContract call:
+
+console.log('=== LISTING DEBUG ===');
+console.log('Token ID:', tokenId);
+console.log('Price in $BASED:', priceInBased);
+console.log('Price in Wei:', priceWei.toString());
+console.log('Is Approved:', isAppr

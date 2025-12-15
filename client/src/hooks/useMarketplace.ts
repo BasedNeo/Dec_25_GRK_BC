@@ -241,8 +241,18 @@ export function useMarketplace() {
     functionName: 'isApprovedForAll',
     args: address ? [address, MARKETPLACE_CONTRACT as `0x${string}`] : undefined,
     chainId: CHAIN_ID,
-    query: { enabled: !!address, refetchInterval: 15000 },
+    query: { enabled: !!address, refetchInterval: 5000 },
   });
+
+  // Refetch approval after approval transaction confirms
+  useEffect(() => {
+    if (state.action === 'approve' && isConfirmed) {
+      // Refetch multiple times to ensure we get the updated state
+      refetchApproval();
+      setTimeout(() => refetchApproval(), 1000);
+      setTimeout(() => refetchApproval(), 3000);
+    }
+  }, [state.action, isConfirmed, refetchApproval]);
 
   const { data: listingCount, refetch: refetchListingCount } = useReadContract({
     address: MARKETPLACE_CONTRACT as `0x${string}`,

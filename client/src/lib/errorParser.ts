@@ -19,9 +19,13 @@ export function parseContractError(error: any): string {
   if (message.includes('Already voted')) return 'You have already voted';
   if (message.includes('Voting ended') || message.includes('voting ended')) return 'Voting period has ended';
   if (message.includes('Voting not ended') || message.includes('not ended')) return 'Voting period not yet ended';
-  if (message.includes('Not approved') || message.includes('not approved')) return 'NFT not approved for marketplace';
+  if (message.includes('Not approved') || message.includes('not approved') || message.includes('ERC721')) return 'NFT not approved for marketplace. Please approve first.';
+  if (message.includes('PriceTooLow') || message.includes('price too low')) return 'Price must be at least 1 $BASED';
+  if (message.includes('AlreadyListed') || message.includes('already listed')) return 'This NFT is already listed';
+  if (message.includes('JSON-RPC') || message.includes('Internal JSON-RPC error')) return 'Contract error - please try again or check your approval status';
   if (message.includes('execution reverted')) return 'Transaction failed - contract rejected';
   if (message.includes('gas required exceeds')) return 'Transaction would fail - insufficient gas';
+  if (message.includes('nonce')) return 'Transaction nonce error - please refresh and try again';
   
   // Network errors
   if (message.includes('network') || message.includes('Network')) return 'Network error - check your connection';
