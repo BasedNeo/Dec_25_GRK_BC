@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Send, MessageSquare, ShieldCheck, Twitter, Github, Heart, Disc, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
-import { ROYALTY_WALLET, NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
+import { NFT_SYMBOL, TWITTER_URL, CHAIN_ID } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 
 import { useSecurity } from "@/context/SecurityContext";
@@ -131,7 +131,7 @@ export function Footer() {
 
             
             <p className="text-xs text-muted-foreground mt-2 font-mono">
-              ROYALTIES: SPLIT TO COMMUNITY & TEAM ({ROYALTY_WALLET})
+              ROYALTIES: SPLIT TO COMMUNITY & TEAM
             </p>
           </div>
 
