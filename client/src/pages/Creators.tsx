@@ -1,5 +1,27 @@
 import { motion } from "framer-motion";
-import { Cat, ArrowLeft, Heart, Sparkles, Users, Palette } from "lucide-react";
+import { ArrowLeft, Heart, Sparkles, Users, Palette } from "lucide-react";
+
+function FoxIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 3 L7 10 L4 10 Z" />
+      <path d="M20 3 L17 10 L20 10 Z" />
+      <ellipse cx="12" cy="14" rx="8" ry="7" />
+      <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+      <path d="M12 15 L10.5 17 L13.5 17 Z" fill="currentColor" />
+      <line x1="12" y1="17" x2="12" y2="19" />
+    </svg>
+  );
+}
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useMemo } from "react";
@@ -99,7 +121,7 @@ export default function Creators() {
               className="text-center"
             >
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/30 rounded-full mb-6">
-                <Cat className="w-4 h-4 text-orange-400" />
+                <FoxIcon className="w-4 h-4 text-orange-400" />
                 <span className="text-xs font-mono text-orange-400 uppercase tracking-widest">Creator Archive</span>
               </div>
               
@@ -213,7 +235,7 @@ export default function Creators() {
             >
               <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-orange-500/50 to-transparent mx-auto mb-8" />
               <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-orange-500/5 to-amber-500/5 border border-orange-500/30 rounded-full">
-                <Cat className="w-5 h-5 text-orange-400" />
+                <FoxIcon className="w-5 h-5 text-orange-400" />
                 <span className="text-sm font-mono text-orange-400 tracking-wide">CREATOR ARCHIVE UNLOCKED</span>
               </div>
             </motion.div>

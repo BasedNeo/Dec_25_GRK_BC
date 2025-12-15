@@ -1,11 +1,38 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu, Cat } from "lucide-react";
+import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
 import { Link } from "wouter";
+
+function FoxIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Sharp pointed ears */}
+      <path d="M4 3 L7 10 L4 10 Z" />
+      <path d="M20 3 L17 10 L20 10 Z" />
+      {/* Face outline */}
+      <ellipse cx="12" cy="14" rx="8" ry="7" />
+      {/* Eyes */}
+      <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+      {/* Nose */}
+      <path d="M12 15 L10.5 17 L13.5 17 Z" fill="currentColor" />
+      {/* Snout line */}
+      <line x1="12" y1="17" x2="12" y2="19" />
+    </svg>
+  );
+}
 
 interface UniverseTabProps {
   onMintClick: () => void;
@@ -235,7 +262,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               className="p-2 rounded-full hover:bg-orange-500/10 transition-colors group"
               title="Meet the creators..."
             >
-              <Cat className="w-5 h-5 text-orange-500/50 group-hover:text-orange-400 transition-colors" />
+              <FoxIcon className="w-5 h-5 text-orange-500/50 group-hover:text-orange-400 transition-colors" />
             </button>
           </Link>
         </div>
