@@ -100,7 +100,7 @@ export function NFTGallery({
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id-asc");
+  const [sortBy, setSortBy] = useState<string>("listed-price-asc");
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
 
   // Pass filters to hook for server-side (CSV-side) filtering
@@ -339,7 +339,8 @@ export function NFTGallery({
                                      <SelectValue placeholder="Sort By" />
                                    </SelectTrigger>
                                    <SelectContent>
-                                     <SelectItem value="price-asc">Floor Price: Low to High</SelectItem>
+                                     <SelectItem value="listed-price-asc">For Sale (Lowest First)</SelectItem>
+                                    <SelectItem value="price-asc">Floor Price: Low to High</SelectItem>
                                      <SelectItem value="price-desc">Price: High to Low</SelectItem>
                                      <SelectItem value="id-asc">ID: Low to High</SelectItem>
                                      <SelectItem value="id-desc">ID: High to Low</SelectItem>
