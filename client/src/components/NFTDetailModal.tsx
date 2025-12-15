@@ -212,8 +212,19 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         <DialogTitle className="sr-only">Guardian #{nft.id} Details</DialogTitle>
         <DialogDescription className="sr-only">Details for Guardian #{nft.id}</DialogDescription>
         
+        {/* Mobile Close Button - Fixed at top right of screen */}
+        <DialogClose asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden fixed top-4 right-4 h-12 w-12 text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full border border-white/20 hover:border-red-500 z-[9999]"
+          >
+            <X size={24} strokeWidth={3} />
+          </Button>
+        </DialogClose>
+        
         {/* Left Side: Image */}
-        <div className="relative w-full md:w-1/2 h-1/4 md:h-full bg-black flex items-center justify-center p-4 md:p-6 border-b md:border-b-0 md:border-r border-white/10 group shrink-0">
+        <div className="relative w-full md:w-1/2 h-[40vh] md:h-full bg-black flex items-center justify-center p-4 md:p-6 md:border-r border-white/10 group shrink-0">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
             
@@ -365,7 +376,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         </div>
 
         {/* Right Side: Details */}
-        <div className="w-full md:w-1/2 flex flex-col h-3/4 md:h-full bg-card/50 relative flex-1">
+        <div className="w-full md:w-1/2 flex flex-col h-[60vh] md:h-full bg-card/50 relative overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex justify-between items-start relative bg-black/20 shrink-0">
                 <div className="pr-16">
@@ -386,9 +397,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-4 right-4 h-14 w-14 md:h-14 md:w-14 h-[80px] w-[80px] text-white hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/20 hover:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] z-50 group"
+                        className="hidden md:flex absolute top-4 right-4 h-14 w-14 text-white hover:text-white bg-black/80 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-all border border-white/20 hover:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] z-50 group"
                     >
-                        <X size={32} className="md:w-8 md:h-8 w-12 h-12 group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
+                        <X size={32} className="group-hover:scale-110 transition-transform group-hover:text-red-400 font-bold" strokeWidth={3} />
                     </Button>
                 </DialogClose>
             </div>
