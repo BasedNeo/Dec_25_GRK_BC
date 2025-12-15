@@ -707,7 +707,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
             )}
             <h2 className="text-4xl text-white font-black mb-2">GUARDIAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">EXCHANGE</span></h2>
             <div className="flex gap-4 text-xs text-muted-foreground font-mono">
-              <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Escrow Secured</span>
+              <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> NFT Stays in Wallet</span>
               <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
               <span className="flex items-center gap-1"><RefreshCw size={12} className="text-primary"/> 1% Platform Fee</span>
             </div>

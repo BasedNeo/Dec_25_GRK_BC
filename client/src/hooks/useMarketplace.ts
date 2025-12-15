@@ -7,7 +7,7 @@
  * - Making and accepting offers
  * - Approving the marketplace to transfer NFTs
  * 
- * Contract: 0x88161576266dCDedb19342aC2197267282520793
+ * Contract V2: 0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c (OpenSea-style - NFT stays in wallet!)
  * Network: BasedAI (Chain ID: 32323)
  */
 
@@ -60,6 +60,13 @@ const MARKETPLACE_ABI = [
     stateMutability: 'view',
     inputs: [],
     outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'isListingValid',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
   },
   {
     name: 'platformFeeBps',
@@ -416,7 +423,7 @@ export function useMarketplace() {
       functionName: 'listNFT',
       args: [BigInt(tokenId), priceWei],
       chainId: CHAIN_ID,
-      gas: BigInt(500000),
+      gas: BigInt(300000),  // V2 uses less gas (no escrow transfer)
     });
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
@@ -438,7 +445,7 @@ export function useMarketplace() {
       functionName: 'delistNFT',
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
-      gas: BigInt(300000),
+      gas: BigInt(150000),  // V2 uses less gas
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -462,7 +469,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId)],
       value: priceWei,
       chainId: CHAIN_ID,
-      gas: BigInt(500000),
+      gas: BigInt(400000),
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -519,7 +526,7 @@ export function useMarketplace() {
       functionName: 'acceptOffer',
       args: [BigInt(tokenId), offererAddress as `0x${string}`],
       chainId: CHAIN_ID,
-      gas: BigInt(500000),
+      gas: BigInt(400000),
     });
   }, [checkNetwork, writeContract]);
 

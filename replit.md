@@ -7,7 +7,7 @@ Based Guardians is a cyberpunk-themed NFT DApp built for the BasedAI blockchain 
 Key features include:
 - NFT minting at 69,420 $BASED per NFT
 - Live collection gallery with metadata from IPFS
-- Escrow marketplace for NFT trading
+- OpenSea-style marketplace V2 (NFT stays in wallet until sold)
 - Advisory DAO voting system
 - Community pool tracking with emissions calculations
 - Real-time $BASED token price feeds from CoinGecko
