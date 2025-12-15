@@ -486,30 +486,53 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
           <div className="max-w-7xl mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                      { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future." },
-                      { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe." },
-                      { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian." },
-                      { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool." },
-                  ].map((feature, idx) => (
-                      <motion.div 
-                          key={idx}
-                          whileHover={{ y: -5, scale: 1.02 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          initial={{ opacity: 0, y: 30 }}
-                          transition={{ delay: idx * 0.1, duration: 0.5 }}
-                          viewport={{ once: true }}
-                          className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm"
-                      >
-                          <div className="w-12 h-12 rounded-full bg-cyan-900/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
-                              <feature.icon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-200" />
-                          </div>
-                          <h4 className="text-lg font-bold text-white mb-1 font-orbitron">{feature.title}</h4>
-                          <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">{feature.sub}</p>
-                          <p className="text-sm text-gray-400 leading-relaxed">
-                              {feature.desc}
-                          </p>
-                      </motion.div>
-                  ))}
+                      { icon: Heart, title: "Humanitarian Horizon", sub: "Missions Beyond the Chain", desc: "Real-world impact initiatives and community-driven giving to build a better future.", link: "https://www.destinyrescue.org/" },
+                      { icon: BookOpen, title: "Galactic Storytelling", sub: "Co-Create the Epic", desc: "Evolving lore and holder-driven narratives that shape the destiny of the Based Universe.", link: null },
+                      { icon: Globe, title: "Infinite Possibilities", sub: "Evolve with the Cosmos", desc: "Future upgrades, expansions, and endless growth potential for every Guardian.", link: null },
+                      { icon: ArrowRightLeft, title: "Guardian Exchange", sub: "Trade Legends", desc: "Secure marketplace for trading Guardians with a 1% fee contributing to the community pool.", link: null },
+                  ].map((feature, idx) => {
+                      const content = (
+                          <>
+                              <div className="w-12 h-12 rounded-full bg-cyan-900/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
+                                  <feature.icon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-200" />
+                              </div>
+                              <h4 className="text-lg font-bold text-white mb-1 font-orbitron">{feature.title}</h4>
+                              <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">{feature.sub}</p>
+                              <p className="text-sm text-gray-400 leading-relaxed">
+                                  {feature.desc}
+                              </p>
+                          </>
+                      );
+
+                      return feature.link ? (
+                          <motion.a 
+                              key={idx}
+                              href={feature.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              whileHover={{ y: -5, scale: 1.02 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              initial={{ opacity: 0, y: 30 }}
+                              transition={{ delay: idx * 0.1, duration: 0.5 }}
+                              viewport={{ once: true }}
+                              className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm cursor-pointer block"
+                          >
+                              {content}
+                          </motion.a>
+                      ) : (
+                          <motion.div 
+                              key={idx}
+                              whileHover={{ y: -5, scale: 1.02 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              initial={{ opacity: 0, y: 30 }}
+                              transition={{ delay: idx * 0.1, duration: 0.5 }}
+                              viewport={{ once: true }}
+                              className="bg-black/40 border border-cyan-500/20 p-6 rounded-xl hover:border-cyan-500/60 transition-colors group backdrop-blur-sm"
+                          >
+                              {content}
+                          </motion.div>
+                      );
+                  })}
               </div>
           </div>
         </motion.section>
