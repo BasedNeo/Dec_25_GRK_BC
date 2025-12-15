@@ -15,6 +15,7 @@ import { showToast } from "@/lib/customToast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
+import { NotificationSettings } from "./NotificationSettings";
 import Untitled from "@/assets/Untitled.png";
 
 interface NavbarProps {
@@ -326,6 +327,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       </TooltipContent>
                   </Tooltip>
               )}
+              
+              <NotificationSettings />
 
               <ConnectButton.Custom>
                 {({
@@ -447,7 +450,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 </button>
               ))}
               
-              <div className="w-full flex justify-center pt-4 border-t border-white/10 mt-4">
+              <div className="w-full flex justify-center gap-4 pt-4 border-t border-white/10 mt-4">
+                <NotificationSettings />
                 <ConnectButton />
               </div>
             </div>
