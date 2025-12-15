@@ -1,0 +1,125 @@
+## FIX: Add NFT Listing Functionality for Owners
+
+Users who own NFTs cannot list them for sale - there's no visible list button or listing interface.
+
+### Requirements:
+1. When a connected wallet owns an NFT, show a "LIST FOR SALE" button on that NFT's card
+2. The LIST button should be bright and easily visible (use green or cyan color)
+3. Clicking LIST opens a modal to set the sale price
+4. Before listing, check if marketplace is approved - if not, show "APPROVE" button first
+5. After listing, the NFT card should show "LISTED" badge and the sale price
+
+### Implementation:
+
+1. **Update `client/src/components/EscrowMarketplace.tsx`:**
+
+In the MarketCard component, add owner detection and list button:
+
+// Add at top of MarketCard component
+const { address } = useAccount();
+const marketplace = useMarketplace();
+const [showListModal, setShowListModal] = useState(false);
+const [listPrice, setListPrice] = useState<number>(69420);
+
+// Check if connected user owns this NFT
+const isOwner = address && item.owner && item.owner.toLowerCase() === address.toLowerCase();In the button section of MarketCard, add this logic:
+
+{/* OWNER ACTIONS - List/Delist */}
+{isOwner && item.isMinted && !item.isListed && (
+  <div className="flex flex-col gap-2">
+    {!marketplace.isApproved ? (
+      <Button 
+        className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold"
+        onClick={(e) => {
+          e.stopPropagation();
+          marketplace.approveMarketplace();
+        }}
+        disabled={marketplace.state.isPending}
+      >
+        {marketplace.state.isPending ? 'APPROVING...' : '1. APPROVE MARKETPLACE'}
+      </Button>
+    ) : (
+      <Button 
+        className="w-full bg-green-500 text-black hover:bg-green-400 font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowListModal(true);
+        }}
+      >
+        <Tag size={14} className="mr-2" /> LIST FOR SALE
+      </Button>
+    )}
+  </div>
+)}
+
+{/* If already listed by owner, show delist button */}
+{isOwner && item.isListed && (
+  <Button 
+    className="w-full bg-red-500/80 text-white hover:bg-red-500 font-bold"
+    onClick={(e) => {
+      e.stopPropagation();
+      marketplace.delistNFT(item.id);
+    }}
+    disabled={marketplace.state.isPending}
+  >
+    {marketplace.state.isPending ? 'DELISTING...' : 'REMOVE LISTING'}
+  </Button>
+)}2. **Add List Modal inside MarketCard (before closing Card tag):**
+
+{/* List for Sale Modal */}
+<Dialog open={showListModal} onOpenChange={setShowListModal}>
+  <DialogContent className="bg-black border-green-500/50 text-white sm:max-w-md z-[10000]" onClick={(e) => e.stopPropagation()}>
+    <DialogHeader>
+      <DialogTitle className="font-orbitron text-green-400 flex items-center gap-2">
+        <Tag size={18} /> LIST FOR SALE
+      </DialogTitle>
+      <DialogDescription>
+        Set your price for <span className="text-primary font-bold">{item.name}</span>
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground font-mono">SALE PRICE ($BASED)</Label>
+        <Input 
+          type="number" 
+          value={listPrice} 
+          onChange={(e) => setListPrice(Number(e.target.value))}
+          className="bg-white/5 border-white/10 text-white font-mono text-lg"
+          min={1}
+          placeholder="69420"
+        />
+        <p className="text-xs text-muted-foreground">
+          You'll receive {Math.floor(listPrice * 0.99).toLocaleString()} $BASED after 1% platform fee
+        </p>
+      </div>
+    </div>
+    
+    <DialogFooter className="flex gap-2">
+      <Button variant="ghost" onClick={() => setShowListModal(false)}>CANCEL</Button>
+      <Button 
+        className="bg-green-500 text-black hover:bg-green-400 font-bold"
+        onClick={() => {
+          marketplace.listNFT(item.id, listPrice);
+          setShowListModal(false);
+        }}
+        disabled={listPrice < 1 || marketplace.state.isPending}
+      >
+        {marketplace.state.isPending ? 'LISTING...' : 'CONFIRM LISTING'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>3. **Add imports at top of file:**
+
+import { Tag } from "lucide-react";
+import { Label } from "@/components/ui/label";4. **In the Inventory tab, show only user's actual owned NFTs with list buttons:**
+
+Update the inventory tab to fetch real owned NFTs using the tokensOfOwner contract call and display them with listing controls.
+
+5. **Button Color Guide:**
+- APPROVE MARKETPLACE: Amber/Yellow (first step)
+- LIST FOR SALE: Bright Green with glow shadow
+- REMOVE LISTING: Red
+- LISTED badge: Cyan/Primary color
+
+After this fix, NFT owners will see clear listing controls on their NFTs.

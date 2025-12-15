@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
-  Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid, Info
+  Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid, Info, Tag
 } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -1110,6 +1110,9 @@ import { NFTImage } from "./NFTImage";
 function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
+    const [showListModal, setShowListModal] = useState(false);
+    const [listPrice, setListPrice] = useState<number>(69420);
+    const marketplace = useMarketplace();
     
     // Use the isMinted prop from item (set in allItems useMemo) or fallback to calculation
     const isMinted = item.isMinted ?? (totalMinted !== undefined && item.id <= totalMinted);
@@ -1200,12 +1203,51 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                     )}
                 </div>
                 
-                <div className="nft-actions flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    {isOwner ? (
-                        <Button className="w-full bg-white/10 hover:bg-white/20 text-white" variant="outline">
-                            List / Delist
-                        </Button>
-                    ) : isUnminted ? (
+                <div className="nft-actions flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                    {/* OWNER ACTIONS - List/Delist */}
+                    {isOwner && isMinted && !isListed && (
+                      <div className="flex flex-col gap-2">
+                        {!marketplace.isApproved ? (
+                          <Button 
+                            className="w-full bg-amber-500 text-black hover:bg-amber-400 font-bold"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              marketplace.approveMarketplace();
+                            }}
+                            disabled={marketplace.state.isPending}
+                          >
+                            {marketplace.state.isPending ? 'APPROVING...' : '1. APPROVE MARKETPLACE'}
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="w-full bg-green-500 text-black hover:bg-green-400 font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowListModal(true);
+                            }}
+                          >
+                            <Tag size={14} className="mr-2" /> LIST FOR SALE
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* If already listed by owner, show delist button */}
+                    {isOwner && isListed && (
+                      <Button 
+                        className="w-full bg-red-500/80 text-white hover:bg-red-500 font-bold"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          marketplace.delistNFT(item.id);
+                        }}
+                        disabled={marketplace.state.isPending}
+                      >
+                        {marketplace.state.isPending ? 'DELISTING...' : 'REMOVE LISTING'}
+                      </Button>
+                    )}
+                    
+                    {/* NON-OWNER ACTIONS */}
+                    {!isOwner && isUnminted ? (
                         <Button 
                             className="w-full bg-[#6cff61] text-black hover:bg-[#6cff61]/90 font-bold"
                             data-testid={`button-mint-${item.id}`}
@@ -1216,8 +1258,8 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                         >
                             <Zap size={14} className="mr-2" /> MINT NOW
                         </Button>
-                    ) : isListed ? (
-                        <>
+                    ) : !isOwner && isListed ? (
+                        <div className="flex gap-2">
                             <BuyButton 
                                 tokenId={item.id}
                                 price={contractPrice}
@@ -1234,8 +1276,8 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                             >
                                 OFFER
                             </Button>
-                        </>
-                    ) : (
+                        </div>
+                    ) : !isOwner && isMinted && !isListed ? (
                         <Button 
                             className="offer-btn w-full bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
                             onClick={(e) => {
@@ -1246,7 +1288,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                         >
                             MAKE OFFER
                         </Button>
-                    )}
+                    ) : null}
                     
                     {isAdmin && !isOwner && (
                         <Button size="icon" variant="destructive" onClick={onCancel} title="Admin: Cancel Listing">
@@ -1297,6 +1339,51 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                         </a>
                     </DialogFooter>
                 </DialogContent>
+            </Dialog>
+            
+            {/* List for Sale Modal */}
+            <Dialog open={showListModal} onOpenChange={setShowListModal}>
+              <DialogContent className="bg-black border-green-500/50 text-white sm:max-w-md z-[10000]" onClick={(e) => e.stopPropagation()}>
+                <DialogHeader>
+                  <DialogTitle className="font-orbitron text-green-400 flex items-center gap-2">
+                    <Tag size={18} /> LIST FOR SALE
+                  </DialogTitle>
+                  <DialogDescription>
+                    Set your price for <span className="text-primary font-bold">{item.name}</span>
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground font-mono">SALE PRICE ($BASED)</Label>
+                    <Input 
+                      type="number" 
+                      value={listPrice} 
+                      onChange={(e) => setListPrice(Number(e.target.value))}
+                      className="bg-white/5 border-white/10 text-white font-mono text-lg"
+                      min={1}
+                      placeholder="69420"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      You'll receive {Math.floor(listPrice * 0.99).toLocaleString()} $BASED after 1% platform fee
+                    </p>
+                  </div>
+                </div>
+                
+                <DialogFooter className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setShowListModal(false)}>CANCEL</Button>
+                  <Button 
+                    className="bg-green-500 text-black hover:bg-green-400 font-bold"
+                    onClick={() => {
+                      marketplace.listNFT(item.id, listPrice);
+                      setShowListModal(false);
+                    }}
+                    disabled={listPrice < 1 || marketplace.state.isPending}
+                  >
+                    {marketplace.state.isPending ? 'LISTING...' : 'CONFIRM LISTING'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
             </Dialog>
         </Card>
     );
