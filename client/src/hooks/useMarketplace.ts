@@ -334,12 +334,21 @@ export function useMarketplace() {
     if (!checkNetwork()) return;
 
     // Refetch approval status before listing to ensure we have latest
-    const { data: currentApproval } = await refetchApproval();
+    // Try multiple times with small delays to ensure blockchain state has propagated
+    let approvalConfirmed = isApproved;
+    
+    for (let i = 0; i < 3 && !approvalConfirmed; i++) {
+      const { data: currentApproval } = await refetchApproval();
+      approvalConfirmed = currentApproval === true;
+      if (!approvalConfirmed && i < 2) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+      }
+    }
 
-    if (!currentApproval && !isApproved) {
+    if (!approvalConfirmed) {
       toast({ 
         title: "Approval Required", 
-        description: "Please approve the marketplace first. Click 'Approve Marketplace' and wait for confirmation.", 
+        description: "Please approve the marketplace first. Click 'Approve Marketplace', confirm in your wallet, and wait for the transaction to complete before listing.", 
         variant: "destructive" 
       });
       return;

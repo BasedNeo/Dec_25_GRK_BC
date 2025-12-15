@@ -4,30 +4,44 @@
  * Parses blockchain/contract errors into user-friendly messages
  */
 
+const DEBUG = import.meta.env.DEV;
+
 export function parseContractError(error: any): string {
   const message = error?.message || error?.toString() || 'Unknown error';
+  const shortMessage = error?.shortMessage || '';
+  
+  // Log full error in dev for debugging
+  if (DEBUG) {
+    console.error('[ErrorParser] Full error:', error);
+    console.error('[ErrorParser] Message:', message);
+    console.error('[ErrorParser] Short message:', shortMessage);
+  }
   
   // User-initiated cancellations
-  if (message.includes('user rejected') || message.includes('User rejected')) return 'Transaction cancelled';
+  if (message.includes('user rejected') || message.includes('User rejected') || message.includes('User denied')) return 'Transaction cancelled';
   
   // Insufficient funds
   if (message.includes('insufficient funds')) return 'Not enough $BASED';
   
   // Ownership errors
-  if (message.includes('NotTokenOwner') || message.includes('Not token owner') || message.includes('not owner')) return 'You do not own this NFT';
+  if (message.includes('NotTokenOwner') || message.includes('Not token owner') || message.includes('not owner') || message.includes('caller is not owner')) return 'You do not own this NFT';
   
   // Listing errors
-  if (message.includes('ListingNotActive') || message.includes('Listing not active') || message.includes('not active')) return 'This listing no longer exists';
+  if (message.includes('ListingNotActive') || message.includes('Listing not active')) return 'This listing no longer exists';
   
-  // Approval errors
-  if (message.includes('Not approved') || message.includes('not approved') || message.includes('ERC721')) return 'Please approve marketplace first';
+  // Approval errors - check for ERC721 transfer errors which indicate approval issues
+  if (message.includes('Not approved') || message.includes('not approved')) return 'Please approve marketplace first';
+  if (message.includes('ERC721: caller is not token owner or approved') || message.includes('ERC721: transfer caller is not owner nor approved')) return 'Please approve marketplace first - click Approve and wait for confirmation';
+  if (message.includes('ERC721InsufficientApproval')) return 'Please approve marketplace first - click Approve and wait for confirmation';
   
   // Price errors
-  if (message.includes('PriceTooLow') || message.includes('price too low')) return 'Price must be at least 1 $BASED';
+  if (message.includes('PriceTooLow') || message.includes('price too low') || message.includes('Price too low')) return 'Price must be at least 1 $BASED';
+  if (message.includes('PriceMismatch') || message.includes('price mismatch')) return 'Price has changed - please refresh and try again';
   
   // Other marketplace errors
   if (message.includes('AlreadyListed') || message.includes('already listed')) return 'This NFT is already listed';
   if (message.includes('Offer expired') || message.includes('expired')) return 'This offer has expired';
+  if (message.includes('NoOffer') || message.includes('no offer')) return 'No active offer found';
   
   // Contract state errors
   if (message.includes('Pausable: paused') || message.includes('paused')) return 'Contract is paused';
@@ -39,10 +53,21 @@ export function parseContractError(error: any): string {
   if (message.includes('Voting ended') || message.includes('voting ended')) return 'Voting period has ended';
   if (message.includes('Voting not ended') || message.includes('not ended')) return 'Voting period not yet ended';
   
-  // Technical errors
+  // Technical errors with more context
+  if (message.includes('execution reverted')) {
+    // Try to extract revert reason
+    const revertMatch = message.match(/reverted:?\s*"?([^"]+)"?/i) || message.match(/reason="([^"]+)"/);
+    if (revertMatch && revertMatch[1]) {
+      const reason = revertMatch[1].trim();
+      if (DEBUG) console.error('[ErrorParser] Revert reason:', reason);
+      // Re-parse the revert reason
+      return parseContractError({ message: reason });
+    }
+    return 'Transaction reverted - you may not own this NFT or it may already be listed';
+  }
+  
   if (message.includes('JSON-RPC') || message.includes('Internal JSON-RPC error')) return 'Transaction failed - please try again';
-  if (message.includes('execution reverted')) return 'Transaction failed - please try again';
-  if (message.includes('gas required exceeds')) return 'Transaction failed - please try again';
+  if (message.includes('gas required exceeds')) return 'Transaction would fail - check that you own this NFT';
   if (message.includes('nonce')) return 'Transaction failed - please try again';
   
   // Network errors
