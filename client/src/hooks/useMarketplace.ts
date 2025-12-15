@@ -409,17 +409,6 @@ export function useMarketplace() {
 
     const priceWei = parseEther(String(priceInBased));
 
-    // Debug log for development
-    if (import.meta.env.DEV) {
-      console.log('[listNFT] Calling marketplace contract:', {
-        marketplace: MARKETPLACE_CONTRACT,
-        tokenId: BigInt(tokenId).toString(),
-        priceWei: priceWei.toString(),
-        priceInBased,
-        caller: address
-      });
-    }
-
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
       abi: MARKETPLACE_ABI,
