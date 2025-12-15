@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Cpu, ArrowLeft, Shield, Gem, Heart, Rocket } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 function StarField() {
   const stars = useMemo(() => 
@@ -47,26 +47,31 @@ function StarField() {
 }
 
 export default function Odyssey() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
       <StarField />
 
       <div className="relative z-10">
         {/* Fixed Back Button */}
-        <div className="fixed top-6 left-6 z-50">
+        <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50">
           <Link href="/">
             <Button 
               variant="ghost" 
-              className="bg-black/50 backdrop-blur-sm border border-cyan-500/30 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              className="bg-black/70 backdrop-blur-sm border border-cyan-500/30 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 active:bg-cyan-500/20 touch-manipulation text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2"
+              data-testid="button-back-odyssey"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Back</span>
             </Button>
           </Link>
         </div>
 
         {/* Video Section */}
-        <section className="pt-24 pb-8 px-4 sm:px-6">
+        <section className="pt-16 sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-6">
           <div className="max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -74,10 +79,10 @@ export default function Odyssey() {
               transition={{ duration: 0.8 }}
               className="relative"
             >
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl" />
-              <div className="relative aspect-video rounded-xl overflow-hidden border border-cyan-500/40 shadow-[0_0_40px_rgba(0,255,255,0.15)]">
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl sm:rounded-2xl blur-xl" />
+              <div className="relative aspect-video rounded-lg sm:rounded-xl overflow-hidden border border-cyan-500/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] sm:shadow-[0_0_40px_rgba(0,255,255,0.15)]">
                 <iframe
-                  src="https://player.vimeo.com/video/1145979392?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1"
+                  src="https://player.vimeo.com/video/1145979392?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&playsinline=1"
                   width="100%"
                   height="100%"
                   frameBorder="0"
@@ -86,6 +91,7 @@ export default function Odyssey() {
                   loading="lazy"
                   title="Based Guardians Odyssey"
                   className="bg-black"
+                  style={{ WebkitTransform: 'translateZ(0)' }}
                 />
               </div>
             </motion.div>
@@ -93,8 +99,8 @@ export default function Odyssey() {
         </section>
 
         {/* Main Content */}
-        <section className="py-8 px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto space-y-16">
+        <section className="py-6 sm:py-8 px-3 sm:px-6">
+          <div className="max-w-3xl mx-auto space-y-10 sm:space-y-16">
             {/* Title Section */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -107,9 +113,9 @@ export default function Odyssey() {
                 <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">Hidden Archive</span>
               </div>
               
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-orbitron text-white mb-4 leading-tight">
+              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black font-orbitron text-white mb-4 leading-tight">
                 Ignite Your Odyssey in the{" "}
-                <span className="block sm:inline text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400">
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400">
                   Based Guardians Realm
                 </span>
               </h1>

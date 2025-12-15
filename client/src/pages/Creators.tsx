@@ -24,7 +24,7 @@ function FoxIcon({ className }: { className?: string }) {
 }
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import conceptArt from "@assets/Studio-Project_1765831611867.png";
 import foxArt from "@assets/Physicalk_Fox1.png_1765831628596.webp";
 
@@ -71,26 +71,31 @@ function StarField() {
 }
 
 export default function Creators() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
       <StarField />
 
       <div className="relative z-10">
         {/* Fixed Back Button */}
-        <div className="fixed top-6 left-6 z-50">
+        <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50">
           <Link href="/">
             <Button 
               variant="ghost" 
-              className="bg-black/50 backdrop-blur-sm border border-orange-500/30 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+              className="bg-black/70 backdrop-blur-sm border border-orange-500/30 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 active:bg-orange-500/20 touch-manipulation text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2"
+              data-testid="button-back-creators"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Back</span>
             </Button>
           </Link>
         </div>
 
         {/* Hero Image Section */}
-        <section className="pt-24 pb-8 px-4 sm:px-6">
+        <section className="pt-16 sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-6">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -98,12 +103,13 @@ export default function Creators() {
               transition={{ duration: 1 }}
               className="relative"
             >
-              <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/15 to-amber-500/15 rounded-2xl blur-xl" />
-              <div className="relative rounded-xl overflow-hidden border border-orange-500/30 shadow-[0_0_50px_rgba(251,146,60,0.15)]">
+              <div className="absolute -inset-1 sm:-inset-2 bg-gradient-to-r from-orange-500/15 to-amber-500/15 rounded-xl sm:rounded-2xl blur-lg sm:blur-xl" />
+              <div className="relative rounded-lg sm:rounded-xl overflow-hidden border border-orange-500/30 shadow-[0_0_30px_rgba(251,146,60,0.15)] sm:shadow-[0_0_50px_rgba(251,146,60,0.15)]">
                 <img 
                   src={foxArt} 
                   alt="Based Guardian Fox" 
                   className="w-full h-auto"
+                  loading="eager"
                 />
               </div>
             </motion.div>
@@ -111,8 +117,8 @@ export default function Creators() {
         </section>
 
         {/* Main Content */}
-        <section className="py-8 px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto space-y-16">
+        <section className="py-6 sm:py-8 px-3 sm:px-6">
+          <div className="max-w-3xl mx-auto space-y-10 sm:space-y-16">
             {/* Title Section */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}

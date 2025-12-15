@@ -385,3 +385,182 @@ button:where([class*="buy"], [class*="Buy"]) {
   background: rgba(239, 68, 68, 0.1);
   border-radius: 8px;
 }
+
+/* ========================================
+   MOBILE RESPONSIVENESS ENHANCEMENTS
+   ======================================== */
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase tap targets on touch devices */
+  button, a, [role="button"], .clickable {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Remove hover states that don't work on touch */
+  .hover\:opacity-100:hover {
+    opacity: inherit;
+  }
+}
+
+/* Small phones (iPhone SE, Galaxy S8) */
+@media (max-width: 374px) {
+  .font-orbitron {
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+  
+  .text-4xl, .text-5xl, .text-6xl {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .px-6, .px-8 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .gap-6, .gap-8 {
+    gap: 1rem !important;
+  }
+}
+
+/* Standard phones */
+@media (max-width: 640px) {
+  /* Hero/Title Sections */
+  .text-4xl { font-size: 1.75rem !important; }
+  .text-5xl { font-size: 2rem !important; }
+  .text-6xl { font-size: 2.25rem !important; }
+  
+  /* Content spacing */
+  section {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Video containers */
+  .aspect-video {
+    border-radius: 0.5rem;
+  }
+  
+  /* Cards and containers */
+  .rounded-2xl {
+    border-radius: 0.75rem;
+  }
+  
+  .p-8 {
+    padding: 1.25rem !important;
+  }
+  
+  /* Fix text readability */
+  .text-lg {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+  }
+}
+
+/* Tablets */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .text-5xl { font-size: 2.5rem !important; }
+  .text-6xl { font-size: 3rem !important; }
+}
+
+/* Cross-browser compatibility */
+/* Safari flexbox fixes */
+.flex {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+}
+
+/* Firefox smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area insets for notched devices */
+.safe-area-padding {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* Prevent zoom on input focus (iOS) */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* Webkit scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 #0a0a0a;
+}
+
+/* Prevent text selection on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hardware acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .border-cyan-500\/20, .border-cyan-500\/30 {
+    border-color: #00ffff !important;
+  }
+  
+  .text-gray-300, .text-gray-400 {
+    color: #ffffff !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
