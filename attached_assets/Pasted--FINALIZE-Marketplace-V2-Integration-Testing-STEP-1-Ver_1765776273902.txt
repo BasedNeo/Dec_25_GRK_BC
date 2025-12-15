@@ -1,0 +1,96 @@
+## FINALIZE: Marketplace V2 Integration & Testing
+
+### STEP 1: Verify Constants Updated
+
+In `client/src/lib/constants.ts`, confirm this is set:
+
+export const MARKETPLACE_CONTRACT = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c";### STEP 2: Add Gas Limits to All Transactions
+
+In `client/src/hooks/useMarketplace.ts`, add `gas: BigInt(X)` to EVERY writeContract call:
+
+| Function | Gas Limit |
+|----------|-----------|
+| approveMarketplace | `gas: BigInt(200000)` |
+| listNFT | `gas: BigInt(300000)` |
+| delistNFT | `gas: BigInt(150000)` |
+| buyNFT | `gas: BigInt(400000)` |
+| makeOffer | `gas: BigInt(300000)` |
+| acceptOffer | `gas: BigInt(400000)` |
+| cancelOffer | `gas: BigInt(200000)` |
+
+In `client/src/hooks/useMint.ts`:
+| Function | Gas Limit |
+|----------|-----------|
+| mint | `gas: BigInt(500000)` |
+
+In `client/src/hooks/useGovernance.ts`:
+| Function | Gas Limit |
+|----------|-----------|
+| createProposal | `gas: BigInt(500000)` |
+| vote | `gas: BigInt(200000)` |
+| finalizeProposal | `gas: BigInt(300000)` |
+| cancelProposal | `gas: BigInt(200000)` |
+
+### STEP 3: Update Marketplace ABI
+
+In `useMarketplace.ts`, add this new function to MARKETPLACE_ABI:
+
+{
+  name: 'isListingValid',
+  type: 'function',
+  stateMutability: 'view',
+  inputs: [{ name: 'tokenId', type: 'uint256' }],
+  outputs: [{ name: '', type: 'bool' }],
+},### STEP 4: Update UI Messaging
+
+In `EscrowMarketplace.tsx` and any related components:
+
+Replace any text about "escrow":
+- OLD: "NFT held in escrow"
+- NEW: "NFT stays in your wallet until sold"
+
+- OLD: "Your NFT will be transferred to the marketplace"  
+- NEW: "Your NFT remains in your wallet. Only transfers when sold."
+
+### STEP 5: Show Listed NFTs in Portfolio
+
+In the Portfolio/Inventory section, listed NFTs should still appear (since they're still in the wallet). Add a "LISTED" badge:
+
+{item.isListed && (
+  <Badge className="absolute top-2 left-2 bg-green-500/20 text-green-400 border-green-500/50">
+    LISTED
+  </Badge>
+)}### STEP 6: Test Checklist
+
+After applying these changes, test the following:
+
+1. **Connect Wallet** - Should connect without issues
+2. **View Portfolio** - Should show all NFTs you own
+3. **Approve Marketplace** - Click approve, confirm in wallet, should succeed
+4. **List NFT** - List an NFT, confirm in wallet:
+   - ✅ Transaction succeeds
+   - ✅ NFT still shows in your portfolio (with LISTED badge)
+   - ✅ NFT appears in marketplace Buy tab
+   - ✅ You can still vote with this NFT
+5. **Delist NFT** - Remove listing, NFT stays in portfolio
+6. **Make Offer** - Make offer on someone else's NFT
+7. **Buy NFT** - If there's a listing from another wallet, try buying
+
+### STEP 7: Console Verification
+
+Open browser console (F12) and check:
+- No errors on page load
+- Contract calls show correct address: `0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c`
+- Transactions complete without "exceeds gas limit" errors
+
+### Key Contract Addresses:
+| Contract | Address |
+|----------|---------|
+| NFT | `0xaE51dc5fD1499A129f8654963560f9340773ad59` |
+| Marketplace V2 | `0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c` |
+| Governance | `0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995` |
+
+### Summary:
+- V2 uses OpenSea-style listings (NFT stays in wallet)
+- All transactions need explicit gas limits for BasedAI network
+- Users must re-approve the new V2 marketplace (old approvals don't carry over)
