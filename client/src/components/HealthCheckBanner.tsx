@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { useAccount } from 'wagmi';
+
+const ADMIN_WALLETS = [
+  '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
+  '0xb1362caf09189887599ed40f056712b1a138210c',
+  '0xabce9e63a9ae51e215bb10c9648f4c0f400c5847',
+  '0xbba49256a93a06fcf3b0681fead2b4e3042b9124',
+  '0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af',
+];
 
 interface HealthStatus {
   rpc: 'checking' | 'healthy' | 'degraded' | 'down';
@@ -10,9 +19,14 @@ interface HealthStatus {
 }
 
 export function HealthCheckBanner() {
+  const { address, isConnected } = useAccount();
   const [health, setHealth] = useState<HealthStatus>({ rpc: 'checking', contracts: 'checking' });
   const [dismissed, setDismissed] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+
+  const isAdmin = isConnected && address && ADMIN_WALLETS.some(
+    admin => admin.toLowerCase() === address.toLowerCase()
+  );
 
   const checkHealth = async () => {
     setHealth({ rpc: 'checking', contracts: 'checking' });
@@ -89,7 +103,7 @@ export function HealthCheckBanner() {
 
   const hasIssues = health.rpc === 'down' || health.rpc === 'degraded' || health.contracts === 'paused' || health.contracts === 'error';
 
-  if (!hasIssues || dismissed) return null;
+  if (!isAdmin || !hasIssues || dismissed) return null;
 
   const bgColor = health.rpc === 'down' ? 'bg-red-500/10 border-red-500/50' : 'bg-amber-500/10 border-amber-500/50';
   const textColor = health.rpc === 'down' ? 'text-red-400' : 'text-amber-400';
