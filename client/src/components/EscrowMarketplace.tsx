@@ -987,7 +987,31 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
             </TabsList>
             
             <TabsContent value="buy" className="space-y-8">
-                {displayedItems.length > 0 ? (
+                {isLoading || directLoading ? (
+                    <div className="flex flex-col items-center justify-center py-24 border border-dashed border-cyan-500/30 rounded-xl bg-gradient-to-b from-cyan-950/20 to-transparent">
+                        <div className="relative mb-8">
+                            <div className="w-24 h-24 rounded-full border-2 border-cyan-500/30 flex items-center justify-center">
+                                <ShieldCheck className="w-12 h-12 text-cyan-400 animate-pulse" />
+                            </div>
+                            <div className="absolute inset-0 border-t-2 border-cyan-400 rounded-full animate-spin" style={{ animationDuration: '2s' }}></div>
+                            <div className="absolute inset-[-4px] border-t-2 border-purple-500/50 rounded-full animate-spin" style={{ animationDuration: '3s', animationDirection: 'reverse' }}></div>
+                        </div>
+                        <h3 className="text-2xl font-orbitron text-white mb-3 animate-pulse">INITIALIZING GUARDIAN NETWORK</h3>
+                        <p className="text-cyan-400 font-mono text-sm mb-2">Syncing with BasedAI blockchain...</p>
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                            <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+                            <span>Loading 3,732 unique Guardians, Frogs & Creatures</span>
+                        </div>
+                        <div className="mt-8 flex gap-4">
+                            <div className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded text-cyan-400 font-mono text-xs animate-pulse">
+                                <Zap size={12} className="inline mr-1" /> DECRYPTING METADATA
+                            </div>
+                            <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded text-purple-400 font-mono text-xs animate-pulse" style={{ animationDelay: '0.5s' }}>
+                                <RefreshCw size={12} className="inline mr-1 animate-spin" /> SCANNING LISTINGS
+                            </div>
+                        </div>
+                    </div>
+                ) : displayedItems.length > 0 ? (
                     <>
                         {/* Live Minting Status Banner */}
                         {contractStats && (
