@@ -343,6 +343,40 @@ export function useMarketplace() {
       return;
     }
 
+    // Pre-flight check: Verify NFT is not already listed
+    try {
+      const response = await fetch(`https://mainnet.basedaibridge.com/rpc/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_call',
+          params: [{
+            to: MARKETPLACE_CONTRACT,
+            data: `0x107a274a${BigInt(tokenId).toString(16).padStart(64, '0')}` // getListing(uint256)
+          }, 'latest']
+        })
+      });
+      const result = await response.json();
+      if (result.result && result.result !== '0x') {
+        // Parse the active flag (4th return value, offset 96 bytes = 192 hex chars + 2 for 0x prefix)
+        const activeHex = result.result.slice(194, 258);
+        const isActive = parseInt(activeHex, 16) === 1;
+        if (isActive) {
+          toast({ 
+            title: "Already Listed", 
+            description: "This NFT is already listed for sale. Remove the existing listing first.", 
+            variant: "destructive" 
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      // If check fails, continue anyway - the contract will revert if needed
+      console.warn('[listNFT] Pre-flight listing check failed:', e);
+    }
+
     // Refetch approval status before listing to ensure we have latest
     // Try multiple times with small delays to ensure blockchain state has propagated
     let approvalConfirmed = isApproved;

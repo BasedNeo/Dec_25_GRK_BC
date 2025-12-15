@@ -1,0 +1,70 @@
+## CRITICAL FIX: Approval Transaction Not Working
+
+The marketplace approval button is broken - the transaction completes in MetaMask but never gets recorded on-chain. 
+
+### The Problem:
+The approval calls `setApprovalForAll` but either:
+1. It's calling the WRONG contract (marketplace instead of NFT)
+2. The function signature is wrong
+3. The chainId is missing
+
+### Fix in `useMarketplace.ts` or wherever `approveMarketplace` is defined:
+
+Find the approveMarketplace function and ensure it looks EXACTLY like this:
+
+const approveMarketplace = async () => {
+  if (!checkNetwork()) return;
+  setState(prev => ({ ...prev, action: 'approve' }));
+
+  toast({
+    title: "Approve Marketplace",
+    description: "Please confirm to allow the marketplace to transfer your NFTs...",
+  });
+
+  // CRITICAL: This must call the NFT CONTRACT, not the marketplace!
+  writeContract({
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`,  // NFT Contract
+    abi: [{
+      name: 'setApprovalForAll',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'operator', type: 'address' },
+        { name: 'approved', type: 'bool' }
+      ],
+      outputs: []
+    }],
+    functionName: 'setApprovalForAll',
+    args: [
+      '0x88161576266dCDedb19342aC2197267282520793' as `0x${string}`,  // Marketplace as operator
+      true
+    ],
+    chainId: 32323,  // BasedAI chain - REQUIRED!
+  });
+};### Key Requirements:
+1. `address` MUST be the NFT contract: `0xaE51dc5fD1499A129f8654963560f9340773ad59`
+2. `args[0]` MUST be the marketplace: `0x88161576266dCDedb19342aC2197267282520793`
+3. `chainId` MUST be included: `32323`
+
+### Also verify the isApproved check reads from the NFT contract:
+
+const { data: isApproved } = useReadContract({
+  address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`,  // NFT Contract
+  abi: [{
+    name: 'isApprovedForAll',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'operator', type: 'address' }
+    ],
+    outputs: [{ type: 'bool' }]
+  }],
+  functionName: 'isApprovedForAll',
+  args: address ? [
+    address,  // Connected wallet
+    '0x88161576266dCDedb19342aC2197267282520793'  // Marketplace
+  ] : undefined,
+  chainId: 32323,
+  query: { enabled: !!address }
+});
