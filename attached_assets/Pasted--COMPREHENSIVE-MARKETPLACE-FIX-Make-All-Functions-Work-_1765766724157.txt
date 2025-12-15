@@ -1,0 +1,242 @@
+## COMPREHENSIVE MARKETPLACE FIX: Make All Functions Work Seamlessly
+
+The marketplace needs a complete overhaul to work commercially. Fix ALL of these issues:
+
+---
+
+### 1. APPROVAL FLOW (Most Critical)
+
+The NFT contract must approve the marketplace BEFORE any listing can happen.
+
+**In useMarketplace.ts:**
+
+// Approval calls setApprovalForAll on the NFT CONTRACT
+const approveMarketplace = async () => {
+  if (!checkNetwork()) return;
+  setState(prev => ({ ...prev, action: 'approve' }));
+  
+  writeContract({
+    address: '0xaE51dc5fD1499A129f8654963560f9340773ad59' as `0x${string}`, // NFT Contract
+    abi: [{
+      name: 'setApprovalForAll',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'operator', type: 'address' },
+        { name: 'approved', type: 'bool' }
+      ],
+      outputs: []
+    }],
+    functionName: 'setApprovalForAll',
+    args: ['0x88161576266dCDedb19342aC2197267282520793' as `0x${string}`, true],
+    chainId: 32323,
+  });
+};
+
+// Listing calls listNFT on the MARKETPLACE CONTRACT
+const listNFT = async (tokenId: number, priceInBased: number) => {
+  if (!checkNetwork()) return;
+  if (!isApproved) {
+    toast({ title: "Approval Required", description: "Approve marketplace first", variant: "destructive" });
+    return;
+  }
+  
+  setState(prev => ({ ...prev, action: 'list' }));
+  const priceWei = parseEther(String(priceInBased));
+  
+  writeContract({
+    address: '0x88161576266dCDedb19342aC2197267282520793' as `0x${string}`, // Marketplace
+    abi: MARKETPLACE_ABI,
+    functionName: 'listNFT',
+    args: [BigInt(tokenId), priceWei],
+    chainId: 32323,
+  });
+};---
+
+### 2. OWNER DETECTION & UI
+
+When viewing any NFT, detect if the connected wallet owns it:
+
+const { address } = useAccount();
+
+// Fetch actual owner from NFT contract
+const { data: actualOwner } = useReadContract({
+  address: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+  abi: [{ name: 'ownerOf', type: 'function', stateMutability: 'view', 
+          inputs: [{ name: 'tokenId', type: 'uint256' }], 
+          outputs: [{ type: 'address' }] }],
+  functionName: 'ownerOf',
+  args: [BigInt(nft.id)],
+  chainId: 32323,
+});
+
+const isOwner = address && actualOwner && 
+  address.toLowerCase() === actualOwner.toLowerCase();---
+
+### 3. CORRECT BUTTON LOGIC
+
+{/* === OWNER CONTROLS === */}
+{isOwner && (
+  <div className="space-y-3 p-4 border border-green-500/30 rounded-lg bg-green-500/5">
+    <p className="text-xs font-mono text-green-400">YOU OWN THIS NFT</p>
+    
+    {!isApproved ? (
+      // Step 1: Approve
+      <Button className="w-full bg-amber-500 text-black font-bold"
+        onClick={() => marketplace.approveMarketplace()}
+        disabled={marketplace.state.isPending}>
+        {marketplace.state.isPending ? 'APPROVING...' : 'STEP 1: APPROVE MARKETPLACE'}
+      </Button>
+    ) : !isListed ? (
+      // Step 2: List
+      <>
+        <Input type="number" value={listPrice} onChange={(e) => setListPrice(Number(e.target.value))}
+          placeholder="Enter price in $BASED" className="bg-black/50 border-white/20" />
+        <Button className="w-full bg-green-500 text-black font-bold"
+          onClick={() => marketplace.listNFT(nft.id, listPrice)}
+          disabled={marketplace.state.isPending || listPrice < 1}>
+          {marketplace.state.isPending ? 'LISTING...' : 'LIST FOR SALE'}
+        </Button>
+      </>
+    ) : (
+      // Already Listed: Show delist option
+      <>
+        <p className="text-sm text-cyan-400">Listed for {nft.price?.toLocaleString()} $BASED</p>
+        <Button className="w-full bg-red-500 text-white font-bold"
+          onClick={() => marketplace.delistNFT(nft.id)}>
+          REMOVE LISTING
+        </Button>
+      </>
+    )}
+  </div>
+)}
+
+{/* === BUYER CONTROLS (only show if NOT owner) === */}
+{!isOwner && nft.isMinted && (
+  <div className="space-y-3">
+    {isListed ? (
+      <>
+        <BuyButton tokenId={nft.id} price={nft.price} className="w-full" />
+        <Button className="w-full bg-cyan-500 text-black" onClick={() => openOfferModal()}>
+          MAKE OFFER
+        </Button>
+      </>
+    ) : (
+      <Button className="w-full bg-cyan-500 text-black" onClick={() => openOfferModal()}>
+        MAKE OFFER
+      </Button>
+    )}
+  </div>
+)}---
+
+### 4. TRANSACTION STATE HANDLING
+
+Show clear feedback for every transaction state:
+
+// In your UI, show transaction progress
+{marketplace.state.isPending && (
+  <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded animate-pulse">
+    <p className="text-cyan-400 text-sm">⏳ Confirm in your wallet...</p>
+  </div>
+)}
+
+{marketplace.state.isConfirming && (
+  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded animate-pulse">
+    <p className="text-amber-400 text-sm">⏳ Transaction confirming on blockchain...</p>
+  </div>
+)}
+
+{marketplace.state.isSuccess && (
+  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded">
+    <p className="text-green-400 text-sm">✅ Transaction successful!</p>
+  </div>
+)}---
+
+### 5. AUTO-REFRESH AFTER TRANSACTIONS
+
+After any successful transaction, refresh the relevant data:
+
+useEffect(() => {
+  if (marketplace.state.isSuccess) {
+    // Refresh all marketplace data
+    refetchApproval();
+    refetchListings();
+    refetchNFTData();
+    
+    // Reset state after 3 seconds
+    setTimeout(() => marketplace.reset(), 3000);
+  }
+}, [marketplace.state.isSuccess]);---
+
+### 6. ERROR MESSAGES
+
+Parse blockchain errors into user-friendly messages:
+
+const parseError = (error: string): string => {
+  if (error.includes('user rejected')) return 'Transaction cancelled';
+  if (error.includes('insufficient funds')) return 'Not enough $BASED';
+  if (error.includes('NotTokenOwner')) return 'You do not own this NFT';
+  if (error.includes('ListingNotActive')) return 'This listing no longer exists';
+  if (error.includes('not approved')) return 'Please approve marketplace first';
+  if (error.includes('PriceTooLow')) return 'Price must be at least 1 $BASED';
+  return 'Transaction failed - please try again';
+};---
+
+### 7. BUYING FLOW
+
+The buy function must fetch the REAL price from the contract:
+
+const buyNFT = async (tokenId: number) => {
+  // Fetch current listing from contract to get real price
+  const listing = await getListing(tokenId);
+  if (!listing.active) {
+    toast({ title: "Listing Gone", description: "This NFT is no longer for sale" });
+    return;
+  }
+  
+  // Use the on-chain price, not the UI price
+  writeContract({
+    address: MARKETPLACE_CONTRACT,
+    abi: MARKETPLACE_ABI,
+    functionName: 'buyNFT',
+    args: [BigInt(tokenId)],
+    value: listing.priceWei, // Price from contract
+    chainId: 32323,
+  });
+};---
+
+### 8. OFFERS SYSTEM
+
+Make offers work properly:
+
+const makeOffer = async (tokenId: number, amountBased: number, days: number = 7) => {
+  const amountWei = parseEther(String(amountBased));
+  
+  writeContract({
+    address: MARKETPLACE_CONTRACT,
+    abi: MARKETPLACE_ABI,
+    functionName: 'makeOffer',
+    args: [BigInt(tokenId), BigInt(days)],
+    value: amountWei, // Offer amount sent with transaction
+    chainId: 32323,
+  });
+};---
+
+### SUMMARY CHECKLIST:
+
+- [ ] Approval calls NFT contract, not marketplace
+- [ ] Listing calls marketplace contract with price in wei
+- [ ] Owner detection uses ownerOf from NFT contract
+- [ ] Show correct buttons based on owner status
+- [ ] Clear transaction state feedback (pending/confirming/success/error)
+- [ ] Auto-refresh data after successful transactions
+- [ ] User-friendly error messages
+- [ ] Buy uses on-chain price verification
+- [ ] Offers include value and expiration
+
+After applying all these fixes, test the complete flow:
+1. View your NFT → shows owner controls
+2. Click Approve → confirm in wallet → wait → shows "approved"
+3. Enter price → Click List → confirm in wallet → NFT listed
+4. View as different wallet → shows Buy/Offer buttons
+5. Click Buy → confirm → NFT transfers, seller gets paid
