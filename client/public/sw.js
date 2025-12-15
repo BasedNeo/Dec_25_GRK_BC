@@ -1,5 +1,59 @@
 // Service Worker for Based Guardians PWA
-const CACHE_NAME = 'based-guardians-v3';
+const CACHE_NAME = 'based-guardians-v4';
+
+// Push Notification Handler
+self.addEventListener('push', function(event) {
+  const options = event.data ? event.data.json() : {};
+  
+  const notificationOptions = {
+    body: options.body || 'New marketplace activity!',
+    icon: '/favicon.png',
+    badge: '/favicon.png',
+    vibrate: [100, 50, 100],
+    data: {
+      url: options.url || '/',
+      type: options.type || 'general'
+    },
+    actions: [
+      { action: 'view', title: 'View' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ],
+    tag: options.tag || 'marketplace-notification',
+    renotify: true
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(
+      options.title || 'Based Guardians',
+      notificationOptions
+    )
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(urlToOpen);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
 const STATIC_ASSETS = [
   '/',
   '/index.html',
