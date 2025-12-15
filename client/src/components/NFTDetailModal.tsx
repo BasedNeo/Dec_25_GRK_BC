@@ -525,59 +525,48 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                   </div>
                 )}
 
-                {/* BUYER CONTROLS - Only show if NOT owner */}
-                {!isOwner && (
-                  <div className="flex flex-col sm:flex-row gap-3 items-center">
-                    <div className="flex-1 w-full">
-                         <div className="text-[10px] text-muted-foreground font-mono mb-1 uppercase tracking-wider">
-                           {isListed ? 'Listed Price' : 'Mint Price'}
-                         </div>
-                         <div className="text-2xl font-orbitron text-white font-bold flex items-baseline gap-1">
-                            {isListed ? currentListingPrice?.toLocaleString() : MINT_PRICE.toLocaleString()} <span className="text-sm text-primary">$BASED</span>
-                         </div>
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        {isListed ? (
-                          <>
-                            <BuyButton 
-                              tokenId={nft.id} 
-                              price={currentListingPrice || MINT_PRICE} 
-                              className="flex-1 sm:w-32"
-                              onBuy={(id, price) => {
-                                  toast({ 
-                                      title: "Purchase Initiated", 
-                                      description: `Buying Guardian #${id} for ${price.toLocaleString()} $BASED...`,
-                                      className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
-                                  });
-                              }}
-                            />
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 sm:w-32 border-primary/50 text-primary hover:bg-primary/10 font-orbitron font-bold tracking-wider"
-                              onClick={() => setShowOfferModal(true)}
-                              data-testid="button-make-offer"
-                            >
-                              MAKE OFFER
-                            </Button>
-                          </>
-                        ) : nft.owner ? (
-                          <Button 
-                            className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-orbitron font-bold"
-                            onClick={() => setShowOfferModal(true)}
-                            data-testid="button-make-offer"
-                          >
-                            MAKE OFFER
-                          </Button>
-                        ) : (
-                          <Button 
-                            className="w-full bg-green-500 text-black hover:bg-green-400 font-orbitron font-bold"
-                            onClick={() => setShowMintExplainerModal(true)}
-                            data-testid="button-mint-nft"
-                          >
-                            MINT an NFT
-                          </Button>
-                        )}
-                    </div>
+                {/* BUYER CONTROLS - Only show if NOT owner AND NFT is minted */}
+                {!isOwner && nft.owner && (
+                  <div className="space-y-3">
+                    {isListed ? (
+                      <>
+                        <div className="flex items-center justify-between p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                          <div>
+                            <p className="text-xs text-muted-foreground font-mono">LISTED PRICE</p>
+                            <p className="text-xl font-orbitron text-cyan-400 font-bold">
+                              {currentListingPrice?.toLocaleString()} $BASED
+                            </p>
+                          </div>
+                        </div>
+                        <BuyButton 
+                          tokenId={nft.id} 
+                          price={currentListingPrice || MINT_PRICE} 
+                          className="w-full"
+                          onBuy={(id, price) => {
+                              toast({ 
+                                  title: "Purchase Initiated", 
+                                  description: `Buying Guardian #${id} for ${price.toLocaleString()} $BASED...`,
+                                  className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+                              });
+                          }}
+                        />
+                        <Button 
+                          className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-orbitron font-bold"
+                          onClick={() => setShowOfferModal(true)}
+                          data-testid="button-make-offer"
+                        >
+                          MAKE OFFER
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-orbitron font-bold"
+                        onClick={() => setShowOfferModal(true)}
+                        data-testid="button-make-offer"
+                      >
+                        MAKE OFFER
+                      </Button>
+                    )}
                   </div>
                 )}
 
