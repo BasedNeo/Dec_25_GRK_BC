@@ -32,6 +32,7 @@ import {
   calculateVotePercentage,
   Proposal
 } from '@/hooks/useGovernance';
+import { MOCK_PROPOSALS } from '@/lib/mockData';
 
 const CATEGORIES = ['Community', 'Treasury', 'Roadmap', 'Partnership', 'Other'];
 
@@ -228,23 +229,18 @@ export function Governance() {
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
                 <Vote className="w-5 h-5 text-primary" /> PROPOSALS
               </h2>
-              {governance.isLoadingCount ? (
-                <Card className="p-8 bg-white/5 border-white/10 text-center">
-                  <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
-                  <p className="text-muted-foreground">Loading proposals...</p>
-                </Card>
-              ) : governance.proposalCount === 0 ? (
+              {MOCK_PROPOSALS.length === 0 ? (
                 <Card className="p-8 bg-white/5 border-white/10 text-center">
                   <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>
                 </Card>
               ) : (
-                Array.from({ length: governance.proposalCount }, (_, i) => i + 1).reverse().map(id => (
-                  <ProposalCard 
-                    key={id}
-                    proposalId={id}
-                    isExpanded={expandedProposal === id}
-                    onToggle={() => setExpandedProposal(expandedProposal === id ? null : id)}
+                MOCK_PROPOSALS.map(proposal => (
+                  <MockProposalCard 
+                    key={proposal.id}
+                    proposal={proposal}
+                    isExpanded={expandedProposal === proposal.id}
+                    onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
                     onVote={governance.vote}
                     isPending={governance.isPending}
                     isConfirming={governance.isConfirming}
@@ -441,6 +437,147 @@ function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isC
                       disabled={isPending || isConfirming}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       data-testid={`vote-against-${proposalId}`}
+                    >
+                      {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded bg-white/5 border border-white/10 text-center text-sm text-muted-foreground">
+                    Voting has ended for this proposal
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+    </motion.div>
+  );
+}
+
+// Mock Proposal Card for displaying MOCK_PROPOSALS
+interface MockProposalCardProps {
+  proposal: typeof MOCK_PROPOSALS[0];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onVote: (id: number, support: boolean) => void;
+  isPending: boolean;
+  isConfirming: boolean;
+  quorumPercentage: number;
+}
+
+function MockProposalCard({ proposal, isExpanded, onToggle, onVote, isPending, isConfirming, quorumPercentage }: MockProposalCardProps) {
+  const isActive = proposal.status === 'Active';
+  const endTime = new Date(proposal.endTime);
+  const now = new Date();
+  const timeRemainingMs = endTime.getTime() - now.getTime();
+  const daysRemaining = Math.max(0, Math.ceil(timeRemainingMs / (1000 * 60 * 60 * 24)));
+  
+  // Calculate vote percentages
+  const forVotes = proposal.options.find(o => o.id === 'yes' || o.id === 'spacecraft')?.votes || 0;
+  const againstVotes = proposal.options.find(o => o.id === 'no' || o.id === 'planet')?.votes || 0;
+  const totalVotes = proposal.totalVotes || (forVotes + againstVotes);
+  const forPercent = totalVotes > 0 ? Math.round((forVotes / totalVotes) * 100) : 50;
+  const againstPercent = totalVotes > 0 ? Math.round((againstVotes / totalVotes) * 100) : 50;
+
+  const statusColors: Record<string, string> = {
+    'Active': 'border-green-500 text-green-400',
+    'Passed': 'border-blue-500 text-blue-400',
+    'Rejected': 'border-red-500 text-red-400',
+    'Executed': 'border-purple-500 text-purple-400'
+  };
+
+  return (
+    <motion.div layout>
+      <Card className="bg-white/5 border-white/10 overflow-hidden" data-testid={`proposal-card-${proposal.id}`}>
+        <div 
+          className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
+          onClick={onToggle}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold font-mono">
+                #{proposal.id}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs border-white/20">
+                    {proposal.type === 'binary' ? 'Binary Vote' : 'Multiple Choice'}
+                  </Badge>
+                  <Badge variant="outline" className={`text-xs ${statusColors[proposal.status]}`}>
+                    {proposal.status}
+                  </Badge>
+                </div>
+                <h3 className="font-bold text-white text-sm md:text-base">{proposal.title}</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  <span>{totalVotes} votes</span>
+                </div>
+                {isActive && (
+                  <div className="flex items-center gap-1 text-xs text-primary">
+                    <Clock className="w-3 h-3" />
+                    <span>{daysRemaining} days left</span>
+                  </div>
+                )}
+              </div>
+              {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 border-t border-white/10 pt-4 space-y-4">
+                <p className="text-sm text-muted-foreground">{proposal.description}</p>
+                
+                {/* Vote Options */}
+                <div className="space-y-2">
+                  {proposal.options.map(option => {
+                    const optionPercent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                    return (
+                      <div key={option.id} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-white">{option.label}</span>
+                          <span className="text-muted-foreground">{option.votes} votes ({optionPercent}%)</span>
+                        </div>
+                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${optionPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {isActive ? (
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => onVote(proposal.id, true)}
+                      disabled={isPending || isConfirming}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      data-testid={`vote-for-${proposal.id}`}
+                    >
+                      {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <CheckCircle2 className="w-4 h-4 mr-2" /> VOTE FOR
+                    </Button>
+                    <Button 
+                      onClick={() => onVote(proposal.id, false)}
+                      disabled={isPending || isConfirming}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      data-testid={`vote-against-${proposal.id}`}
                     >
                       {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
