@@ -131,12 +131,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           const activeListings = await marketplaceContract.getActiveListings();
           const listingIds = activeListings.map((id: bigint) => Number(id));
           setDirectListingIds(listingIds);
-        } catch (listingError) {
-          console.error('[EscrowMarketplace] Error fetching active listings:', listingError);
+        } catch {
+          // Listing fetch failed silently
         }
         
-      } catch (error) {
-        console.error('[EscrowMarketplace] Error fetching contract data:', error);
+      } catch {
+        // Contract data fetch failed silently
       }
     };
     fetchContractData();
@@ -170,15 +170,15 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
               const priceInBased = parseFloat(ethers.formatEther(listing.price));
               prices.set(tokenId, priceInBased);
             }
-          } catch (e) {
-            console.error(`[EscrowMarketplace] Failed to fetch price for token ${tokenId}:`, e);
+          } catch {
+            // Skip failed price fetch
           }
         });
         
         await Promise.all(pricePromises);
         setListingPrices(prices);
-      } catch (error) {
-        console.error('[EscrowMarketplace] Error fetching listing prices:', error);
+      } catch {
+        // Price fetch failed silently
       }
     };
     
@@ -697,8 +697,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           // Offers will auto-refresh from blockchain via useOffersForOwner hook
           confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
           trackEvent('nft_accept_offer', 'Marketplace', `Item #${tokenId}`);
-      } catch (error) {
-          console.error('Accept offer failed:', error);
+      } catch {
+          // Error handled by marketplace hook
       }
   };
 
@@ -726,8 +726,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       try {
           await marketplace.listNFT(tokenId, price);
           trackEvent('nft_list', 'Marketplace', `Item #${tokenId}`, price);
-      } catch (error) {
-          console.error('List failed:', error);
+      } catch {
+          // Error handled by marketplace hook
       }
   };
 
@@ -735,8 +735,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       try {
           await marketplace.delistNFT(tokenId);
           trackEvent('nft_delist', 'Marketplace', `Item #${tokenId}`);
-      } catch (error) {
-          console.error('Delist failed:', error);
+      } catch {
+          // Error handled by marketplace hook
       }
   };
 
@@ -744,8 +744,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       try {
           await marketplace.approveMarketplace();
           trackEvent('marketplace_approve', 'Marketplace');
-      } catch (error) {
-          console.error('Approval failed:', error);
+      } catch {
+          // Error handled by marketplace hook
       }
   };
 
@@ -808,8 +808,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
             
             // Show confetti on success (hook handles toast)
             confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
-        } catch (error) {
-            console.error('Buy failed:', error);
+        } catch {
             toast({ 
                 title: "Purchase Failed", 
                 description: "Could not complete purchase. Please try again.",
