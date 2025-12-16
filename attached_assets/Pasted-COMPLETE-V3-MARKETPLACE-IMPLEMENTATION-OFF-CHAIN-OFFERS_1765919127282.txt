@@ -1,0 +1,944 @@
+COMPLETE V3 MARKETPLACE IMPLEMENTATION - OFF-CHAIN OFFERS SYSTEM
+
+We are implementing a new offer system like Aftermint where:
+- Making offers is FREE (just a signature, no gas, no funds leave wallet)
+- Funds stay in buyer's wallet until they complete the purchase
+- Seller accepts → Buyer gets 24 hours to complete
+- If buyer doesn't complete in 24h → Offer expires, no penalty
+
+NEW V3 CONTRACT ADDRESS: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
+
+This is a COMPLETE implementation. Create/update all files as specified.
+
+================================================================================
+PART 1: UPDATE CONSTANTS
+================================================================================
+
+=== FILE: lib/constants.ts ===
+
+Add this new export (keep existing MARKETPLACE_CONTRACT for V2 backwards compatibility):
+
+// Marketplace V3 - Off-chain offers, on-chain settlement (Aftermint style)
+// Funds stay in buyer's wallet until purchase completes
+export const MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3";
+
+
+================================================================================
+PART 2: CREATE NEW HOOK FOR V3 OFFERS
+================================================================================
+
+=== CREATE FILE: hooks/useOffersV3.ts ===
+
+import { useState, useCallback, useEffect } from 'react';
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { useToast } from '@/hooks/use-toast';
+import { CHAIN_ID } from '@/lib/constants';
+
+// V3 Contract Address - DEPLOYED
+export const MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3";
+
+// EIP-712 Domain for signing offers
+const DOMAIN = {
+  name: 'BasedGuardiansMarketplace',
+  version: '3',
+  chainId: 32323,
+  verifyingContract: MARKETPLACE_V3_CONTRACT as `0x${string}`,
+} as const;
+
+// EIP-712 Offer type
+const OFFER_TYPES = {
+  Offer: [
+    { name: 'tokenId', type: 'uint256' },
+    { name: 'buyer', type: 'address' },
+    { name: 'price', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'expiration', type: 'uint256' },
+  ],
+} as const;
+
+// Offer structure
+export interface OffchainOffer {
+  id: string;
+  tokenId: number;
+  buyer: string;
+  price: string;
+  priceWei: string;
+  nonce: number;
+  expiration: number;
+  signature: string;
+  status: 'pending' | 'accepted' | 'completed' | 'expired' | 'cancelled';
+  createdAt: number;
+  acceptedAt?: number;
+  completionDeadline?: number;
+}
+
+// Storage key
+const OFFERS_STORAGE_KEY = 'basedguardians_offers_v3';
+
+// V3 Contract ABI
+const MARKETPLACE_V3_ABI = [
+  {
+    name: 'acceptOffer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'buyer', type: 'address' },
+      { name: 'price', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'expiration', type: 'uint256' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'completePurchase',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    name: 'cancelAllOffers',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: 'getNonce',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    name: 'getPendingSale',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'buyer', type: 'address' },
+      { name: 'price', type: 'uint256' },
+      { name: 'acceptedAt', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+      { name: 'active', type: 'bool' },
+    ],
+  },
+] as const;
+
+// === STORAGE FUNCTIONS ===
+
+function getStoredOffers(): OffchainOffer[] {
+  try {
+    const stored = localStorage.getItem(OFFERS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOffers(offers: OffchainOffer[]) {
+  try {
+    localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(offers));
+  } catch (e) {
+    console.error('Failed to save offers:', e);
+  }
+}
+
+function addOffer(offer: OffchainOffer) {
+  const offers = getStoredOffers();
+  const filtered = offers.filter(o => 
+    !(o.tokenId === offer.tokenId && o.buyer.toLowerCase() === offer.buyer.toLowerCase())
+  );
+  filtered.push(offer);
+  saveOffers(filtered);
+}
+
+function updateOfferStatus(id: string, status: OffchainOffer['status'], extra?: Partial<OffchainOffer>) {
+  const offers = getStoredOffers();
+  const updated = offers.map(o => o.id === id ? { ...o, status, ...extra } : o);
+  saveOffers(updated);
+}
+
+function removeOffer(id: string) {
+  const offers = getStoredOffers();
+  saveOffers(offers.filter(o => o.id !== id));
+}
+
+// === MAIN HOOK ===
+
+export function useOffersV3() {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { toast } = useToast();
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [myOffers, setMyOffers] = useState<OffchainOffer[]>([]);
+  const [offersForToken, setOffersForToken] = useState<Map<number, OffchainOffer[]>>(new Map());
+  const [userNonce, setUserNonce] = useState<number>(0);
+  
+  const { signTypedDataAsync } = useSignTypedData();
+  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // Fetch user's nonce from contract
+  const fetchNonce = useCallback(async () => {
+    if (!address) return;
+    try {
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      const contract = new ethers.Contract(MARKETPLACE_V3_CONTRACT, MARKETPLACE_V3_ABI, provider);
+      const nonce = await contract.getNonce(address);
+      setUserNonce(Number(nonce));
+    } catch (e) {
+      console.error('Failed to fetch nonce:', e);
+    }
+  }, [address]);
+
+  // Load offers from storage
+  const loadOffers = useCallback(() => {
+    const allOffers = getStoredOffers();
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Filter expired
+    const validOffers = allOffers.filter(o => {
+      if (o.status === 'completed' || o.status === 'cancelled') return false;
+      if (o.status === 'pending' && o.expiration < now) {
+        updateOfferStatus(o.id, 'expired');
+        return false;
+      }
+      return true;
+    });
+    
+    // My offers
+    if (address) {
+      setMyOffers(validOffers.filter(o => o.buyer.toLowerCase() === address.toLowerCase()));
+    }
+    
+    // Group by token
+    const byToken = new Map<number, OffchainOffer[]>();
+    validOffers.forEach(o => {
+      const existing = byToken.get(o.tokenId) || [];
+      existing.push(o);
+      byToken.set(o.tokenId, existing);
+    });
+    setOffersForToken(byToken);
+  }, [address]);
+
+  useEffect(() => {
+    loadOffers();
+    fetchNonce();
+  }, [loadOffers, fetchNonce]);
+
+  useEffect(() => {
+    const interval = setInterval(loadOffers, 30000);
+    return () => clearInterval(interval);
+  }, [loadOffers]);
+
+  // === MAKE OFFER (Sign - FREE!) ===
+  const makeOffer = useCallback(async (
+    tokenId: number, 
+    priceInBased: number, 
+    expirationDays: number = 7
+  ): Promise<boolean> => {
+    if (!isConnected || !address) {
+      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+      return false;
+    }
+
+    if (chainId !== CHAIN_ID) {
+      toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      await fetchNonce();
+      
+      const priceWei = parseEther(priceInBased.toString());
+      const expiration = Math.floor(Date.now() / 1000) + (expirationDays * 24 * 60 * 60);
+      
+      const offerData = {
+        tokenId: BigInt(tokenId),
+        buyer: address,
+        price: priceWei,
+        nonce: BigInt(userNonce),
+        expiration: BigInt(expiration),
+      };
+
+      toast({
+        title: "Sign Offer",
+        description: "Sign in your wallet - this is FREE, no gas needed!",
+        className: "bg-black border-cyan-500 text-cyan-400",
+      });
+
+      const signature = await signTypedDataAsync({
+        domain: DOMAIN,
+        types: OFFER_TYPES,
+        primaryType: 'Offer',
+        message: offerData,
+      });
+
+      const offer: OffchainOffer = {
+        id: `${tokenId}-${address}-${Date.now()}`,
+        tokenId,
+        buyer: address,
+        price: priceInBased.toString(),
+        priceWei: priceWei.toString(),
+        nonce: userNonce,
+        expiration,
+        signature,
+        status: 'pending',
+        createdAt: Math.floor(Date.now() / 1000),
+      };
+
+      addOffer(offer);
+      loadOffers();
+
+      toast({
+        title: "✅ Offer Created!",
+        description: `Offer of ${priceInBased.toLocaleString()} $BASED submitted. Funds stay in your wallet!`,
+        className: "bg-black border-green-500 text-green-400",
+      });
+
+      return true;
+    } catch (e: any) {
+      if (e.message?.includes('rejected') || e.message?.includes('denied')) {
+        toast({ title: "Cancelled", description: "Signature request cancelled" });
+      } else {
+        toast({ title: "Error", description: "Failed to create offer", variant: "destructive" });
+      }
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, address, chainId, userNonce, signTypedDataAsync, toast, fetchNonce, loadOffers]);
+
+  // === ACCEPT OFFER (Seller) ===
+  const acceptOffer = useCallback(async (offer: OffchainOffer): Promise<boolean> => {
+    if (!isConnected || !address) {
+      toast({ title: "Connect Wallet", variant: "destructive" });
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      toast({
+        title: "Accept Offer",
+        description: "Confirm in your wallet...",
+        className: "bg-black border-cyan-500 text-cyan-400",
+      });
+
+      writeContract({
+        address: MARKETPLACE_V3_CONTRACT as `0x${string}`,
+        abi: MARKETPLACE_V3_ABI,
+        functionName: 'acceptOffer',
+        args: [
+          BigInt(offer.tokenId),
+          offer.buyer as `0x${string}`,
+          BigInt(offer.priceWei),
+          BigInt(offer.nonce),
+          BigInt(offer.expiration),
+          offer.signature as `0x${string}`,
+        ],
+        gas: BigInt(500000),
+        gasPrice: BigInt(10000000000),
+      });
+
+      return true;
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to accept offer", variant: "destructive" });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, address, writeContract, toast]);
+
+  // === COMPLETE PURCHASE (Buyer) ===
+  const completePurchase = useCallback(async (tokenId: number, priceWei: bigint): Promise<boolean> => {
+    if (!isConnected || !address) {
+      toast({ title: "Connect Wallet", variant: "destructive" });
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      toast({
+        title: "Complete Purchase",
+        description: "Confirm in your wallet to complete the purchase...",
+        className: "bg-black border-cyan-500 text-cyan-400",
+      });
+
+      writeContract({
+        address: MARKETPLACE_V3_CONTRACT as `0x${string}`,
+        abi: MARKETPLACE_V3_ABI,
+        functionName: 'completePurchase',
+        args: [BigInt(tokenId)],
+        value: priceWei,
+        gas: BigInt(500000),
+        gasPrice: BigInt(10000000000),
+      });
+
+      return true;
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to complete purchase", variant: "destructive" });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, address, writeContract, toast]);
+
+  // === CANCEL OFFER ===
+  const cancelOffer = useCallback(async (offerId: string): Promise<boolean> => {
+    try {
+      removeOffer(offerId);
+      loadOffers();
+      toast({
+        title: "Offer Cancelled",
+        description: "Your offer has been removed",
+        className: "bg-black border-cyan-500 text-cyan-400",
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, [toast, loadOffers]);
+
+  const getOffersForToken = useCallback((tokenId: number): OffchainOffer[] => {
+    return offersForToken.get(tokenId) || [];
+  }, [offersForToken]);
+
+  useEffect(() => {
+    if (isSuccess && txHash) {
+      toast({
+        title: "✅ Transaction Confirmed!",
+        description: "The transaction was successful",
+        className: "bg-black border-green-500 text-green-400",
+      });
+      loadOffers();
+      fetchNonce();
+    }
+  }, [isSuccess, txHash, toast, loadOffers, fetchNonce]);
+
+  return {
+    isLoading: isLoading || isPending || isConfirming,
+    isPending,
+    isConfirming,
+    isSuccess,
+    txHash,
+    myOffers,
+    userNonce,
+    makeOffer,
+    acceptOffer,
+    completePurchase,
+    cancelOffer,
+    getOffersForToken,
+    refresh: loadOffers,
+    reset,
+  };
+}
+
+export default useOffersV3;
+
+
+================================================================================
+PART 3: CREATE MY OFFERS PANEL COMPONENT
+================================================================================
+
+=== CREATE FILE: components/MyOffersPanel.tsx ===
+
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useOffersV3, OffchainOffer } from '@/hooks/useOffersV3';
+import { useAccount } from 'wagmi';
+import { Gavel, Clock, CheckCircle, AlertTriangle, Wallet, Loader2, Trash2, ExternalLink } from 'lucide-react';
+
+export function MyOffersPanel() {
+  const { address, isConnected } = useAccount();
+  const { myOffers, cancelOffer, completePurchase, isLoading, refresh } = useOffersV3();
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const handleCancel = async (offer: OffchainOffer) => {
+    setActionId(offer.id);
+    await cancelOffer(offer.id);
+    setActionId(null);
+  };
+
+  const handleComplete = async (offer: OffchainOffer) => {
+    setActionId(offer.id);
+    await completePurchase(offer.tokenId, BigInt(offer.priceWei));
+    setActionId(null);
+  };
+
+  if (!isConnected) {
+    return (
+      <Card className="p-8 bg-black/40 border-white/10 text-center">
+        <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-orbitron text-white mb-2">Connect Wallet</h3>
+        <p className="text-muted-foreground text-sm">Connect your wallet to view your offers</p>
+      </Card>
+    );
+  }
+
+  if (myOffers.length === 0) {
+    return (
+      <Card className="p-8 bg-black/40 border-white/10 text-center">
+        <Gavel className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-orbitron text-white mb-2">No Active Offers</h3>
+        <p className="text-muted-foreground text-sm">You haven't made any offers yet.</p>
+        <p className="text-cyan-400 text-xs mt-4">💡 Making offers is FREE - funds stay in your wallet!</p>
+      </Card>
+    );
+  }
+
+  const getStatusBadge = (offer: OffchainOffer) => {
+    const now = Math.floor(Date.now() / 1000);
+    
+    if (offer.status === 'accepted') {
+      const deadline = offer.completionDeadline || (offer.acceptedAt || 0) + 86400;
+      const hoursLeft = Math.max(0, Math.floor((deadline - now) / 3600));
+      return (
+        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 animate-pulse">
+          <Clock size={12} className="mr-1" />
+          ACCEPTED - {hoursLeft}h left
+        </Badge>
+      );
+    }
+    
+    if (offer.status === 'completed') {
+      return (
+        <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+          <CheckCircle size={12} className="mr-1" />
+          COMPLETED
+        </Badge>
+      );
+    }
+    
+    if (offer.expiration < now) {
+      return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/50">EXPIRED</Badge>;
+    }
+    
+    return (
+      <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50">
+        <Clock size={12} className="mr-1" />
+        PENDING
+      </Badge>
+    );
+  };
+
+  const formatExpiry = (timestamp: number) => {
+    const now = Math.floor(Date.now() / 1000);
+    const diff = timestamp - now;
+    if (diff <= 0) return 'Expired';
+    const days = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-orbitron text-white flex items-center gap-2">
+          <Gavel className="text-cyan-400" size={20} />
+          MY OFFERS ({myOffers.length})
+        </h3>
+        <Button variant="ghost" size="sm" onClick={refresh} disabled={isLoading} className="text-muted-foreground hover:text-white">
+          {isLoading ? <Loader2 className="animate-spin" size={16} /> : 'Refresh'}
+        </Button>
+      </div>
+
+      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 mb-4">
+        <p className="text-xs text-green-300 flex items-center gap-2">
+          <CheckCircle size={14} />
+          Your funds stay in your wallet until you complete a purchase.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {myOffers.map((offer) => (
+          <Card key={offer.id} className="p-4 bg-black/60 border-white/10 hover:border-cyan-500/30 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-white font-bold font-orbitron">Guardian #{offer.tokenId}</span>
+                  {getStatusBadge(offer)}
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Offer: </span>
+                    <span className="text-cyan-400 font-mono font-bold">{Number(offer.price).toLocaleString()} $BASED</span>
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Expires: {formatExpiry(offer.expiration)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {offer.status === 'accepted' && (
+                  <Button 
+                    size="sm"
+                    onClick={() => handleComplete(offer)}
+                    disabled={actionId === offer.id}
+                    className="bg-green-500 text-black hover:bg-green-400 font-bold"
+                  >
+                    {actionId === offer.id ? <Loader2 className="animate-spin" size={16} /> : 'COMPLETE PURCHASE'}
+                  </Button>
+                )}
+                
+                {offer.status === 'pending' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleCancel(offer)}
+                    disabled={actionId === offer.id}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    {actionId === offer.id ? <Loader2 className="animate-spin" size={16} /> : <><Trash2 size={14} className="mr-1" />Cancel</>}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default MyOffersPanel;
+
+
+================================================================================
+PART 4: CREATE PENDING PURCHASE BANNER
+================================================================================
+
+=== CREATE FILE: components/PendingPurchaseBanner.tsx ===
+
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+import { useOffersV3 } from '@/hooks/useOffersV3';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Clock, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export function PendingPurchaseBanner() {
+  const { isConnected } = useAccount();
+  const { myOffers, completePurchase, isLoading } = useOffersV3();
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  
+  const acceptedOffers = myOffers.filter(o => 
+    o.status === 'accepted' && 
+    !dismissed.has(o.id)
+  );
+  
+  if (!isConnected || acceptedOffers.length === 0) return null;
+  
+  return (
+    <AnimatePresence>
+      {acceptedOffers.slice(0, 1).map((offer) => {
+        const deadline = offer.completionDeadline || (offer.acceptedAt || 0) + 86400;
+        const now = Math.floor(Date.now() / 1000);
+        const hoursLeft = Math.max(0, Math.floor((deadline - now) / 3600));
+        
+        return (
+          <motion.div
+            key={offer.id}
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-full px-4"
+          >
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 backdrop-blur-xl shadow-[0_0_30px_rgba(251,191,36,0.3)]">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0 animate-pulse" />
+                <div className="flex-1">
+                  <h4 className="font-orbitron text-amber-400 font-bold mb-1">OFFER ACCEPTED!</h4>
+                  <p className="text-white text-sm mb-3">
+                    Your offer on <strong>Guardian #{offer.tokenId}</strong> for{' '}
+                    <strong className="text-amber-400">{Number(offer.price).toLocaleString()} $BASED</strong> was accepted!
+                  </p>
+                  <div className="flex items-center gap-2 text-amber-300 text-xs mb-3">
+                    <Clock size={14} />
+                    <span>Complete within <strong>{hoursLeft} hours</strong></span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => completePurchase(offer.tokenId, BigInt(offer.priceWei))}
+                      disabled={isLoading}
+                      className="bg-amber-500 text-black hover:bg-amber-400 font-bold flex-1"
+                    >
+                      COMPLETE PURCHASE
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setDismissed(prev => new Set(prev).add(offer.id))}
+                      className="text-amber-400 hover:bg-amber-500/10"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
+    </AnimatePresence>
+  );
+}
+
+export default PendingPurchaseBanner;
+
+
+================================================================================
+PART 5: UPDATE APP.TSX - ADD BANNER
+================================================================================
+
+=== UPDATE FILE: App.tsx ===
+
+Add import at top:
+import { PendingPurchaseBanner } from '@/components/PendingPurchaseBanner';
+
+Add component inside the main app structure (after other providers, before </TooltipProvider>):
+<PendingPurchaseBanner />
+
+
+================================================================================
+PART 6: UPDATE ESCROW MARKETPLACE - USE V3 OFFERS
+================================================================================
+
+=== UPDATE FILE: components/EscrowMarketplace.tsx ===
+
+1. ADD IMPORTS at top of file:
+
+import { useOffersV3, OffchainOffer } from '@/hooks/useOffersV3';
+import { MyOffersPanel } from '@/components/MyOffersPanel';
+
+
+2. ADD "MY OFFERS" TAB in TabsList (find the TabsList and add this trigger):
+
+<TabsTrigger value="my-offers" className="data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-orbitron">
+    <Gavel size={14} className="mr-2" /> MY OFFERS
+</TabsTrigger>
+
+
+3. ADD TabsContent for MY OFFERS (after the existing TabsContent for "offers"):
+
+<TabsContent value="my-offers">
+    <MyOffersPanel />
+</TabsContent>
+
+
+4. REPLACE the submitOffer function in EscrowMarketplace component:
+
+Find this function and replace it:
+
+const submitOffer = async (amount: number, duration: string) => {
+    if (!offerItem) return;
+    setShowOfferModal(false);
+    
+    // V3: Use off-chain signing - funds stay in wallet!
+    const offersV3 = useOffersV3();
+    const daysMatch = duration.match(/(\d+)/);
+    const expirationDays = daysMatch ? parseInt(daysMatch[1]) : 7;
+    
+    await offersV3.makeOffer(offerItem.id, amount, expirationDays);
+};
+
+
+5. REPLACE the entire OfferModal function with this V3 version:
+
+function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean; onClose: () => void; item: MarketItem | null; onSubmit: (amount: number, duration: string) => void }) {
+    const [amount, setAmount] = useState<number>(0);
+    const [duration, setDuration] = useState("7");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isConnected, address } = useAccount();
+    const chainId = useChainId();
+    const { switchChain } = useSwitchChain();
+    const { toast } = useToast();
+    const { openConnectModal } = useConnectModal();
+    
+    const { makeOffer, isLoading: offerLoading } = useOffersV3();
+    
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [balanceLoading, setBalanceLoading] = useState(false);
+    
+    const durationOptions = [
+        { value: "1", label: "1 Day" },
+        { value: "3", label: "3 Days" },
+        { value: "7", label: "1 Week" },
+        { value: "30", label: "1 Month" },
+    ];
+
+    useEffect(() => {
+        if (isOpen && isConnected && address) {
+            setBalanceLoading(true);
+            const fetchBalance = async () => {
+                try {
+                    const { ethers } = await import('ethers');
+                    const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+                    const balance = await provider.getBalance(address);
+                    setWalletBalance(parseFloat(ethers.formatEther(balance)));
+                } catch { setWalletBalance(null); }
+                finally { setBalanceLoading(false); }
+            };
+            fetchBalance();
+        }
+    }, [isOpen, isConnected, address]);
+
+    useEffect(() => {
+        if (item) {
+            setAmount(item.price ? Math.floor(item.price * 0.9) : 1000);
+            setDuration("7");
+        }
+    }, [item]);
+
+    const handleSubmit = async () => {
+        if (!isConnected) { openConnectModal?.(); return; }
+        if (chainId !== 32323) { switchChain?.({ chainId: 32323 }); return; }
+        if (!amount || amount <= 0 || !item) return;
+
+        setIsSubmitting(true);
+        const success = await makeOffer(item.id, amount, parseInt(duration));
+        if (success) onClose();
+        setIsSubmitting(false);
+    };
+
+    if (!item) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white sm:max-w-md" style={{ zIndex: 99999 }}>
+                <DialogHeader>
+                    <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
+                        <Gavel className="text-cyan-400" size={20} />
+                        MAKE AN OFFER
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                        Offer on <span className="text-cyan-400 font-bold">{Security.sanitizeText(item.name)}</span>
+                    </DialogDescription>
+                </DialogHeader>
+
+                {/* V3 INFO */}
+                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold text-green-400 text-sm mb-1">FUNDS STAY IN YOUR WALLET</p>
+                            <p className="text-xs text-green-200/80">
+                                This is FREE (just a signature). Your $BASED only leaves your wallet when you complete the purchase after seller accepts.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono">OFFER AMOUNT ($BASED)</Label>
+                        <div className="flex gap-2">
+                            <Input 
+                                type="text"
+                                inputMode="numeric"
+                                value={amount || ''} 
+                                onChange={(e) => setAmount(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                                className="bg-white/5 border-white/20 text-white font-mono text-lg"
+                            />
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => walletBalance && setAmount(Math.floor(walletBalance * 0.95))}
+                                disabled={!walletBalance}
+                                className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
+                            >
+                                MAX
+                            </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            {balanceLoading ? 'Loading...' : walletBalance ? `Balance: ${walletBalance.toLocaleString()} $BASED` : ''}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono">DURATION</Label>
+                        <Select value={duration} onValueChange={setDuration}>
+                            <SelectTrigger className="bg-white/5 border-white/20 text-white">
+                                <Timer size={16} className="mr-2 text-cyan-400" />
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-black/95 border-cyan-500/30" style={{ zIndex: 999999 }}>
+                                {durationOptions.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-white hover:bg-cyan-500/20">
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2 text-xs">
+                        <div className="flex items-center gap-2 text-cyan-400">
+                            <span className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center">1</span>
+                            <span>You sign offer (FREE)</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">2</span>
+                            <span>Seller accepts → You get notified</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">3</span>
+                            <span>Complete purchase within 24h</span>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter className="flex gap-3 flex-col sm:flex-row">
+                    <Button variant="ghost" onClick={onClose} className="flex-1 border border-white/20">CANCEL</Button>
+                    <Button 
+                        onClick={handleSubmit}
+                        disabled={!isConnected || isSubmitting || offerLoading || !amount}
+                        className="flex-1 font-bold font-orbitron h-12 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black hover:from-cyan-400 hover:to-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.4)] disabled:opacity-50"
+                    >
+                        {isSubmitting || offerLoading ? (
+                            <><Loader2 className="animate-spin mr-2" size={18} />SIGNING...</>
+                        ) : (
+                            <><Gavel size={18} className="mr-2" />SIGN OFFER (FREE)</>
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+CREATED FILES:
+1. hooks/useOffersV3.ts - Complete V3 offer hook with EIP-712 signing
+2. components/MyOffersPanel.tsx - User's offers with cancel/complete buttons
+3. components/PendingPurchaseBanner.tsx - Alert when offers are accepted
+
+UPDATED FILES:
+1. lib/constants.ts - Added MARKETPLACE_V3_CONTRACT
+2. App.tsx - Added PendingPurchaseBanner
+3. components/EscrowMarketplace.tsx - New OfferModal, MY OFFERS tab
+
+V3 CONTRACT: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
+
+KEY FEATURES:
+✅ Making offers is FREE (just signature)
+✅ Funds stay in buyer's wallet until completion
+✅ Easy cancel from "My Offers" panel
+✅ 24-hour completion window
+✅ Prominent notification when offer accepted

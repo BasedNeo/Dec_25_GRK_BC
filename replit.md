@@ -75,6 +75,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (December 2024)
 
+- Added V3 Off-Chain Offers System (Aftermint-style): Gasless offer making using EIP-712 signatures, buyers sign messages for free, sellers accept and buyers complete with on-chain tx
+  - V3 Contract: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
+  - Hook: useOffersV3.ts with makeOffer, acceptOffer, completePurchase, cancelOffer
+  - MyOffersPanel component shows user's active offers with status badges
+  - Integrated into EscrowMarketplace OFFERS tab
+- V2 Marketplace (0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c) still active for backward compatibility
 - Added Diamond Hands Status feature: Tracks NFT holding duration and retention rate via blockchain Transfer events (6 levels: Ice → Diamond)
 - Added Guardian Profile system: Custom usernames with wallet suffix for uniqueness, stored in database
 - Added Welcome Back messages: 4 rotating messages for users returning after 24+ hours
