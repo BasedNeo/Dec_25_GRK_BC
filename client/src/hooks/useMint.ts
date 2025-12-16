@@ -122,6 +122,32 @@ export function useMint() {
     }
   }, [isConfirmError, confirmationError]);
 
+  // Handle visibility change - check transaction when user comes back to app
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && hash && isLoading && !isSuccess) {
+        console.log('🔄 [Mint] App became visible, checking transaction status...');
+        if (publicClient) {
+          try {
+            const receipt = await publicClient.getTransactionReceipt({ hash });
+            if (receipt) {
+              console.log('✅ [Mint] Transaction confirmed while away!', receipt);
+              if (receipt.status === 'success') {
+                setStatus('Mint successful!');
+                setIsLoading(false);
+              }
+            }
+          } catch (e) {
+            console.log('🔵 [Mint] Transaction still pending...');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hash, isLoading, isSuccess, publicClient]);
+
   const mint = useCallback(async (quantity: number = 1) => {
     console.log('🚀 [Mint] MINT FUNCTION CALLED - Qty:', quantity, 'Address:', address);
     

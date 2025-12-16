@@ -1,10 +1,12 @@
 import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { useAccountModal } from '@rainbow-me/rainbowkit';
 import { cn } from '@/lib/utils';
 
 const MINT_PRICE = 69420;
 
 export function WalletBalanceDisplay() {
   const { balance, isLoading, isConnected, canAffordMint, isLowBalance } = useWalletBalance();
+  const { openAccountModal } = useAccountModal();
 
   if (!isConnected) {
     return null;
@@ -21,13 +23,15 @@ export function WalletBalanceDisplay() {
     if (!balance) return '';
     if (balance.raw < MINT_PRICE) return 'Insufficient balance to mint';
     if (balance.raw < MINT_PRICE * 2) return 'Balance is running low';
-    return `${balance.formatted} $BASED`;
+    return `${balance.formatted} $BASED - Click to manage wallet`;
   };
 
   return (
-    <div 
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-black/40 backdrop-blur-md"
+    <button 
+      onClick={openAccountModal}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-black/40 backdrop-blur-md hover:border-cyan-500/30 hover:bg-black/60 transition-all cursor-pointer"
       data-testid="wallet-balance-display"
+      title="Click to manage wallet"
     >
       <div className="flex flex-col leading-tight">
         <span className="text-[9px] text-muted-foreground font-mono tracking-wider hidden sm:block">
@@ -50,6 +54,6 @@ export function WalletBalanceDisplay() {
           )}
         </span>
       </div>
-    </div>
+    </button>
   );
 }
