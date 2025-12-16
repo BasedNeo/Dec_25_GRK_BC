@@ -1,13 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFeedbackSchema, insertPushSubscriptionSchema } from "@shared/schema";
+import { insertFeedbackSchema } from "@shared/schema";
 import { z } from "zod";
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN_placeholder_key_for_development';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'placeholder_private_key';
 
 export async function registerRoutes(
   httpServer: Server,

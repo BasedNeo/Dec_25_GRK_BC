@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, Settings, Check, X, Loader2 } from "lucide-react";
+import { Bell, BellOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAccount } from "wagmi";
 import { showToast } from "@/lib/customToast";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -112,8 +105,10 @@ export function NotificationSettings() {
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
-      const p256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')!)));
-      const auth = btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')!)));
+      const p256dhArray = new Uint8Array(sub.getKey('p256dh')!);
+      const authArray = new Uint8Array(sub.getKey('auth')!);
+      const p256dh = btoa(String.fromCharCode.apply(null, Array.from(p256dhArray)));
+      const auth = btoa(String.fromCharCode.apply(null, Array.from(authArray)));
 
       const response = await fetch('/api/push/subscribe', {
         method: 'POST',

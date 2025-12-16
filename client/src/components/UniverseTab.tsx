@@ -1,7 +1,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Heart, BookOpen, Orbit, ArrowRightLeft, Loader2, Sparkles, Zap, Globe, Share2, Cpu } from "lucide-react";
+import { Heart, BookOpen, ArrowRightLeft, Loader2, Globe, Cpu } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
@@ -15,7 +15,7 @@ function AnimatedStarfield() {
   const nearStarsY = useTransform(scrollY, [0, 3000], [0, 700]);
 
   const farStars = useMemo(() => 
-    Array.from({ length: 80 }, (_, i) => ({
+    Array.from({ length: 40 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 200,
@@ -27,7 +27,7 @@ function AnimatedStarfield() {
   );
 
   const midStars = useMemo(() => 
-    Array.from({ length: 50 }, (_, i) => ({
+    Array.from({ length: 25 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 200,
@@ -39,7 +39,7 @@ function AnimatedStarfield() {
   );
 
   const nearStars = useMemo(() => 
-    Array.from({ length: 30 }, (_, i) => ({
+    Array.from({ length: 15 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 200,
@@ -166,7 +166,7 @@ function AnimatedStarfield() {
 
 function FloatingParticles() {
   const particles = useMemo(() =>
-    Array.from({ length: 30 }, (_, i) => ({
+    Array.from({ length: 15 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       size: Math.random() * 4 + 2,
