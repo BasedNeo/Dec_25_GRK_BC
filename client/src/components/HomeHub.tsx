@@ -144,23 +144,22 @@ export function HomeHub({ onNavigate }: HomeHubProps) {
   const glowIntensity = useTransform(springY, [0, 50], [0.6, 1]);
   
   const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
     const currentY = y.get();
+    setIsDragging(false);
+    y.set(0);
     
-    if (currentY > 20 && !isLightspeed) {
-      setRocketOffset(-60);
+    if (currentY > 10 && !isLightspeed) {
+      setRocketOffset(-50);
       setIsLightspeed(true);
       
       setTimeout(() => {
         setRocketOffset(0);
-      }, 400);
+      }, 300);
       
       setTimeout(() => {
         setIsLightspeed(false);
-      }, 2800);
+      }, 2500);
     }
-    
-    y.set(0);
   }, [y, isLightspeed]);
 
   return (
@@ -198,8 +197,8 @@ export function HomeHub({ onNavigate }: HomeHubProps) {
           <motion.div
             className="relative inline-block cursor-grab active:cursor-grabbing select-none touch-none"
             drag="y"
-            dragConstraints={{ top: 0, bottom: 50 }}
-            dragElastic={0.05}
+            dragConstraints={{ top: 0, bottom: 25 }}
+            dragElastic={0.02}
             dragMomentum={false}
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
