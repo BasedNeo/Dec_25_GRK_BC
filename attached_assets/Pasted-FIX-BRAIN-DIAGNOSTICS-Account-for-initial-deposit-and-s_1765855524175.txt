@@ -1,0 +1,99 @@
+FIX BRAIN DIAGNOSTICS - Account for initial deposit and show correct metrics
+
+The brain wallet had an INITIAL DEPOSIT of 35,000 $BASED on Dec 25, 2025.
+Emissions are ~5,800-6,000 $BASED/day (10% of subnet).
+Current balance includes both deposit + emissions.
+
+UPDATE: client/src/hooks/useSubnetEmissions.ts
+
+CHANGE the BRAIN_CONFIG (around line 5-13):
+
+const BRAIN_CONFIG = {
+  name: 'Based Guardians Brain',
+  wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
+  token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2',
+  communityShare: 0.10, // Community gets 10% of subnet emissions
+  emissionsStart: new Date('2025-12-25T01:00:00Z').getTime(), // When emissions started
+  initialDeposit: 35000, // Initial deposit NOT from emissions
+  estimatedDailyRate: 5900, // ~5,800-6,000 per day
+  nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(), // Expected halving
+  network: 'BasedAI',
+  networkUrl: 'https://www.getbased.ai/'
+};
+
+UPDATE the fallback calculation (around line 165-185):
+
+Replace:
+      if (total === 0 && balanceNum > 0) {
+        total = balanceNum;
+
+With:
+      if (total === 0 && balanceNum > 0) {
+        // Subtract initial deposit to get actual emissions
+        const actualEmissions = Math.max(0, balanceNum - BRAIN_CONFIG.initialDeposit);
+        total = actualEmissions;
+        
+        // Calculate days since emissions started
+        const daysActive = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
+        
+        // Use actual rate or estimated rate
+        const avgDailyRate = actualEmissions > 0 ? actualEmissions / daysActive : BRAIN_CONFIG.estimatedDailyRate;
+
+ADD new calculated values in the return (around line 239):
+
+  // Calculate brain's FULL output (community only gets 10%)
+  const brainTotalDaily = dailyRate / BRAIN_CONFIG.communityShare; // Full 100%
+  const brainAnnualOutput = brainTotalDaily * 365;
+  
+  // Days until halving
+  const daysUntilHalving = Math.max(0, Math.ceil((BRAIN_CONFIG.nextHalvingDate - Date.now()) / (1000 * 60 * 60 * 24)));
+
+  return {
+    brainBalance,
+    totalReceived, // This is now JUST emissions, not including deposit
+    initialDeposit: BRAIN_CONFIG.initialDeposit,
+    communityShare,
+    dailyRate, // Community's 10% daily
+    brainTotalDaily, // Full subnet daily output
+    brainAnnualOutput, // Full subnet annual
+    weeklyTotal,
+    monthlyProjection,
+    daysUntilHalving,
+    status,
+    ...rest
+  };
+
+UPDATE: client/src/components/BrainDiagnostics.tsx
+
+CHANGE the metrics display to show:
+
+1. "BRAIN ANNUAL OUTPUT" - Full subnet yearly (brainAnnualOutput)
+2. "COMMUNITY DAILY (10%)" - Your daily share (dailyRate) 
+3. "PASSIVE EMISSIONS" - Total received to date (totalReceived)
+4. "WALLET BALANCE" - Full balance including deposit (brainBalance)
+
+ADD a "Brain Staking - Coming Soon" card:
+<div className="bg-black/40 border border-orange-500/30 rounded-xl p-4 text-center opacity-60">
+  <span className="text-[10px] text-muted-foreground font-mono uppercase">Brain Staking</span>
+  <div className="text-xl font-mono font-bold text-orange-400 mt-1">
+    🔒
+  </div>
+  <span className="text-[9px] text-orange-400 font-mono">COMING SOON</span>
+</div>
+
+ADD halving countdown:
+<div className="bg-black/40 border border-red-500/30 rounded-xl p-4 text-center">
+  <span className="text-[10px] text-muted-foreground font-mono uppercase">Next Halving</span>
+  <div className="text-xl font-mono font-bold text-red-400 mt-1">
+    {emissions.daysUntilHalving} days
+  </div>
+  <span className="text-[9px] text-red-400/70 font-mono">~Dec 31, 2025</span>
+</div>
+
+EXPECTED DISPLAY:
+- Brain Annual Output: ~21,535,000 $BASED (100% subnet)
+- Community Daily (10%): ~5,900 $BASED/day
+- Passive Emissions: ~21,544 $BASED (since 12/25)
+- Wallet Balance: 56,544 $BASED (includes 35k deposit)
+- Next Halving: X days (countdown to Dec 31)
+- Brain Staking: 🔒 Coming Soon

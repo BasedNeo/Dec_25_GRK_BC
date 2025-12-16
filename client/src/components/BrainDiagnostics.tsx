@@ -276,31 +276,31 @@ export function BrainDiagnostics() {
           </div>
 
           {/* Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <motion.div
-              className="bg-black/40 border border-cyan-500/30 rounded-xl p-4 text-center"
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Wallet Balance</span>
-              <div className="text-xl font-mono font-bold text-cyan-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.brainBalance, 0)}
-              </div>
-              <span className="text-[10px] text-cyan-500/70">$BASED now</span>
-            </motion.div>
-
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <motion.div
               className="bg-black/40 border border-purple-500/30 rounded-xl p-4 text-center"
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Brain Annual Output</span>
+              <div className="text-xl font-mono font-bold text-purple-400 mt-1">
+                {emissions.loading ? '...' : formatNumber(emissions.brainAnnualOutput, 0)}
+              </div>
+              <span className="text-[10px] text-purple-500/70">$BASED/year (100%)</span>
+            </motion.div>
+
+            <motion.div
+              className="bg-black/40 border border-green-500/30 rounded-xl p-4 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">All-Time Emissions</span>
-              <div className="text-xl font-mono font-bold text-purple-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Community Daily (10%)</span>
+              <div className="text-xl font-mono font-bold text-green-400 mt-1">
+                ~{emissions.loading ? '...' : formatNumber(emissions.dailyRate, 0)}
               </div>
-              <span className="text-[10px] text-purple-500/70">since Dec 10, 2025</span>
+              <span className="text-[10px] text-green-500/70">$BASED/day</span>
             </motion.div>
 
             <motion.div
@@ -309,24 +309,50 @@ export function BrainDiagnostics() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Daily Rate</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Passive Emissions</span>
               <div className="text-xl font-mono font-bold text-amber-400 mt-1">
-                ~{emissions.loading ? '...' : formatNumber(emissions.dailyRate, 1)}
+                {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
               </div>
-              <span className="text-[10px] text-amber-500/70">$BASED/day avg</span>
+              <span className="text-[10px] text-amber-500/70">since Dec 25, 2025</span>
             </motion.div>
 
             <motion.div
-              className="bg-black/40 border border-green-500/30 rounded-xl p-4 text-center"
+              className="bg-black/40 border border-cyan-500/30 rounded-xl p-4 text-center"
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Community (10%)</span>
-              <div className="text-xl font-mono font-bold text-green-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.communityShare, 0)}
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Wallet Balance</span>
+              <div className="text-xl font-mono font-bold text-cyan-400 mt-1">
+                {emissions.loading ? '...' : formatNumber(emissions.brainBalance, 0)}
               </div>
-              <span className="text-[10px] text-green-500/70">$BASED to treasury</span>
+              <span className="text-[10px] text-cyan-500/70">incl. {formatNumber(emissions.initialDeposit, 0)} deposit</span>
+            </motion.div>
+
+            <motion.div
+              className="bg-black/40 border border-red-500/30 rounded-xl p-4 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Next Halving</span>
+              <div className="text-xl font-mono font-bold text-red-400 mt-1">
+                {emissions.daysUntilHalving} days
+              </div>
+              <span className="text-[10px] text-red-500/70">~Dec 31, 2025</span>
+            </motion.div>
+
+            <motion.div
+              className="bg-black/40 border border-orange-500/30 rounded-xl p-4 text-center opacity-60"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 0.6, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Brain Staking</span>
+              <div className="text-xl font-mono font-bold text-orange-400 mt-1">
+                🔒
+              </div>
+              <span className="text-[9px] text-orange-400 font-mono">COMING SOON</span>
             </motion.div>
           </div>
 
