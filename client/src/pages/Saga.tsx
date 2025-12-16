@@ -229,7 +229,7 @@ function ChooseYourAdventure() {
     },
   ];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isConnected || !address) {
       openConnectModal?.();
       return;
@@ -237,18 +237,38 @@ function ChooseYourAdventure() {
     if (selectedOption === null || hasVoted) return;
     
     setIsSubmitting(true);
-    setTimeout(() => {
+    
+    try {
+      const selectedChoice = adventureOptions.find(o => o.id === selectedOption);
+      
+      // Save to backend for Admin Inbox
+      await fetch('/api/stories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Saga Vote: ${selectedChoice?.title || 'Unknown'}`,
+          content: `${selectedChoice?.icon} ${selectedChoice?.description || ''}\n\nVoted by wallet: ${address}`,
+          walletAddress: address,
+        }),
+      });
+      
       // Save vote to localStorage
       const votesData = localStorage.getItem('saga_votes');
       const votes = votesData ? JSON.parse(votesData) : {};
       votes[address.toLowerCase()] = selectedOption;
       localStorage.setItem('saga_votes', JSON.stringify(votes));
       
+      // Mark story as submitted for User Stats
+      localStorage.setItem('storySubmitted', 'true');
+      
       setHasVoted(true);
       setPreviousVote(selectedOption);
-      setIsSubmitting(false);
       setShowSuccess(true);
-    }, 800);
+    } catch (err) {
+      console.error('Failed to submit saga vote:', err);
+    }
+    
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
