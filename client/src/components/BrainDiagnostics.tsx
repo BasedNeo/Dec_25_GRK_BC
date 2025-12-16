@@ -391,19 +391,28 @@ export function BrainDiagnostics() {
           {/* Progress Indicators */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             <div className="bg-black/40 border border-white/10 rounded-xl p-4">
-              <ProgressBar 
-                value={emissions.daysSinceStart} 
-                max={365} 
-                color="cyan"
-                label={`Operating for ${Math.floor(emissions.daysSinceStart)} days`}
-              />
+              {(() => {
+                const halvingInterval = BRAIN_CONFIG.halvingInterval;
+                const blocksUntilHalving = emissions.blockInfo?.blocksUntilHalving ?? halvingInterval;
+                const blocksIntoEpoch = halvingInterval - blocksUntilHalving;
+                const progressPercent = Math.round((blocksIntoEpoch / halvingInterval) * 100);
+                const daysUntilHalving = emissions.blockInfo?.daysUntilHalving ?? emissions.daysUntilHalving;
+                return (
+                  <ProgressBar 
+                    value={blocksIntoEpoch} 
+                    max={halvingInterval} 
+                    color="cyan"
+                    label={`Halving progress: ${progressPercent}% (~${daysUntilHalving} days remaining)`}
+                  />
+                );
+              })()}
             </div>
             <div className="bg-black/40 border border-white/10 rounded-xl p-4">
               <ProgressBar 
-                value={emissions.communityShare} 
-                max={emissions.totalReceived || 1} 
+                value={Math.floor(emissions.daysSinceStart)} 
+                max={365} 
                 color="green"
-                label="Community share accumulated"
+                label={`Receiving emissions for ${Math.floor(emissions.daysSinceStart)} days`}
               />
             </div>
           </div>
