@@ -36,7 +36,7 @@ import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
 import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
-import { useMarketplace, useListing } from "@/hooks/useMarketplace";
+import { useMarketplace, useListing, useFloorPrice } from "@/hooks/useMarketplace";
 import { useOffersForOwner } from "@/hooks/useOffers";
 import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { parseEther } from "viem";
@@ -60,6 +60,9 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Real Marketplace Contract Integration ---
   const marketplace = useMarketplace();
+  
+  // --- Floor Price ---
+  const { floorPrice, isLoading: floorPriceLoading } = useFloorPrice();
   
   // --- Get user's owned NFTs for sorting priority ---
   const { nfts: ownedNFTs } = useOwnedNFTs();
@@ -814,10 +817,21 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                 </div>
             )}
             <h2 className="text-4xl text-white font-black mb-2">BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">COLLECTION</span></h2>
-            <div className="flex gap-4 text-xs text-muted-foreground font-mono">
+            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> NFT Stays in Wallet</span>
               <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
               <span className="flex items-center gap-1"><RefreshCw size={12} className="text-primary"/> 1% Platform Fee</span>
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30" data-testid="floor-price-indicator">
+                <Tag size={12} className="text-cyan-400"/>
+                <span className="text-white/80">Floor:</span>
+                {floorPriceLoading ? (
+                  <span className="text-cyan-400 animate-pulse">...</span>
+                ) : floorPrice ? (
+                  <span className="text-cyan-400 font-bold">{floorPrice.price.toLocaleString()} $BASED</span>
+                ) : (
+                  <span className="text-muted-foreground">No listings</span>
+                )}
+              </span>
             </div>
           </div>
 

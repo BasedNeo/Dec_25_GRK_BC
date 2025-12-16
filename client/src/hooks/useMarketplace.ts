@@ -611,3 +611,75 @@ export function useOffer(tokenId: number | undefined, offererAddress: string | u
 
   return { offer, isLoading, refetch };
 }
+
+export function useFloorPrice() {
+  const [floorPrice, setFloorPrice] = useState<{ price: number; tokenId: number } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFloorPrice = async () => {
+      try {
+        setIsLoading(true);
+        const { ethers } = await import('ethers');
+        const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+        
+        const marketplaceContract = new ethers.Contract(
+          MARKETPLACE_CONTRACT,
+          [
+            'function getActiveListings() view returns (uint256[])',
+            'function getListing(uint256 tokenId) view returns (address seller, uint256 price, uint256 listedAt, bool active)'
+          ],
+          provider
+        );
+
+        const activeListings = await marketplaceContract.getActiveListings();
+        
+        if (!activeListings || activeListings.length === 0) {
+          setFloorPrice(null);
+          setIsLoading(false);
+          return;
+        }
+
+        let lowestPrice: bigint | null = null;
+        let lowestTokenId: number | null = null;
+
+        for (const tokenId of activeListings) {
+          try {
+            const listing = await marketplaceContract.getListing(tokenId);
+            const price = listing[1] as bigint;
+            const active = listing[3] as boolean;
+            
+            if (active && price > BigInt(0)) {
+              if (lowestPrice === null || price < lowestPrice) {
+                lowestPrice = price;
+                lowestTokenId = Number(tokenId);
+              }
+            }
+          } catch {
+            // Skip failed listings
+          }
+        }
+
+        if (lowestPrice !== null && lowestTokenId !== null) {
+          setFloorPrice({
+            price: parseFloat(ethers.formatEther(lowestPrice)),
+            tokenId: lowestTokenId
+          });
+        } else {
+          setFloorPrice(null);
+        }
+      } catch (error) {
+        console.error('Error fetching floor price:', error);
+        setFloorPrice(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFloorPrice();
+    const interval = setInterval(fetchFloorPrice, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { floorPrice, isLoading };
+}
