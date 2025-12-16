@@ -1,7 +1,5 @@
 import { useReadContract, useAccount } from 'wagmi';
-import { CHAIN_ID } from '@/lib/constants';
-
-const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+import { CHAIN_ID, NFT_CONTRACT } from '@/lib/constants';
 
 const CONTRACT_ABI = [
   { name: 'totalMinted', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
