@@ -75,11 +75,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (December 2024)
 
+- **My Offers Dashboard**: Dedicated "MY OFFERS" tab in marketplace with filter tabs (All/Active/Accepted/Expired), edit/cancel functionality, NFT thumbnails, and time remaining indicators
+  - useMyOffers hook fetches offers from both V3 (off-chain) and V2 (on-chain) sources
+  - Active offers badge shows count on tab trigger
 - Added V3 Off-Chain Offers System (Aftermint-style): Gasless offer making using EIP-712 signatures, buyers sign messages for free, sellers accept and buyers complete with on-chain tx
   - V3 Contract: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
   - Hook: useOffersV3.ts with makeOffer, acceptOffer, completePurchase, cancelOffer
   - MyOffersPanel component shows user's active offers with status badges
-  - Integrated into EscrowMarketplace OFFERS tab
+- **Code Cleanup**: Removed debug console.log statements, improved type safety (any -> unknown), silent error handling
 - V2 Marketplace (0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c) still active for backward compatibility
 - Added Diamond Hands Status feature: Tracks NFT holding duration and retention rate via blockchain Transfer events (6 levels: Ice → Diamond)
 - Added Guardian Profile system: Custom usernames with wallet suffix for uniqueness, stored in database
@@ -87,3 +90,4 @@ Preferred communication style: Simple, everyday language.
 - Added Internationalization (i18n): Language selector in lower-right corner, supports 10 languages (EN, ES, ZH, JA, KO, DE, FR, PT, RU, AR)
 - Added first-time visitor name prompt modal
 - Database: Added `guardian_profiles` table for username and login tracking
+- Minting gas limit: 8,000,000, gas price: 10 gwei
