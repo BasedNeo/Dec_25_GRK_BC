@@ -371,11 +371,9 @@ export default function Saga() {
       <div className="relative z-10">
         <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
           <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/">
-              <a className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors font-mono text-sm">
-                <ArrowLeft size={16} />
-                Back to Universe
-              </a>
+            <Link href="/" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors font-mono text-sm">
+              <ArrowLeft size={16} />
+              Back to Universe
             </Link>
             <div className="flex items-center gap-2 text-purple-400 font-mono text-xs uppercase tracking-wider">
               <BookOpen size={14} />
