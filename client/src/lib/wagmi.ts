@@ -8,7 +8,8 @@ import {
   injectedWallet,
   trustWallet, 
   okxWallet,
-  braveWallet
+  rainbowWallet,
+  phantomWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
@@ -62,21 +63,22 @@ export const config = getDefaultConfig({
   ssr: false,
   wallets: [
     {
-      groupName: 'Recommended',
+      groupName: 'Popular',
       wallets: [
         injectedWallet,
-        metaMaskWallet,
         rabbyWallet,
-        coinbaseWallet,
+        metaMaskWallet,
+        walletConnectWallet,
       ],
     },
     {
-      groupName: 'More Options',
+      groupName: 'More Wallets',
       wallets: [
-        walletConnectWallet,
+        coinbaseWallet,
         trustWallet,
         okxWallet,
-        braveWallet,
+        rainbowWallet,
+        phantomWallet,
       ],
     },
   ],
