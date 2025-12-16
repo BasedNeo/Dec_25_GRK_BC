@@ -133,7 +133,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const navItems = [
     { id: 'gallery', label: 'PORTFOLIO' },
-    { id: 'escrow', label: 'COLLECTION' },
+    { id: 'escrow', label: 'MARKET' },
     { id: 'universe', label: 'UNIVERSE' },
     { id: 'pool', label: 'POOL' },
     { id: 'voting', label: 'VOTING' }, 
