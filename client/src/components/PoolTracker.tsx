@@ -1,8 +1,11 @@
 import { calculateBackedValue } from "@/lib/mockData";
 import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
-import { BrainDiagnostics } from "./BrainDiagnostics";
+import React, { Suspense, lazy } from "react";
 import { motion } from "framer-motion";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+
+const BrainDiagnostics = lazy(() => import("./BrainDiagnostics").then(m => ({ default: m.BrainDiagnostics })));
 import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign, Info, X } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -331,7 +334,9 @@ export function PoolTracker() {
         </div>
       </section>
       
-      <BrainDiagnostics />
+      <Suspense fallback={<LoadingSpinner text="Loading Brain Diagnostics..." />}>
+        <BrainDiagnostics />
+      </Suspense>
     </>
   );
 }

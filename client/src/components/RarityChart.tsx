@@ -1,3 +1,4 @@
+import React from "react";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +21,7 @@ const RARITY_CONFIG = [
   { name: 'Most Common', color: '#374151' }
 ];
 
-export function RarityChart({ mintedCount, totalMinted, distribution, isLoading = false }: RarityChartProps) {
+export const RarityChart = React.memo(function RarityChart({ mintedCount, totalMinted, distribution, isLoading = false }: RarityChartProps) {
   
   const totalClassified = useMemo(() => {
     return Object.values(distribution).reduce((acc, val) => acc + val, 0);
@@ -83,5 +84,4 @@ export function RarityChart({ mintedCount, totalMinted, distribution, isLoading 
       </div>
     </div>
   );
-}
-
+});

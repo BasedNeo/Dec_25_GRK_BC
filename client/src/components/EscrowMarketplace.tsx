@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1406,8 +1406,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
 import { NFTImage } from "./NFTImage";
 
-// Helper Card Component
-function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
+// Helper Card Component - Memoized for performance
+const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
     const [showListModal, setShowListModal] = useState(false);
@@ -1679,10 +1679,12 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
                   <Button 
                     className="bg-green-500 text-black hover:bg-green-400 font-bold"
                     onClick={() => {
-                      marketplace.listNFT(item.id, listPrice);
+                      const sanitizedPrice = Math.max(1, Math.min(Number(listPrice), 999999999));
+                      if (isNaN(sanitizedPrice)) return;
+                      marketplace.listNFT(item.id, sanitizedPrice);
                       setShowListModal(false);
                     }}
-                    disabled={listPrice < 1 || marketplace.state.isPending}
+                    disabled={listPrice < 1 || listPrice > 999999999 || marketplace.state.isPending}
                   >
                     {marketplace.state.isPending ? 'LISTING...' : 'CONFIRM LISTING'}
                   </Button>
@@ -1691,7 +1693,7 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
             </Dialog>
         </Card>
     );
-}
+});
 
 // Offer Modal Component - V3 VERSION (Gasless Off-Chain Offers)
 function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
@@ -1767,8 +1769,9 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
             return;
         }
         
-        if (!amount || amount <= 0 || !item) {
-            setValidationError('Please enter a valid offer amount');
+        const sanitizedAmount = Math.max(1, Math.min(Number(amount), 999999999));
+        if (isNaN(sanitizedAmount) || sanitizedAmount <= 0 || !item) {
+            setValidationError('Please enter a valid offer amount (1 - 999,999,999)');
             return;
         }
         

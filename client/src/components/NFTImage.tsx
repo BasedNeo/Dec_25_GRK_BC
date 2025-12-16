@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, AlertTriangle, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ interface NFTImageProps {
   priority?: boolean; // For above-the-fold images
 }
 
-export function NFTImage({ 
+export const NFTImage = React.memo(function NFTImage({ 
   src, 
   alt, 
   id, 
@@ -117,4 +117,4 @@ export function NFTImage({
       )}
     </div>
   );
-}
+});

@@ -8,15 +8,17 @@ import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
 import { HomeHub } from "@/components/HomeHub";
 import { useAccount } from "wagmi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { AdminInbox } from "@/components/AdminInbox";
-import { AdminDashboard } from "@/components/AdminDashboard";
 import { UserStats } from "@/components/UserStats";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+
+const AdminDashboard = lazy(() => import("@/components/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -194,11 +196,13 @@ export default function Home() {
 
       {activeTab !== "universe" && activeTab !== "hub" && <Footer />}
       
-      <AdminDashboard 
-        isOpen={showAdminPanel} 
-        onClose={() => setShowAdminPanel(false)}
-        onOpenInbox={() => { setShowAdminPanel(false); setActiveTab('inbox'); }}
-      />
+      <Suspense fallback={<LoadingSpinner text="Loading Admin..." />}>
+        <AdminDashboard 
+          isOpen={showAdminPanel} 
+          onClose={() => setShowAdminPanel(false)}
+          onOpenInbox={() => { setShowAdminPanel(false); setActiveTab('inbox'); }}
+        />
+      </Suspense>
     </div>
   );
 }
