@@ -27,6 +27,45 @@ const ETH_RPC_ENDPOINTS = [
   'https://eth.drpc.org'
 ];
 
+// BasedAI L1 RPC for block queries
+const BASEDAI_L1_RPC = 'https://mainnet.basedaibridge.com/rpc/';
+
+// Block info interface
+export interface BlockInfo {
+  currentBlock: number;
+  blocksUntilHalving: number;
+  daysUntilHalving: number;
+  blockTime: number;
+}
+
+// Get BasedAI L1 block info for halving calculation
+async function getBlockInfo(): Promise<BlockInfo | null> {
+  try {
+    const provider = new ethers.JsonRpcProvider(BASEDAI_L1_RPC);
+    const currentBlock = await provider.getBlockNumber();
+    
+    // Block time is ~10 seconds on BasedAI L1
+    const blockTime = 10; // seconds
+    
+    // Halving interval (adjust based on actual schedule)
+    const halvingInterval = 210000;
+    
+    const blocksUntilHalving = halvingInterval - (currentBlock % halvingInterval);
+    const secondsUntilHalving = blocksUntilHalving * blockTime;
+    const daysUntilHalving = Math.floor(secondsUntilHalving / 86400);
+    
+    return {
+      currentBlock,
+      blocksUntilHalving,
+      daysUntilHalving,
+      blockTime
+    };
+  } catch (e) {
+    console.error('Failed to fetch BasedAI block info:', e);
+    return null;
+  }
+}
+
 const ERC20_ABI = [
   'function balanceOf(address account) view returns (uint256)',
   'function decimals() view returns (uint8)',
@@ -63,6 +102,9 @@ export interface SubnetEmissionsData {
   monthlyProjection: number;
   daysUntilHalving: number;
   daysActive: number;
+  
+  // Block info for halving
+  blockInfo: BlockInfo | null;
   
   // Status
   status: 'active' | 'delayed' | 'inactive';
@@ -107,6 +149,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [blockInfo, setBlockInfo] = useState<BlockInfo | null>(null);
   
   const cache = useRef<{ data: any; timestamp: number } | null>(null);
   const CACHE_DURATION = 60000; // 1 minute cache
@@ -256,6 +299,22 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     return () => clearInterval(interval);
   }, [fetchEmissions]);
 
+  // Fetch block info for halving countdown
+  useEffect(() => {
+    getBlockInfo().then(info => {
+      if (info) setBlockInfo(info);
+    });
+    
+    // Update every 5 minutes
+    const interval = setInterval(() => {
+      getBlockInfo().then(info => {
+        if (info) setBlockInfo(info);
+      });
+    }, 300000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Use known rates, not calculated from balance
   const dailyRate = BRAIN_CONFIG.communityDailyRate; // 6,438/day
   const brainAnnualOutput = BRAIN_CONFIG.brainAnnualOutput; // 23,500,000/year
@@ -304,8 +363,9 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     communityAnnualRate: BRAIN_CONFIG.communityAnnualRate,
     weeklyTotal,
     monthlyProjection,
-    daysUntilHalving,
+    daysUntilHalving: blockInfo?.daysUntilHalving ?? daysUntilHalving,
     daysActive: daysSinceStart,
+    blockInfo,
     status,
     lastEmissionTime,
     daysSinceStart,

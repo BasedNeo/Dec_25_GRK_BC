@@ -1,0 +1,81 @@
+ADD BLOCK-BASED HALVING COUNTDOWN - Query BasedAI L1
+
+BasedAI L1 Network Details (from docs.basedlabs.net):
+- RPC: https://mainnet.basedaibridge.com/rpc/
+- Chain ID: 32323
+- Block Time: ~10 seconds
+- Emission: 8,000 $BASED every 10 seconds
+
+UPDATE useSubnetEmissions.ts:
+
+ADD BasedAI L1 RPC for block queries:
+
+const BASEDAI_L1_RPC = 'https://mainnet.basedaibridge.com/rpc/';
+
+ADD function to get current block and estimate halving:
+
+async function getBlockInfo() {
+  try {
+    const provider = new ethers.JsonRpcProvider(BASEDAI_L1_RPC);
+    const currentBlock = await provider.getBlockNumber();
+    const latestBlock = await provider.getBlock('latest');
+    
+    // Genesis timestamp (mainnet launch - need to determine)
+    // Block time is ~10 seconds
+    const blockTime = 10; // seconds
+    
+    // Bitcoin-style halving every ~210,000 blocks
+    // Or query contract for exact halving block
+    const halvingInterval = 210000; // Adjust based on actual schedule
+    
+    const blocksUntilHalving = halvingInterval - (currentBlock % halvingInterval);
+    const secondsUntilHalving = blocksUntilHalving * blockTime;
+    const daysUntilHalving = Math.floor(secondsUntilHalving / 86400);
+    
+    return {
+      currentBlock,
+      blocksUntilHalving,
+      daysUntilHalving,
+      blockTime,
+      timestamp: latestBlock?.timestamp
+    };
+  } catch (e) {
+    console.error('Failed to fetch BasedAI block info:', e);
+    return null;
+  }
+}
+
+ADD to the hook state:
+const [blockInfo, setBlockInfo] = useState<{
+  currentBlock: number;
+  blocksUntilHalving: number;
+  daysUntilHalving: number;
+} | null>(null);
+
+FETCH block info in useEffect:
+useEffect(() => {
+  getBlockInfo().then(info => {
+    if (info) setBlockInfo(info);
+  });
+  
+  // Update every 5 minutes
+  const interval = setInterval(() => {
+    getBlockInfo().then(info => {
+      if (info) setBlockInfo(info);
+    });
+  }, 300000);
+  
+  return () => clearInterval(interval);
+}, []);
+
+UPDATE BrainDiagnostics.tsx:
+
+Show block-based halving:
+<div className="...">
+  <span>NEXT HALVING</span>
+  <div>{emissions.blockInfo?.daysUntilHalving || '~15'} days</div>
+  <span className="text-[9px]">
+    Block #{emissions.blockInfo?.currentBlock?.toLocaleString() || '...'} 
+    ({emissions.blockInfo?.blocksUntilHalving?.toLocaleString() || '...'} blocks remaining)
+  </span>
+</div>
