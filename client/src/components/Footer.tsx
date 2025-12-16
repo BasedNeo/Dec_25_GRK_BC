@@ -144,12 +144,18 @@ export function Footer() {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <Textarea 
-                placeholder="Share your thoughts with us..." 
+                placeholder="Share your thoughts with us... (max 500 words)" 
                 className="bg-black/50 border-white/10 text-white min-h-[80px] focus:border-primary/50"
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+                onChange={(e) => {
+                  const words = e.target.value.trim().split(/\s+/).filter(w => w.length > 0);
+                  if (words.length <= 500) setFeedback(e.target.value);
+                }}
                 required
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {feedback.trim().split(/\s+/).filter(w => w.length > 0).length}/500 words
+              </p>
               <div className="flex gap-4">
                 <Input 
                   type="email" 

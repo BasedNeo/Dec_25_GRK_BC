@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { AdminInbox } from "@/components/AdminInbox";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -146,6 +147,19 @@ export default function Home() {
               className="pt-8"
             >
               <ActivityFeed limit={30} showStats={true} />
+            </motion.div>
+          )}
+
+          {activeTab === "inbox" && (
+            <motion.div
+              key="inbox"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="pt-8"
+            >
+              <AdminInbox onBack={() => setActiveTab("hub")} />
             </motion.div>
           )}
         </AnimatePresence>

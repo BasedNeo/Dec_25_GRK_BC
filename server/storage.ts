@@ -1,7 +1,9 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertPushSubscription, type PushSubscription, users, feedback, pushSubscriptions } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, users, feedback, storySubmissions, pushSubscriptions } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
+
+const MAX_MESSAGES_PER_INBOX = 100;
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -9,6 +11,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   createFeedback(data: InsertFeedback): Promise<Feedback>;
   getAllFeedback(): Promise<Feedback[]>;
+  purgeFeedback(): Promise<number>;
+  createStorySubmission(data: InsertStory): Promise<Story>;
+  getAllStorySubmissions(): Promise<Story[]>;
+  purgeStorySubmissions(): Promise<number>;
   createPushSubscription(data: InsertPushSubscription): Promise<PushSubscription>;
   getPushSubscriptionByEndpoint(endpoint: string): Promise<PushSubscription | undefined>;
   getPushSubscriptionsByWallet(walletAddress: string): Promise<PushSubscription[]>;
@@ -35,11 +41,42 @@ export class DatabaseStorage implements IStorage {
 
   async createFeedback(data: InsertFeedback): Promise<Feedback> {
     const [result] = await db.insert(feedback).values(data).returning();
+    await this.purgeFeedback();
     return result;
   }
 
   async getAllFeedback(): Promise<Feedback[]> {
-    return db.select().from(feedback).orderBy(feedback.createdAt);
+    return db.select().from(feedback).orderBy(desc(feedback.createdAt)).limit(MAX_MESSAGES_PER_INBOX);
+  }
+
+  async purgeFeedback(): Promise<number> {
+    const all = await db.select({ id: feedback.id }).from(feedback).orderBy(desc(feedback.createdAt));
+    if (all.length <= MAX_MESSAGES_PER_INBOX) return 0;
+    const toDelete = all.slice(MAX_MESSAGES_PER_INBOX).map(f => f.id);
+    for (const id of toDelete) {
+      await db.delete(feedback).where(eq(feedback.id, id));
+    }
+    return toDelete.length;
+  }
+
+  async createStorySubmission(data: InsertStory): Promise<Story> {
+    const [result] = await db.insert(storySubmissions).values(data).returning();
+    await this.purgeStorySubmissions();
+    return result;
+  }
+
+  async getAllStorySubmissions(): Promise<Story[]> {
+    return db.select().from(storySubmissions).orderBy(desc(storySubmissions.createdAt)).limit(MAX_MESSAGES_PER_INBOX);
+  }
+
+  async purgeStorySubmissions(): Promise<number> {
+    const all = await db.select({ id: storySubmissions.id }).from(storySubmissions).orderBy(desc(storySubmissions.createdAt));
+    if (all.length <= MAX_MESSAGES_PER_INBOX) return 0;
+    const toDelete = all.slice(MAX_MESSAGES_PER_INBOX).map(s => s.id);
+    for (const id of toDelete) {
+      await db.delete(storySubmissions).where(eq(storySubmissions.id, id));
+    }
+    return toDelete.length;
   }
 
   async createPushSubscription(data: InsertPushSubscription): Promise<PushSubscription> {

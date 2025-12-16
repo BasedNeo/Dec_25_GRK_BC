@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFeedbackSchema } from "@shared/schema";
+import { insertFeedbackSchema, insertStorySchema } from "@shared/schema";
 import { z } from "zod";
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
@@ -46,6 +46,45 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Feedback] Error fetching feedback:", error);
       return res.status(500).json({ error: "Failed to fetch feedback" });
+    }
+  });
+
+  // Story submission endpoint
+  app.post("/api/stories", async (req, res) => {
+    try {
+      const parsed = insertStorySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid story data", details: parsed.error.errors });
+      }
+
+      // Validate 500 word limit
+      const wordCount = parsed.data.content.trim().split(/\s+/).length;
+      if (wordCount > 500) {
+        return res.status(400).json({ error: `Story exceeds 500 word limit (${wordCount} words)` });
+      }
+
+      const storyEntry = await storage.createStorySubmission(parsed.data);
+      console.log(`[Story] New submission saved. ID: ${storyEntry.id}`);
+
+      return res.status(201).json({ 
+        success: true, 
+        message: "Story submitted successfully",
+        id: storyEntry.id 
+      });
+    } catch (error) {
+      console.error("[Story] Error saving story:", error);
+      return res.status(500).json({ error: "Failed to save story" });
+    }
+  });
+
+  // Get all story submissions (admin endpoint)
+  app.get("/api/stories", async (req, res) => {
+    try {
+      const allStories = await storage.getAllStorySubmissions();
+      return res.json(allStories);
+    } catch (error) {
+      console.error("[Story] Error fetching stories:", error);
+      return res.status(500).json({ error: "Failed to fetch stories" });
     }
   });
 

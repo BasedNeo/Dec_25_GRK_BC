@@ -7,6 +7,15 @@ import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
 import { CHAIN_ID } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
+import { Inbox } from 'lucide-react';
+
+const ADMIN_WALLETS = [
+  '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
+  '0xb1362caf09189887599ed40f056712b1a138210c',
+  '0xabce9e63a9ae51e215bb10c9648f4c0f400c5847',
+  '0xbba49256a93a06fcf3b0681fead2b4e3042b9124',
+  '0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af',
+];
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -70,7 +79,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   };
 
   const { isPaused, togglePause } = useSecurity();
-  const isAdmin = address?.toLowerCase() === ADMIN_WALLET.toLowerCase();
+  const isAdmin = address && ADMIN_WALLETS.some(admin => admin.toLowerCase() === address.toLowerCase());
   
   // Price Data
   const { data: priceData } = useTokenPrice();
@@ -250,15 +259,27 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             )}
 
             {isAdmin && (
-                <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={togglePause}
-                    className={`ml-4 border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
-                >
-                    {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
-                    {isPaused ? "RESUME" : "PAUSE"}
-                </Button>
+                <div className="flex items-center gap-2 ml-4">
+                  <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => onTabChange('inbox')}
+                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20"
+                      data-testid="admin-inbox-btn"
+                  >
+                      <Inbox className="w-4 h-4 mr-1" />
+                      INBOX
+                  </Button>
+                  <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={togglePause}
+                      className={`border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
+                  >
+                      {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
+                      {isPaused ? "RESUME" : "PAUSE"}
+                  </Button>
+                </div>
             )}
 
             <div className="ml-4 flex items-center gap-3">
