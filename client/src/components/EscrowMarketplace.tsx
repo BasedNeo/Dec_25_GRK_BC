@@ -616,6 +616,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Actions ---
   const handleOffer = (item: MarketItem) => {
+      console.log('[Marketplace] handleOffer called for item:', item.id, item.name);
       setOfferItem(item);
       setShowOfferModal(true);
   };
@@ -1710,8 +1711,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
     if (!item) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto z-[10000]">
+        <Dialog open={isOpen} onOpenChange={onClose} modal={true}>
+            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto z-[99999]" style={{ zIndex: 99999 }}>
                 <DialogHeader className="pt-8 sm:pt-0">
                     <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
                     <DialogDescription>
