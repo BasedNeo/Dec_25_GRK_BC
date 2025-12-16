@@ -1272,9 +1272,11 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     <div className="absolute inset-0 border-t-2 border-accent rounded-full animate-spin"></div>
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setShowBiometricModal(false)}>Cancel</Button>
-                <Button onClick={handleBiometricAuth} className="bg-accent text-black hover:bg-accent/90">
+            <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShowBiometricModal(false)} className="border-white/20 text-white hover:bg-white/10">
+                    Cancel
+                </Button>
+                <Button onClick={handleBiometricAuth} className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold hover:from-cyan-400 hover:to-purple-400 shadow-[0_0_20px_rgba(0,255,255,0.4)]">
                     Verify Identity
                 </Button>
             </DialogFooter>
