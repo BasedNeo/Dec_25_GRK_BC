@@ -1,5 +1,9 @@
-export const RPC_URL = "https://mainnet.basedaibridge.com/rpc";
+export const RPC_URL = "https://mainnet.basedaibridge.com/rpc/";
 export const CHAIN_ID = 32323;
+
+export const RPC_ENDPOINTS = [
+  'https://mainnet.basedaibridge.com/rpc/',
+];
 export const BLOCK_EXPLORER = "https://explorer.bf1337.org";
 export const NFT_SYMBOL = "BASED";
 export const TWITTER_URL = "https://x.com/based_guardians";
