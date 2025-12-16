@@ -21,10 +21,9 @@ interface NavbarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   isConnected: boolean;
-  onOpenAdmin?: () => void;
 }
 
-export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: NavbarProps) {
+export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   // const { toast } = useToast(); // Using custom toast
@@ -69,8 +68,7 @@ export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: Nav
     setTimeout(() => setIsShaking(false), 500);
   };
 
-  const { isPaused, togglePause } = useSecurity();
-  const isAdmin = address && ADMIN_WALLETS.some(admin => admin.toLowerCase() === address.toLowerCase());
+  const { isPaused } = useSecurity();
   
   // Price Data
   const { data: priceData } = useTokenPrice();

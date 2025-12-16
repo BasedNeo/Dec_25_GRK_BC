@@ -46,24 +46,32 @@ export function PoolTracker() {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
       
-      // Get current block number and query only last 50000 blocks to avoid timeout
+      // Get current block number and query only last 10000 blocks to avoid timeout
       const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - 50000);
+      const fromBlock = Math.max(0, currentBlock - 10000);
       
-      const filter = contract.filters.Sold();
-      const events = await contract.queryFilter(filter, fromBlock, "latest");
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<number>((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout')), 8000)
+      );
       
-      let totalVolume = 0;
-      for (const event of events) {
-        const log = event as ethers.EventLog;
-        if (log.args && log.args.price) {
-          totalVolume += parseFloat(ethers.formatEther(log.args.price));
+      const queryPromise = (async () => {
+        const filter = contract.filters.Sold();
+        const events = await contract.queryFilter(filter, fromBlock, "latest");
+        
+        let totalVolume = 0;
+        for (const event of events) {
+          const log = event as ethers.EventLog;
+          if (log.args && log.args.price) {
+            totalVolume += parseFloat(ethers.formatEther(log.args.price));
+          }
         }
-      }
+        return totalVolume;
+      })();
       
-      return totalVolume;
+      return await Promise.race([queryPromise, timeoutPromise]);
     } catch (e) {
-      console.error("Failed to fetch sales volume:", e);
+      // Silently fail - sales volume is optional data
       return 0;
     }
   }, []);
