@@ -130,13 +130,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
+    { id: 'mint', label: 'MINT' },
     { id: 'gallery', label: 'PORTFOLIO' },
     { id: 'escrow', label: 'MARKET' },
     { id: 'universe', label: 'UNIVERSE' },
     { id: 'pool', label: 'POOL' },
     { id: 'stats', label: 'STATS' },
     { id: 'voting', label: 'VOTING' }, 
-    { id: 'mint', label: 'MINT' },
     { id: 'activity', label: 'ACTIVITY' },
   ];
 

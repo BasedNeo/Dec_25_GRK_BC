@@ -132,7 +132,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 animation: 'gradientShift 8s ease-in-out infinite',
               }}
             >
-              COMMAND CENTER
+              MINT - TO LIFT OFF!
             </span>
           </h1>
           <style>{`
