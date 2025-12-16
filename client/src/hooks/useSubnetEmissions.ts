@@ -9,12 +9,22 @@ const BRAIN_CONFIG = {
   communityShare: 0.10,
   emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(),
   initialDeposit: 35000,
+  
   // Known emission rates (pre-halving)
-  brainAnnualOutput: 23500000, // Full subnet annual
-  brainDailyRate: 64384, // Full subnet daily (23.5M / 365)
+  brainAnnualOutput: 23500000,
+  brainDailyRate: 64384, // 23.5M / 365
   communityDailyRate: 6438, // 10% of daily
-  communityAnnualRate: 2350000, // 10% of annual
-  nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(),
+  communityAnnualRate: 2350000,
+  
+  // BasedAI L1 network config
+  basedaiRpc: 'https://mainnet.basedaibridge.com/rpc/',
+  basedaiChainId: 32323,
+  blockTime: 10, // seconds
+  
+  // Halving config (annual, ~Dec 2025 for first L1 halving)
+  // Estimated blocks per year: 365 * 24 * 60 * 60 / 10 = 3,153,600
+  halvingInterval: 3153600, // blocks per year
+  
   network: 'BasedAI',
   networkUrl: 'https://www.getbased.ai/'
 };
@@ -27,42 +37,59 @@ const ETH_RPC_ENDPOINTS = [
   'https://eth.drpc.org'
 ];
 
-// BasedAI L1 RPC for block queries
-const BASEDAI_L1_RPC = 'https://mainnet.basedaibridge.com/rpc/';
-
 // Block info interface
 export interface BlockInfo {
-  currentBlock: number;
-  blocksUntilHalving: number;
+  currentBlock: number | null;
+  blocksUntilHalving: number | null;
   daysUntilHalving: number;
-  blockTime: number;
+  hoursRemaining: number;
+  currentEpoch: number;
+  halvingDate: string;
 }
 
 // Get BasedAI L1 block info for halving calculation
-async function getBlockInfo(): Promise<BlockInfo | null> {
+async function getBlockInfo(): Promise<BlockInfo> {
   try {
-    const provider = new ethers.JsonRpcProvider(BASEDAI_L1_RPC);
+    const provider = new ethers.JsonRpcProvider(BRAIN_CONFIG.basedaiRpc);
+    
+    // Get current block number
     const currentBlock = await provider.getBlockNumber();
     
-    // Block time is ~10 seconds on BasedAI L1
-    const blockTime = 10; // seconds
+    // Calculate blocks until next halving
+    const blocksInCurrentEpoch = currentBlock % BRAIN_CONFIG.halvingInterval;
+    const blocksUntilHalving = BRAIN_CONFIG.halvingInterval - blocksInCurrentEpoch;
     
-    // Halving interval (adjust based on actual schedule)
-    const halvingInterval = 210000;
-    
-    const blocksUntilHalving = halvingInterval - (currentBlock % halvingInterval);
-    const secondsUntilHalving = blocksUntilHalving * blockTime;
+    // Convert to time
+    const secondsUntilHalving = blocksUntilHalving * BRAIN_CONFIG.blockTime;
     const daysUntilHalving = Math.floor(secondsUntilHalving / 86400);
+    const hoursRemaining = Math.floor((secondsUntilHalving % 86400) / 3600);
+    
+    // Calculate halving epoch (0 = pre-halving, 1 = first halving, etc.)
+    const currentEpoch = Math.floor(currentBlock / BRAIN_CONFIG.halvingInterval);
+    
+    // Estimate halving date
+    const halvingTimestamp = new Date(Date.now() + (secondsUntilHalving * 1000));
+    const halvingDate = halvingTimestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
     return {
       currentBlock,
       blocksUntilHalving,
       daysUntilHalving,
-      blockTime
+      hoursRemaining,
+      currentEpoch,
+      halvingDate
     };
   } catch (e) {
     console.error('Failed to fetch BasedAI block info:', e);
-    return null;
+    // Fallback to estimated values
+    return {
+      currentBlock: null,
+      blocksUntilHalving: null,
+      daysUntilHalving: 15,
+      hoursRemaining: 0,
+      currentEpoch: 0,
+      halvingDate: '~Dec 31, 2025'
+    };
   }
 }
 
@@ -333,8 +360,8 @@ export function useSubnetEmissions(): SubnetEmissionsData {
   const communityShare = actualEmissions; // Actual emissions = community's share
   const monthlyProjection = dailyRate * 30;
   
-  // Days until halving
-  const daysUntilHalving = Math.max(0, Math.ceil((BRAIN_CONFIG.nextHalvingDate - Date.now()) / (1000 * 60 * 60 * 24)));
+  // Days until halving (from block info or fallback to 15 days estimate)
+  const daysUntilHalving = blockInfo?.daysUntilHalving ?? 15;
 
   // Determine status - if we have balance, brain is active
   let status: 'active' | 'delayed' | 'inactive' = brainBalance > 0 ? 'active' : 'inactive';

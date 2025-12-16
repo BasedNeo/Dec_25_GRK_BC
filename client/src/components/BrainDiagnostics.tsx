@@ -338,14 +338,21 @@ export function BrainDiagnostics() {
               <span className="text-[10px] text-muted-foreground font-mono uppercase">Next Halving</span>
               <div className="text-xl font-mono font-bold text-red-400 mt-1">
                 {emissions.blockInfo?.daysUntilHalving ?? emissions.daysUntilHalving} days
-              </div>
-              <span className="text-[9px] text-red-500/70">
-                {emissions.blockInfo ? (
-                  <>Block #{emissions.blockInfo.currentBlock.toLocaleString()} ({emissions.blockInfo.blocksUntilHalving.toLocaleString()} remaining)</>
-                ) : (
-                  '~Dec 31, 2025'
+                {emissions.blockInfo && emissions.blockInfo.hoursRemaining > 0 && (
+                  <span className="text-sm ml-1">{emissions.blockInfo.hoursRemaining}h</span>
                 )}
-              </span>
+              </div>
+              <div className="text-[9px] text-muted-foreground font-mono mt-1">
+                {emissions.blockInfo?.halvingDate || '~Dec 31, 2025'}
+              </div>
+              {emissions.blockInfo?.currentBlock && (
+                <div className="text-[8px] text-red-400/50 font-mono mt-2">
+                  Block #{emissions.blockInfo.currentBlock.toLocaleString()}
+                  {emissions.blockInfo.blocksUntilHalving && (
+                    <span> • {emissions.blockInfo.blocksUntilHalving.toLocaleString()} remaining</span>
+                  )}
+                </div>
+              )}
             </motion.div>
 
             <motion.div
