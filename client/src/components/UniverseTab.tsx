@@ -427,10 +427,23 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               <span className="block bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent">
                 The Based
               </span>
-              <span className="block bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mt-2">
+              <span 
+                className="block bg-clip-text text-transparent mt-2"
+                style={{
+                  backgroundImage: 'linear-gradient(90deg, #22d3ee, #ffffff, #a78bfa, #ffffff, #22d3ee)',
+                  backgroundSize: '200% 100%',
+                  animation: 'gradientShift 8s ease-in-out infinite',
+                }}
+              >
                 Universe
               </span>
             </h1>
+            <style>{`
+              @keyframes gradientShift {
+                0%, 100% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+              }
+            `}</style>
             
             <p className="text-sm md:text-base font-mono text-white/30 tracking-[0.2em] uppercase pt-4">
               A Saga of Guardians, Frogs & Creatures
