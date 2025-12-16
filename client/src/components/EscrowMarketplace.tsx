@@ -75,6 +75,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [contractStats, setContractStats] = useState<{totalMinted: number} | null>(null);
   const [mintedTokenIdsList, setMintedTokenIdsList] = useState<number[]>([]);
   const [directListingIds, setDirectListingIds] = useState<number[]>([]);
+  const [listingPrices, setListingPrices] = useState<Map<number, number>>(new Map());
   
   // --- Fetch totalMinted, minted token IDs, AND active listings directly via ethers.js ---
   useEffect(() => {
@@ -138,6 +139,47 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     const interval = setInterval(fetchContractData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch listing prices for all active listings
+  useEffect(() => {
+    if (directListingIds.length === 0) return;
+    
+    const fetchListingPrices = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+        const marketplaceContract = new ethers.Contract(
+          MARKETPLACE_CONTRACT,
+          [
+            'function getListing(uint256 tokenId) view returns (address seller, uint256 price, uint256 listedAt, bool active)'
+          ],
+          provider
+        );
+        
+        const prices = new Map<number, number>();
+        
+        // Fetch prices in parallel for speed
+        const pricePromises = directListingIds.map(async (tokenId) => {
+          try {
+            const listing = await marketplaceContract.getListing(tokenId);
+            if (listing.active) {
+              const priceInBased = parseFloat(ethers.formatEther(listing.price));
+              prices.set(tokenId, priceInBased);
+            }
+          } catch (e) {
+            console.error(`[EscrowMarketplace] Failed to fetch price for token ${tokenId}:`, e);
+          }
+        });
+        
+        await Promise.all(pricePromises);
+        setListingPrices(prices);
+        console.log('[EscrowMarketplace] Fetched listing prices:', Object.fromEntries(prices));
+      } catch (error) {
+        console.error('[EscrowMarketplace] Error fetching listing prices:', error);
+      }
+    };
+    
+    fetchListingPrices();
+  }, [directListingIds]);
 
   // Real offers from blockchain via useOffersForOwner hook
   const { offers: offersByToken, isLoading: offersLoading } = useOffersForOwner();
