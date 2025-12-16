@@ -152,7 +152,7 @@ export function useMint() {
         gasPrice: BigInt(10000000000),
       });
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       const parsedError = parseContractError(e);
       setError(parsedError);
       setIsLoading(false);

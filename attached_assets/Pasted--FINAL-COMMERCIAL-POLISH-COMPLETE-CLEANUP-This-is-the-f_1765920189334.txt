@@ -1,0 +1,242 @@
+=== FINAL COMMERCIAL POLISH - COMPLETE CLEANUP ===
+
+This is the final preparation before commercial release. Address ALL items below.
+
+═══════════════════════════════════════════════════════════
+SECTION 1: CRITICAL FIXES (Must Do First)
+═══════════════════════════════════════════════════════════
+
+1A. FIX MINTING GAS LIMIT (BROKEN!)
+File: /client/src/hooks/useMint.ts
+Line ~193, change:
+  gas: BigInt(500000),
+TO:
+  gas: BigInt(8000000),
+
+This is CRITICAL - minting will fail without this fix!
+
+1B. ADD V3 MARKETPLACE CONTRACT
+File: /client/src/lib/constants.ts
+After line 17 (MARKETPLACE_CONTRACT), add:
+// Marketplace V3 - Off-chain offers with on-chain settlement (Aftermint-style)
+export const MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3";
+
+═══════════════════════════════════════════════════════════
+SECTION 2: REMOVE ALL DEBUG LOGGING
+═══════════════════════════════════════════════════════════
+
+Remove ALL console.log, console.warn, console.error statements from:
+
+2A. /client/src/hooks/useMint.ts (24 instances)
+Remove lines containing:
+- console.log('🔵 [Mint]
+- console.log('🟢 [Mint]
+- console.log('🟡 [Mint]
+- console.log('✅ [Mint]
+- console.log('❌ [Mint]
+- console.log('========
+- console.log('🚀 [Mint]
+- console.log('📝 [Mint]
+- console.log('📤 [Mint]
+- console.log('🔍 [Mint]
+- console.log('📄 [Mint]
+- console.log('⚠️ [Mint]
+- console.log('🔄 [Mint]
+- console.error('❌ [Mint]
+
+2B. /client/src/components/Hero.tsx (8 instances)
+Remove lines 137-162 containing:
+- console.log('🔴 MINT BUTTON CLICKED');
+- console.log('   isConnected:', ...
+- console.log('   isPaused:', ...
+- console.log('❌ Not connected...
+- console.log('❌ System paused');
+- console.log('✅ Calling mint function...');
+
+2C. /client/src/lib/onchain.ts - Remove any console.log
+2D. /client/src/lib/smartFetcher.ts - Remove any console.log
+2E. /client/src/components/EscrowMarketplace.tsx - Remove console.warn/error (~lines 129, 385, 644, 686, 695, 768)
+
+KEEP ONLY: Error logging in ErrorBoundary.tsx for production error tracking.
+
+═══════════════════════════════════════════════════════════
+SECTION 3: TYPE SAFETY IMPROVEMENTS
+═══════════════════════════════════════════════════════════
+
+Replace `any` types with proper types:
+
+3A. /client/src/hooks/useActivityFeed.ts
+Change: catch (e: any)
+To: catch (e: unknown)
+
+3B. /client/src/hooks/useGuardians.ts (3 instances)
+Replace any with proper types or unknown
+
+3C. /client/src/hooks/useOwnedNFTs.ts (5 instances)
+Replace any with proper types
+
+3D. /client/src/hooks/useSubnetEmissions.ts
+Replace any with proper types
+
+3E. /client/src/components/EscrowMarketplace.tsx (~line 247)
+Change: } catch (error: any) {
+To: } catch (error: unknown) {
+
+═══════════════════════════════════════════════════════════
+SECTION 4: ERROR HANDLING IMPROVEMENTS
+═══════════════════════════════════════════════════════════
+
+4A. Fix empty catch block in useMarketplace.ts
+Line ~658, change:
+  } catch { }
+To:
+  } catch {
+    // Listing check failed - continue with transaction attempt
+  }
+
+4B. Add proper error typing to all catch blocks
+Pattern to follow:
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  // handle error
+}═══════════════════════════════════════════════════════════
+SECTION 5: PERFORMANCE OPTIMIZATIONS
+═══════════════════════════════════════════════════════════
+
+5A. Add React.memo to heavy components
+Wrap these components with React.memo:
+- MarketCard (in EscrowMarketplace.tsx)
+- NFTImage
+- RarityChart
+
+Example:
+const MarketCard = React.memo(function MarketCard({ item, onBuy, ... }) {
+  // existing code
+});5B. Optimize re-renders in EscrowMarketplace
+Add useMemo to expensive filter operations that don't change often.
+
+5C. Add lazy loading for below-fold components
+const BrainDiagnostics = React.lazy(() => import('./BrainDiagnostics'));
+const AdminDashboard = React.lazy(() => import('./AdminDashboard'));Wrap with Suspense:
+<Suspense fallback={<LoadingSpinner />}>
+  <BrainDiagnostics />
+</Suspense>═══════════════════════════════════════════════════════════
+SECTION 6: SECURITY HARDENING
+═══════════════════════════════════════════════════════════
+
+6A. Validate all user inputs
+In OfferModal and List Modal, add validation:
+// Sanitize and validate price input
+const sanitizedPrice = Math.max(1, Math.min(Number(price), 999999999));
+if (isNaN(sanitizedPrice)) return;6B. Add rate limiting to contract calls
+In useMarketplace.ts, add debouncing:
+const debouncedBuy = useDebouncedCallback(buyNFT, 1000);6C. Verify all external links have rel="noopener noreferrer"
+Search for: target="_blank"
+Ensure all have: rel="noopener noreferrer"
+
+═══════════════════════════════════════════════════════════
+SECTION 7: UX POLISH
+═══════════════════════════════════════════════════════════
+
+7A. Standardize loading states
+Create consistent loading component:
+// /client/src/components/ui/LoadingSpinner.tsx
+export function LoadingSpinner({ text = "Loading..." }: { text?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8">
+      <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+      <p className="text-cyan-400 font-mono text-sm mt-2 animate-pulse">{text}</p>
+    </div>
+  );
+}7B. Add skeleton loaders for NFT cards
+While loading, show skeleton cards instead of spinner.
+
+7C. Improve error messages
+Ensure all error toasts are branded:
+toast({
+  title: "Error Title",
+  description: "User-friendly message",
+  className: "bg-black border-red-500/50 text-red-400 font-orbitron"
+});7D. Add success animations
+After successful transactions, show confetti + success toast.
+
+═══════════════════════════════════════════════════════════
+SECTION 8: ACCESSIBILITY (A11Y)
+═══════════════════════════════════════════════════════════
+
+8A. Add aria-labels to icon-only buttons
+<Button aria-label="Cancel offer" ...>
+  <X size={14} />
+</Button>8B. Ensure color contrast meets WCAG AA
+- Text on dark backgrounds: minimum 4.5:1 ratio
+- UI elements: minimum 3:1 ratio
+
+8C. Add focus indicators
+Ensure all interactive elements have visible focus states:
+focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-black═══════════════════════════════════════════════════════════
+SECTION 9: MOBILE OPTIMIZATIONS
+═══════════════════════════════════════════════════════════
+
+9A. Test and fix touch targets
+Ensure all buttons are at least 44x44px on mobile.
+
+9B. Fix horizontal scroll issues
+Add to problematic containers:
+overflow-x-hidden9C. Optimize modals for mobile
+Ensure modals are full-screen on mobile:
+className="w-full h-full sm:h-auto sm:max-w-md"═══════════════════════════════════════════════════════════
+SECTION 10: CLEANUP UNUSED CODE
+═══════════════════════════════════════════════════════════
+
+10A. Remove unused imports
+Run through each file and remove:
+- Unused React hooks
+- Unused components
+- Unused utility functions
+
+10B. Remove dead code
+Search for commented-out code blocks and remove if not needed.
+
+10C. Clean up mockData.ts
+Review /client/src/lib/mockData.ts:
+- Update MINTED_COUNT to match actual (currently 7, may be higher)
+- Remove or mark deprecated mock data
+
+═══════════════════════════════════════════════════════════
+SECTION 11: FINAL BUILD & TEST
+═══════════════════════════════════════════════════════════
+
+After all changes:
+
+11A. Run TypeScript check:
+npm run typecheck
+
+11B. Run linter:
+npm run lint
+
+11C. Run build:
+npm run build
+
+11D. Fix any errors that appear.
+
+11E. Manual Testing Checklist:
+□ Connect wallet (MetaMask, Rabby)
+□ Disconnect wallet (no error popup)
+□ View marketplace (NFTs load)
+□ Filter/search NFTs
+□ View owned NFTs in portfolio
+□ List NFT for sale
+□ Delist NFT
+□ Buy NFT
+□ Make offer on NFT
+□ View my offers
+□ Cancel offer
+□ Mint NFT (requires 69,420 $BASED)
+□ View Activity Feed
+□ View Pool Tracker
+□ View Brain Diagnostics
+□ Admin Dashboard (admin wallet only)
+□ Mobile: All above on phone
+
+═══════════════════════════════════════════════════════════
+SECTION 12: PRODUCTION CHECK

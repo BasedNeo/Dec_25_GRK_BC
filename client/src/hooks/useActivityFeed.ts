@@ -222,8 +222,9 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       setLastBlock(currentBlock);
       setError(null);
       
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch activity');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Failed to fetch activity');
     } finally {
       setIsLoading(false);
     }

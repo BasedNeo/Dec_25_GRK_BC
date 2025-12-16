@@ -177,7 +177,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         
         await Promise.all(pricePromises);
         setListingPrices(prices);
-        console.log('[EscrowMarketplace] Fetched listing prices:', Object.fromEntries(prices));
       } catch (error) {
         console.error('[EscrowMarketplace] Error fetching listing prices:', error);
       }

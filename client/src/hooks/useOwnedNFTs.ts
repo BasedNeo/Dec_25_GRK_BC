@@ -80,8 +80,9 @@ export function useOwnedNFTs() {
         } catch (e) {}
       }
       setNfts(fetchedNFTs);
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch owned NFTs');
+    } catch (e: unknown) {
+      const error = e as Error;
+      setError(error.message || 'Failed to fetch owned NFTs');
     } finally {
       setIsLoading(false);
     }
