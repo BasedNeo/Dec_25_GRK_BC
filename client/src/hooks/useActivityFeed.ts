@@ -97,7 +97,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     activeOffers: 0,
   });
 
-  // Fetch activities from blockchain
+  // Fetch activities from blockchain - OPTIMIZED with parallel calls
   const fetchActivities = useCallback(async () => {
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -105,47 +105,70 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
-      // Look back ~10000 blocks for more history
-      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
-      const fromBlock = Math.max(0, currentBlock - 10000);
+      // Look back ~5000 blocks for faster loading
+      // BasedAI ~2 sec blocks, so 5000 blocks ≈ 2.8 hours of history
+      const fromBlock = Math.max(0, currentBlock - 5000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+      const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
       
-      // === FETCH REAL CONTRACT STATE (not event-based) ===
-      try {
-        const totalMinted = await nftContract.totalMinted();
-        
-        // Try to get marketplace stats (if functions exist)
-        let activeListings = 0;
-        let activeOffers = 0;
-        
-        setContractStats({
-          totalMinted: Number(totalMinted),
-          maxSupply: 3732,
-          activeListings,
-          activeOffers,
-        });
-      } catch (err) {
-        console.error('[ActivityFeed] Error fetching contract stats:', err);
-      }
+      // PARALLEL: Fetch all data at once
+      const [
+        totalMinted,
+        transferEvents,
+        listedEvents,
+        soldEvents
+      ] = await Promise.all([
+        nftContract.totalMinted().catch(() => 0),
+        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch(() => []),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch(() => []),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch(() => [])
+      ]);
       
-      // Fetch Transfer events from NFT contract
-      const transferFilter = nftContract.filters.Transfer();
-      const transferEvents = await nftContract.queryFilter(transferFilter, fromBlock, currentBlock);
+      setContractStats({
+        totalMinted: Number(totalMinted),
+        maxSupply: 3732,
+        activeListings: 0,
+        activeOffers: 0,
+      });
       
-      // Parse Transfer events
       const parsedActivities: Activity[] = [];
       
+      // Collect all unique block numbers for batch timestamp fetching
+      const allEvents = [...transferEvents.slice(-limit), ...listedEvents, ...soldEvents];
+      const uniqueBlocks = [...new Set(allEvents.map(e => e.blockNumber))];
+      
+      // Batch fetch timestamps for blocks not in cache
+      const uncachedBlocks = uniqueBlocks.filter(b => !blockTimestampCache.has(b));
+      if (uncachedBlocks.length > 0) {
+        const timestampPromises = uncachedBlocks.slice(0, 20).map(async (blockNum) => {
+          try {
+            const block = await provider.getBlock(blockNum);
+            if (block?.timestamp) {
+              blockTimestampCache.set(blockNum, block.timestamp);
+            }
+          } catch {}
+        });
+        await Promise.all(timestampPromises);
+      }
+      
+      // Now use estimated timestamps for any remaining
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const getTimestampFast = (blockNum: number): number => {
+        if (blockTimestampCache.has(blockNum)) {
+          return blockTimestampCache.get(blockNum)!;
+        }
+        // Estimate: ~2 seconds per block
+        const blocksDiff = currentBlock - blockNum;
+        return currentTimestamp - (blocksDiff * 2);
+      };
+      
+      // Parse Transfer events
       for (const event of transferEvents.slice(-limit)) {
         const log = event as ethers.EventLog;
         const from = log.args[0] as string;
         const to = log.args[1] as string;
         const tokenId = Number(log.args[2]);
-        
-        // Get block timestamp (CACHED for performance)
-        const timestamp = await getBlockTimestamp(provider, log.blockNumber);
-        
-        // Determine activity type
         const isMint = from === ethers.ZeroAddress;
         
         parsedActivities.push({
@@ -154,80 +177,48 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
           tokenId,
           from: isMint ? 'New Mint' : from,
           to,
-          timestamp,
+          timestamp: getTimestampFast(log.blockNumber),
           txHash: log.transactionHash,
           blockNumber: log.blockNumber,
         });
       }
 
-      // Try to fetch marketplace events (if marketplace is active)
-      try {
-        const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
-        
-        // Fetch Listed events
-        const listedFilter = marketplaceContract.filters.Listed();
-        const listedEvents = await marketplaceContract.queryFilter(listedFilter, fromBlock, currentBlock);
-        
-        for (const event of listedEvents) {
-          const log = event as ethers.EventLog;
-          const tokenId = Number(log.args[0]);
-          const seller = log.args[1] as string;
-          const price = ethers.formatEther(log.args[2]);
-          
-          // CACHED block timestamp
-          const timestamp = await getBlockTimestamp(provider, log.blockNumber);
-          
-          parsedActivities.push({
-            id: `${log.transactionHash}-list-${log.index}`,
-            type: 'list',
-            tokenId,
-            from: seller,
-            to: MARKETPLACE_CONTRACT,
-            price,
-            timestamp,
-            txHash: log.transactionHash,
-            blockNumber: log.blockNumber,
-          });
-        }
+      // Parse Listed events
+      for (const event of listedEvents) {
+        const log = event as ethers.EventLog;
+        parsedActivities.push({
+          id: `${log.transactionHash}-list-${log.index}`,
+          type: 'list',
+          tokenId: Number(log.args[0]),
+          from: log.args[1] as string,
+          to: MARKETPLACE_CONTRACT,
+          price: ethers.formatEther(log.args[2]),
+          timestamp: getTimestampFast(log.blockNumber),
+          txHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+        });
+      }
 
-        // Fetch Sold events
-        const soldFilter = marketplaceContract.filters.Sold();
-        const soldEvents = await marketplaceContract.queryFilter(soldFilter, fromBlock, currentBlock);
-        
-        for (const event of soldEvents) {
-          const log = event as ethers.EventLog;
-          const tokenId = Number(log.args[0]);
-          const seller = log.args[1] as string;
-          const buyer = log.args[2] as string;
-          const price = ethers.formatEther(log.args[3]);
-          
-          // CACHED block timestamp
-          const timestamp = await getBlockTimestamp(provider, log.blockNumber);
-          
-          parsedActivities.push({
-            id: `${log.transactionHash}-sale-${log.index}`,
-            type: 'sale',
-            tokenId,
-            from: seller,
-            to: buyer,
-            price,
-            timestamp,
-            txHash: log.transactionHash,
-            blockNumber: log.blockNumber,
-          });
-        }
-
-      } catch (marketplaceError) {
-        // Marketplace might not have events yet, that's okay
+      // Parse Sold events
+      for (const event of soldEvents) {
+        const log = event as ethers.EventLog;
+        parsedActivities.push({
+          id: `${log.transactionHash}-sale-${log.index}`,
+          type: 'sale',
+          tokenId: Number(log.args[0]),
+          from: log.args[1] as string,
+          to: log.args[2] as string,
+          price: ethers.formatEther(log.args[3]),
+          timestamp: getTimestampFast(log.blockNumber),
+          txHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+        });
       }
 
       // Sort by timestamp descending (newest first)
       parsedActivities.sort((a, b) => b.timestamp - a.timestamp);
       
-      // Limit results
-      const limitedActivities = parsedActivities.slice(0, limit);
-      
-      setActivities(limitedActivities);
+      setActivities(parsedActivities.slice(0, limit));
       setLastBlock(currentBlock);
       setError(null);
       
