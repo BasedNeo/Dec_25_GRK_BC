@@ -51,12 +51,17 @@ export function Footer() {
         });
       } else {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Server error');
+        toast({
+          title: "Error",
+          description: data.error || `Server returned ${response.status}`,
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
+      console.error('[Feedback] Error:', error.name, error.message);
       toast({
         title: "Connection Issue",
-        description: "Could not reach the server. Please check your connection and try again.",
+        description: `${error.name}: ${error.message}`,
         variant: "destructive",
       });
     } finally {
