@@ -64,7 +64,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const handleLogoClick = () => {
     setIsShaking(true);
-    onTabChange('mint');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => setIsShaking(false), 500); // Shake for 500ms
   };
 
