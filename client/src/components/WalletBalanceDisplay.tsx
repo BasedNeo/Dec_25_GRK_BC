@@ -12,8 +12,8 @@ export function WalletBalanceDisplay() {
 
   const getBalanceClass = () => {
     if (!balance) return '';
-    if (balance.raw < MINT_PRICE) return 'text-red-400';
-    if (balance.raw < MINT_PRICE * 2) return 'text-amber-400';
+    if (balance.raw < MINT_PRICE) return 'text-cyan-400';
+    if (balance.raw < MINT_PRICE * 2) return 'text-blue-400';
     return 'text-emerald-400';
   };
 
