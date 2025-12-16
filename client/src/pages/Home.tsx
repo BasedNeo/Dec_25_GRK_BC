@@ -15,10 +15,12 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { AdminInbox } from "@/components/AdminInbox";
+import { AdminDashboard } from "@/components/AdminDashboard";
 
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("hub");
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Scroll to top on tab change
   useEffect(() => {
@@ -41,7 +43,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black">
       <OnboardingTour />
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} isConnected={isConnected} />
+      <Navbar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        isConnected={isConnected} 
+        onOpenAdmin={() => setShowAdminPanel(true)}
+      />
       
       <main className="pt-20 min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
@@ -166,6 +173,12 @@ export default function Home() {
       </main>
 
       {activeTab !== "universe" && activeTab !== "hub" && <Footer />}
+      
+      <AdminDashboard 
+        isOpen={showAdminPanel} 
+        onClose={() => setShowAdminPanel(false)}
+        onOpenInbox={() => { setShowAdminPanel(false); setActiveTab('inbox'); }}
+      />
     </div>
   );
 }

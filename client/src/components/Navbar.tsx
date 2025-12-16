@@ -7,7 +7,7 @@ import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
 import { CHAIN_ID } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { ADMIN_WALLET } from "@/lib/constants";
-import { Inbox } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 const ADMIN_WALLETS = [
   '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
@@ -30,10 +30,11 @@ import Untitled from "@/assets/Untitled.png";
 interface NavbarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  isConnected: boolean; 
+  isConnected: boolean;
+  onOpenAdmin?: () => void;
 }
 
-export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
+export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   // const { toast } = useToast(); // Using custom toast
@@ -263,12 +264,12 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => onTabChange('inbox')}
-                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20"
-                      data-testid="admin-inbox-btn"
+                      onClick={onOpenAdmin}
+                      className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
+                      data-testid="admin-panel-btn"
                   >
-                      <Inbox className="w-4 h-4 mr-1" />
-                      INBOX
+                      <Shield className="w-4 h-4 mr-1" />
+                      Admin
                   </Button>
                   <Button 
                       variant="outline" 
