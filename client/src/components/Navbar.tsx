@@ -134,6 +134,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'escrow', label: 'MARKET' },
     { id: 'universe', label: 'UNIVERSE' },
     { id: 'pool', label: 'POOL' },
+    { id: 'stats', label: 'STATS' },
     { id: 'voting', label: 'VOTING' }, 
     { id: 'mint', label: 'MINT' },
     { id: 'activity', label: 'ACTIVITY' },

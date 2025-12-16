@@ -16,17 +16,25 @@ import { EscrowMarketplace } from "@/components/EscrowMarketplace";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { AdminInbox } from "@/components/AdminInbox";
 import { AdminDashboard } from "@/components/AdminDashboard";
+import { UserStats } from "@/components/UserStats";
 
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("hub");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
-  // Scroll to top on tab change
+  // Scroll to top on tab change and track page visits
   useEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+    
+    // Track page visits for User Stats
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes(activeTab)) {
+      visited.push(activeTab);
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
   }, [activeTab]);
 
   // Listen for tab navigation events from child components
@@ -140,6 +148,19 @@ export default function Home() {
               className="pt-8"
             >
               <PoolTracker />
+            </motion.div>
+          )}
+
+          {activeTab === "stats" && (
+            <motion.div
+              key="stats"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="pt-8"
+            >
+              <UserStats />
             </motion.div>
           )}
 

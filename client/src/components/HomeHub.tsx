@@ -9,6 +9,7 @@ import {
   Activity,
   ChevronRight,
   Shield,
+  Trophy,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { ADMIN_WALLETS } from "@/lib/constants";
@@ -51,6 +52,14 @@ const menuItems = [
     description: 'Track community emissions',
     color: 'from-cyan-500 to-blue-500',
     glow: 'cyan'
+  },
+  { 
+    id: 'stats', 
+    label: 'USER STATS', 
+    icon: Trophy, 
+    description: 'Your Guardian journey',
+    color: 'from-purple-500 to-pink-500',
+    glow: 'purple'
   },
   { 
     id: 'voting', 
