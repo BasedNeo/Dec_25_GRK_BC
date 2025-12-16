@@ -33,6 +33,8 @@ export function Footer() {
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
     try {
+      console.log('[Footer] Submitting feedback:', { message: safeFeedback, email: safeEmail });
+      
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,6 +45,9 @@ export function Footer() {
         }),
       });
 
+      const data = await response.json();
+      console.log('[Footer] Response:', response.status, data);
+
       if (response.ok) {
         setFeedback("");
         setEmail("");
@@ -52,13 +57,14 @@ export function Footer() {
           className: "bg-black border-primary text-primary font-orbitron",
         });
       } else {
-        throw new Error('Failed to submit');
+        console.error('[Footer] Server error:', data);
+        throw new Error(data.error || 'Failed to submit');
       }
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
+    } catch (error: any) {
+      console.error("[Footer] Failed to submit feedback:", error);
       toast({
         title: "Error",
-        description: "Failed to submit feedback. Please try again.",
+        description: error?.message || "Failed to submit feedback. Please try again.",
         variant: "destructive",
       });
     } finally {

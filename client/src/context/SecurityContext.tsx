@@ -15,10 +15,14 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
   const togglePause = () => setIsPaused(prev => !prev);
 
   const sanitize = (input: string) => {
-    return DOMPurify.sanitize(input, {
-      ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a'],
-      ALLOWED_ATTR: ['href']
-    });
+    if (!input || typeof input !== 'string') return '';
+    // For plain text input, just strip dangerous characters and trim
+    // DOMPurify is designed for HTML, so for plain text we use simpler approach
+    return input
+      .replace(/<[^>]*>/g, '') // Remove any HTML tags
+      .replace(/[<>]/g, '') // Remove angle brackets
+      .trim()
+      .slice(0, 5000); // Limit length
   };
 
   return (
