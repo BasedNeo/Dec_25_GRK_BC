@@ -120,6 +120,7 @@ export function useMint() {
         value: totalCost,
         chainId: CHAIN_ID,
         gas: BigInt(500000),
+        gasPrice: BigInt(1000000000), // 1 gwei - force legacy gas pricing for BasedAI L1
       });
     } catch (err: any) {
       setState(prev => ({ ...prev, isError: true, error: err.message }));
