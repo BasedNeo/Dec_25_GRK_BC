@@ -44,7 +44,7 @@ const LEVELS: Array<{
     icon: Rocket, 
     color: 'text-gray-400',
     bgGradient: 'from-gray-600/20 to-gray-800/20',
-    requirements: { nfts: 1, votes: 0, pagesPercent: 0, allPages: false, story: false, hasAllTypes: false }
+    requirements: { nfts: 1, votes: 1, pagesPercent: 25, allPages: false, story: false, hasAllTypes: false }
   },
   { 
     name: 'Cadet Guardian', 
@@ -52,7 +52,7 @@ const LEVELS: Array<{
     icon: Vote, 
     color: 'text-green-400',
     bgGradient: 'from-green-600/20 to-green-800/20',
-    requirements: { nfts: 2, votes: 1, pagesPercent: 0, allPages: false, story: false, hasAllTypes: false }
+    requirements: { nfts: 2, votes: 1, pagesPercent: 50, allPages: false, story: false, hasAllTypes: false }
   },
   { 
     name: 'Working Class Guardian', 
@@ -60,7 +60,7 @@ const LEVELS: Array<{
     icon: Pickaxe, 
     color: 'text-cyan-400',
     bgGradient: 'from-cyan-600/20 to-cyan-800/20',
-    requirements: { nfts: 2, votes: 1, pagesPercent: 50, allPages: false, story: false, hasAllTypes: false }
+    requirements: { nfts: 2, votes: 2, pagesPercent: 50, allPages: false, story: false, hasAllTypes: false }
   },
   { 
     name: 'Guardian Officer', 
@@ -68,7 +68,7 @@ const LEVELS: Array<{
     icon: Shield, 
     color: 'text-blue-400',
     bgGradient: 'from-blue-600/20 to-blue-800/20',
-    requirements: { nfts: 4, votes: 2, pagesPercent: 0, allPages: false, story: false, hasAllTypes: false }
+    requirements: { nfts: 6, votes: 2, pagesPercent: 100, allPages: true, story: true, hasAllTypes: false }
   },
   { 
     name: 'Guardian Lieutenant', 
@@ -76,7 +76,7 @@ const LEVELS: Array<{
     icon: Map, 
     color: 'text-purple-400',
     bgGradient: 'from-purple-600/20 to-purple-800/20',
-    requirements: { nfts: 4, votes: 1, pagesPercent: 100, allPages: true, story: false, hasAllTypes: false }
+    requirements: { nfts: 8, votes: 2, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
   },
   { 
     name: 'Guardian Squad Leader', 
@@ -84,7 +84,7 @@ const LEVELS: Array<{
     icon: BookOpen, 
     color: 'text-amber-400',
     bgGradient: 'from-amber-600/20 to-amber-800/20',
-    requirements: { nfts: 6, votes: 1, pagesPercent: 100, allPages: true, story: true, hasAllTypes: false }
+    requirements: { nfts: 10, votes: 2, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
   },
   { 
     name: 'Guardian Captain', 
@@ -92,7 +92,7 @@ const LEVELS: Array<{
     icon: Users, 
     color: 'text-pink-400',
     bgGradient: 'from-pink-600/20 to-pink-800/20',
-    requirements: { nfts: 1, votes: 1, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
+    requirements: { nfts: 15, votes: 2, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
   },
   { 
     name: 'Guardian Commander', 
@@ -100,19 +100,19 @@ const LEVELS: Array<{
     icon: Crown, 
     color: 'text-yellow-400',
     bgGradient: 'from-yellow-500/20 to-amber-600/20',
-    requirements: { nfts: 10, votes: 1, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
+    requirements: { nfts: 20, votes: 2, pagesPercent: 100, allPages: true, story: true, hasAllTypes: true }
   },
 ];
 
 const BADGES = [
-  { id: 'greenhorn', name: 'Greenhorn', icon: Rocket, color: 'cyan', description: 'Own your first NFT', levelReq: 0 },
-  { id: 'cadet', name: 'Cadet', icon: Vote, color: 'green', description: 'Cast your first vote', levelReq: 1 },
-  { id: 'worker', name: 'Working Class', icon: Pickaxe, color: 'cyan', description: 'Explore 50% of pages', levelReq: 2 },
-  { id: 'officer', name: 'Officer', icon: Shield, color: 'blue', description: 'Own 4+ NFTs + 2 votes', levelReq: 3 },
-  { id: 'lieutenant', name: 'Lieutenant', icon: Map, color: 'purple', description: 'Master all pages', levelReq: 4 },
-  { id: 'squad_leader', name: 'Squad Leader', icon: BookOpen, color: 'amber', description: 'Submit story idea', levelReq: 5 },
-  { id: 'captain', name: 'Captain', icon: Users, color: 'pink', description: 'Own all character types', levelReq: 6 },
-  { id: 'commander', name: 'Commander', icon: Crown, color: 'yellow', description: 'Legendary status', levelReq: 7 },
+  { id: 'greenhorn', name: 'Greenhorn', icon: Rocket, color: 'cyan', description: '1 NFT + 1 Vote + 25% pages', levelReq: 0 },
+  { id: 'cadet', name: 'Cadet', icon: Vote, color: 'green', description: '2 NFTs + 50% pages', levelReq: 1 },
+  { id: 'worker', name: 'Working Class', icon: Pickaxe, color: 'cyan', description: '2 NFTs + 2 Votes', levelReq: 2 },
+  { id: 'officer', name: 'Officer', icon: Shield, color: 'blue', description: '6 NFTs + Story + All Pages', levelReq: 3 },
+  { id: 'lieutenant', name: 'Lieutenant', icon: Map, color: 'purple', description: '8 NFTs + All Types', levelReq: 4 },
+  { id: 'squad_leader', name: 'Squad Leader', icon: BookOpen, color: 'amber', description: '10 NFTs collected', levelReq: 5 },
+  { id: 'captain', name: 'Captain', icon: Users, color: 'pink', description: '15 NFTs collected', levelReq: 6 },
+  { id: 'commander', name: 'Commander', icon: Crown, color: 'yellow', description: '20 NFTs - Legendary', levelReq: 7 },
 ];
 
 export function UserStats() {
