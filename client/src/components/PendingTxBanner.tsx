@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
 
 export function PendingTxBanner() {
-  const { transactions, pendingCount, hasPending, dismissTransaction, clearCompleted, getExplorerLink } = usePendingTransactions();
+  const { transactions, pendingCount, hasPending, dismissTransaction, clearAll, getExplorerLink } = usePendingTransactions();
   const [isExpanded, setIsExpanded] = useState(false);
   
   if (transactions.length === 0) return null;
@@ -20,7 +20,7 @@ export function PendingTxBanner() {
             <div><p className="font-orbitron text-sm text-white">{hasPending ? 'PENDING TRANSACTIONS' : 'RECENT TRANSACTIONS'}</p><p className="text-[10px] text-muted-foreground">{transactions.length} transaction{transactions.length !== 1 ? 's' : ''}</p></div>
           </div>
           <div className="flex items-center gap-2">
-            {!hasPending && transactions.length > 0 && <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); clearCompleted(); }} className="h-7 px-2 text-xs text-muted-foreground"><Trash2 className="w-3 h-3 mr-1" />Clear</Button>}
+            {transactions.length > 0 && <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); clearAll(); }} className="h-7 px-2 text-xs text-muted-foreground"><Trash2 className="w-3 h-3 mr-1" />Clear All</Button>}
             {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
           </div>
         </div>
@@ -52,7 +52,7 @@ function TxRow({ tx, onDismiss, explorerLink }: { tx: PendingTransaction; onDism
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
           <a href={explorerLink} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white/10 rounded"><ExternalLink className="w-3 h-3 text-primary" /></a>
-          {tx.status !== 'pending' && <button onClick={onDismiss} className="p-1.5 hover:bg-white/10 rounded"><X className="w-3 h-3" /></button>}
+          <button onClick={onDismiss} className="p-1.5 hover:bg-white/10 rounded" title={tx.status === 'pending' ? 'Force dismiss' : 'Dismiss'}><X className="w-3 h-3" /></button>
         </div>
       </div>
     </div>

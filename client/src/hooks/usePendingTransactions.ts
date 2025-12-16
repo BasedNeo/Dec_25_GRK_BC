@@ -56,6 +56,12 @@ export function clearCompletedTxs() {
   } catch (e) {}
 }
 
+export function clearAllTxs() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+  } catch (e) {}
+}
+
 export function usePendingTransactions() {
   const [transactions, setTransactions] = useState<PendingTransaction[]>([]);
   
@@ -76,6 +82,7 @@ export function usePendingTransactions() {
     addTransaction: useCallback((hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }) => { savePendingTx(hash, type, description, extra); setTransactions(getPendingTxs()); }, []),
     dismissTransaction: useCallback((hash: string) => { removePendingTx(hash); setTransactions(getPendingTxs()); }, []),
     clearCompleted: useCallback(() => { clearCompletedTxs(); setTransactions(getPendingTxs()); }, []),
+    clearAll: useCallback(() => { clearAllTxs(); setTransactions([]); }, []),
     getExplorerLink: (hash: string) => `${BLOCK_EXPLORER}/tx/${hash}`,
   };
 }
