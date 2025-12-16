@@ -6,6 +6,7 @@ import { Governance } from "@/components/Governance";
 import { PoolTracker } from "@/components/PoolTracker";
 import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
+import { HomeHub } from "@/components/HomeHub";
 import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,7 +17,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState("universe");
+  const [activeTab, setActiveTab] = useState("hub");
 
   // Scroll to top on tab change
   useEffect(() => {
@@ -43,6 +44,18 @@ export default function Home() {
       
       <main className="pt-20 min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
+          {activeTab === "hub" && (
+            <motion.div
+              key="hub"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <HomeHub onNavigate={setActiveTab} />
+            </motion.div>
+          )}
+
           {activeTab === "universe" && (
             <motion.div
               key="universe"
@@ -138,7 +151,7 @@ export default function Home() {
         </AnimatePresence>
       </main>
 
-      {activeTab !== "universe" && <Footer />}
+      {activeTab !== "universe" && activeTab !== "hub" && <Footer />}
     </div>
   );
 }
