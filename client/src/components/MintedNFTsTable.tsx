@@ -31,7 +31,7 @@ interface MintedNFTsTableProps {
 const BATCH_SIZE = 10;
 
 export function MintedNFTsTable({ }: MintedNFTsTableProps) {
-  const [mintedNFTs, setMintedNFTs] = useState<Guardian[]>([]);
+  const [mintedNFTs, setMintedNFTs] = useState<(Guardian & { mintIndex: number })[]>([]);
   const [totalMinted, setTotalMinted] = useState<number>(0);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -152,8 +152,9 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                     rarity: rarity,
                     price: 0, // Not relevant for minted
                     owner: owner || undefined,
-                    traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || []
-                } as Guardian;
+                    traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || [],
+                    mintIndex: index // Store the mint index for proper ordering
+                } as Guardian & { mintIndex: number };
 
                 setCache(cacheKey, guardian);
                 return guardian;
@@ -166,10 +167,10 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
     }
 
     const results = await Promise.all(promises);
-    const validResults = results.filter((n): n is Guardian => n !== null);
+    const validResults = results.filter((n): n is Guardian & { mintIndex: number } => n !== null);
     
-    // Sort by ID descending to maintain order (since parallel might finish out of order)
-    validResults.sort((a, b) => b.id - a.id);
+    // Sort by mint index descending (most recently minted first)
+    validResults.sort((a, b) => b.mintIndex - a.mintIndex);
 
     setMintedNFTs(prev => [...prev, ...validResults]);
     setLoadedCount(prev => prev + validResults.length);
