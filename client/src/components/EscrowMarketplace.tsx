@@ -721,17 +721,43 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         }
 
         try {
-            // Convert price to wei (item.price is in $BASED)
-            const priceWei = parseEther(String(item.price || 0));
+            // Fetch the actual listing price from the contract
+            const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+            const marketplaceContract = new ethers.Contract(
+                MARKETPLACE_CONTRACT,
+                ['function listings(uint256) view returns (address seller, uint256 price, uint256 expiresAt, bool active)'],
+                provider
+            );
+            
+            const listing = await marketplaceContract.listings(item.id);
+            const priceWei = listing[1]; // price is the second element
+            const isActive = listing[3]; // active is the fourth element
+            
+            if (!isActive) {
+                toast({ 
+                    title: "Listing Not Available", 
+                    description: "This NFT is no longer listed for sale.",
+                    variant: "destructive" 
+                });
+                return;
+            }
+            
+            const priceFormatted = Number(ethers.formatEther(priceWei));
+            
             await marketplace.buyNFT(item.id, priceWei);
             
             // Analytics: Track Sale (Buy Action)
-            trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, parseFloat((item.price || 0).toString()));
+            trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, priceFormatted);
             
             // Show confetti on success (hook handles toast)
             confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
         } catch (error) {
             console.error('Buy failed:', error);
+            toast({ 
+                title: "Purchase Failed", 
+                description: "Could not complete purchase. Please try again.",
+                variant: "destructive" 
+            });
         }
     };
 
