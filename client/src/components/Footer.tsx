@@ -30,43 +30,56 @@ export function Footer() {
 
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
-    try {
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: safeFeedback,
-          email: safeEmail || null,
-          walletAddress: null,
-        }),
-      });
-
-      if (response.ok) {
-        setFeedback("");
-        setEmail("");
-        toast({
-          title: "Feedback Sent",
-          description: "Thank you! Your feedback has been saved and our team will review it.",
-          className: "bg-black border-primary text-primary font-orbitron",
+    const trySubmit = async (attempt: number): Promise<boolean> => {
+      try {
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: safeFeedback,
+            email: safeEmail || null,
+            walletAddress: null,
+          }),
         });
-      } else {
-        const data = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+          setFeedback("");
+          setEmail("");
+          toast({
+            title: "Feedback Sent",
+            description: "Thank you! Your feedback has been saved and our team will review it.",
+            className: "bg-black border-primary text-primary font-orbitron",
+          });
+          return true;
+        } else {
+          const data = await response.json().catch(() => ({}));
+          toast({
+            title: "Error",
+            description: data.error || `Server returned ${response.status}`,
+            variant: "destructive",
+          });
+          return true;
+        }
+      } catch (error: any) {
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+          return false;
+        }
         toast({
-          title: "Error",
-          description: data.error || `Server returned ${response.status}`,
+          title: "Connection Issue",
+          description: "Could not reach the server. Please try again in a moment.",
           variant: "destructive",
         });
+        return true;
       }
-    } catch (error: any) {
-      console.error('[Feedback] Error:', error.name, error.message);
-      toast({
-        title: "Connection Issue",
-        description: `${error.name}: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+    };
+
+    for (let i = 0; i < 3; i++) {
+      const done = await trySubmit(i);
+      if (done) break;
     }
+    
+    setIsSubmitting(false);
   };
 
   return (
