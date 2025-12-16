@@ -74,3 +74,18 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+export const emailList = pgTable("email_list", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  source: text("source").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEmailSchema = createInsertSchema(emailList).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmail = z.infer<typeof insertEmailSchema>;
+export type EmailEntry = typeof emailList.$inferSelect;

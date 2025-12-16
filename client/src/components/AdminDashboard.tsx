@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { 
   X, Shield, RefreshCw, Trash2, Database, Activity, 
   Zap, AlertTriangle, Eye, EyeOff, Server,
-  Download, Wrench, Inbox
+  Download, Wrench, Inbox, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
@@ -35,6 +35,7 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
   const [showLogs, setShowLogs] = useState(false);
   const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
+  const [emailCount, setEmailCount] = useState<number>(0);
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -319,10 +320,29 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     addLog('📊 Mint diagnostics complete.');
   };
   
+  const fetchEmailCount = async () => {
+    try {
+      const res = await fetch('/api/emails');
+      if (res.ok) {
+        const data = await res.json();
+        setEmailCount(data.count || 0);
+        addLog(`📧 Email list: ${data.count}/4000`);
+      }
+    } catch (e) {
+      console.error('Failed to fetch email count:', e);
+    }
+  };
+
+  const downloadEmailCsv = () => {
+    addLog('📥 Downloading email list CSV...');
+    window.open('/api/emails/csv', '_blank');
+  };
+
   useEffect(() => {
     if (isOpen && isAdmin) {
       getCacheStats();
       runHealthCheck();
+      fetchEmailCount();
     }
   }, [isOpen, isAdmin]);
   
@@ -487,6 +507,17 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               >
                 <Download size={20} className="mb-2 text-purple-400" />
                 <span className="text-xs">Export Diagnostics</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadEmailCsv}
+                className="flex flex-col items-center p-4 h-auto border-blue-500/30 hover:bg-blue-500/10"
+              >
+                <Mail size={20} className="mb-2 text-blue-400" />
+                <span className="text-xs">Download Emails</span>
+                <span className="text-[9px] text-gray-500">{emailCount}/4000</span>
               </Button>
               
               <Button

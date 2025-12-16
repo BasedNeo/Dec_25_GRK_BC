@@ -27,10 +27,11 @@ export async function registerRoutes(
 
       const feedbackEntry = await storage.createFeedback(parsed.data);
 
-      // TODO: Send email notification when email service is configured
-      // Email should be sent to: team@BasedGuardians.trade
+      if (parsed.data.email) {
+        await storage.addEmail(parsed.data.email, 'feedback');
+      }
+
       console.log(`[Feedback] New submission saved. ID: ${feedbackEntry.id}`);
-      console.log(`[Feedback] Email notification pending setup for: ${FEEDBACK_EMAIL}`);
 
       return res.status(201).json({ 
         success: true, 
@@ -69,6 +70,11 @@ export async function registerRoutes(
       }
 
       const storyEntry = await storage.createStorySubmission(parsed.data);
+
+      if (parsed.data.email) {
+        await storage.addEmail(parsed.data.email, 'story');
+      }
+
       console.log(`[Story] New submission saved. ID: ${storyEntry.id}`);
 
       return res.status(201).json({ 
@@ -184,6 +190,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Push] Error updating preferences:", error);
       return res.status(500).json({ error: "Failed to update preferences" });
+    }
+  });
+
+  app.get("/api/emails", async (req, res) => {
+    try {
+      const emails = await storage.getAllEmails();
+      const emailCount = await storage.getEmailCount();
+      return res.json({ emails, count: emailCount, maxLimit: 4000 });
+    } catch (error) {
+      console.error("[Emails] Error fetching emails:", error);
+      return res.status(500).json({ error: "Failed to fetch emails" });
+    }
+  });
+
+  app.get("/api/emails/csv", async (req, res) => {
+    try {
+      const emails = await storage.getAllEmails();
+      const csvHeader = "email,source,created_at\n";
+      const csvRows = emails.map(e => 
+        `"${e.email}","${e.source}","${e.createdAt.toISOString()}"`
+      ).join("\n");
+      const csv = csvHeader + csvRows;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=email_list.csv');
+      return res.send(csv);
+    } catch (error) {
+      console.error("[Emails] Error exporting CSV:", error);
+      return res.status(500).json({ error: "Failed to export emails" });
     }
   });
 

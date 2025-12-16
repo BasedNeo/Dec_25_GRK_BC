@@ -1,9 +1,10 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, users, feedback, storySubmissions, pushSubscriptions } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, users, feedback, storySubmissions, pushSubscriptions, emailList } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, count } from "drizzle-orm";
 
 const MAX_MESSAGES_PER_INBOX = 100;
+const MAX_EMAILS = 4000;
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -117,6 +118,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pushSubscriptions.endpoint, endpoint))
       .returning();
     return updated;
+  }
+
+  async addEmail(email: string, source: string): Promise<EmailEntry | null> {
+    const [countResult] = await db.select({ count: count() }).from(emailList);
+    if (countResult.count >= MAX_EMAILS) {
+      console.log(`[EmailList] Max limit of ${MAX_EMAILS} emails reached. Not adding new email.`);
+      return null;
+    }
+    
+    try {
+      const [result] = await db.insert(emailList).values({ email: email.toLowerCase().trim(), source }).returning();
+      return result;
+    } catch (e: any) {
+      if (e.code === '23505') {
+        console.log(`[EmailList] Email already exists: ${email}`);
+        return null;
+      }
+      throw e;
+    }
+  }
+
+  async getAllEmails(): Promise<EmailEntry[]> {
+    return db.select().from(emailList).orderBy(desc(emailList.createdAt));
+  }
+
+  async getEmailCount(): Promise<number> {
+    const [result] = await db.select({ count: count() }).from(emailList);
+    return result.count;
   }
 }
 
