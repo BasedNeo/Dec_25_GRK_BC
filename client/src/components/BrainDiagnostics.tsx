@@ -268,9 +268,9 @@ export function BrainDiagnostics() {
               <div className="flex flex-col items-center p-3 bg-green-500/10 border border-green-500/30 rounded-lg min-w-[100px]">
                 <span className="text-[10px] text-muted-foreground mb-1">Community</span>
                 <span className="text-sm font-mono font-bold text-green-400">
-                  {formatNumber(emissions.communityShare, 0)}
+                  ~{formatNumber(emissions.dailyRate, 0)}/day
                 </span>
-                <span className="text-[10px] text-green-400">10%</span>
+                <span className="text-[10px] text-green-400">10% share</span>
               </div>
             </div>
           </div>
@@ -313,7 +313,7 @@ export function BrainDiagnostics() {
               <div className="text-xl font-mono font-bold text-amber-400 mt-1">
                 {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
               </div>
-              <span className="text-[10px] text-amber-500/70">since Dec 25, 2025</span>
+              <span className="text-[10px] text-amber-500/70">since Dec 1, 2025</span>
             </motion.div>
 
             <motion.div

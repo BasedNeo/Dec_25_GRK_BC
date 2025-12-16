@@ -7,10 +7,10 @@ const BRAIN_CONFIG = {
   wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
   token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2', // $BASED on ETH mainnet
   communityShare: 0.10, // Community gets 10% of subnet emissions
-  emissionsStart: new Date('2025-12-25T01:00:00Z').getTime(), // When emissions started
-  initialDeposit: 35000, // Initial deposit NOT from emissions
-  estimatedDailyRate: 5900, // ~5,800-6,000 per day
-  nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(), // Expected halving
+  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(), // Dec 1, 2025
+  initialDeposit: 35000, // Initial pool funding
+  estimatedDailyRate: 6000, // Expected ~6,000/day for community (10%)
+  nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(),
   network: 'BasedAI',
   networkUrl: 'https://www.getbased.ai/'
 };
@@ -251,9 +251,13 @@ export function useSubnetEmissions(): SubnetEmissionsData {
 
   // Calculate derived values
   const daysSinceStart = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
-  const dailyRate = totalReceived / daysSinceStart;
+  
+  // Calculate daily rate - use calculated if reasonable, otherwise estimated
+  const calculatedRate = totalReceived / daysSinceStart;
+  const dailyRate = calculatedRate > 100 ? calculatedRate : BRAIN_CONFIG.estimatedDailyRate;
+  
   const weeklyTotal = dailyBreakdown.reduce((sum, day) => sum + day.amount, 0);
-  const communityShare = totalReceived * BRAIN_CONFIG.communityShare;
+  const communityShare = totalReceived; // Total emissions received = community's share
   const monthlyProjection = dailyRate * 30;
   
   // Calculate brain's FULL output (community only gets 10%)
