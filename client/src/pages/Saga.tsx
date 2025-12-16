@@ -1,7 +1,8 @@
-import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowLeft, BookOpen, Sparkles } from "lucide-react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { ArrowLeft, BookOpen, Sparkles, Send, CheckCircle, Compass } from "lucide-react";
 import { Link } from "wouter";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 function AnimatedStarfield() {
   const { scrollY } = useScroll();
@@ -170,6 +171,194 @@ function NebulaEffect() {
   );
 }
 
+function ChooseYourAdventure() {
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const adventureOptions = [
+    {
+      id: 1,
+      title: "Rally the Scattered Frogs",
+      description: "Seek out the amphibian sages across the cosmos and unite their ancient wisdom.",
+      icon: "🐸",
+    },
+    {
+      id: 2,
+      title: "Storm the FUD Fortress",
+      description: "Lead a direct assault on the Cyborg Fowl's stronghold to rescue the Wizard Committer.",
+      icon: "⚔️",
+    },
+    {
+      id: 3,
+      title: "Awaken the Elemental Creatures",
+      description: "Journey to the hidden realms and call forth the beings of pure energy.",
+      icon: "✨",
+    },
+    {
+      id: 4,
+      title: "Forge the Alliance of Chains",
+      description: "Complete the Based-Bridge and unite all blockchain realms against the darkness.",
+      icon: "🔗",
+    },
+  ];
+
+  const handleSubmit = () => {
+    if (selectedOption === null) return;
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setShowSuccess(true);
+    }, 800);
+  };
+
+  const handleClose = () => {
+    setShowSuccess(false);
+    setSelectedOption(null);
+  };
+
+  return (
+    <section className="py-16 relative">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+        className="max-w-3xl mx-auto px-6"
+      >
+        <div className="bg-gradient-to-b from-purple-950/30 to-black/60 backdrop-blur-md border border-purple-500/30 rounded-2xl p-8 md:p-10 shadow-[0_0_40px_rgba(139,92,246,0.15)]">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Compass className="w-6 h-6 text-purple-400" />
+            <h3 className="text-2xl md:text-3xl font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">
+              Shape the Saga
+            </h3>
+            <Compass className="w-6 h-6 text-cyan-400" />
+          </div>
+          
+          <p className="text-center text-gray-300 mb-8 font-mono text-sm">
+            What should the Guardians do next? Cast your vote and help write the next chapter.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {adventureOptions.map((option) => (
+              <motion.button
+                key={option.id}
+                onClick={() => setSelectedOption(option.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`p-4 rounded-xl border text-left transition-all duration-300 ${
+                  selectedOption === option.id
+                    ? "bg-purple-500/20 border-purple-400 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                    : "bg-black/40 border-white/10 hover:border-purple-500/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{option.icon}</span>
+                  <div>
+                    <h4 className={`font-orbitron text-sm mb-1 ${
+                      selectedOption === option.id ? "text-purple-300" : "text-white"
+                    }`}>
+                      {option.title}
+                    </h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      {option.description}
+                    </p>
+                  </div>
+                </div>
+                {selectedOption === option.id && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-2 right-2 w-3 h-3 bg-purple-400 rounded-full"
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={selectedOption === null || isSubmitting}
+            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-orbitron py-6 text-lg shadow-[0_0_30px_rgba(139,92,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  <Send className="w-5 h-5" />
+                </motion.div>
+                Transmitting to the Cosmos...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Send className="w-5 h-5" />
+                Submit Your Choice
+              </span>
+            )}
+          </Button>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={handleClose}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-b from-purple-950/90 to-black/95 border border-purple-500/50 rounded-2xl p-8 md:p-10 max-w-md text-center shadow-[0_0_60px_rgba(139,92,246,0.3)]"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring" }}
+                className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center"
+              >
+                <CheckCircle className="w-10 h-10 text-white" />
+              </motion.div>
+
+              <h3 className="text-2xl font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 mb-4">
+                Voice Received
+              </h3>
+
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Your choice echoes through the cosmos. The Guardians have heard your call.
+              </p>
+
+              <div className="bg-black/50 border border-cyan-500/30 rounded-xl p-6 mb-6">
+                <p className="text-cyan-300 italic font-mono text-sm leading-relaxed">
+                  "Active Guardians are the most noble and righteous. Keep up the spirit and you will inherit the stars."
+                </p>
+                <p className="text-purple-400 text-xs mt-4 font-orbitron">
+                  — The Wizard Committer
+                </p>
+              </div>
+
+              <Button
+                onClick={handleClose}
+                variant="outline"
+                className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20 font-orbitron"
+              >
+                Continue the Journey
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 export default function Saga() {
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 relative overflow-x-hidden">
@@ -282,6 +471,8 @@ export default function Saga() {
             </div>
           </motion.div>
         </section>
+
+        <ChooseYourAdventure />
 
         <section className="py-12 pb-32">
           <motion.div
