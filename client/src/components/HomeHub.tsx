@@ -115,10 +115,23 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
             }}
           />
           <h1 className="text-3xl md:text-4xl font-bold tracking-[0.2em] text-white mb-3">
-            <span className="bg-gradient-to-r from-cyan-400 via-white to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(0,255,255,0.3)]">
+            <span 
+              className="bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(0,255,255,0.3)]"
+              style={{
+                backgroundImage: 'linear-gradient(90deg, #22d3ee, #a78bfa, #22d3ee)',
+                backgroundSize: '200% 100%',
+                animation: 'gradientShift 8s ease-in-out infinite',
+              }}
+            >
               COMMAND CENTER
             </span>
           </h1>
+          <style>{`
+            @keyframes gradientShift {
+              0%, 100% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+            }
+          `}</style>
           <p className="text-xs text-white/40 font-mono tracking-[0.3em] uppercase">
             Select your destination
           </p>
