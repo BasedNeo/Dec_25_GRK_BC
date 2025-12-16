@@ -121,7 +121,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
       const blocksToQuery = 7200 * 30;
       const fromBlock = Math.max(0, currentBlock - blocksToQuery);
 
-      // 3. Query Transfer events TO the brain wallet
+      // 3. Query Transfer events TO the brain wallet (with graceful failure)
       const filter = tokenContract.filters.Transfer(null, BRAIN_CONFIG.wallet);
       let events: ethers.EventLog[] = [];
       
@@ -130,9 +130,15 @@ export function useSubnetEmissions(): SubnetEmissionsData {
         events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
       } catch (e) {
         // If query fails, try smaller range
-        const smallerFromBlock = currentBlock - 50000;
-        const rawEvents = await tokenContract.queryFilter(filter, smallerFromBlock, 'latest');
-        events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
+        try {
+          const smallerFromBlock = currentBlock - 50000;
+          const rawEvents = await tokenContract.queryFilter(filter, smallerFromBlock, 'latest');
+          events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
+        } catch (e2) {
+          // Event queries failed - we'll use balance as fallback below
+          console.log('Event queries failed, will use balance as fallback');
+          events = [];
+        }
       }
 
       // 4. Process events (with fallback)
@@ -239,21 +245,18 @@ export function useSubnetEmissions(): SubnetEmissionsData {
   const communityShare = totalReceived * BRAIN_CONFIG.communityShare;
   const monthlyProjection = dailyRate * 30;
 
-  // Determine status based on balance activity
-  let status: 'active' | 'delayed' | 'inactive' = 'active';
+  // Determine status - if we have balance, brain is active
+  let status: 'active' | 'delayed' | 'inactive' = brainBalance > 0 ? 'active' : 'inactive';
   
-  // If we have a balance, the brain is receiving emissions
-  if (brainBalance > 0) {
-    status = 'active';
-  }
-  
-  // Only mark as delayed/inactive if we have event data showing no recent activity
+  // Only override if we have specific event timing data
   if (lastEmissionTime && recentEvents.length > 0) {
     const hoursSinceLastEmission = (Date.now() - lastEmissionTime) / (1000 * 60 * 60);
     if (hoursSinceLastEmission > 168) {
       status = 'inactive';
     } else if (hoursSinceLastEmission > 24) {
       status = 'delayed';
+    } else {
+      status = 'active';
     }
   }
 
