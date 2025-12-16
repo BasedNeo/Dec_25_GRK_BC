@@ -4,18 +4,9 @@ import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, WifiOff, Re
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
-import { CHAIN_ID } from "@/lib/constants";
+import { CHAIN_ID, ADMIN_WALLETS } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
-import { ADMIN_WALLET } from "@/lib/constants";
 import { Shield } from 'lucide-react';
-
-const ADMIN_WALLETS = [
-  '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
-  '0xb1362caf09189887599ed40f056712b1a138210c',
-  '0xabce9e63a9ae51e215bb10c9648f4c0f400c5847',
-  '0xbba49256a93a06fcf3b0681fead2b4e3042b9124',
-  '0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af',
-];
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
