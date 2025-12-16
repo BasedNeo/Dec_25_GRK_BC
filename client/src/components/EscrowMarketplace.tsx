@@ -1117,10 +1117,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     <Wallet size={14} className="mr-2" /> SELL (INVENTORY)
                 </button>
                 <TabsTrigger value="offers" className="data-[state=active]:bg-primary data-[state=active]:text-black font-orbitron relative">
-                    <MessageCircle size={14} className="mr-2" /> OFFERS
+                    <MessageCircle size={14} className="mr-2" /> RECEIVED
                     {receivedOffers.length > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-black text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                             {receivedOffers.length}
+                        </span>
+                    )}
+                </TabsTrigger>
+                <TabsTrigger value="my-offers" className="data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-orbitron relative">
+                    <Gavel size={14} className="mr-2" /> MY OFFERS
+                    {offersV3.myOffers.filter(o => o.status === 'pending' || o.status === 'accepted').length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {offersV3.myOffers.filter(o => o.status === 'pending' || o.status === 'accepted').length}
                         </span>
                     )}
                 </TabsTrigger>
@@ -1264,7 +1272,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                            <div className="flex items-start gap-3">
                              <Gavel className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
                              <div>
-                               <h4 className="text-sm font-orbitron text-white mb-1">GASLESS OFFERS</h4>
+                               <h4 className="text-sm font-orbitron text-white mb-1">GASLESS V3 OFFERS</h4>
                                <p className="text-xs text-white/60">
                                  Making offers is now FREE! Sign a message to submit your offer - no gas required. 
                                  Funds stay in your wallet until the seller accepts and you complete the purchase.
@@ -1272,9 +1280,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                              </div>
                            </div>
                          </div>
-
-                         {/* My Offers (V3 Off-chain) */}
-                         <MyOffersPanel />
 
                          {/* Received Offers Section */}
                          <div className="space-y-4">
@@ -1317,6 +1322,19 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                          </div>
                      </div>
                  )}
+            </TabsContent>
+
+            <TabsContent value="my-offers">
+                {!isConnected ? (
+                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                        <Gavel className="w-16 h-16 text-muted-foreground mb-4" />
+                        <h3 className="text-xl font-orbitron text-white mb-2">CONNECT WALLET</h3>
+                        <p className="text-muted-foreground mb-6">Connect to manage your offers.</p>
+                        <Button onClick={openConnectModal} className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]">CONNECT NOW</Button>
+                    </div>
+                ) : (
+                    <MyOffersPanel />
+                )}
             </TabsContent>
         </Tabs>
 
