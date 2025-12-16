@@ -1,0 +1,248 @@
+PRE-LAUNCH FIXES & TESTING - Complete polish before user testing
+
+═══════════════════════════════════════════════════════════════
+PART 1: FIX DAILY RATE CALCULATION (Currently shows 643, should be 6,438)
+═══════════════════════════════════════════════════════════════
+
+In useSubnetEmissions.ts, the daily rate is calculated wrong.
+
+USE KNOWN VALUES instead of calculating from balance:
+
+const KNOWN_RATES = {
+  communityDailyRate: 6438,      // 10% of brain daily
+  brainDailyRate: 64384,         // 100% brain daily
+  brainAnnualOutput: 23500000,   // Full year pre-halving
+  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(),
+  initialDeposit: 35000,
+};
+
+When returning dailyRate, use the known value:
+  dailyRate: KNOWN_RATES.communityDailyRate, // 6438, NOT calculated
+
+Fix monthlyProjection:
+  monthlyProjection: KNOWN_RATES.communityDailyRate * 30, // 193,140
+
+═══════════════════════════════════════════════════════════════
+PART 2: FIX TRANSACTION MODAL SHOWING "0 $BASED"
+═══════════════════════════════════════════════════════════════
+
+The pending transaction modal shows "Buying Guardian #149 for 0 $BASED"
+but should show the actual price.
+
+When initiating a buy, pass the price to the pending state:
+
+// Store price when starting transaction
+setPendingTransaction({
+  type: 'buy',
+  tokenId: tokenId,
+  price: listingPrice, // ADD THIS - the actual price
+  hash: null,
+  status: 'pending'
+});
+
+// Display in modal with actual price
+<p className="text-lg">
+  Buying Guardian #{pendingTx.tokenId} for {pendingTx.price?.toLocaleString() || '...'} $BASED
+</p>
+
+═══════════════════════════════════════════════════════════════
+PART 3: USER-FRIENDLY ERROR MESSAGES
+═══════════════════════════════════════════════════════════════
+
+Create helper function to parse blockchain errors:
+
+// Add to lib/utils.ts or create lib/errorParser.ts
+
+export function parseTransactionError(error: any): string {
+  const msg = error?.message || error?.toString() || '';
+  
+  // Already sold / listing invalid
+  if (/listing.*not.*valid|invalid.*listing|already.*sold/i.test(msg)) {
+    return 'This NFT is no longer available - it may have been sold.';
+  }
+  
+  // Insufficient funds
+  if (/insufficient.*fund|insufficient.*balance/i.test(msg)) {
+    return 'Insufficient $BASED balance for this purchase.';
+  }
+  
+  // Not owner
+  if (/not.*owner|caller.*not.*owner/i.test(msg)) {
+    return 'You don\'t own this NFT.';
+  }
+  
+  // Not approved
+  if (/not.*approved/i.test(msg)) {
+    return 'Please approve the marketplace first.';
+  }
+  
+  // Gas/execution issues
+  if (/gas.*exceed|execution.*reverted/i.test(msg)) {
+    return 'Transaction failed - the NFT may no longer be available.';
+  }
+  
+  // User rejected
+  if (/user.*rejected|user.*denied/i.test(msg)) {
+    return 'Transaction cancelled.';
+  }
+  
+  // Network errors
+  if (/rpc.*failed|network.*error|timeout/i.test(msg)) {
+    return 'Network error - please check your connection and try again.';
+  }
+  
+  return 'Transaction failed. Please try again.';
+}
+
+Use in error display:
+<p className="text-red-400">{parseTransactionError(error)}</p>
+
+// Optional: Show technical details in collapsible
+<details className="mt-2">
+  <summary className="text-xs text-gray-500 cursor-pointer">Technical details</summary>
+  <pre className="text-[10px] mt-1 overflow-auto">{error?.message}</pre>
+</details>
+
+═══════════════════════════════════════════════════════════════
+PART 4: REMOVE DEBUG CONSOLE.LOGS
+═══════════════════════════════════════════════════════════════
+
+Search entire codebase and REMOVE all debug console.log statements:
+
+REMOVE lines like:
+- console.log('Fetching...')
+- console.log('Result:', data)
+- console.log('Using balance as total received:', total)
+
+KEEP error logging:
+- console.error('Failed to...') - OK to keep for debugging
+
+═══════════════════════════════════════════════════════════════
+PART 5: PRE-TRANSACTION VALIDATION FOR BUYS
+═══════════════════════════════════════════════════════════════
+
+Before submitting a buy, check if listing is still valid:
+
+async function validateListingBeforeBuy(listingId: number): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const marketplace = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
+    
+    const isValid = await marketplace.isListingValid(listingId);
+    
+    if (!isValid) {
+      return { valid: false, error: 'This NFT is no longer available for purchase.' };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    // If check fails, proceed anyway - let contract handle it
+    return { valid: true };
+  }
+}
+
+// Use in buyNFT:
+const validation = await validateListingBeforeBuy(listingId);
+if (!validation.valid) {
+  toast.error(validation.error);
+  return;
+}
+
+═══════════════════════════════════════════════════════════════
+PART 6: ADD SYSTEM HEALTH CHECK (Admin Only)
+═══════════════════════════════════════════════════════════════
+
+Add a health check component visible only to admin wallets:
+
+const ADMIN_WALLETS = [
+  '0xae543104fdbe456478e19894f7f0e01f0971c9b4',
+  '0xb1362caf09189887599ed40f056712b1a138210c',
+  '0xabce9e63a9ae51e215bb10c9648f4c0f400c5847',
+  '0xbba49256a93a06fcf3b0681fead2b4e3042b9124',
+  '0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af',
+].map(a => a.toLowerCase());
+
+function SystemHealth() {
+  const { address } = useAccount();
+  const [health, setHealth] = useState<any>(null);
+  
+  const isAdmin = address && ADMIN_WALLETS.includes(address.toLowerCase());
+  
+  if (!isAdmin) return null;
+  
+  // Run health checks
+  useEffect(() => {
+    async function checkHealth() {
+      const results = {
+        nftContract: false,
+        marketplace: false,
+        brainWallet: false,
+        rpcLatency: 0,
+      };
+      
+      const start = Date.now();
+      
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const nft = new ethers.Contract(NFT_CONTRACT, ['function totalMinted() view returns (uint256)'], provider);
+        await nft.totalMinted();
+        results.nftContract = true;
+        results.rpcLatency = Date.now() - start;
+      } catch {}
+      
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const mp = new ethers.Contract(MARKETPLACE_CONTRACT, ['function feeRecipient() view returns (address)'], provider);
+        await mp.feeRecipient();
+        results.marketplace = true;
+      } catch {}
+      
+      try {
+        const provider = new ethers.JsonRpcProvider('https://eth.llamarpc.com');
+        const balance = await provider.getBalance('0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4');
+        results.brainWallet = true;
+      } catch {}
+      
+      setHealth(results);
+    }
+    checkHealth();
+  }, []);
+  
+  return (
+    <div className="fixed bottom-4 right-4 bg-black/80 border border-white/20 rounded-lg p-3 text-xs font-mono z-50">
+      <p className="font-bold mb-2 text-white">System Health (Admin)</p>
+      <p className={health?.nftContract ? 'text-green-400' : 'text-red-400'}>
+        {health?.nftContract ? '✅' : '❌'} NFT Contract
+      </p>
+      <p className={health?.marketplace ? 'text-green-400' : 'text-red-400'}>
+        {health?.marketplace ? '✅' : '❌'} Marketplace
+      </p>
+      <p className={health?.brainWallet ? 'text-green-400' : 'text-red-400'}>
+        {health?.brainWallet ? '✅' : '❌'} Brain Wallet (ETH)
+      </p>
+      <p className="text-gray-400 mt-1">
+        RPC: {health?.rpcLatency || '...'}ms
+      </p>
+    </div>
+  );
+}
+
+Add <SystemHealth /> to main App layout.
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST (Verify after changes)
+═══════════════════════════════════════════════════════════════
+
+□ Daily Community Rate shows 6,438 (not 643)
+□ Monthly Projection shows ~193,140 (not 19,314)
+□ Transaction modal shows actual price (not 0 $BASED)
+□ Error messages are user-friendly
+□ No debug console.logs in browser console
+□ Buying already-sold NFT shows helpful error
+□ Admin health check appears for admin wallets only
+□ Mobile layout works correctly
+□ Wallet connects properly
+
+═══════════════════════════════════════════════════════════════
+
+After these fixes, the app is ready for friend testing!
