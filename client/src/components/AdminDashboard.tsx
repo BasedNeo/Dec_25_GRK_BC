@@ -40,9 +40,7 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [`[${timestamp}] ${message}`, ...prev.slice(0, 49)]);
   };
-  
-  if (!isAdmin || !isOpen) return null;
-  
+
   const runHealthCheck = async () => {
     setLoading('health');
     addLog('Starting system health check...');
@@ -322,11 +320,13 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   };
   
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAdmin) {
       getCacheStats();
       runHealthCheck();
     }
-  }, [isOpen]);
+  }, [isOpen, isAdmin]);
+  
+  if (!isAdmin || !isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
