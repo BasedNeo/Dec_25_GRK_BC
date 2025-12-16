@@ -25,51 +25,66 @@ export function Footer() {
 
     setIsSubmitting(true);
     
-    // Security: Sanitize Input
     const safeFeedback = sanitize(feedback);
     const safeEmail = sanitize(email);
 
-    // Track feedback submission event
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
-    try {
-      console.log('[Footer] Submitting feedback:', { message: safeFeedback, email: safeEmail });
-      
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: safeFeedback,
-          email: safeEmail || null,
-          walletAddress: null,
-        }),
-      });
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      const data = await response.json();
-      console.log('[Footer] Response:', response.status, data);
-
-      if (response.ok) {
-        setFeedback("");
-        setEmail("");
-        toast({
-          title: "Feedback Sent",
-          description: "Thank you! Your feedback has been saved and our team will review it.",
-          className: "bg-black border-primary text-primary font-orbitron",
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Footer] Submitting feedback (attempt ${attempt}/${maxRetries})`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: safeFeedback,
+            email: safeEmail || null,
+            walletAddress: null,
+          }),
+          signal: controller.signal,
         });
-      } else {
-        console.error('[Footer] Server error:', data);
-        throw new Error(data.error || 'Failed to submit');
+        
+        clearTimeout(timeoutId);
+
+        const data = await response.json();
+        console.log('[Footer] Response:', response.status, data);
+
+        if (response.ok) {
+          setFeedback("");
+          setEmail("");
+          toast({
+            title: "Feedback Sent",
+            description: "Thank you! Your feedback has been saved and our team will review it.",
+            className: "bg-black border-primary text-primary font-orbitron",
+          });
+          setIsSubmitting(false);
+          return;
+        } else {
+          throw new Error(data.error || 'Server error');
+        }
+      } catch (error: any) {
+        console.error(`[Footer] Attempt ${attempt} failed:`, error);
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+        }
       }
-    } catch (error: any) {
-      console.error("[Footer] Failed to submit feedback:", error);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to submit feedback. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
     }
+
+    toast({
+      title: "Connection Issue",
+      description: "Could not reach the server. Please check your connection and try again.",
+      variant: "destructive",
+    });
+    setIsSubmitting(false);
   };
 
   return (

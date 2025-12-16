@@ -238,36 +238,55 @@ function ChooseYourAdventure() {
     
     setIsSubmitting(true);
     
-    try {
-      const selectedChoice = adventureOptions.find(o => o.id === selectedOption);
-      
-      // Save to backend for Admin Inbox
-      await fetch('/api/stories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `Saga Vote: ${selectedChoice?.title || 'Unknown'}`,
-          content: `${selectedChoice?.icon} ${selectedChoice?.description || ''}\n\nVoted by wallet: ${address}`,
-          walletAddress: address,
-        }),
-      });
-      
-      // Save vote to localStorage
-      const votesData = localStorage.getItem('saga_votes');
-      const votes = votesData ? JSON.parse(votesData) : {};
-      votes[address.toLowerCase()] = selectedOption;
-      localStorage.setItem('saga_votes', JSON.stringify(votes));
-      
-      // Mark story as submitted for User Stats
-      localStorage.setItem('storySubmitted', 'true');
-      
-      setHasVoted(true);
-      setPreviousVote(selectedOption);
-      setShowSuccess(true);
-    } catch (err) {
-      console.error('Failed to submit saga vote:', err);
+    const selectedChoice = adventureOptions.find(o => o.id === selectedOption);
+    const maxRetries = 3;
+    let submitted = false;
+    
+    for (let attempt = 1; attempt <= maxRetries && !submitted; attempt++) {
+      try {
+        console.log(`[Saga] Submitting vote (attempt ${attempt}/${maxRetries})`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch('/api/stories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `Saga Vote: ${selectedChoice?.title || 'Unknown'}`,
+            content: `${selectedChoice?.icon} ${selectedChoice?.description || ''}\n\nVoted by wallet: ${address}`,
+            walletAddress: address,
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          submitted = true;
+          console.log('[Saga] Vote submitted successfully');
+        } else {
+          throw new Error('Server error');
+        }
+      } catch (err) {
+        console.error(`[Saga] Attempt ${attempt} failed:`, err);
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+        }
+      }
     }
     
+    // Save vote to localStorage even if backend failed (optimistic)
+    const votesData = localStorage.getItem('saga_votes');
+    const votes = votesData ? JSON.parse(votesData) : {};
+    votes[address.toLowerCase()] = selectedOption;
+    localStorage.setItem('saga_votes', JSON.stringify(votes));
+    
+    localStorage.setItem('storySubmitted', 'true');
+    
+    setHasVoted(true);
+    setPreviousVote(selectedOption);
+    setShowSuccess(true);
     setIsSubmitting(false);
   };
 
