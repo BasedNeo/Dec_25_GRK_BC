@@ -1,3 +1,13 @@
+CRITICAL MINT FIX - TRANSACTION TRACKING NOT WORKING
+
+After MetaMask approval, the app sits idle then fails. The transaction hash isn't being tracked properly. Need to:
+1. Force status display regardless of hook state
+2. Add manual transaction polling as fallback
+3. Show loading state immediately on click
+4. Better RPC error handling
+
+=== REPLACE ENTIRE useMint.ts: ===
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
@@ -21,6 +31,7 @@ export function useMint() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   
+  // Local state - more reliable than hook state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('idle');
@@ -42,7 +53,7 @@ export function useMint() {
     error: confirmationError 
   } = useWaitForTransactionReceipt({
     hash: hash || (localHash as `0x${string}` | undefined),
-    timeout: 180000,
+    timeout: 180000, // 3 minutes
   });
 
   const { 
@@ -67,6 +78,7 @@ export function useMint() {
     return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
   };
 
+  // Manual transaction polling as fallback
   const pollTransaction = useCallback(async (txHash: string) => {
     if (!publicClient) return;
     
@@ -98,25 +110,31 @@ export function useMint() {
         }
       }
     } catch (e) {
+      // Transaction not found yet, keep polling
       console.log('⏳ [Mint] Transaction not yet mined, still polling...');
     }
   }, [publicClient]);
 
+  // Start polling when we have a hash
   useEffect(() => {
     const txHash = hash || localHash;
     if (txHash && isLoading && !isSuccess) {
       console.log('🔄 [Mint] Starting polling for:', txHash);
       
+      // Clear any existing interval
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
       
+      // Poll every 3 seconds
       pollIntervalRef.current = setInterval(() => {
         pollTransaction(txHash);
       }, 3000);
       
+      // Also poll immediately
       pollTransaction(txHash);
       
+      // Cleanup
       return () => {
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
@@ -126,6 +144,7 @@ export function useMint() {
     }
   }, [hash, localHash, isLoading, isSuccess, pollTransaction]);
 
+  // Track pending state
   useEffect(() => {
     if (isPending) {
       console.log('🔵 [Mint] isPending = true, waiting for wallet...');
@@ -133,6 +152,7 @@ export function useMint() {
     }
   }, [isPending]);
 
+  // Track hash received
   useEffect(() => {
     if (hash) {
       console.log('🟢 [Mint] Hash received from wagmi:', hash);
@@ -141,6 +161,7 @@ export function useMint() {
     }
   }, [hash]);
 
+  // Track confirmation
   useEffect(() => {
     if (isConfirming) {
       console.log('🟡 [Mint] isConfirming = true');
@@ -148,6 +169,7 @@ export function useMint() {
     }
   }, [isConfirming]);
 
+  // Track success
   useEffect(() => {
     if (isSuccess) {
       console.log('✅ [Mint] SUCCESS!');
@@ -161,6 +183,7 @@ export function useMint() {
     }
   }, [isSuccess]);
 
+  // Track write errors
   useEffect(() => {
     if (writeError) {
       console.error('❌ [Mint] writeError:', writeError);
@@ -178,13 +201,16 @@ export function useMint() {
     }
   }, [writeError]);
 
+  // Track confirmation errors
   useEffect(() => {
     if (isConfirmError && confirmationError) {
       console.error('❌ [Mint] confirmationError:', confirmationError);
+      // Don't immediately fail - the polling might still find it
       console.log('⚠️ [Mint] Confirmation error but polling may still succeed');
     }
   }, [isConfirmError, confirmationError]);
 
+  // Timeout fallback - if still loading after 3 min, fail gracefully
   useEffect(() => {
     if (isLoading && (hash || localHash)) {
       const timeout = setTimeout(() => {
@@ -198,7 +224,7 @@ export function useMint() {
             pollIntervalRef.current = null;
           }
         }
-      }, 180000);
+      }, 180000); // 3 minutes
       
       return () => clearTimeout(timeout);
     }
@@ -230,6 +256,7 @@ export function useMint() {
       return;
     }
 
+    // IMMEDIATELY set loading state
     setIsLoading(true);
     setError(null);
     setLocalHash(null);
@@ -251,7 +278,7 @@ export function useMint() {
         args: [BigInt(quantity)],
         value: valueInWei,
         gas: BigInt(500000),
-        gasPrice: BigInt(10000000000),
+        gasPrice: BigInt(10000000000), // 10 gwei - even higher
       });
 
       console.log('📤 [Mint] writeContract called');
@@ -277,6 +304,7 @@ export function useMint() {
     reset();
   }, [reset]);
 
+  // Combined loading state
   const combinedLoading = isLoading || isPending || isConfirming;
   const currentHash = hash || localHash;
 
@@ -317,3 +345,23 @@ export function useMint() {
 }
 
 export default useMint;
+
+=== KEY IMPROVEMENTS: ===
+1. Gas price increased to 10 gwei (was 5, BasedAI may need more)
+2. Added manual transaction POLLING as fallback (checks every 3 seconds)
+3. Local hash tracking independent of wagmi hooks
+4. Immediate loading state on click
+5. 3 minute timeout with graceful failure message
+6. More console logging to diagnose exactly where it fails
+
+=== ALSO UPDATE useContractData.ts LINE 1-4: ===
+Change from:
+  import { useReadContract, useAccount } from 'wagmi';
+  import { CHAIN_ID } from '@/lib/constants';
+  const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+
+To:
+  import { useReadContract, useAccount } from 'wagmi';
+  import { CHAIN_ID, NFT_CONTRACT } from '@/lib/constants';
+
+After this fix, open browser console (F12) and try minting. You should see detailed logs showing exactly what's happening at each step.
