@@ -38,6 +38,7 @@ import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
 import { useMarketplace, useListing } from "@/hooks/useMarketplace";
 import { useOffersForOwner } from "@/hooks/useOffers";
+import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { parseEther } from "viem";
 
 interface EscrowMarketplaceProps {
@@ -59,6 +60,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Real Marketplace Contract Integration ---
   const marketplace = useMarketplace();
+  
+  // --- Get user's owned NFTs for sorting priority ---
+  const { nfts: ownedNFTs } = useOwnedNFTs();
+  const ownedTokenIds = useMemo(() => new Set(ownedNFTs.map(n => n.id)), [ownedNFTs]);
 
   // --- CRITICAL FIX: Direct Contract Fetching State ---
   const [directNFTs, setDirectNFTs] = useState<MarketItem[]>([]);
@@ -521,13 +526,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // The hook knows about `sortBy`, but `price` is added HERE.
     // So we should sort by price here if needed.
     
-    // Default sort: Listed items first (by lowest price), then unlisted/unminted
+    // Default sort: User's listed NFTs first, then other listed, then minted, then unminted
     if (sortBy === 'listed-price-asc') {
          items.sort((a, b) => {
-             // Listed items come first
+             // Priority 1: User's own listed NFTs come first
+             const aOwnedAndListed = ownedTokenIds.has(a.id) && a.isListed ? 1 : 0;
+             const bOwnedAndListed = ownedTokenIds.has(b.id) && b.isListed ? 1 : 0;
+             if (aOwnedAndListed !== bOwnedAndListed) return bOwnedAndListed - aOwnedAndListed;
+             
+             // Priority 2: Other listed items
              const aListed = a.isListed ? 1 : 0;
              const bListed = b.isListed ? 1 : 0;
-             if (aListed !== bListed) return bListed - aListed; // Listed first
+             if (aListed !== bListed) return bListed - aListed;
              
              // Among listed items, sort by price ascending
              if (a.isListed && b.isListed) {
@@ -536,7 +546,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                  return priceA - priceB;
              }
              
-             // Among unlisted, minted come before unminted
+             // Priority 3: Minted (not listed) come before unminted
              const aMinted = a.isMinted ? 1 : 0;
              const bMinted = b.isMinted ? 1 : 0;
              if (aMinted !== bMinted) return bMinted - aMinted;
@@ -555,7 +565,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     }
 
     return items;
-  }, [allItems, activeTab, isConnected, sortBy]);
+  }, [allItems, activeTab, isConnected, sortBy, ownedTokenIds]);
 
   // Suggested Filters (Premium UX)
   const suggestedFilters = useMemo(() => {
