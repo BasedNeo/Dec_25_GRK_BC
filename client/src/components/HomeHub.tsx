@@ -118,7 +118,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
             <span 
               className="bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(0,255,255,0.3)]"
               style={{
-                backgroundImage: 'linear-gradient(90deg, #22d3ee, #a78bfa, #22d3ee)',
+                backgroundImage: 'linear-gradient(90deg, #22d3ee, #ffffff, #a78bfa, #ffffff, #22d3ee)',
                 backgroundSize: '200% 100%',
                 animation: 'gradientShift 8s ease-in-out infinite',
               }}
