@@ -1,0 +1,309 @@
+PRODUCTION CLEANUP - REMOVE DEBUG LOGS + FIX GAS + POLISH
+
+Clean up the codebase for production release. Remove debug console.log statements, fix the mint gas limit, and polish for commercial use.
+
+=== FILE 1: hooks/useMint.ts - REMOVE ALL DEBUG LOGS + FIX GAS ===
+
+1. Remove ALL console.log statements from useMint.ts
+2. Update gas limit from 500,000 to 8,000,000 (required for random token ID generation)
+3. Update gasPrice from 5 gwei to 10 gwei for reliability
+
+Replace the entire useMint.ts file with this CLEANED version:
+
+import { useState, useCallback, useEffect } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
+import { useContractData } from './useContractData';
+import { parseContractError, isUserRejection } from '@/lib/errorParser';
+
+const MINT_PRICE = 69420;
+
+const NFT_ABI = [
+  {
+    name: 'mint',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'quantity', type: 'uint256' }],
+    outputs: [],
+  },
+] as const;
+
+export function useMint() {
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('idle');
+
+  const { 
+    writeContract, 
+    data: hash, 
+    isPending, 
+    error: writeError, 
+    reset 
+  } = useWriteContract();
+
+  const { 
+    isLoading: isConfirming, 
+    isSuccess, 
+    isError: isConfirmError,
+    error: confirmationError 
+  } = useWaitForTransactionReceipt({
+    hash: hash,
+    timeout: 120000,
+  });
+
+  const { 
+    totalMinted, maxSupply, mintPrice,
+    publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
+  } = useContractData();
+
+  const { data: balanceData } = useBalance({
+    address,
+    chainId: CHAIN_ID,
+  });
+
+  const canAfford = (qty: number) => {
+    if (!balanceData) return false;
+    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+    return balanceData.value >= cost;
+  };
+
+  const maxAffordable = () => {
+    if (!balanceData) return 0;
+    const bal = Number(formatEther(balanceData.value));
+    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+  };
+
+  // Track pending state
+  useEffect(() => {
+    if (isPending) {
+      setStatus('Waiting for wallet approval...');
+      setError(null);
+    }
+  }, [isPending]);
+
+  // Track hash received
+  useEffect(() => {
+    if (hash) {
+      setStatus('Transaction submitted! Waiting for confirmation...');
+    }
+  }, [hash]);
+
+  // Track confirmation
+  useEffect(() => {
+    if (isConfirming && hash) {
+      setStatus('Confirming on blockchain...');
+    }
+  }, [isConfirming, hash]);
+
+  // Track success
+  useEffect(() => {
+    if (isSuccess) {
+      setStatus('Mint successful!');
+      setIsLoading(false);
+      setError(null);
+    }
+  }, [isSuccess]);
+
+  // Track write errors
+  useEffect(() => {
+    if (writeError) {
+      if (isUserRejection(writeError)) {
+        setError('Transaction cancelled');
+        setStatus('idle');
+      } else {
+        const parsedError = parseContractError(writeError);
+        setError(parsedError);
+        setStatus('idle');
+      }
+      setIsLoading(false);
+    }
+  }, [writeError]);
+
+  // Track confirmation errors
+  useEffect(() => {
+    if (isConfirmError) {
+      const parsedError = confirmationError 
+        ? parseContractError(confirmationError)
+        : 'Transaction may have failed. Check your wallet.';
+      setError(parsedError);
+      setIsLoading(false);
+      setStatus('idle');
+    }
+  }, [isConfirmError, confirmationError]);
+
+  const mint = useCallback(async (quantity: number = 1) => {
+    if (!isConnected || !address) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    if (!canMint) {
+      if (isPaused) setError('Minting is paused');
+      else if (isSoldOut) setError('Sold out!');
+      else if (!publicMintEnabled) setError('Public mint not enabled');
+      return;
+    }
+
+    if (!canAfford(quantity)) {
+      setError('Insufficient $BASED balance');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      setStatus('Preparing transaction...');
+
+      const totalPrice = MINT_PRICE * quantity;
+      const valueInWei = parseEther(totalPrice.toString());
+
+      writeContract({
+        address: NFT_CONTRACT as `0x${string}`,
+        abi: NFT_ABI,
+        functionName: 'mint',
+        args: [BigInt(quantity)],
+        value: valueInWei,
+        gas: BigInt(8000000),        // HIGH GAS - required for random token ID search
+        gasPrice: BigInt(10000000000), // 10 gwei
+      });
+
+    } catch (e: any) {
+      const parsedError = parseContractError(e);
+      setError(parsedError);
+      setIsLoading(false);
+      setStatus('idle');
+    }
+  }, [isConnected, address, writeContract, canMint, isPaused, isSoldOut, publicMintEnabled, canAfford]);
+
+  const checkTransaction = useCallback(async () => {
+    if (!hash || !publicClient) return null;
+    
+    try {
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+      return receipt;
+    } catch {
+      return null;
+    }
+  }, [hash, publicClient]);
+
+  const resetMint = useCallback(() => {
+    setIsLoading(false);
+    setError(null);
+    setStatus('idle');
+    reset();
+  }, [reset]);
+
+  const state = {
+    isPending,
+    isConfirming,
+    isSuccess,
+    isError: !!error || isConfirmError,
+    error,
+    txHash: hash,
+  };
+
+  return {
+    mint,
+    reset: resetMint,
+    checkTransaction,
+    state,
+    status,
+    isMinting: isPending || isConfirming,
+    isLoading: isLoading || isPending || isConfirming,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+    txHash: hash,
+    totalMinted,
+    maxSupply,
+    mintPrice,
+    remainingSupply,
+    publicMintEnabled,
+    isPaused,
+    isSoldOut,
+    canMint,
+    balance: balanceData ? formatEther(balanceData.value) : null,
+    balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
+    canAfford,
+    maxAffordable: maxAffordable(),
+  };
+}
+
+export default useMint;
+
+
+=== FILE 2: components/ErrorBoundary.tsx - CLEAN DEBUG LOGS ===
+
+In ErrorBoundary.tsx, change the componentDidCatch method to NOT log wallet errors to console at all (reduces console noise):
+
+componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  // Only log non-wallet errors
+  if (!isWalletError(error)) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+  }
+}
+
+
+=== FILE 3: lib/analytics.ts - UPDATE PLACEHOLDER ===
+
+Replace the GA_ID placeholder comment:
+
+// Replace 'G-XXXXXXXXXX' with your actual Google Analytics ID or leave as-is if not using GA
+export const GA_ID = import.meta.env.VITE_GA_ID || '';
+
+
+=== FILE 4: hooks/useActivityFeed.ts - ADD OFFER EVENTS ===
+
+The activity feed is missing offer events. Add OfferMade event parsing.
+
+In the fetchActivities function, after the soldEvents Promise.all section, add:
+
+// Also fetch OfferMade events
+const offerEvents = await marketplaceContract.queryFilter(
+  marketplaceContract.filters.OfferMade(), 
+  fromBlock, 
+  currentBlock
+).catch(() => []);
+
+// Parse OfferMade events (add after Sold events parsing)
+for (const event of offerEvents) {
+  const log = event as ethers.EventLog;
+  parsedActivities.push({
+    id: `${log.transactionHash}-offer-${log.index}`,
+    type: 'offer',
+    tokenId: Number(log.args[0]),
+    from: log.args[1] as string,
+    to: NFT_CONTRACT,
+    price: ethers.formatEther(log.args[2]),
+    timestamp: getTimestampFast(log.blockNumber),
+    txHash: log.transactionHash,
+    blockNumber: log.blockNumber,
+  });
+}
+
+
+=== FILE 5: lib/constants.ts - ADD MISSING EXPORT ===
+
+Add this export if not already present (for any future analytics integration):
+
+export const SITE_URL = "https://basedguardians.com";
+
+
+=== SUMMARY OF CHANGES ===
+
+1. ✅ Removed all 23 console.log statements from useMint.ts
+2. ✅ Fixed gas limit: 500,000 → 8,000,000 (CRITICAL for minting to work)
+3. ✅ Fixed gas price: 5 gwei → 10 gwei (more reliable)
+4. ✅ Cleaned ErrorBoundary console noise for wallet operations
+5. ✅ Fixed GA_ID placeholder to not show dummy value
+6. ✅ Added offer events to activity feed for completeness
+
+These changes prepare the app for production by:
+- Removing debug output that users shouldn't see
+- Ensuring minting works reliably with correct gas
+- Cleaning up console output for professional appearance
+- Completing the activity feed functionality

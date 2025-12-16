@@ -473,15 +473,14 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         
         // Price logic:
         // - UNMINTED: show mint price
-        // - MINTED + LISTED: price will be fetched from contract (placeholder for now, BuyButton fetches real price)
+        // - MINTED + LISTED: use fetched listing price from contract
         // - MINTED + NOT LISTED: no price (accepts offers)
         let price: number | undefined;
         if (!isMinted) {
            price = MINT_PRICE;
         } else if (isListed) {
-           // Listed items - the BuyButton component will fetch the actual price from contract
-           // We set a placeholder indicating it's listed (actual price is fetched by useListing hook)
-           price = undefined; // Will be fetched by BuyButton/useListing
+           // Use the real listing price we fetched from the contract
+           price = listingPrices.get(tokenId);
         } else {
            // Minted but not listed - no price, accepts offers
            price = undefined;
@@ -498,22 +497,26 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         };
      }) as unknown as MarketItem[];
      
-     // Re-sort to ensure listed items appear first when that sort is selected
+     // Re-sort to ensure listed items appear first, sorted by price ascending
      if (sortBy === 'listed-price-asc') {
        items = items.sort((a, b) => {
          // Listed items come first
          const aListed = a.isListed ? 1 : 0;
          const bListed = b.isListed ? 1 : 0;
          if (aListed !== bListed) return bListed - aListed;
-         // Both listed: sort by price (we don't have price here, so sort by ID)
-         if (a.isListed && b.isListed) return a.id - b.id;
+         // Both listed: sort by price ascending (lowest first)
+         if (a.isListed && b.isListed) {
+           const priceA = a.price || Infinity;
+           const priceB = b.price || Infinity;
+           return priceA - priceB;
+         }
          // Neither listed: sort by ID
          return a.id - b.id;
        });
      }
      
      return items;
-  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, sortBy]);
+  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, sortBy, listingPrices]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
@@ -571,27 +574,22 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // The hook knows about `sortBy`, but `price` is added HERE.
     // So we should sort by price here if needed.
     
-    // Default sort: User's listed NFTs first, then other listed, then minted, then unminted
+    // Default sort: Listed NFTs first, sorted by price (lowest to highest)
     if (sortBy === 'listed-price-asc') {
          items.sort((a, b) => {
-             // Priority 1: User's own listed NFTs come first
-             const aOwnedAndListed = ownedTokenIds.has(a.id) && a.isListed ? 1 : 0;
-             const bOwnedAndListed = ownedTokenIds.has(b.id) && b.isListed ? 1 : 0;
-             if (aOwnedAndListed !== bOwnedAndListed) return bOwnedAndListed - aOwnedAndListed;
-             
-             // Priority 2: Other listed items
+             // Priority 1: Listed items come first
              const aListed = a.isListed ? 1 : 0;
              const bListed = b.isListed ? 1 : 0;
              if (aListed !== bListed) return bListed - aListed;
              
-             // Among listed items, sort by price ascending
+             // Among listed items, sort by price ascending (lowest first)
              if (a.isListed && b.isListed) {
-                 const priceA = a.price || 0;
-                 const priceB = b.price || 0;
+                 const priceA = a.price || Infinity;
+                 const priceB = b.price || Infinity;
                  return priceA - priceB;
              }
              
-             // Priority 3: Minted (not listed) come before unminted
+             // Priority 2: Minted (not listed) come before unminted
              const aMinted = a.isMinted ? 1 : 0;
              const bMinted = b.isMinted ? 1 : 0;
              if (aMinted !== bMinted) return bMinted - aMinted;
