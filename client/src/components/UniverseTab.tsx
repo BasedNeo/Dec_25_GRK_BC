@@ -446,19 +446,25 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
 
         </div>
 
-        {/* Scroll Indicator */}
+        {/* Scroll Indicator - Chevron arrows */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
         >
+          <span className="text-[10px] font-mono text-white/20 tracking-widest uppercase mb-1">Explore</span>
           <motion.div
-            animate={{ y: [0, 6, 0] }}
+            animate={{ y: [0, 4, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-5 h-8 rounded-full border border-white/15 flex items-start justify-center p-1.5"
+            className="flex flex-col items-center"
           >
-            <div className="w-0.5 h-1.5 bg-white/30 rounded-full" />
+            <svg className="w-5 h-5 text-cyan-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+            </svg>
+            <svg className="w-5 h-5 text-cyan-400/20 -mt-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+            </svg>
           </motion.div>
         </motion.div>
       </section>
