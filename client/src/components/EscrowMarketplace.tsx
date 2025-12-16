@@ -616,7 +616,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Actions ---
   const handleOffer = (item: MarketItem) => {
-      console.log('[Marketplace] handleOffer called for item:', item.id, item.name);
       setOfferItem(item);
       setShowOfferModal(true);
   };
