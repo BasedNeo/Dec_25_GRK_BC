@@ -82,6 +82,9 @@ Preferred communication style: Simple, everyday language.
   - V3 Contract: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
   - Hook: useOffersV3.ts with makeOffer, acceptOffer, completePurchase, cancelOffer
   - MyOffersPanel component shows user's active offers with status badges
+- **Performance Optimizations**: React.memo on heavy components (MarketCard, NFTImage, RarityChart), lazy loading for AdminDashboard and BrainDiagnostics, useMemo for filter operations
+- **Security Hardening**: Input validation on OfferModal and ListModal (price range: 1-999,999,999), all external links verified with rel="noopener noreferrer"
+- **UX Polish**: LoadingSpinner component, NFTCardSkeleton for loading states, useDebouncedCallback hook for rate limiting
 - **Code Cleanup**: Removed debug console.log statements, improved type safety (any -> unknown), silent error handling
 - V2 Marketplace (0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c) still active for backward compatibility
 - Added Diamond Hands Status feature: Tracks NFT holding duration and retention rate via blockchain Transfer events (6 levels: Ice → Diamond)
