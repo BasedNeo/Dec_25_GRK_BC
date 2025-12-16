@@ -5,7 +5,7 @@ import {
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
   Sparkles, Users, Flame, Calendar, TrendingUp,
-  Star, Award, Compass, Swords
+  Star, Award, Compass, Swords, Diamond, Gem
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -115,6 +115,15 @@ const BADGES = [
   { id: 'commander', name: 'Commander', icon: Crown, color: 'yellow', description: '20 NFTs - Legendary', levelReq: 7 },
 ];
 
+const DIAMOND_HANDS_LEVELS = [
+  { name: 'Ice Hands', color: 'text-blue-300', bgColor: 'bg-blue-500/20', borderColor: 'border-blue-400/50', icon: '🧊', minDays: 0, minRetention: 0, description: 'Holding at least 1 NFT' },
+  { name: 'Bronze Hands', color: 'text-amber-600', bgColor: 'bg-amber-700/20', borderColor: 'border-amber-600/50', icon: '🥉', minDays: 30, minRetention: 25, description: '30+ days, 25%+ retention' },
+  { name: 'Silver Hands', color: 'text-gray-300', bgColor: 'bg-gray-400/20', borderColor: 'border-gray-400/50', icon: '🥈', minDays: 60, minRetention: 50, description: '60+ days, 50%+ retention' },
+  { name: 'Gold Hands', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', borderColor: 'border-yellow-400/50', icon: '🥇', minDays: 90, minRetention: 75, description: '90+ days, 75%+ retention' },
+  { name: 'Platinum Hands', color: 'text-cyan-300', bgColor: 'bg-cyan-400/20', borderColor: 'border-cyan-300/50', icon: '💎', minDays: 90, minRetention: 80, description: '90+ days, 80%+ retention' },
+  { name: 'Diamond Hands', color: 'text-purple-400', bgColor: 'bg-purple-500/20', borderColor: 'border-purple-400/50', icon: '💠', minDays: 90, minRetention: 100, description: '90+ days, 100% retention' },
+];
+
 export function UserStats() {
   const { address, isConnected } = useAccount();
   const [nftCount, setNftCount] = useState(0);
@@ -127,6 +136,14 @@ export function UserStats() {
   const [loginStreak, setLoginStreak] = useState(0);
   const [daysAsGuardian, setDaysAsGuardian] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [diamondHandsData, setDiamondHandsData] = useState<{
+    daysHolding: number;
+    totalAcquired: number;
+    totalSold: number;
+    retentionRate: number;
+    currentHolding: number;
+    loading: boolean;
+  }>({ daysHolding: 0, totalAcquired: 0, totalSold: 0, retentionRate: 0, currentHolding: 0, loading: true });
 
   useEffect(() => {
     const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
@@ -217,6 +234,88 @@ export function UserStats() {
 
     fetchNFTData();
   }, [address, isConnected]);
+
+  // Fetch Diamond Hands data from Transfer events
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setDiamondHandsData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    const fetchDiamondHandsData = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(NFT_CONTRACT, [
+          'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
+          'function balanceOf(address) view returns (uint256)'
+        ], provider);
+
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(0, currentBlock - 2000000); // ~2M blocks back
+        
+        const userAddr = address.toLowerCase();
+        
+        // Get transfers TO user (acquisitions)
+        const incomingFilter = contract.filters.Transfer(null, address);
+        const incomingEvents = await contract.queryFilter(incomingFilter, fromBlock, currentBlock).catch(() => []);
+        
+        // Get transfers FROM user (sales/transfers out)
+        const outgoingFilter = contract.filters.Transfer(address, null);
+        const outgoingEvents = await contract.queryFilter(outgoingFilter, fromBlock, currentBlock).catch(() => []);
+        
+        const totalAcquired = incomingEvents.length;
+        const totalSold = outgoingEvents.length;
+        const currentBalance = await contract.balanceOf(address);
+        const currentHolding = Number(currentBalance);
+        
+        // Calculate retention rate
+        const retentionRate = totalAcquired > 0 ? Math.round((currentHolding / totalAcquired) * 100) : (currentHolding > 0 ? 100 : 0);
+        
+        // Calculate days holding from first acquisition
+        let daysHolding = 0;
+        if (incomingEvents.length > 0 && currentHolding > 0) {
+          const firstEvent = incomingEvents[0];
+          const firstBlock = await provider.getBlock(firstEvent.blockNumber);
+          if (firstBlock) {
+            const firstDate = new Date(firstBlock.timestamp * 1000);
+            daysHolding = Math.floor((Date.now() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        }
+        
+        setDiamondHandsData({
+          daysHolding,
+          totalAcquired,
+          totalSold,
+          retentionRate: Math.min(100, retentionRate),
+          currentHolding,
+          loading: false
+        });
+      } catch (e) {
+        console.error('Failed to fetch diamond hands data:', e);
+        setDiamondHandsData(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchDiamondHandsData();
+  }, [address, isConnected]);
+
+  // Calculate Diamond Hands level
+  const getDiamondHandsLevel = () => {
+    if (diamondHandsData.currentHolding === 0) return -1;
+    
+    let level = 0; // Ice Hands by default if holding any NFT
+    for (let i = DIAMOND_HANDS_LEVELS.length - 1; i >= 0; i--) {
+      const req = DIAMOND_HANDS_LEVELS[i];
+      if (diamondHandsData.daysHolding >= req.minDays && diamondHandsData.retentionRate >= req.minRetention) {
+        level = i;
+        break;
+      }
+    }
+    return level;
+  };
+
+  const diamondHandsLevel = getDiamondHandsLevel();
+  const diamondHandsLevelData = diamondHandsLevel >= 0 ? DIAMOND_HANDS_LEVELS[diamondHandsLevel] : null;
 
   const hasAllTypes = nftBreakdown.guardians > 0 && nftBreakdown.frogs > 0 && nftBreakdown.creatures > 0;
   const pagesPercent = (pagesVisited.length / PAGES.length) * 100;
@@ -645,6 +744,114 @@ export function UserStats() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Diamond Hands Status */}
+        <motion.div 
+          className="mb-8"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.65 }}
+        >
+          <Card className="bg-black/60 border-cyan-500/30 p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Diamond className="w-5 h-5 text-cyan-400" />
+              <h3 className="font-orbitron font-bold text-white">Diamond Hands Status</h3>
+              {diamondHandsLevelData && (
+                <Badge className={`ml-auto ${diamondHandsLevelData.bgColor} ${diamondHandsLevelData.color} ${diamondHandsLevelData.borderColor}`}>
+                  {diamondHandsLevelData.icon} {diamondHandsLevelData.name}
+                </Badge>
+              )}
+            </div>
+            
+            {diamondHandsData.loading ? (
+              <div className="text-center py-8 text-gray-400">Loading blockchain data...</div>
+            ) : diamondHandsData.currentHolding === 0 ? (
+              <div className="text-center py-6 text-gray-500">
+                <Diamond className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No NFTs currently held</p>
+                <p className="text-xs mt-1">Mint or buy an NFT to start tracking</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Current Status Display */}
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className={`w-24 h-24 rounded-full border-4 flex items-center justify-center text-4xl ${
+                    diamondHandsLevelData ? `${diamondHandsLevelData.borderColor} ${diamondHandsLevelData.bgColor}` : 'border-gray-700 bg-gray-900'
+                  }`}>
+                    {diamondHandsLevelData?.icon || '🧊'}
+                  </div>
+                  
+                  <div className="flex-1 text-center md:text-left">
+                    <div className={`text-2xl font-orbitron font-bold mb-1 ${diamondHandsLevelData?.color || 'text-gray-400'}`}>
+                      {diamondHandsLevelData?.name || 'No Status'}
+                    </div>
+                    <p className="text-gray-400 text-sm mb-2">
+                      {diamondHandsLevelData?.description || 'Hold NFTs to earn status'}
+                    </p>
+                    <div className="flex flex-wrap gap-3 justify-center md:justify-start text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> {diamondHandsData.daysHolding} days holding
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" /> {diamondHandsData.retentionRate}% retention
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-orbitron font-bold text-cyan-400">{diamondHandsData.currentHolding}</div>
+                    <div className="text-xs text-gray-500">Currently Holding</div>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-orbitron font-bold text-green-400">{diamondHandsData.totalAcquired}</div>
+                    <div className="text-xs text-gray-500">Total Acquired</div>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-orbitron font-bold text-red-400">{diamondHandsData.totalSold}</div>
+                    <div className="text-xs text-gray-500">Sold/Transferred</div>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-orbitron font-bold text-purple-400">{diamondHandsData.retentionRate}%</div>
+                    <div className="text-xs text-gray-500">Retention Rate</div>
+                  </div>
+                </div>
+
+                {/* Level Progress */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>Progress to next level</span>
+                    {diamondHandsLevel < DIAMOND_HANDS_LEVELS.length - 1 && (
+                      <span className={DIAMOND_HANDS_LEVELS[diamondHandsLevel + 1].color}>
+                        {DIAMOND_HANDS_LEVELS[diamondHandsLevel + 1].name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    {DIAMOND_HANDS_LEVELS.map((level, i) => (
+                      <div 
+                        key={level.name}
+                        className={`flex-1 h-2 rounded-full transition-all ${
+                          i <= diamondHandsLevel 
+                            ? 'bg-gradient-to-r from-cyan-500 to-purple-500' 
+                            : 'bg-gray-800'
+                        }`}
+                        title={`${level.name}: ${level.description}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-600">
+                    {DIAMOND_HANDS_LEVELS.map((level) => (
+                      <span key={level.name} title={level.description}>{level.icon}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+        </motion.div>
 
         <motion.div 
           className="mb-8"
