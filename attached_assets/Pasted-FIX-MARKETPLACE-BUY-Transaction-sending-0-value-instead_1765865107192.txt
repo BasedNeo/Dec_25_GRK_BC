@@ -1,0 +1,80 @@
+FIX MARKETPLACE BUY - Transaction sending 0 value instead of listing price
+
+PROBLEM:
+When buying NFT #149, the transaction sends value: 0 instead of the listing price (72,333 $BASED).
+The buy function must include the price as msg.value.
+
+FIND in useMarketplace.ts or the buy function:
+
+The buyNFT function needs to pass the price as the transaction value.
+
+CURRENT (WRONG):
+writeContract({
+  address: MARKETPLACE_CONTRACT,
+  abi: MARKETPLACE_ABI,
+  functionName: 'buy',
+  args: [listingId],
+  gas: BigInt(400000),
+});
+
+CORRECT (WITH VALUE):
+writeContract({
+  address: MARKETPLACE_CONTRACT,
+  abi: MARKETPLACE_ABI,
+  functionName: 'buy',
+  args: [listingId],
+  value: price, // THIS IS REQUIRED - send the listing price with the transaction
+  gas: BigInt(400000),
+});
+
+WHERE TO FIX:
+
+1. Find the buyNFT function in useMarketplace.ts
+2. Make sure it accepts the price parameter
+3. Pass the price as `value` in the writeContract call
+
+EXAMPLE FIX:
+
+const buyNFT = async (listingId: number, price: bigint) => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    writeContract({
+      address: MARKETPLACE_CONTRACT as `0x${string}`,
+      abi: MARKETPLACE_ABI,
+      functionName: 'buy',
+      args: [BigInt(listingId)],
+      value: price, // CRITICAL: Send the listing price as value
+      gas: BigInt(500000),
+    });
+  } catch (e) {
+    console.error('Buy failed:', e);
+    setError('Failed to buy NFT');
+  }
+};
+
+ALSO CHECK the component calling buyNFT:
+
+Make sure it passes the price:
+
+// WRONG:
+onClick={() => marketplace.buyNFT(listing.id)}
+
+// CORRECT:
+onClick={() => marketplace.buyNFT(listing.id, BigInt(listing.price))}
+
+Or if price is in ether format:
+onClick={() => marketplace.buyNFT(listing.id, ethers.parseEther(listing.price.toString()))}
+
+VERIFY THE PRICE FORMAT:
+- If price is stored in wei (big number): pass directly
+- If price is stored as number (e.g., 72333): convert to wei first
+  
+Example: 72,333 $BASED = ethers.parseEther("72333") = 72333000000000000000000n
+
+ALSO CHECK RPC:
+The error shows: https://rpc.basedaibridge.com/
+Should be: https://mainnet.basedaibridge.com/rpc/
+
+Verify the RPC URL in wagmi.ts or constants.ts is correct.
