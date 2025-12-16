@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import DOMPurify from 'dompurify';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface SecurityContextType {
   isPaused: boolean;
