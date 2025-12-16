@@ -283,11 +283,11 @@ export function BrainDiagnostics() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Brain Balance</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Wallet Balance</span>
               <div className="text-xl font-mono font-bold text-cyan-400 mt-1">
                 {emissions.loading ? '...' : formatNumber(emissions.brainBalance, 0)}
               </div>
-              <span className="text-[10px] text-cyan-500/70">$BASED</span>
+              <span className="text-[10px] text-cyan-500/70">$BASED now</span>
             </motion.div>
 
             <motion.div
@@ -296,11 +296,11 @@ export function BrainDiagnostics() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Total Received</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">All-Time Emissions</span>
               <div className="text-xl font-mono font-bold text-purple-400 mt-1">
                 {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
               </div>
-              <span className="text-[10px] text-purple-500/70">$BASED all-time</span>
+              <span className="text-[10px] text-purple-500/70">since Dec 10, 2025</span>
             </motion.div>
 
             <motion.div
