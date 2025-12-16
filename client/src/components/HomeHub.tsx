@@ -26,7 +26,7 @@ const menuItems = [
   },
   { 
     id: 'escrow', 
-    label: 'COLLECTION', 
+    label: 'MARKET', 
     icon: Grid3X3, 
     description: 'Browse & trade on marketplace',
     color: 'from-violet-500 to-purple-500',
@@ -52,7 +52,7 @@ const menuItems = [
     id: 'voting', 
     label: 'VOTING', 
     icon: Vote, 
-    description: 'Participate in DAO governance',
+    description: 'Participate in governance',
     color: 'from-amber-500 to-orange-500',
     glow: 'amber'
   },
