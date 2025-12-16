@@ -241,7 +241,7 @@ export function useMint() {
       
       console.log('📝 [Mint] Sending transaction:');
       console.log('   Value:', totalPrice, '$BASED');
-      console.log('   Gas Limit: 500,000');
+      console.log('   Gas Limit: 8,000,000 (required for random ID search)');
       console.log('   Gas Price: 10 gwei');
 
       writeContract({
@@ -250,8 +250,8 @@ export function useMint() {
         functionName: 'mint',
         args: [BigInt(quantity)],
         value: valueInWei,
-        gas: BigInt(500000),
-        gasPrice: BigInt(10000000000),
+        gas: BigInt(8000000),        // 8M gas - CRITICAL: random ID search needs this!
+        gasPrice: BigInt(10000000000), // 10 gwei
       });
 
       console.log('📤 [Mint] writeContract called');
