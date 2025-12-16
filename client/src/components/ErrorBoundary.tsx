@@ -11,6 +11,47 @@ interface State {
   error?: Error;
 }
 
+const WALLET_ERROR_PATTERNS = [
+  'disconnect',
+  'wallet',
+  'account',
+  'connector',
+  'provider',
+  'chain',
+  'network',
+  'switch',
+  'user rejected',
+  'user denied',
+  'user cancelled',
+  'request reset',
+  'already pending',
+  'not activated',
+  'no active',
+  'invalidated',
+  'connection',
+  'eth_',
+  'wagmi',
+  'rainbowkit',
+  'metamask',
+  'walletconnect',
+  'rabby',
+  'coinbase',
+];
+
+function isWalletError(error: Error | undefined): boolean {
+  if (!error) return false;
+  
+  const errorMessage = (error.message || '').toLowerCase();
+  const errorName = (error.name || '').toLowerCase();
+  const errorString = String(error).toLowerCase();
+  
+  return WALLET_ERROR_PATTERNS.some(pattern => 
+    errorMessage.includes(pattern) || 
+    errorName.includes(pattern) ||
+    errorString.includes(pattern)
+  );
+}
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -18,31 +59,16 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    const errorMessage = error?.message?.toLowerCase() || '';
-    const isWalletError = 
-      errorMessage.includes('disconnect') ||
-      errorMessage.includes('wallet') ||
-      errorMessage.includes('account') ||
-      errorMessage.includes('connector') ||
-      errorMessage.includes('provider');
-    
-    if (isWalletError) {
+    if (isWalletError(error)) {
+      console.log('[ErrorBoundary] Ignoring wallet-related error:', error.message);
       return { hasError: false };
     }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    const errorMessage = error?.message?.toLowerCase() || '';
-    const isWalletError = 
-      errorMessage.includes('disconnect') ||
-      errorMessage.includes('wallet') ||
-      errorMessage.includes('account') ||
-      errorMessage.includes('connector') ||
-      errorMessage.includes('provider');
-    
-    if (isWalletError) {
-      console.log('[ErrorBoundary] Ignoring wallet-related error:', error.message);
+    if (isWalletError(error)) {
+      console.log('[ErrorBoundary] Wallet operation (not an error):', error.message);
       this.setState({ hasError: false });
       return;
     }
@@ -78,7 +104,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="text-center p-8 relative z-10 max-w-lg">
             <div className="mb-8">
               <div className="text-7xl mb-4">
-                <span className="inline-block animate-bounce" style={{ animationDelay: '0s' }}>🛸</span>
+                <span className="inline-block animate-bounce">🛸</span>
               </div>
               <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
                 // transmission interrupted
@@ -116,15 +142,15 @@ export class ErrorBoundary extends Component<Props, State> {
               or return to Command Center →
             </button>
             
-            <div className="mt-12 p-4 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm">
-              <p className="text-gray-500 text-[10px] font-mono mb-1">Debug info for the curious:</p>
+            <div className="mt-12 p-4 bg-white/5 border border-cyan-500/20 rounded-lg backdrop-blur-sm">
+              <p className="text-cyan-400/50 text-[10px] font-mono mb-1">// Debug transmission:</p>
               <p className="text-cyan-400/60 font-mono text-[10px] break-all">
                 {this.state.error?.message || 'Unknown cosmic disturbance'}
               </p>
             </div>
             
-            <p className="text-gray-600/50 text-[10px] mt-8 font-mono">
-              Based Guardians • Protecting the Galaxy
+            <p className="text-gray-600/50 text-[10px] mt-8 font-orbitron tracking-widest">
+              BASED GUARDIANS • PROTECTING THE GALAXY
             </p>
           </div>
         </div>

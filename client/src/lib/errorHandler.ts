@@ -2,6 +2,41 @@ import { Security } from './security';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+const WALLET_OPERATION_PATTERNS = [
+  'disconnect',
+  'user rejected',
+  'user denied',
+  'user cancelled',
+  'connection request reset',
+  'request reset',
+  'already pending',
+  'connector not found',
+  'no connector',
+  'wallet',
+  'account',
+  'provider',
+  'chain',
+  'network',
+  'switch',
+  'connector',
+  'eth_accounts',
+  'eth_requestAccounts',
+  'connector already connected',
+  'not activated',
+  'no active connector',
+  'invalidated',
+];
+
+function isWalletOperationError(error: any): boolean {
+  const errorStr = (
+    String(error?.message || '') + 
+    String(error?.reason || '') + 
+    String(error?.code || '')
+  ).toLowerCase();
+  
+  return WALLET_OPERATION_PATTERNS.some(pattern => errorStr.includes(pattern));
+}
+
 class ErrorHandlerClass {
   private toastContainer: HTMLDivElement | null = null;
 
@@ -32,11 +67,12 @@ class ErrorHandlerClass {
     const toast = document.createElement('div');
     toast.style.cssText = `
       padding: 14px 20px;
-      border-radius: 8px;
+      border-radius: 12px;
       color: white;
       font-size: 14px;
       font-weight: 500;
-      max-width: 350px;
+      font-family: 'Orbitron', sans-serif;
+      max-width: 380px;
       opacity: 0;
       transform: translateX(100%);
       transition: all 0.3s ease;
@@ -44,26 +80,31 @@ class ErrorHandlerClass {
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
     `;
 
     const colors: Record<ToastType, string> = {
-      success: '#16a34a',
-      error: '#dc2626',
-      warning: '#d97706',
-      info: '#2563eb'
+      success: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+      error: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+      warning: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+      info: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)'
     };
 
     const icons: Record<ToastType, string> = {
       success: '✓',
-      error: '✕',
-      warning: '⚠',
-      info: 'ℹ'
+      error: '⚠',
+      warning: '⚡',
+      info: '🛸'
     };
 
     toast.style.background = colors[type] || colors.info;
-    toast.innerHTML = `<span>${icons[type]}</span><span>${Security.escapeHtml(message)}</span>`;
+    toast.innerHTML = `
+      <span style="font-size: 18px;">${icons[type]}</span>
+      <span>${Security.escapeHtml(message)}</span>
+    `;
 
     toast.onclick = () => this._removeToast(toast);
 
@@ -87,22 +128,25 @@ class ErrorHandlerClass {
     setTimeout(() => toast.remove(), 300);
   }
 
-  handle(error: any, context: string = ''): string {
+  handle(error: any, context: string = ''): string | null {
+    if (isWalletOperationError(error)) {
+      console.log(`[${context}] Ignoring wallet operation:`, error?.message || error);
+      return null;
+    }
+
     console.error(`[${context}]`, error);
 
     const errorMessages: Record<string, string> = {
-      'user rejected': 'Transaction cancelled',
-      'insufficient funds': 'Insufficient funds for this transaction',
-      'network': 'Network connection issue. Please check your internet.',
+      'insufficient funds': 'Insufficient $BASED for this transaction',
       'timeout': 'Request timed out. Please try again.',
       'CALL_EXCEPTION': 'Transaction would fail. Check your inputs.',
-      '4001': 'Request rejected',
-      '-32002': 'Please check your wallet - a request is pending',
-      '-32603': 'Internal wallet error. Try refreshing the page.',
+      '-32603': 'RPC error. Try refreshing the page.',
       'nonce': 'Transaction conflict. Please wait and try again.',
+      'gas': 'Gas estimation failed. The network may be busy.',
+      'execution reverted': 'Transaction reverted. Check the contract conditions.',
     };
 
-    let userMessage = 'An unexpected error occurred';
+    let userMessage = 'Something went wrong. Please try again.';
     const errorStr = (error.message?.toLowerCase() || String(error.code || '')).toLowerCase();
 
     for (const [key, msg] of Object.entries(errorMessages)) {
@@ -124,7 +168,10 @@ class ErrorHandlerClass {
       }
       return result;
     } catch (error) {
-      this.handle(error, context);
+      const handled = this.handle(error, context);
+      if (!handled) {
+        return null;
+      }
       return null;
     }
   }
@@ -146,6 +193,12 @@ if (typeof window !== 'undefined') {
   (window as any).ErrorHandler = ErrorHandler;
 
   window.addEventListener('unhandledrejection', (event) => {
+    if (isWalletOperationError(event.reason)) {
+      console.log('[Global] Ignoring wallet operation rejection:', event.reason?.message || event.reason);
+      event.preventDefault();
+      return;
+    }
+    
     console.error('Unhandled promise rejection:', event.reason);
     ErrorHandler.handle(event.reason, 'Unhandled');
   });
