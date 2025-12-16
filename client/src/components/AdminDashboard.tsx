@@ -25,7 +25,9 @@ interface HealthStatus {
 
 export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardProps) {
   const { address } = useAccount();
-  const isAdmin = address && ADMIN_WALLETS.includes(address.toLowerCase());
+  const isAdmin = address && ADMIN_WALLETS.some(
+    admin => admin.toLowerCase() === address.toLowerCase()
+  );
   
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
