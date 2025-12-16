@@ -4,7 +4,7 @@ import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle } from "lucide-
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
-import { CHAIN_ID, ADMIN_WALLETS } from "@/lib/constants";
+import { CHAIN_ID } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";

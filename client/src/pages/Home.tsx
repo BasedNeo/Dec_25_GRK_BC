@@ -46,8 +46,7 @@ export default function Home() {
       <Navbar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
-        isConnected={isConnected} 
-        onOpenAdmin={() => setShowAdminPanel(true)}
+        isConnected={isConnected}
       />
       
       <main className="pt-20 min-h-screen flex flex-col">
