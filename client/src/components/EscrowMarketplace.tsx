@@ -791,7 +791,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     Showing {contractStats.totalMinted} minted NFTs (Pre-Reveal Mode - Images will be revealed soon)
                 </div>
             )}
-            <h2 className="text-4xl text-white font-black mb-2">GUARDIAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">EXCHANGE</span></h2>
+            <h2 className="text-4xl text-white font-black mb-2">BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">COLLECTION</span></h2>
             <div className="flex gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> NFT Stays in Wallet</span>
               <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
