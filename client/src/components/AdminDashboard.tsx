@@ -34,6 +34,7 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [logs, setLogs] = useState<string[]>([]);
   const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
   const [showLogs, setShowLogs] = useState(false);
+  const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -199,8 +200,6 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     
     addLog('Diagnostics exported.');
   };
-
-  const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
 
   const diagnoseMinting = async () => {
     if (!address) return;
