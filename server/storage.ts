@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, users, feedback, storySubmissions, pushSubscriptions, emailList } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count } from "drizzle-orm";
@@ -146,6 +146,65 @@ export class DatabaseStorage implements IStorage {
   async getEmailCount(): Promise<number> {
     const [result] = await db.select({ count: count() }).from(emailList);
     return result.count;
+  }
+
+  async getGuardianProfile(walletAddress: string): Promise<GuardianProfile | undefined> {
+    const [profile] = await db.select().from(guardianProfiles).where(eq(guardianProfiles.walletAddress, walletAddress.toLowerCase()));
+    return profile;
+  }
+
+  async getOrCreateGuardianProfile(walletAddress: string): Promise<{ profile: GuardianProfile; isNew: boolean; hoursSinceLastLogin: number }> {
+    const addr = walletAddress.toLowerCase();
+    let profile = await this.getGuardianProfile(addr);
+    
+    if (!profile) {
+      const [newProfile] = await db.insert(guardianProfiles).values({
+        walletAddress: addr,
+        lastLogin: new Date(),
+      }).returning();
+      return { profile: newProfile, isNew: true, hoursSinceLastLogin: 0 };
+    }
+    
+    const hoursSinceLastLogin = (Date.now() - new Date(profile.lastLogin).getTime()) / (1000 * 60 * 60);
+    
+    const [updated] = await db.update(guardianProfiles)
+      .set({ lastLogin: new Date() })
+      .where(eq(guardianProfiles.walletAddress, addr))
+      .returning();
+    
+    return { profile: updated, isNew: false, hoursSinceLastLogin };
+  }
+
+  async setCustomName(walletAddress: string, customName: string | null): Promise<GuardianProfile | null> {
+    const addr = walletAddress.toLowerCase();
+    
+    if (customName) {
+      const cleanName = customName.trim().slice(0, 16);
+      if (cleanName.length < 2) return null;
+      
+      const existing = await db.select().from(guardianProfiles)
+        .where(eq(guardianProfiles.customName, cleanName));
+      if (existing.length > 0 && existing[0].walletAddress !== addr) {
+        return null;
+      }
+    }
+    
+    const [updated] = await db.update(guardianProfiles)
+      .set({ customName: customName ? customName.trim().slice(0, 16) : null })
+      .where(eq(guardianProfiles.walletAddress, addr))
+      .returning();
+    
+    return updated || null;
+  }
+
+  async isNameTaken(customName: string, excludeWallet?: string): Promise<boolean> {
+    const cleanName = customName.trim();
+    const results = await db.select().from(guardianProfiles)
+      .where(eq(guardianProfiles.customName, cleanName));
+    
+    if (results.length === 0) return false;
+    if (excludeWallet && results[0].walletAddress === excludeWallet.toLowerCase()) return false;
+    return true;
   }
 }
 

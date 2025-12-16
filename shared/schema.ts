@@ -89,3 +89,19 @@ export const insertEmailSchema = createInsertSchema(emailList).omit({
 
 export type InsertEmail = z.infer<typeof insertEmailSchema>;
 export type EmailEntry = typeof emailList.$inferSelect;
+
+export const guardianProfiles = pgTable("guardian_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull().unique(),
+  customName: varchar("custom_name", { length: 20 }),
+  lastLogin: timestamp("last_login").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertGuardianProfileSchema = createInsertSchema(guardianProfiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGuardianProfile = z.infer<typeof insertGuardianProfileSchema>;
+export type GuardianProfile = typeof guardianProfiles.$inferSelect;

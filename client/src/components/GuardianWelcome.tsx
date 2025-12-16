@@ -1,0 +1,225 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Sparkles, Edit3, Check, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+
+interface WelcomeBackModalProps {
+  message: string;
+  displayName: string | null;
+  onDismiss: () => void;
+}
+
+export function WelcomeBackModal({ message, displayName, onDismiss }: WelcomeBackModalProps) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onDismiss}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="max-w-md w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Card className="bg-gradient-to-br from-gray-900 via-gray-900 to-purple-900/30 border-cyan-500/30 p-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5" />
+            
+            <button
+              onClick={onDismiss}
+              className="absolute top-3 right-3 text-gray-500 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="relative text-center">
+              <motion.div
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 3 }}
+                className="inline-block mb-4"
+              >
+                <Sparkles className="w-12 h-12 text-cyan-400" />
+              </motion.div>
+              
+              <h2 className="text-2xl font-orbitron font-bold text-white mb-2">
+                Welcome Back{displayName ? `, ${displayName}` : ''}!
+              </h2>
+              
+              <p className="text-gray-300 leading-relaxed mb-6">
+                {message}
+              </p>
+              
+              <Button
+                onClick={onDismiss}
+                className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-orbitron"
+                data-testid="button-welcome-continue"
+              >
+                Continue to Command
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+interface NamePromptModalProps {
+  walletSuffix: string;
+  onSubmit: (name: string | null) => Promise<{ success: boolean; error?: string }>;
+  onCheckAvailable: (name: string) => Promise<boolean>;
+  onDismiss: () => void;
+}
+
+export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDismiss }: NamePromptModalProps) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleNameChange = async (value: string) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
+    setName(cleaned);
+    setError(null);
+    setIsAvailable(null);
+    
+    if (cleaned.length >= 2) {
+      setChecking(true);
+      const available = await onCheckAvailable(cleaned);
+      setIsAvailable(available);
+      setChecking(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (name.length < 2) {
+      setError('Name must be at least 2 characters');
+      return;
+    }
+    
+    if (!isAvailable) {
+      setError('This name is already taken');
+      return;
+    }
+    
+    setSubmitting(true);
+    const result = await onSubmit(name);
+    setSubmitting(false);
+    
+    if (result.success) {
+      onDismiss();
+    } else {
+      setError(result.error || 'Failed to set name');
+    }
+  };
+
+  const handleSkip = () => {
+    onDismiss();
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="max-w-lg w-full"
+        >
+          <Card className="bg-gradient-to-br from-gray-900 via-gray-900 to-cyan-900/20 border-purple-500/30 p-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-cyan-500/5" />
+            
+            <div className="relative">
+              <div className="text-center mb-6">
+                <Edit3 className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <h2 className="text-xl font-orbitron font-bold text-white mb-2">
+                  Choose Your Guardian Name
+                </h2>
+                <p className="text-gray-400 text-sm">
+                  This name may appear on social media for leaderboard announcements. 
+                  Your wallet suffix <span className="text-cyan-400 font-mono">#{walletSuffix}</span> will be added to make it unique.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="relative">
+                  <Input
+                    value={name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Enter name (2-16 characters)"
+                    className="bg-gray-800/50 border-gray-700 text-white pr-10"
+                    maxLength={16}
+                    data-testid="input-custom-name"
+                  />
+                  {name.length >= 2 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {checking ? (
+                        <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                      ) : isAvailable ? (
+                        <Check className="w-5 h-5 text-green-400" />
+                      ) : isAvailable === false ? (
+                        <AlertCircle className="w-5 h-5 text-red-400" />
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                
+                {name.length >= 2 && (
+                  <div className="text-center">
+                    <span className="text-sm text-gray-400">Preview: </span>
+                    <span className="text-lg font-orbitron text-white">
+                      {name}<span className="text-cyan-400">#{walletSuffix}</span>
+                    </span>
+                  </div>
+                )}
+                
+                {error && (
+                  <p className="text-red-400 text-sm text-center">{error}</p>
+                )}
+                
+                {isAvailable === false && !error && (
+                  <p className="text-red-400 text-sm text-center">This name is already taken</p>
+                )}
+                
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleSkip}
+                    className="flex-1 border-gray-600 text-gray-400 hover:text-white"
+                    data-testid="button-skip-name"
+                  >
+                    Skip for Now
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={name.length < 2 || !isAvailable || submitting}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-orbitron disabled:opacity-50"
+                    data-testid="button-save-name"
+                  >
+                    {submitting ? 'Saving...' : 'Save Name'}
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-gray-500 text-center">
+                  You can change this later in your Stats page
+                </p>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}

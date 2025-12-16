@@ -27,6 +27,7 @@ import { PendingTxBanner } from "@/components/PendingTxBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { HealthCheckBanner } from "@/components/HealthCheckBanner";
+import { GuardianProfileProvider } from "@/components/GuardianProfileProvider";
 import { Rocket } from "lucide-react";
 
 function GlobalErrorFallback() {
@@ -143,19 +144,21 @@ function App() {
           >
             <SecurityProvider>
               <TransactionProvider>
-                <TooltipProvider>
-                  <HealthCheckBanner />
-                  <NetworkSwitchBanner />
-                  <SpaceBackground />
-                  <Router />
-                  <DisclaimerModal />
-                  <OnboardingTour />
-                  <GlobalBuyListener />
-                  <WalletWatcher />
-                  <PendingTxBanner />
-                  <Toaster />
-                  <DiagnosticPanel />
-                </TooltipProvider>
+                <GuardianProfileProvider>
+                  <TooltipProvider>
+                    <HealthCheckBanner />
+                    <NetworkSwitchBanner />
+                    <SpaceBackground />
+                    <Router />
+                    <DisclaimerModal />
+                    <OnboardingTour />
+                    <GlobalBuyListener />
+                    <WalletWatcher />
+                    <PendingTxBanner />
+                    <Toaster />
+                    <DiagnosticPanel />
+                  </TooltipProvider>
+                </GuardianProfileProvider>
               </TransactionProvider>
             </SecurityProvider>
           </RainbowKitProvider>

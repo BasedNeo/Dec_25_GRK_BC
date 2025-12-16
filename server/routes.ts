@@ -222,5 +222,85 @@ export async function registerRoutes(
     }
   });
 
+  // Guardian Profile endpoints
+  app.post("/api/profile/login", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string().min(10),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+
+      const result = await storage.getOrCreateGuardianProfile(parsed.data.walletAddress);
+      
+      return res.json({
+        profile: result.profile,
+        isNew: result.isNew,
+        showWelcomeBack: !result.isNew && result.hoursSinceLastLogin >= 24,
+        hoursSinceLastLogin: Math.floor(result.hoursSinceLastLogin),
+      });
+    } catch (error) {
+      console.error("[Profile] Error on login:", error);
+      return res.status(500).json({ error: "Failed to process login" });
+    }
+  });
+
+  app.get("/api/profile/:walletAddress", async (req, res) => {
+    try {
+      const profile = await storage.getGuardianProfile(req.params.walletAddress);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      return res.json(profile);
+    } catch (error) {
+      console.error("[Profile] Error fetching profile:", error);
+      return res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/profile/name", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string().min(10),
+        customName: z.string().min(2).max(16).nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Name must be 2-16 characters" });
+      }
+
+      if (parsed.data.customName) {
+        const isTaken = await storage.isNameTaken(parsed.data.customName, parsed.data.walletAddress);
+        if (isTaken) {
+          return res.status(409).json({ error: "This name is already taken" });
+        }
+      }
+
+      const updated = await storage.setCustomName(parsed.data.walletAddress, parsed.data.customName);
+      if (!updated) {
+        return res.status(400).json({ error: "Failed to update name. Name may be invalid or taken." });
+      }
+
+      return res.json({ success: true, profile: updated });
+    } catch (error) {
+      console.error("[Profile] Error setting name:", error);
+      return res.status(500).json({ error: "Failed to set name" });
+    }
+  });
+
+  app.get("/api/profile/check-name/:name", async (req, res) => {
+    try {
+      const name = req.params.name;
+      const excludeWallet = req.query.exclude as string | undefined;
+      const isTaken = await storage.isNameTaken(name, excludeWallet);
+      return res.json({ available: !isTaken });
+    } catch (error) {
+      console.error("[Profile] Error checking name:", error);
+      return res.status(500).json({ error: "Failed to check name" });
+    }
+  });
+
   return httpServer;
 }

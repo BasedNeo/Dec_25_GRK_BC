@@ -5,8 +5,11 @@ import {
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
   Sparkles, Users, Flame, Calendar, TrendingUp,
-  Star, Award, Compass, Swords, Diamond, Gem
+  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle
 } from 'lucide-react';
+import { useGuardianProfileContext } from './GuardianProfileProvider';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -126,6 +129,7 @@ const DIAMOND_HANDS_LEVELS = [
 
 export function UserStats() {
   const { address, isConnected } = useAccount();
+  const { profile, getDisplayName, setCustomName, checkNameAvailable, walletSuffix } = useGuardianProfileContext();
   const [nftCount, setNftCount] = useState(0);
   const [nftBreakdown, setNftBreakdown] = useState({ guardians: 0, frogs: 0, creatures: 0 });
   const [votesCount, setVotesCount] = useState(0);
@@ -136,6 +140,12 @@ export function UserStats() {
   const [loginStreak, setLoginStreak] = useState(0);
   const [daysAsGuardian, setDaysAsGuardian] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
+  const [checkingName, setCheckingName] = useState(false);
+  const [savingName, setSavingName] = useState(false);
   const [diamondHandsData, setDiamondHandsData] = useState<{
     daysHolding: number;
     totalAcquired: number;
@@ -370,6 +380,57 @@ export function UserStats() {
     return Math.min(nftProgress, voteProgress, pageProgress, storyProgress, typeProgress);
   };
 
+  const handleNameChange = async (value: string) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
+    setNameInput(cleaned);
+    setNameError(null);
+    setNameAvailable(null);
+    
+    if (cleaned.length >= 2) {
+      setCheckingName(true);
+      const available = await checkNameAvailable(cleaned);
+      setNameAvailable(available);
+      setCheckingName(false);
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (nameInput.length < 2) {
+      setNameError('Name must be at least 2 characters');
+      return;
+    }
+    if (!nameAvailable) {
+      setNameError('This name is already taken');
+      return;
+    }
+    
+    setSavingName(true);
+    const result = await setCustomName(nameInput);
+    setSavingName(false);
+    
+    if (result.success) {
+      setEditingName(false);
+      setNameInput('');
+      setNameError(null);
+    } else {
+      setNameError(result.error || 'Failed to save name');
+    }
+  };
+
+  const startEditing = () => {
+    setNameInput(profile?.customName || '');
+    setEditingName(true);
+    setNameError(null);
+    setNameAvailable(profile?.customName ? true : null);
+  };
+
+  const cancelEditing = () => {
+    setEditingName(false);
+    setNameInput('');
+    setNameError(null);
+    setNameAvailable(null);
+  };
+
   if (!isConnected) {
     return (
       <section className="py-8 min-h-screen" data-testid="user-stats-locked">
@@ -444,6 +505,106 @@ export function UserStats() {
             Your Guardian Journey
           </h1>
           <p className="text-gray-400 font-mono text-sm">Your Role in the Saga</p>
+        </motion.div>
+
+        {/* Guardian Name Card */}
+        <motion.div 
+          className="mb-6"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card className="bg-gradient-to-r from-purple-900/30 via-black/60 to-cyan-900/30 border-purple-500/30 p-4 backdrop-blur-sm">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <Edit3 className="w-5 h-5 text-purple-400" />
+                </div>
+                
+                {editingName ? (
+                  <div className="flex-1 max-w-md">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          value={nameInput}
+                          onChange={(e) => handleNameChange(e.target.value)}
+                          placeholder="Choose a name (2-16 chars)"
+                          className="bg-gray-800/50 border-gray-700 text-white pr-10"
+                          maxLength={16}
+                          data-testid="input-edit-name"
+                        />
+                        {nameInput.length >= 2 && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {checkingName ? (
+                              <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                            ) : nameAvailable ? (
+                              <Check className="w-4 h-4 text-green-400" />
+                            ) : nameAvailable === false ? (
+                              <AlertCircle className="w-4 h-4 text-red-400" />
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveName}
+                        disabled={nameInput.length < 2 || !nameAvailable || savingName}
+                        className="bg-purple-600 hover:bg-purple-500"
+                        data-testid="button-save-edit-name"
+                      >
+                        {savingName ? '...' : 'Save'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelEditing}
+                        className="text-gray-400 hover:text-white"
+                        data-testid="button-cancel-edit-name"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {nameInput.length >= 2 && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Preview: <span className="text-white font-orbitron">{nameInput}<span className="text-cyan-400">#{walletSuffix}</span></span>
+                      </div>
+                    )}
+                    {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
+                    {nameAvailable === false && !nameError && <p className="text-xs text-red-400 mt-1">This name is already taken</p>}
+                  </div>
+                ) : (
+                  <div className="flex-1">
+                    {getDisplayName() ? (
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Guardian Name</div>
+                        <div className="text-xl md:text-2xl font-orbitron font-bold text-white">
+                          {profile?.customName}<span className="text-cyan-400">#{walletSuffix}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-gray-400 text-sm">No custom name set</div>
+                        <div className="text-xs text-gray-500">Your name may appear on social for leaderboards</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {!editingName && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={startEditing}
+                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                  data-testid="button-edit-name"
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  {getDisplayName() ? 'Change Name' : 'Set Name'}
+                </Button>
+              )}
+            </div>
+          </Card>
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
