@@ -27,6 +27,7 @@ const basedL1 = {
     },
   },
   testnet: false,
+  fees: undefined, // Disable EIP-1559 - force legacy gas pricing
 } as const satisfies Chain;
 
 const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64';

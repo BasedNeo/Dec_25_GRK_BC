@@ -1,0 +1,102 @@
+FIX MINTING - Gas price too low causing transactions to fail
+
+PROBLEM:
+Minting transactions fail with RPC error. The gas price shows as 0.000000009 gwei 
+which is essentially zero. BasedAI L1 may not properly estimate EIP-1559 gas.
+
+SOLUTION:
+Force legacy gas pricing with a minimum gas price.
+
+FIND the useMint.ts hook (or wherever mint transactions are executed)
+
+FIND the writeContract call for minting and ADD explicit gas settings:
+
+// BEFORE (gas price estimated incorrectly):
+writeContract({
+  address: NFT_CONTRACT,
+  abi: NFT_ABI,
+  functionName: 'mint',
+  args: [quantity],
+  value: parseEther(totalPrice.toString()),
+});
+
+// AFTER (force minimum gas price):
+writeContract({
+  address: NFT_CONTRACT as `0x${string}`,
+  abi: NFT_ABI,
+  functionName: 'mint',
+  args: [BigInt(quantity)],
+  value: parseEther(totalPrice.toString()),
+  gas: BigInt(500000), // Explicit gas limit
+  gasPrice: BigInt(1000000000), // Force 1 gwei minimum (legacy pricing)
+});
+
+ALSO CHECK wagmi.ts chain configuration:
+
+The BasedAI L1 chain might need to be configured for legacy transactions.
+Add this to the chain config if not present:
+
+const basedL1 = defineChain({
+  id: 32323,
+  name: 'BasedAI',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'BASED',
+    symbol: 'BASED',
+  },
+  rpcUrls: {
+    default: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+  },
+  blockExplorers: {
+    default: { name: 'Explorer', url: 'https://explorer.bf1337.org' },
+  },
+  // Force legacy gas pricing
+  fees: undefined, // This disables EIP-1559
+});
+
+ALTERNATIVE FIX - If using viem/wagmi v2:
+
+In your wagmi config, you can set default transaction parameters:
+
+import { http, createConfig } from 'wagmi';
+
+export const config = createConfig({
+  chains: [basedL1],
+  transports: {
+    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
+      batch: false,
+      retryCount: 3,
+      retryDelay: 1000,
+    }),
+  },
+});
+
+ALSO ADD retry logic for RPC failures:
+
+async function mintWithRetry(quantity: number, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await writeContractAsync({
+        address: NFT_CONTRACT as `0x${string}`,
+        abi: NFT_ABI,
+        functionName: 'mint',
+        args: [BigInt(quantity)],
+        value: parseEther((69420 * quantity).toString()),
+        gas: BigInt(500000),
+        gasPrice: BigInt(1000000000), // 1 gwei
+      });
+      return result;
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+
+KEY CHANGES:
+1. Add explicit gas: BigInt(500000)
+2. Add explicit gasPrice: BigInt(1000000000) - forces 1 gwei
+3. Remove any maxFeePerGas/maxPriorityFeePerGas (EIP-1559 params)
+4. Add retry logic for RPC failures
+
+This forces legacy transaction format which BasedAI L1 handles better.
