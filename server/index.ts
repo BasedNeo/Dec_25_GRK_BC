@@ -60,6 +60,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Fast health check endpoint for deployment
+  app.get("/_health", (_req, res) => {
+    res.status(200).send('OK');
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

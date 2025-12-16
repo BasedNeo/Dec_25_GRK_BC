@@ -12,6 +12,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Health check endpoint - must respond immediately for deployment health checks
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: Date.now() });
+  });
+
   // Feedback submission endpoint
   app.post("/api/feedback", async (req, res) => {
     try {

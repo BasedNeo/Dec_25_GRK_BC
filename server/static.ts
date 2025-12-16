@@ -10,10 +10,19 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Pre-read index.html for faster serving
+  const indexPath = path.resolve(distPath, "index.html");
+  const indexHtml = fs.readFileSync(indexPath, 'utf-8');
 
-  // fall through to index.html if the file doesn't exist
+  // Serve static files with caching
+  app.use(express.static(distPath, {
+    maxAge: '1d',
+    etag: true
+  }));
+
+  // Fast fallthrough to index.html using pre-loaded content
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.setHeader('Content-Type', 'text/html');
+    res.send(indexHtml);
   });
 }
