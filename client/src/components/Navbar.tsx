@@ -422,33 +422,31 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
         </div>
       </div>
       {/* Mobile Menu */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-gradient-to-b from-black/98 to-black/95 border-b border-cyan-500/10 backdrop-blur-2xl overflow-hidden"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="md:hidden bg-gradient-to-b from-black/98 to-black/95 border-b border-cyan-500/10 backdrop-blur-2xl"
           >
             <div className="px-6 pt-4 pb-10 space-y-2 flex flex-col items-center">
-              {navItems.map((item, index) => (
-                <motion.button
+              {navItems.map((item) => (
+                <button
                   key={item.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
                   onClick={() => {
                     onTabChange(item.id);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full py-4 font-orbitron text-sm tracking-[0.2em] text-center rounded-xl transition-all duration-300 ${
+                  className={`w-full py-4 font-orbitron text-sm tracking-[0.2em] text-center rounded-xl transition-all duration-200 ${
                     activeTab === item.id 
                       ? 'text-cyan-400 bg-gradient-to-r from-cyan-500/15 via-cyan-400/10 to-transparent border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.1)]' 
                       : 'text-white/70 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {item.label}
-                </motion.button>
+                </button>
               ))}
               
               <div className="w-full flex justify-center gap-4 pt-6 border-t border-white/5 mt-4">
