@@ -197,20 +197,25 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
 
   return (
     <div className="w-full mt-8 bg-black/40 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
-      <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/60">
-        <h3 className="font-orbitron text-white text-lg flex items-center gap-2">
-           Minted NFT Details
-           {isInitializing && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
-        </h3>
-        <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleRefresh} 
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
-            title="Refresh List"
-        >
-            <RefreshCw size={14} className={isInitializing ? "animate-spin" : ""} />
-        </Button>
+      <div className="p-4 border-b border-white/10 flex flex-col gap-1 bg-black/60">
+        <div className="flex justify-between items-center">
+          <h3 className="font-orbitron text-white text-lg flex items-center gap-2">
+             Recently Minted NFTs
+             {isInitializing && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
+          </h3>
+          <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefresh} 
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
+              title="Refresh from contract"
+          >
+              <RefreshCw size={14} className={isInitializing ? "animate-spin" : ""} />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground font-mono">
+          Showing {mintedNFTs.length} of {totalMinted} minted • Most recent first (live from contract)
+        </p>
       </div>
       
       {/* Direct Mint Panel */}
