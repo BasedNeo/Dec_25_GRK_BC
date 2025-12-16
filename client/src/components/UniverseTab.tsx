@@ -352,120 +352,210 @@ interface UniverseTabProps {
 
 export function UniverseTab({ onMintClick }: UniverseTabProps) {
   const [loading, setLoading] = useState(true);
+  const [contentReady, setContentReady] = useState(false);
   const { isConnected } = useAccount();
   
   const { scrollYProgress } = useScroll();
   
-  const backgroundY = useTransform(scrollYProgress, [0, 0.5, 1], ["0%", "15%", "30%"]);
-  const featuresY = useTransform(scrollYProgress, [0.2, 0.6], ["0%", "-8%"]);
-  const timelineY = useTransform(scrollYProgress, [0.4, 0.8], ["0%", "-12%"]);
+  const backgroundY = useTransform(scrollYProgress, [0, 0.5, 1], ["0%", "10%", "20%"]);
+  const featuresY = useTransform(scrollYProgress, [0.2, 0.6], ["0%", "-5%"]);
+  const timelineY = useTransform(scrollYProgress, [0.4, 0.8], ["0%", "-8%"]);
 
   useEffect(() => {
-    // Simulate loading for "rich, lore-driven overview"
-    const timer = setTimeout(() => setLoading(false), 800);
+    const timer = setTimeout(() => {
+      setLoading(false);
+      setTimeout(() => setContentReady(true), 100);
+    }, 400);
     return () => clearTimeout(timer);
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_60%)]" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="relative z-10 flex flex-col items-center gap-6"
+        >
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
+            <div className="absolute inset-0 w-16 h-16 rounded-full bg-cyan-500/10 blur-xl animate-pulse" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-sm font-mono text-white/40 tracking-[0.3em] uppercase">Entering</span>
+            <span className="text-lg font-orbitron text-cyan-400 tracking-[0.2em]">THE UNIVERSE</span>
+          </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 relative overflow-hidden">
-      {/* Global Animated Background */}
-      <div className="fixed inset-0 z-0">
+      {/* Optimized Background - CSS Gradients Only */}
+      <div className="fixed inset-0 z-0 will-change-auto">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/20 via-black to-black" />
         <AnimatedStarfield />
         <NebulaEffect />
-        <FloatingParticles />
         <GlowingOrbs />
       </div>
 
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-white/10">
-        {/* Parallax Background */}
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Optimized Background - Pure CSS */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-black to-black" />
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 2 }}
-            className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5980?q=80&w=3272&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-screen"
-            style={{ 
-               transform: "translateZ(-1px) scale(1.5)"
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/80" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(99,102,241,0.12)_0%,transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_70%_60%,rgba(139,92,246,0.08)_0%,transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_30%_at_30%_80%,rgba(34,211,238,0.06)_0%,transparent_40%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent" />
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-8">
-          <motion.h1 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            className="text-5xl md:text-7xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-200 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]"
+        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="space-y-6"
           >
-            The Based Universe
-          </motion.h1>
-          
-          <motion.h2 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl font-mono text-purple-400 tracking-wider uppercase"
-          >
-            A Saga of Guardians, Frogs, and Creatures
-          </motion.h2>
-
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="space-y-6 text-base md:text-lg text-gray-200 leading-relaxed max-w-3xl mx-auto font-sans text-shadow-sm text-left md:text-center"
-          >
-            <p>
-              Step into the Based Guardians Universe, a space crafted with care for those who cherish crypto trading and NFT collecting. Here, $BASED L1 tokens mint 3,732 unique NFTs—1,776 Guardians, 1,320 Frog Wranglers, and 636 Creatures—blending creativity with opportunity. As Guardians stand against the shadows of FUD, your NFTs become part of a privacy-focused cosmos where holding unlocks simple, meaningful rewards. Join us in building a legacy that whispers among the stars.
+            <p className="text-xs font-mono text-cyan-400/50 tracking-[0.4em] uppercase">
+              Welcome to
             </p>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black font-orbitron leading-[0.9]">
+              <span className="block bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent">
+                The Based
+              </span>
+              <span className="block bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mt-2">
+                Universe
+              </span>
+            </h1>
             
-            <h3 className="text-xl font-orbitron text-cyan-400 pt-4">The Heartbeat of an Ancient World</h3>
-            <p>
-              Beneath the galaxy’s canopy, the FUD cyborg fowl—mechanical harbingers with ember-like eyes—cast shadows over the Brain Network, their origins a riddle lost to time. These foes challenge the stalwart Guardians, whose 32 lineages trace their lineage to celestial battles, and the Based Frogs, whose 7 clans guard secrets of bio-engineered symbiosis with the 7 broods of fearless Creatures. Wizard Committer, a sage of silver beard and star-threaded staff, once mapped the Based-Bridge, his ancient code now serving as the backbone of our defense.
+            <p className="text-sm md:text-base font-mono text-white/30 tracking-[0.2em] uppercase pt-4">
+              A Saga of Guardians, Frogs & Creatures
             </p>
 
-            <h3 className="text-xl font-orbitron text-cyan-400 pt-4">A Legacy Secured by Vision</h3>
-            <p>
-              Rooted in a secured subnet, our realm leverages the potential of Based Labs’ infrastructure when ready, yet stands independent of its fate. For years to come, this project will thrive on-chain as our sole beacon of activity if need be—we own its destiny. As NFTs powered by smart contracts, these Guardians, Frogs, and Creatures hold the promise of evolving in myriad unforeseen ways, their long-term value blossoming with the creativity of their holders. Joining our community today means planting a seed in a garden designed to outlast the seasons of hype.
-            </p>
+            <div className="pt-6">
+              <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-xs font-mono text-white/40 tracking-wider">3,732 Unique NFTs on BasedAI L1</span>
+              </div>
+            </div>
+          </motion.div>
 
-            <h3 className="text-xl font-orbitron text-cyan-400 pt-4">A Gentle Note of Understanding</h3>
-            <p>
-              As you step into the Based Guardians Realm, we invite you with open hearts to explore this father-daughter crafted universe. Please know that our journey relies on the evolving infrastructure of Based Labs, which may shape our timeline with grace and patience. Should delays or changes arise, we hold the freedom to adapt our plans thoughtfully, ensuring the Guardians’ legacy endures. This project thrives on-chain as a testament to community spirit, independent of external paths, and we welcome you to walk this road with us.
-            </p>
+        </div>
 
-            {/* Video Integration */}
-            <div className="pt-8 pb-4">
-               <h3 className="text-xl font-orbitron text-cyan-400 mb-4 text-center">Join the Ranks</h3>
-               <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
-                   <iframe 
-                       src="https://player.vimeo.com/video/1146652270?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&loop=1" 
-                       width="100%" 
-                       height="100%" 
-                       frameBorder="0" 
-                       allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
-                       allowFullScreen
-                       loading="lazy"
-                       title="Based Guardians"
-                       style={{ background: '#000' }}
-                   ></iframe>
-               </div>
+        {/* Scroll Indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        >
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="w-5 h-8 rounded-full border border-white/15 flex items-start justify-center p-1.5"
+          >
+            <div className="w-0.5 h-1.5 bg-white/30 rounded-full" />
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Story Content */}
+      <section className="relative z-10 py-20">
+        <div className="max-w-3xl mx-auto px-6 space-y-12">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-lg md:text-xl text-white/60 leading-relaxed text-center font-light"
+          >
+            Step into the Based Guardians Universe, a space crafted with care for those who cherish crypto trading and NFT collecting. Here, $BASED L1 tokens mint 3,732 unique NFTs.
+          </motion.p>
+
+          {/* Story Sections with Premium Styling */}
+          <div className="space-y-10">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="relative pl-6"
+            >
+              <div className="absolute left-0 top-0 w-px h-full bg-gradient-to-b from-cyan-500/40 via-purple-500/20 to-transparent" />
+              <h3 className="text-lg md:text-xl font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-3">
+                The Heartbeat of an Ancient World
+              </h3>
+              <p className="text-sm md:text-base text-white/40 leading-relaxed">
+                Beneath the galaxy's canopy, the FUD cyborg fowl cast shadows over the Brain Network. These foes challenge the stalwart Guardians, whose 32 lineages trace their lineage to celestial battles, and the Based Frogs, whose 7 clans guard secrets of bio-engineered symbiosis with the 7 broods of fearless Creatures.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative pl-6"
+            >
+              <div className="absolute left-0 top-0 w-px h-full bg-gradient-to-b from-purple-500/40 via-cyan-500/20 to-transparent" />
+              <h3 className="text-lg md:text-xl font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 mb-3">
+                A Legacy Secured by Vision
+              </h3>
+              <p className="text-sm md:text-base text-white/40 leading-relaxed">
+                Rooted in a secured subnet, our realm leverages the potential of Based Labs' infrastructure when ready, yet stands independent of its fate. As NFTs powered by smart contracts, these Guardians, Frogs, and Creatures hold the promise of evolving in myriad unforeseen ways.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative pl-6"
+            >
+              <div className="absolute left-0 top-0 w-px h-full bg-gradient-to-b from-cyan-500/40 via-indigo-500/20 to-transparent" />
+              <h3 className="text-lg md:text-xl font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 mb-3">
+                A Gentle Note of Understanding
+              </h3>
+              <p className="text-sm md:text-base text-white/40 leading-relaxed">
+                As you step into the Based Guardians Realm, we invite you with open hearts to explore this father-daughter crafted universe. This project thrives on-chain as a testament to community spirit.
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Video Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="pt-8"
+          >
+            <div className="text-center mb-6">
+              <p className="text-xs font-mono text-cyan-400/40 tracking-[0.3em] uppercase mb-1">Experience</p>
+              <h3 className="text-xl font-orbitron text-white/90">Join the Ranks</h3>
+            </div>
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.4)] bg-black">
+              <iframe 
+                src="https://player.vimeo.com/video/1146652270?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&loop=1" 
+                width="100%" 
+                height="100%" 
+                frameBorder="0" 
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
+                allowFullScreen
+                loading="lazy"
+                title="Based Guardians"
+                className="absolute inset-0"
+                style={{ background: '#000' }}
+              ></iframe>
             </div>
           </motion.div>
         </div>
       </section>
-
       {/* Parallax Container for content below video */}
       <div className="relative overflow-hidden">
         {/* Floating parallax background elements */}
