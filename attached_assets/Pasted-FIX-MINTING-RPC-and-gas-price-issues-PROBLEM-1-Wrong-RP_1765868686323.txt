@@ -1,0 +1,95 @@
+FIX MINTING - RPC and gas price issues
+
+PROBLEM 1: Wrong RPC URL
+The error shows: https://rpc.basedaibridge.com/
+Should be: https://mainnet.basedaibridge.com/rpc/
+
+Check wagmi.ts or constants.ts and ensure RPC_URL is correct:
+export const RPC_URL = 'https://mainnet.basedaibridge.com/rpc/';
+
+PROBLEM 2: Gas price too low (0.000000009 gwei)
+The gas price estimation is returning near-zero values.
+BasedAI L1 may not support EIP-1559 (maxFeePerGas/maxPriorityFeePerGas) properly.
+
+FIX: Use legacy gas pricing or set minimum gas price
+
+In useMint.ts, update the mint function:
+
+// Option 1: Use explicit gas price (legacy)
+writeContract({
+  address: NFT_CONTRACT as `0x${string}`,
+  abi: NFT_ABI,
+  functionName: 'mint',
+  args: [quantity],
+  value: parseEther((MINT_PRICE * quantity).toString()),
+  gas: BigInt(500000),
+  gasPrice: BigInt(1000000000), // 1 gwei minimum
+});
+
+// Option 2: If using wagmi v2, set in config
+const config = createConfig({
+  chains: [basedL1],
+  transports: {
+    [basedL1.id]: http(RPC_URL, {
+      // Set minimum gas price
+      batch: false,
+    }),
+  },
+});
+
+PROBLEM 3: RPC request failing during transaction
+Add retry logic and better error handling:
+
+const mintNFT = async (quantity: number) => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    // Pre-check: verify RPC is working
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    try {
+      await provider.getBlockNumber();
+    } catch (e) {
+      throw new Error('Network connection failed. Please check your connection and try again.');
+    }
+    
+    // Execute mint with explicit gas settings
+    writeContract({
+      address: NFT_CONTRACT as `0x${string}`,
+      abi: NFT_ABI,
+      functionName: 'mint',
+      args: [BigInt(quantity)],
+      value: parseEther((69420 * quantity).toString()),
+      gas: BigInt(500000),
+      // Force legacy gas pricing for BasedAI L1
+      gasPrice: BigInt(1000000000), // 1 gwei
+    });
+    
+  } catch (e) {
+    console.error('Mint failed:', e);
+    setError(parseTransactionError(e));
+    setIsLoading(false);
+  }
+};
+
+ALSO CHECK wagmi chain config in wagmi.ts:
+
+const basedL1 = {
+  id: 32323,
+  name: 'BasedAI',
+  network: 'basedai',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'BASED',
+    symbol: 'BASED',
+  },
+  rpcUrls: {
+    default: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+    public: { http: ['https://mainnet.basedaibridge.com/rpc/'] },
+  },
+  blockExplorers: {
+    default: { name: 'BasedScan', url: 'https://basescan.org' },
+  },
+} as const;
+
+Make sure the RPC URL is consistent everywhere!
