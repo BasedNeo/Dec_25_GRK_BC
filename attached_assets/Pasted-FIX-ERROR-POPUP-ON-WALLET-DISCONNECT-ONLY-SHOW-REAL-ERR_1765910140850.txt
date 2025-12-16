@@ -1,0 +1,433 @@
+FIX ERROR POPUP ON WALLET DISCONNECT - ONLY SHOW REAL ERRORS
+
+When I disconnect my wallet, it disconnects successfully but a generic "An unexpected error occurred" popup appears. This happens because the global error handler catches wallet-related state changes as errors. Fix this to only show errors for actual failures, not normal wallet operations.
+
+=== FILE 1: Update lib/errorHandler.ts ===
+
+Replace the ENTIRE file with:
+
+import { Security } from './security';
+
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+// Patterns that indicate wallet/connection operations - NOT actual errors
+const WALLET_OPERATION_PATTERNS = [
+  'disconnect',
+  'user rejected',
+  'user denied',
+  'user cancelled',
+  'connection request reset',
+  'request reset',
+  'already pending',
+  'connector not found',
+  'no connector',
+  'wallet',
+  'account',
+  'provider',
+  'chain',
+  'network',
+  'switch',
+  'connector',
+  'eth_accounts',
+  'eth_requestAccounts',
+  'connector already connected',
+  'not activated',
+  'no active connector',
+  'invalidated',
+];
+
+function isWalletOperationError(error: any): boolean {
+  const errorStr = (
+    String(error?.message || '') + 
+    String(error?.reason || '') + 
+    String(error?.code || '')
+  ).toLowerCase();
+  
+  return WALLET_OPERATION_PATTERNS.some(pattern => errorStr.includes(pattern));
+}
+
+class ErrorHandlerClass {
+  private toastContainer: HTMLDivElement | null = null;
+
+  initialize(): void {
+    if (typeof document === 'undefined') return;
+    
+    if (!this.toastContainer) {
+      this.toastContainer = document.createElement('div');
+      this.toastContainer.id = 'error-toast-container';
+      this.toastContainer.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      `;
+      document.body.appendChild(this.toastContainer);
+    }
+  }
+
+  toast(message: string, type: ToastType = 'info', duration: number = 5000): HTMLDivElement | null {
+    this.initialize();
+    if (!this.toastContainer) return null;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      padding: 14px 20px;
+      border-radius: 12px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'Orbitron', sans-serif;
+      max-width: 380px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+    `;
+
+    const colors: Record<ToastType, string> = {
+      success: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+      error: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+      warning: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+      info: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)'
+    };
+
+    const icons: Record<ToastType, string> = {
+      success: '✓',
+      error: '⚠',
+      warning: '⚡',
+      info: '🛸'
+    };
+
+    toast.style.background = colors[type] || colors.info;
+    toast.innerHTML = `
+      <span style="font-size: 18px;">${icons[type]}</span>
+      <span>${Security.escapeHtml(message)}</span>
+    `;
+
+    toast.onclick = () => this._removeToast(toast);
+
+    this.toastContainer.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(0)';
+    });
+
+    if (duration > 0) {
+      setTimeout(() => this._removeToast(toast), duration);
+    }
+
+    return toast;
+  }
+
+  private _removeToast(toast: HTMLDivElement): void {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+  }
+
+  handle(error: any, context: string = ''): string | null {
+    // SKIP wallet operation "errors" - these are normal operations, not failures
+    if (isWalletOperationError(error)) {
+      console.log(`[${context}] Ignoring wallet operation:`, error?.message || error);
+      return null;
+    }
+
+    console.error(`[${context}]`, error);
+
+    const errorMessages: Record<string, string> = {
+      'insufficient funds': 'Insufficient $BASED for this transaction',
+      'timeout': 'Request timed out. Please try again.',
+      'CALL_EXCEPTION': 'Transaction would fail. Check your inputs.',
+      '-32603': 'RPC error. Try refreshing the page.',
+      'nonce': 'Transaction conflict. Please wait and try again.',
+      'gas': 'Gas estimation failed. The network may be busy.',
+      'execution reverted': 'Transaction reverted. Check the contract conditions.',
+    };
+
+    let userMessage = 'Something went wrong. Please try again.';
+    const errorStr = (error.message?.toLowerCase() || String(error.code || '')).toLowerCase();
+
+    for (const [key, msg] of Object.entries(errorMessages)) {
+      if (errorStr.includes(key.toLowerCase())) {
+        userMessage = msg;
+        break;
+      }
+    }
+
+    this.toast(userMessage, 'error');
+    return userMessage;
+  }
+
+  async wrapAsync<T>(fn: () => Promise<T>, context: string = '', showSuccess: boolean = false): Promise<T | null> {
+    try {
+      const result = await fn();
+      if (showSuccess) {
+        this.toast('Operation completed successfully', 'success', 3000);
+      }
+      return result;
+    } catch (error) {
+      // Only show error if it's a real error
+      const handled = this.handle(error, context);
+      if (!handled) {
+        // Wallet operation - silently return null
+        return null;
+      }
+      return null;
+    }
+  }
+
+  showLoading(message: string = 'Loading...'): HTMLDivElement | null {
+    return this.toast(message, 'info', 0);
+  }
+
+  hideLoading(toast: HTMLDivElement | null): void {
+    if (toast) {
+      this._removeToast(toast);
+    }
+  }
+}
+
+export const ErrorHandler = new ErrorHandlerClass();
+
+if (typeof window !== 'undefined') {
+  (window as any).ErrorHandler = ErrorHandler;
+
+  // Global unhandled rejection handler - IGNORE wallet operations
+  window.addEventListener('unhandledrejection', (event) => {
+    // Skip wallet-related "errors" - they're normal operations
+    if (isWalletOperationError(event.reason)) {
+      console.log('[Global] Ignoring wallet operation rejection:', event.reason?.message || event.reason);
+      event.preventDefault(); // Prevent console error
+      return;
+    }
+    
+    console.error('Unhandled promise rejection:', event.reason);
+    ErrorHandler.handle(event.reason, 'Unhandled');
+  });
+}
+
+
+=== FILE 2: Update components/ErrorBoundary.tsx ===
+
+Replace the ENTIRE file with:
+
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { Rocket } from 'lucide-react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+// Comprehensive list of wallet/connection-related error patterns to IGNORE
+const WALLET_ERROR_PATTERNS = [
+  'disconnect',
+  'wallet',
+  'account',
+  'connector',
+  'provider',
+  'chain',
+  'network',
+  'switch',
+  'user rejected',
+  'user denied',
+  'user cancelled',
+  'request reset',
+  'already pending',
+  'not activated',
+  'no active',
+  'invalidated',
+  'connection',
+  'eth_',
+  'wagmi',
+  'rainbowkit',
+  'metamask',
+  'walletconnect',
+  'rabby',
+  'coinbase',
+];
+
+function isWalletError(error: Error | undefined): boolean {
+  if (!error) return false;
+  
+  const errorMessage = (error.message || '').toLowerCase();
+  const errorName = (error.name || '').toLowerCase();
+  const errorString = String(error).toLowerCase();
+  
+  return WALLET_ERROR_PATTERNS.some(pattern => 
+    errorMessage.includes(pattern) || 
+    errorName.includes(pattern) ||
+    errorString.includes(pattern)
+  );
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    // Don't show error boundary for wallet operations
+    if (isWalletError(error)) {
+      console.log('[ErrorBoundary] Ignoring wallet-related error:', error.message);
+      return { hasError: false };
+    }
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Don't log wallet errors as problems
+    if (isWalletError(error)) {
+      console.log('[ErrorBoundary] Wallet operation (not an error):', error.message);
+      this.setState({ hasError: false });
+      return;
+    }
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+          {/* Branded cosmic background */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.08)_0%,transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(191,0,255,0.06)_0%,transparent_40%)]" />
+          
+          {/* Stars */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  opacity: Math.random() * 0.6 + 0.2,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${Math.random() * 2 + 2}s`
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Glow orbs */}
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
+          
+          <div className="text-center p-8 relative z-10 max-w-lg">
+            {/* Branded icon */}
+            <div className="mb-8">
+              <div className="text-7xl mb-4">
+                <span className="inline-block animate-bounce" style={{ animationDelay: '0s' }}>🛸</span>
+              </div>
+              <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
+                // transmission interrupted
+              </div>
+            </div>
+            
+            {/* Branded title */}
+            <h1 className="text-3xl md:text-4xl font-orbitron font-bold mb-6 text-white leading-tight">
+              A Small Glitch in the{' '}
+              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-pulse">
+                Galaxy
+              </span>
+            </h1>
+            
+            <p className="text-gray-300 mb-2 text-base">
+              Even the best starships hit turbulence sometimes.
+            </p>
+            <p className="text-gray-500 mb-8 text-sm">
+              Your assets are safe. Let's get you back on course.
+            </p>
+            
+            {/* Branded buttons */}
+            <button 
+              onClick={() => window.location.reload()}
+              className="group px-8 py-4 bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black rounded-xl font-orbitron font-bold text-base hover:shadow-[0_0_40px_rgba(0,255,255,0.5)] transition-all duration-300 flex items-center justify-center gap-3 mx-auto transform hover:scale-105"
+              data-testid="button-error-reload"
+            >
+              <Rocket className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              LAUNCH AGAIN
+            </button>
+            
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="mt-4 px-6 py-2 text-cyan-400/70 hover:text-cyan-400 font-mono text-xs transition-colors"
+              data-testid="button-error-home"
+            >
+              or return to Command Center →
+            </button>
+            
+            {/* Debug info - branded */}
+            <div className="mt-12 p-4 bg-white/5 border border-cyan-500/20 rounded-lg backdrop-blur-sm">
+              <p className="text-cyan-400/50 text-[10px] font-mono mb-1">// Debug transmission:</p>
+              <p className="text-cyan-400/60 font-mono text-[10px] break-all">
+                {this.state.error?.message || 'Unknown cosmic disturbance'}
+              </p>
+            </div>
+            
+            {/* Branded footer */}
+            <p className="text-gray-600/50 text-[10px] mt-8 font-orbitron tracking-widest">
+              BASED GUARDIANS • PROTECTING THE GALAXY
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+
+=== FILE 3: Update components/WalletWatcher.tsx - silence disconnect errors ===
+
+Add error silencing to the WalletWatcher component. Find and update the handleSafeDisconnect function:
+
+const handleSafeDisconnect = useCallback(() => {
+  try {
+    localStorage.removeItem('connectedWallet');
+    localStorage.removeItem('wallet_address');
+    
+    // Wrap disconnect in try-catch and silence expected errors
+    Promise.resolve(disconnect()).catch((e) => {
+      // Silently ignore disconnect errors - they're expected during logout
+      console.log('[WalletWatcher] Disconnect completed');
+    });
+    
+    showToast("Wallet Disconnected", "info");
+  } catch (error) {
+    // Don't show error toast for disconnect - it's a normal operation
+    console.log("[WalletWatcher] Disconnect completed with cleanup");
+  }
+}, [disconnect]);
+
+
+=== KEY CHANGES SUMMARY ===
+
+1. ErrorHandler now IGNORES wallet operation patterns (disconnect, user rejected, etc.)
+2. Global unhandledrejection listener skips wallet-related errors
+3. ErrorBoundary has expanded pattern list to catch all wallet variations  
+4. Toast notifications are now BRANDED with cyberpunk styling (gradient backgrounds, Orbitron font, space icons)
+5. Error page fallback is fully branded with Based Guardians theme
+6. Disconnect operations no longer trigger any error popups
+
+This ensures ONLY real errors (failed transactions, network issues, contract reverts) show error messages, while normal wallet operations like disconnecting are handled silently.

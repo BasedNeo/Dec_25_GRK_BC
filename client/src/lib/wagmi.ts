@@ -52,16 +52,16 @@ const wallets = [
     wallets: [
       injectedWallet,
       metaMaskWallet,
-      rabbyWallet,
       coinbaseWallet,
       rainbowWallet,
+      trustWallet,
     ],
   },
   {
-    groupName: 'More Wallets',
+    groupName: 'More Options',
     wallets: [
       walletConnectWallet,
-      trustWallet,
+      rabbyWallet,
       phantomWallet,
       zerionWallet,
       okxWallet,
@@ -69,7 +69,7 @@ const wallets = [
     ],
   },
   {
-    groupName: 'Hardware & Multisig',
+    groupName: 'Advanced',
     wallets: [
       ledgerWallet,
       safeWallet,

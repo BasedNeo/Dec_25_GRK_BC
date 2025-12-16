@@ -131,9 +131,15 @@ function App() {
               accentColorForeground: 'black',
               borderRadius: 'medium',
               fontStack: 'system',
+              overlayBlur: 'small',
             })}
-            modalSize="compact"
+            modalSize="wide"
             initialChain={32323}
+            showRecentTransactions={true}
+            appInfo={{
+              appName: 'Based Guardians',
+              learnMoreUrl: 'https://basedguardians.com',
+            }}
           >
             <SecurityProvider>
               <TransactionProvider>
