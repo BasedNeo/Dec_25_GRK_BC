@@ -60,7 +60,7 @@ export default function Home() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
             >
-              <HomeHub onNavigate={setActiveTab} />
+              <HomeHub onNavigate={setActiveTab} onOpenAdmin={() => setShowAdminPanel(true)} />
             </motion.div>
           )}
 

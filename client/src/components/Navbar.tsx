@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, PlayCircle, PauseCircle, Award, Star, WifiOff, RefreshCcw, Link2, AlertTriangle } from "lucide-react";
+import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
 import { CHAIN_ID, ADMIN_WALLETS } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
-import { Shield } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -250,29 +249,6 @@ export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: Nav
                 </Button>
             )}
 
-            {isAdmin && (
-                <div className="flex items-center gap-2 ml-4">
-                  <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={onOpenAdmin}
-                      className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
-                      data-testid="admin-panel-btn"
-                  >
-                      <Shield className="w-4 h-4 mr-1" />
-                      Admin
-                  </Button>
-                  <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={togglePause}
-                      className={`border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
-                  >
-                      {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
-                      {isPaused ? "RESUME" : "PAUSE"}
-                  </Button>
-                </div>
-            )}
 
             <div className="ml-4 flex items-center gap-3">
               {/* Chain Indicator */}
@@ -462,35 +438,6 @@ export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: Nav
                 </button>
               ))}
               
-              {isAdmin && (
-                <div className="w-full flex justify-center gap-2 pt-4">
-                  <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        onOpenAdmin?.();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
-                      data-testid="admin-panel-btn-mobile"
-                  >
-                      <Shield className="w-4 h-4 mr-1" />
-                      Admin
-                  </Button>
-                  <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        togglePause();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`border-red-500/50 text-red-500 hover:bg-red-900/20 ${isPaused ? 'bg-red-900/30' : ''}`}
-                  >
-                      {isPaused ? <PlayCircle className="w-4 h-4 mr-1" /> : <PauseCircle className="w-4 h-4 mr-1" />}
-                      {isPaused ? "RESUME" : "PAUSE"}
-                  </Button>
-                </div>
-              )}
               
               <div className="w-full flex justify-center gap-4 pt-6 border-t border-white/5 mt-4">
                 <NotificationSettings />

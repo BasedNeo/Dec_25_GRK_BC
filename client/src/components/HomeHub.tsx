@@ -8,11 +8,15 @@ import {
   Droplets,
   Activity,
   ChevronRight,
+  Shield,
 } from "lucide-react";
+import { useAccount } from "wagmi";
+import { ADMIN_WALLETS } from "@/lib/constants";
 import Untitled from "@assets/Untitled.png";
 
 interface HomeHubProps {
   onNavigate: (tab: string) => void;
+  onOpenAdmin?: () => void;
 }
 
 const menuItems = [
@@ -74,7 +78,10 @@ const menuItems = [
   },
 ];
 
-export function HomeHub({ onNavigate }: HomeHubProps) {
+export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
+  const { address } = useAccount();
+  const isAdmin = address && ADMIN_WALLETS.some(admin => admin.toLowerCase() === address.toLowerCase());
+
   return (
     <div className="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)]" />
@@ -174,6 +181,55 @@ export function HomeHub({ onNavigate }: HomeHubProps) {
             );
           })}
         </div>
+
+        {/* Admin Button - Only visible to admin wallets */}
+        {isAdmin && onOpenAdmin && (
+          <motion.button
+            onClick={onOpenAdmin}
+            className="w-full group relative mt-6"
+            initial={{ x: -60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.7, type: "spring", stiffness: 100 }}
+            whileHover={{ scale: 1.015, x: 4 }}
+            whileTap={{ scale: 0.99 }}
+            data-testid="hub-nav-admin"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500 opacity-0 
+              group-hover:opacity-15 rounded-2xl transition-all duration-500
+              blur-2xl scale-105" />
+            
+            <div className="relative flex items-center justify-between p-5 rounded-2xl 
+              bg-gradient-to-br from-red-500/10 to-transparent
+              border border-red-500/30 backdrop-blur-xl
+              group-hover:border-red-400/50 group-hover:from-red-500/20
+              group-hover:shadow-[0_8px_40px_rgba(239,68,68,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]
+              transition-all duration-400">
+              
+              <div className="flex items-center gap-5">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-500
+                  shadow-lg group-hover:shadow-[0_0_25px_rgba(239,68,68,0.4)] 
+                  group-hover:scale-110 transition-all duration-300">
+                  <Shield className="w-5 h-5 text-white drop-shadow-lg" />
+                </div>
+                
+                <div className="text-left">
+                  <h3 className="font-bold text-red-400 tracking-[0.15em] text-sm md:text-base
+                    group-hover:text-red-300 transition-colors duration-300">
+                    ADMIN PANEL
+                  </h3>
+                  <p className="text-[11px] text-red-400/50 font-mono tracking-wide
+                    group-hover:text-red-400/70 transition-colors duration-300">
+                    Manage proposals & system
+                  </p>
+                </div>
+              </div>
+              
+              <ChevronRight className="w-5 h-5 text-red-400/40 
+                group-hover:text-red-400/80 group-hover:translate-x-1.5 
+                transition-all duration-300" />
+            </div>
+          </motion.button>
+        )}
 
         <motion.div 
           className="mt-10 text-center"
