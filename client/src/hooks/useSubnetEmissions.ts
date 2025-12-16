@@ -219,8 +219,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
           const rawEvents = await tokenContract.queryFilter(filter, smallerFromBlock, 'latest');
           events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
         } catch (e2) {
-          // Event queries failed - we'll use balance as fallback below
-          console.log('Event queries failed, will use balance as fallback');
+          // Event queries failed - use balance as fallback
           events = [];
         }
       }
@@ -258,7 +257,6 @@ export function useSubnetEmissions(): SubnetEmissionsData {
         // Subtract initial deposit to get actual emissions
         const actualEmissions = Math.max(0, balanceNum - BRAIN_CONFIG.initialDeposit);
         total = actualEmissions;
-        console.log('Using balance as total received (no events found). Emissions:', total);
         
         // Calculate days since emissions started
         const daysActive = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
