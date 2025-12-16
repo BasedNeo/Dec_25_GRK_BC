@@ -60,7 +60,19 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Fast health check endpoint for deployment
+  // Fast health check at root - MUST be first for deployment health checks
+  // Health checks typically don't send Accept: text/html
+  app.get("/", (req, res, next) => {
+    const acceptHeader = req.headers['accept'] || '';
+    // If request doesn't accept HTML (health checker), respond immediately
+    if (!acceptHeader.includes('text/html')) {
+      return res.status(200).send('OK');
+    }
+    // Browser requests fall through to static file serving
+    next();
+  });
+
+  // Additional health check endpoints
   app.get("/_health", (_req, res) => {
     res.status(200).send('OK');
   });
