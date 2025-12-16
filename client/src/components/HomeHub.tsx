@@ -1,5 +1,5 @@
-import { motion, useMotionValue, useTransform, useSpring, useAnimation } from "framer-motion";
-import { useState, useEffect, useMemo } from "react";
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { useState, useMemo, useCallback } from "react";
 import { 
   Globe, 
   Sparkles, 
@@ -135,41 +135,33 @@ function LightspeedStarfield({ active }: { active: boolean }) {
 export function HomeHub({ onNavigate }: HomeHubProps) {
   const [isLightspeed, setIsLightspeed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [rocketOffset, setRocketOffset] = useState(0);
   
   const y = useMotionValue(0);
-  const springY = useSpring(y, { stiffness: 400, damping: 15 });
+  const springY = useSpring(y, { stiffness: 600, damping: 25 });
   
-  const rocketScale = useTransform(y, [0, 100], [1, 0.85]);
-  const rocketRotation = useTransform(y, [0, 100], [0, 10]);
-  const glowIntensity = useTransform(y, [0, 100], [0.6, 1]);
+  const rocketScale = useTransform(springY, [0, 50], [1, 0.9]);
+  const glowIntensity = useTransform(springY, [0, 50], [0.6, 1]);
   
-  const rocketControls = useAnimation();
-
-  const handleDragEnd = async () => {
+  const handleDragEnd = useCallback(() => {
     setIsDragging(false);
+    const currentY = y.get();
     
-    if (y.get() > 30) {
-      await rocketControls.start({
-        y: -80,
-        scale: 1.2,
-        transition: { type: "spring", stiffness: 500, damping: 10 }
-      });
-      
+    if (currentY > 20 && !isLightspeed) {
+      setRocketOffset(-60);
       setIsLightspeed(true);
       
-      await rocketControls.start({
-        y: 0,
-        scale: 1,
-        transition: { delay: 0.3, type: "spring", stiffness: 100, damping: 15 }
-      });
+      setTimeout(() => {
+        setRocketOffset(0);
+      }, 400);
       
       setTimeout(() => {
         setIsLightspeed(false);
-      }, 2500);
+      }, 2800);
     }
     
     y.set(0);
-  };
+  }, [y, isLightspeed]);
 
   return (
     <div className="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
@@ -204,57 +196,69 @@ export function HomeHub({ onNavigate }: HomeHubProps) {
           transition={{ delay: 0.1, type: "spring", stiffness: 100 }}
         >
           <motion.div
-            className="relative inline-block cursor-grab active:cursor-grabbing select-none"
+            className="relative inline-block cursor-grab active:cursor-grabbing select-none touch-none"
             drag="y"
-            dragConstraints={{ top: 0, bottom: 120 }}
-            dragElastic={0.1}
+            dragConstraints={{ top: 0, bottom: 50 }}
+            dragElastic={0.05}
+            dragMomentum={false}
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
             style={{ y: springY }}
-            animate={rocketControls}
-            whileDrag={{ scale: 0.95 }}
           >
-            <motion.img 
-              src={Untitled}
-              alt="Based Guardians - Pull to launch!"
-              className="h-24 w-auto mx-auto mb-2"
-              style={{
-                scale: rocketScale,
-                rotate: rocketRotation,
-                filter: `drop-shadow(0 0 30px rgba(0,255,255,${glowIntensity.get()}))`,
-              }}
-              animate={!isDragging && !isLightspeed ? { 
-                y: [0, -8, 0],
-              } : {}}
-              transition={{ 
-                duration: 4, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
-              }}
-            />
+            <motion.div
+              className="relative p-4 -m-4"
+              animate={{ y: rocketOffset }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            >
+              <motion.img 
+                src={Untitled}
+                alt="Based Guardians - Pull to launch!"
+                className="h-20 md:h-24 w-auto mx-auto pointer-events-none"
+                style={{
+                  scale: rocketScale,
+                }}
+                animate={!isDragging && !isLightspeed ? { 
+                  y: [0, -6, 0],
+                  filter: [
+                    'drop-shadow(0 0 25px rgba(0,255,255,0.5))',
+                    'drop-shadow(0 0 35px rgba(0,255,255,0.7))',
+                    'drop-shadow(0 0 25px rgba(0,255,255,0.5))'
+                  ]
+                } : isLightspeed ? {
+                  filter: 'drop-shadow(0 0 50px rgba(0,255,255,1))'
+                } : {}}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+              />
+            </motion.div>
             
-            {isDragging && (
-              <motion.div
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-cyan-400/60 whitespace-nowrap"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                Release to launch!
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {isDragging && (
+                <motion.div
+                  className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-mono text-cyan-400 whitespace-nowrap"
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  Release to launch!
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             {!isDragging && !isLightspeed && (
               <motion.div
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center"
+                animate={{ opacity: [0.4, 0.7, 0.4] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <div className="text-[8px] font-mono text-white/30 tracking-wider">PULL</div>
+                <div className="text-[9px] font-mono text-white/40 tracking-wider mb-1">PULL DOWN</div>
                 <motion.div
-                  animate={{ y: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="w-3 h-3 border-b-2 border-r-2 border-white/20 rotate-45"
+                  animate={{ y: [0, 3, 0] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white/30"
                 />
               </motion.div>
             )}
