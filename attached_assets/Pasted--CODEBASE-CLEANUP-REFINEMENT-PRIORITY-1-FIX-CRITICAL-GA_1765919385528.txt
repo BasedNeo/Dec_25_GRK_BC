@@ -1,0 +1,87 @@
+=== CODEBASE CLEANUP & REFINEMENT ===
+
+PRIORITY 1: FIX CRITICAL GAS BUG (MINTING BROKEN)
+In /client/src/hooks/useMint.ts at line 193, change:
+  gas: BigInt(500000)
+to:
+  gas: BigInt(8000000)
+
+The minting requires 8M gas due to the random token ID search algorithm.
+
+PRIORITY 2: ADD V3 MARKETPLACE CONTRACT
+In /client/src/lib/constants.ts, add after line 17:
+// Marketplace V3 - Off-chain offers with on-chain settlement
+export const MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3";
+
+PRIORITY 3: REMOVE ALL CONSOLE.LOG STATEMENTS
+Remove ALL console.log, console.warn, and console.error statements from these files:
+- /client/src/hooks/useMint.ts (24 instances)
+- /client/src/components/Hero.tsx (8 instances - lines 137-162)
+- /client/src/lib/onchain.ts (1 instance)
+- /client/src/lib/smartFetcher.ts (1 instance)
+
+KEEP ONLY error logging in:
+- /client/src/components/ErrorBoundary.tsx (keep for production error tracking)
+
+PRIORITY 4: AUDIT MOCK DATA USAGE
+Review these files and replace any mock data with real on-chain calls where appropriate:
+- /client/src/components/Hero.tsx (uses calculateBackedValue from mockData)
+- /client/src/components/PoolTracker.tsx
+- /client/src/components/Governance.tsx
+- /client/src/components/VotingDAO.tsx
+- /client/src/hooks/useGuardians.ts
+
+For components that need fallback data, keep mockData but add comments like:
+// Fallback mock data - used only when on-chain data unavailable
+
+PRIORITY 5: TYPE SAFETY IMPROVEMENTS
+Replace `any` types with proper TypeScript types in these hooks:
+- useActivityFeed.ts
+- useGuardians.ts
+- useOwnedNFTs.ts
+- useRateLimit.ts
+- useButtonCooldown.ts
+
+Example fix for error handlers:
+Change: catch (e: any)
+To: catch (e: Error | unknown)
+
+PRIORITY 6: CLEAN UP EMPTY CATCHES
+In useMarketplace.ts line 658, add proper error handling:
+Change: catch { }
+To: catch (e) { /* Listing check failed - continue anyway */ }
+
+PRIORITY 7: REMOVE UNUSED IMPORTS
+Run a cleanup to identify and remove unused imports across all files, especially:
+- Unused React imports (e.g., useEffect not used)
+- Unused utility imports
+- Unused component imports
+
+PRIORITY 8: STANDARDIZE ERROR MESSAGES
+In errorParser.ts, ensure all error messages are user-friendly and branded:
+- No raw technical errors shown to users
+- Consistent styling with cyan/purple theme
+- Include actionable guidance
+
+PRIORITY 9: VALIDATE ALL CONTRACT ADDRESSES
+Ensure these addresses in constants.ts are correct:
+- NFT_CONTRACT: "0xaE51dc5fD1499A129f8654963560f9340773ad59"
+- MARKETPLACE_CONTRACT (V2): "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c"
+- MARKETPLACE_V3_CONTRACT: "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3"
+- GOVERNANCE_CONTRACT: "0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995"
+
+PRIORITY 10: TEST CHECKLIST
+After cleanup, test:
+1. ✅ Minting flow (requires connected wallet with 69,420+ $BASED)
+2. ✅ Marketplace listing/buying
+3. ✅ Wallet connect/disconnect (no error popups)
+4. ✅ Activity feed loads real data
+5. ✅ Pool tracker shows correct emissions
+6. ✅ Brain diagnostics loads
+7. ✅ Admin dashboard accessible to admin wallets only
+8. ✅ Error boundary catches real errors only
+
+After these changes, do a full build to check for TypeScript errors:
+npm run build
+
+Report any build errors or warnings for further fixes.

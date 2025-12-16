@@ -25,6 +25,7 @@ import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 import { WalletWatcher } from "@/components/WalletWatcher";
 import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
 import { PendingTxBanner } from "@/components/PendingTxBanner";
+import { PendingPurchaseBanner } from "@/components/PendingPurchaseBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { HealthCheckBanner } from "@/components/HealthCheckBanner";
@@ -157,6 +158,7 @@ function App() {
                     <GlobalBuyListener />
                     <WalletWatcher />
                     <PendingTxBanner />
+                    <PendingPurchaseBanner />
                     <Toaster />
                     <DiagnosticPanel />
                     <LanguageSelector />
