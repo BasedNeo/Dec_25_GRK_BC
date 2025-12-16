@@ -1,8 +1,13 @@
+RESTORE WORKING MINT HOOK - Reset to version that successfully minted NFT #149
+
+The mint function was working before. Restore it to the simple, working version.
+
+REPLACE the entire useMint.ts with this working version:
+
 import { useState, useCallback } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
-import { useContractData } from './useContractData';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'viem';
+import { NFT_CONTRACT, RPC_URL } from '@/lib/constants';
 
 const MINT_PRICE = 69420; // $BASED per NFT
 
@@ -25,35 +30,15 @@ const NFT_ABI = [
 
 export function useMint() {
   const { address, isConnected } = useAccount();
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const { writeContract, data: hash, isPending, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: hash,
   });
-
-  const { 
-    totalMinted, maxSupply, mintPrice,
-    publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
-  } = useContractData();
-
-  const { data: balanceData } = useBalance({
-    address,
-    chainId: CHAIN_ID,
-  });
-
-  const canAfford = (qty: number) => {
-    if (!balanceData) return false;
-    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
-    return balanceData.value >= cost;
-  };
-
-  const maxAffordable = () => {
-    if (!balanceData) return 0;
-    const bal = Number(formatEther(balanceData.value));
-    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
-  };
 
   const mint = useCallback(async (quantity: number = 1) => {
     if (!isConnected || !address) {
@@ -62,7 +47,9 @@ export function useMint() {
     }
 
     try {
+      setIsLoading(true);
       setError(null);
+      setTxHash(null);
 
       const totalPrice = MINT_PRICE * quantity;
       
@@ -83,55 +70,46 @@ export function useMint() {
     } catch (e: any) {
       console.error('Mint error:', e);
       setError(e?.message || 'Failed to mint');
+      setIsLoading(false);
     }
   }, [isConnected, address, writeContract]);
 
+  // Update loading state based on transaction status
+  const loading = isLoading || isPending || isConfirming;
+
   // Reset function
   const resetMint = useCallback(() => {
+    setIsLoading(false);
     setError(null);
+    setTxHash(null);
     reset();
   }, [reset]);
 
-  // State object for backward compatibility
-  const state = {
-    isPending,
-    isConfirming,
-    isSuccess,
-    isError: !!error,
-    error,
-    txHash: hash,
-  };
-
   return {
     mint,
-    reset: resetMint,
-    
-    // State
-    state,
-    isMinting: isPending || isConfirming,
-    isLoading: isPending || isConfirming,
+    isLoading: loading,
     isPending,
     isConfirming,
     isSuccess,
     error,
     txHash: hash,
-    
-    // Contract data
-    totalMinted,
-    maxSupply,
-    mintPrice,
-    remainingSupply,
-    publicMintEnabled,
-    isPaused,
-    isSoldOut,
-    canMint,
-    
-    // Balance
-    balance: balanceData ? formatEther(balanceData.value) : null,
-    balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
-    canAfford,
-    maxAffordable: maxAffordable(),
+    reset: resetMint,
+    mintPrice: MINT_PRICE,
   };
 }
 
 export default useMint;
+
+KEY POINTS THAT MADE IT WORK:
+1. gas: BigInt(500000) - Explicit gas limit, don't let it estimate
+2. parseEther(totalPrice.toString()) - Proper value formatting
+3. Simple ABI with just 'mint' function
+4. No fancy gas price overrides - let the network handle it
+
+DO NOT ADD:
+- gasPrice overrides (was causing issues)
+- maxFeePerGas / maxPriorityFeePerGas (EIP-1559 was broken)
+- Complex retry logic
+- Extra validation that might block the transaction
+
+This is the SIMPLE version that worked for minting #149.
