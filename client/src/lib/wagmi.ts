@@ -38,13 +38,9 @@ export const config = getDefaultConfig({
   transports: {
     [basedL1.id]: fallback([
       http('https://mainnet.basedaibridge.com/rpc/', {
-        timeout: 10000,
-        retryCount: 3,
-        retryDelay: 1000,
-      }),
-      http('https://rpc.basedaibridge.com/', {
-        timeout: 10000,
-        retryCount: 2,
+        timeout: 15000,
+        retryCount: 5,
+        retryDelay: 2000,
       }),
     ]),
   },
