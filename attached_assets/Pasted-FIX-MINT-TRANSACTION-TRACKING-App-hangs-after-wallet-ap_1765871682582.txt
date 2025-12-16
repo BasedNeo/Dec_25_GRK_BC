@@ -1,8 +1,17 @@
+FIX MINT TRANSACTION TRACKING - App hangs after wallet approval
+
+PROBLEM:
+User approves mint in wallet, but app gets stuck. Transaction may be:
+1. Pending on chain (not confirming)
+2. Confirmed but app not detecting it
+3. Failed silently
+
+ADD BETTER TRANSACTION TRACKING to useMint.ts:
+
 import { useState, useCallback, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
-import { useContractData } from './useContractData';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
+import { parseEther } from 'viem';
+import { NFT_CONTRACT } from '@/lib/constants';
 
 const MINT_PRICE = 69420;
 
@@ -27,59 +36,42 @@ export function useMint() {
 
   const { isLoading: isConfirming, isSuccess, isError: confirmError } = useWaitForTransactionReceipt({
     hash: hash,
-    timeout: 60000,
+    timeout: 60000, // 60 second timeout
   });
 
-  const { 
-    totalMinted, maxSupply, mintPrice,
-    publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
-  } = useContractData();
-
-  const { data: balanceData } = useBalance({
-    address,
-    chainId: CHAIN_ID,
-  });
-
-  const canAfford = (qty: number) => {
-    if (!balanceData) return false;
-    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
-    return balanceData.value >= cost;
-  };
-
-  const maxAffordable = () => {
-    if (!balanceData) return 0;
-    const bal = Number(formatEther(balanceData.value));
-    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
-  };
-
+  // Track status changes
   useEffect(() => {
     if (isPending) {
       setStatus('Waiting for wallet approval...');
+      console.log('⏳ Waiting for wallet approval...');
     }
   }, [isPending]);
 
   useEffect(() => {
     if (hash) {
-      setStatus(`Transaction submitted! Confirming...`);
+      setStatus(`Transaction submitted: ${hash.slice(0, 10)}...`);
+      console.log('📤 Transaction submitted:', hash);
     }
   }, [hash]);
 
   useEffect(() => {
     if (isConfirming) {
       setStatus('Confirming on blockchain...');
+      console.log('⛓️ Confirming on blockchain...');
     }
   }, [isConfirming]);
 
   useEffect(() => {
     if (isSuccess) {
-      setStatus('Mint successful!');
+      setStatus('Mint successful! 🎉');
       setIsLoading(false);
+      console.log('✅ Mint successful!');
     }
   }, [isSuccess]);
 
   useEffect(() => {
     if (writeError) {
-      console.error('Write error:', writeError);
+      console.error('❌ Write error:', writeError);
       setError(writeError.message || 'Transaction failed');
       setIsLoading(false);
       setStatus('idle');
@@ -88,7 +80,7 @@ export function useMint() {
 
   useEffect(() => {
     if (confirmError) {
-      console.error('Confirmation error');
+      console.error('❌ Confirmation error');
       setError('Transaction may have failed. Check your wallet.');
       setIsLoading(false);
       setStatus('idle');
@@ -107,6 +99,10 @@ export function useMint() {
       setStatus('Starting mint...');
 
       const totalPrice = MINT_PRICE * quantity;
+      
+      console.log('🚀 Starting mint...');
+      console.log('   Quantity:', quantity);
+      console.log('   Total Price:', totalPrice, '$BASED');
 
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
@@ -114,25 +110,27 @@ export function useMint() {
         functionName: 'mint',
         args: [BigInt(quantity)],
         value: parseEther(totalPrice.toString()),
-        gas: BigInt(300000),
-        gasPrice: BigInt(1000000000),
+        gas: BigInt(500000),
       });
 
     } catch (e: any) {
-      console.error('Mint error:', e);
+      console.error('❌ Mint error:', e);
       setError(e?.message || 'Failed to mint');
       setIsLoading(false);
       setStatus('idle');
     }
   }, [isConnected, address, writeContract]);
 
+  // Manual check transaction status
   const checkTransaction = useCallback(async () => {
     if (!hash || !publicClient) return null;
     
     try {
       const receipt = await publicClient.getTransactionReceipt({ hash });
+      console.log('📋 Transaction receipt:', receipt);
       return receipt;
     } catch (e) {
+      console.log('Transaction not yet mined or failed');
       return null;
     }
   }, [hash, publicClient]);
@@ -144,44 +142,69 @@ export function useMint() {
     reset();
   }, [reset]);
 
-  const state = {
-    isPending,
-    isConfirming,
-    isSuccess,
-    isError: !!error,
-    error,
-    txHash: hash,
-  };
-
   return {
     mint,
-    reset: resetMint,
-    checkTransaction,
-    
-    state,
-    status,
-    isMinting: isPending || isConfirming,
     isLoading: isLoading || isPending || isConfirming,
     isPending,
     isConfirming,
     isSuccess,
     error,
     txHash: hash,
-    
-    totalMinted,
-    maxSupply,
-    mintPrice,
-    remainingSupply,
-    publicMintEnabled,
-    isPaused,
-    isSoldOut,
-    canMint,
-    
-    balance: balanceData ? formatEther(balanceData.value) : null,
-    balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
-    canAfford,
-    maxAffordable: maxAffordable(),
+    status,
+    checkTransaction,
+    reset: resetMint,
+    mintPrice: MINT_PRICE,
   };
 }
 
-export default useMint;
+ALSO UPDATE the mint button/UI to show status:
+
+In the component using useMint:
+
+const { mint, isLoading, status, txHash, error, isSuccess } = useMint();
+
+// Show status to user
+{isLoading && (
+  <div className="text-center">
+    <p className="text-cyan-400">{status}</p>
+    {txHash && (
+      <a 
+        href={`https://explorer.bf1337.org/tx/${txHash}`}
+        target="_blank"
+        className="text-xs text-blue-400 underline"
+      >
+        View on Explorer →
+      </a>
+    )}
+  </div>
+)}
+
+{error && (
+  <p className="text-red-400">{error}</p>
+)}
+
+{isSuccess && (
+  <p className="text-green-400">🎉 Mint successful!</p>
+)}
+
+ADD TIMEOUT HANDLING - If stuck for more than 60 seconds:
+
+// In component
+const [stuckTimer, setStuckTimer] = useState<NodeJS.Timeout | null>(null);
+
+useEffect(() => {
+  if (isLoading && txHash) {
+    // Start a 60 second timer
+    const timer = setTimeout(() => {
+      console.log('⚠️ Transaction taking too long...');
+      // Show option to check explorer
+    }, 60000);
+    setStuckTimer(timer);
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }
+}, [isLoading, txHash]);
+
+This will show exactly where the transaction is stuck!

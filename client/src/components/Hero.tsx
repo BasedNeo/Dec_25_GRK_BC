@@ -37,7 +37,7 @@ export function Hero() {
   const { openConnectModal } = useConnectModal();
   
   // Real minting hook
-  const { mint, state: mintState, reset: resetMint, balance, canAfford, maxAffordable: maxMintable } = useMint();
+  const { mint, state: mintState, reset: resetMint, balance, canAfford, maxAffordable: maxMintable, status, txHash } = useMint();
   const isMinting = mintState.isPending || mintState.isConfirming;
   
   // Shared Data State
@@ -333,18 +333,49 @@ export function Hero() {
               )}
             </Button>
             
-            {/* Transaction Link */}
-            {mintState.txHash && (
+            {/* Transaction Status */}
+            {isMinting && status && status !== 'idle' && (
+              <div className="mb-4 text-center p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                <p className="text-cyan-400 text-sm font-mono animate-pulse">{status}</p>
+                {txHash && (
+                  <a 
+                    href={`${BLOCK_EXPLORER}/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline font-mono mt-2 inline-block"
+                    data-testid="link-transaction"
+                  >
+                    View on Explorer →
+                  </a>
+                )}
+              </div>
+            )}
+            
+            {/* Transaction Link (after success) */}
+            {!isMinting && mintState.txHash && (
               <div className="mb-4 text-center">
                 <a 
                   href={`${BLOCK_EXPLORER}/tx/${mintState.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline font-mono"
-                  data-testid="link-transaction"
+                  data-testid="link-transaction-success"
                 >
                   View Transaction →
                 </a>
+              </div>
+            )}
+            
+            {/* Error Display */}
+            {mintState.error && (
+              <div className="mb-4 text-center p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm">{mintState.error}</p>
+                <button 
+                  onClick={resetMint}
+                  className="text-xs text-gray-400 hover:text-white mt-2 underline"
+                >
+                  Try Again
+                </button>
               </div>
             )}
             
