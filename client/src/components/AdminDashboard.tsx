@@ -328,17 +328,29 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   
   if (!isAdmin || !isOpen) return null;
   
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-red-500/30 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 top-16 bg-black/95 backdrop-blur-sm z-40 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+      <div className="bg-gray-900 border border-red-500/30 rounded-xl w-full max-w-4xl max-h-[calc(100vh-120px)] overflow-hidden my-4">
         
-        <div className="flex items-center justify-between p-4 border-b border-red-500/20 bg-red-500/10">
+        <div className="flex items-center justify-between p-4 border-b border-red-500/20 bg-red-500/10 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <Shield className="text-red-400" size={24} />
             <h2 className="text-xl font-bold text-white font-orbitron">Admin Dashboard</h2>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/10">
-            <X size={20} />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClose} 
+            className="text-white hover:bg-white/10 hover:text-red-400 transition-colors"
+            data-testid="button-close-admin"
+          >
+            <X size={24} />
           </Button>
         </div>
         
