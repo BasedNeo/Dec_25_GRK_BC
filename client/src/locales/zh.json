@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "中心",
+    "universe": "宇宙",
+    "mint": "铸造",
+    "gallery": "画廊",
+    "escrow": "市场",
+    "voting": "投票",
+    "pool": "资金池",
+    "stats": "统计"
+  },
+  "common": {
+    "connectWallet": "连接钱包",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "save": "保存",
+    "submit": "提交",
+    "close": "关闭",
+    "viewMore": "查看更多",
+    "learnMore": "了解更多"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "守护银河",
+    "welcome": "欢迎来到Based Guardians指挥中心"
+  },
+  "mint": {
+    "title": "铸造你的守护者",
+    "price": "价格",
+    "mintNow": "立即铸造",
+    "minting": "铸造中...",
+    "soldOut": "已售罄",
+    "remaining": "剩余"
+  },
+  "gallery": {
+    "title": "守护者画廊",
+    "allNfts": "所有NFT",
+    "myNfts": "我的NFT",
+    "guardians": "守护者",
+    "frogs": "青蛙",
+    "creatures": "生物"
+  },
+  "escrow": {
+    "title": "市场",
+    "list": "上架出售",
+    "buy": "立即购买",
+    "makeOffer": "出价",
+    "price": "价格",
+    "seller": "卖家"
+  },
+  "voting": {
+    "title": "DAO投票",
+    "activeProposals": "活跃提案",
+    "vote": "投票",
+    "voteFor": "赞成",
+    "voteAgainst": "反对"
+  },
+  "pool": {
+    "title": "社区资金池",
+    "totalEmissions": "总排放量",
+    "halvingProgress": "减半进度"
+  },
+  "stats": {
+    "title": "你的守护者之旅",
+    "subtitle": "你在传奇中的角色",
+    "level": "等级",
+    "nftsOwned": "持有NFT",
+    "votescast": "投票次数",
+    "daysAsGuardian": "守护天数",
+    "loginStreak": "连续登录"
+  },
+  "footer": {
+    "rights": "版权所有",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
+  },
+  "language": {
+    "select": "选择语言"
+  }
+}

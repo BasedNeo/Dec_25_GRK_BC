@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "Центр",
+    "universe": "Вселенная",
+    "mint": "Минт",
+    "gallery": "Галерея",
+    "escrow": "Рынок",
+    "voting": "Голосование",
+    "pool": "Пул",
+    "stats": "Статистика"
+  },
+  "common": {
+    "connectWallet": "Подключить кошелек",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успех",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "submit": "Отправить",
+    "close": "Закрыть",
+    "viewMore": "Показать больше",
+    "learnMore": "Узнать больше"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Защити Галактику",
+    "welcome": "Добро пожаловать в Командный центр Based Guardians"
+  },
+  "mint": {
+    "title": "Создайте своего Стража",
+    "price": "Цена",
+    "mintNow": "Создать сейчас",
+    "minting": "Создание...",
+    "soldOut": "Распродано",
+    "remaining": "Осталось"
+  },
+  "gallery": {
+    "title": "Галерея Стражей",
+    "allNfts": "Все NFT",
+    "myNfts": "Мои NFT",
+    "guardians": "Стражи",
+    "frogs": "Лягушки",
+    "creatures": "Существа"
+  },
+  "escrow": {
+    "title": "Маркетплейс",
+    "list": "Выставить на продажу",
+    "buy": "Купить сейчас",
+    "makeOffer": "Сделать предложение",
+    "price": "Цена",
+    "seller": "Продавец"
+  },
+  "voting": {
+    "title": "DAO Голосование",
+    "activeProposals": "Активные предложения",
+    "vote": "Голосовать",
+    "voteFor": "За",
+    "voteAgainst": "Против"
+  },
+  "pool": {
+    "title": "Общий пул",
+    "totalEmissions": "Общие эмиссии",
+    "halvingProgress": "Прогресс халвинга"
+  },
+  "stats": {
+    "title": "Ваше путешествие Стража",
+    "subtitle": "Ваша роль в Саге",
+    "level": "Уровень",
+    "nftsOwned": "NFT во владении",
+    "votescast": "Голосов подано",
+    "daysAsGuardian": "Дней в роли Стража",
+    "loginStreak": "Серия входов"
+  },
+  "footer": {
+    "rights": "Все права защищены",
+    "terms": "Условия использования",
+    "privacy": "Политика конфиденциальности"
+  },
+  "language": {
+    "select": "Выбрать язык"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "Zentrale",
+    "universe": "Universum",
+    "mint": "Prägen",
+    "gallery": "Galerie",
+    "escrow": "Markt",
+    "voting": "Abstimmung",
+    "pool": "Pool",
+    "stats": "Statistik"
+  },
+  "common": {
+    "connectWallet": "Wallet verbinden",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "submit": "Absenden",
+    "close": "Schließen",
+    "viewMore": "Mehr anzeigen",
+    "learnMore": "Mehr erfahren"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Beschütze die Galaxie",
+    "welcome": "Willkommen im Based Guardians Kommandozentrum"
+  },
+  "mint": {
+    "title": "Präge deinen Guardian",
+    "price": "Preis",
+    "mintNow": "Jetzt prägen",
+    "minting": "Prägen...",
+    "soldOut": "Ausverkauft",
+    "remaining": "Verbleibend"
+  },
+  "gallery": {
+    "title": "Guardian Galerie",
+    "allNfts": "Alle NFTs",
+    "myNfts": "Meine NFTs",
+    "guardians": "Guardians",
+    "frogs": "Frösche",
+    "creatures": "Kreaturen"
+  },
+  "escrow": {
+    "title": "Marktplatz",
+    "list": "Zum Verkauf anbieten",
+    "buy": "Jetzt kaufen",
+    "makeOffer": "Angebot machen",
+    "price": "Preis",
+    "seller": "Verkäufer"
+  },
+  "voting": {
+    "title": "DAO Abstimmung",
+    "activeProposals": "Aktive Vorschläge",
+    "vote": "Abstimmen",
+    "voteFor": "Dafür stimmen",
+    "voteAgainst": "Dagegen stimmen"
+  },
+  "pool": {
+    "title": "Community Pool",
+    "totalEmissions": "Gesamtemissionen",
+    "halvingProgress": "Halbierungsfortschritt"
+  },
+  "stats": {
+    "title": "Deine Guardian Reise",
+    "subtitle": "Deine Rolle in der Saga",
+    "level": "Stufe",
+    "nftsOwned": "NFTs im Besitz",
+    "votescast": "Abgegebene Stimmen",
+    "daysAsGuardian": "Tage als Guardian",
+    "loginStreak": "Login-Serie"
+  },
+  "footer": {
+    "rights": "Alle Rechte vorbehalten",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutz"
+  },
+  "language": {
+    "select": "Sprache wählen"
+  }
+}

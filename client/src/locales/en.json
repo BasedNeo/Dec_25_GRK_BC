@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "Hub",
+    "universe": "Universe",
+    "mint": "Mint",
+    "gallery": "Gallery",
+    "escrow": "Escrow",
+    "voting": "Voting",
+    "pool": "Pool",
+    "stats": "Stats"
+  },
+  "common": {
+    "connectWallet": "Connect Wallet",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close",
+    "viewMore": "View More",
+    "learnMore": "Learn More"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Protect the Galaxy",
+    "welcome": "Welcome to the Based Guardians Command Center"
+  },
+  "mint": {
+    "title": "Mint Your Guardian",
+    "price": "Price",
+    "mintNow": "Mint Now",
+    "minting": "Minting...",
+    "soldOut": "Sold Out",
+    "remaining": "Remaining"
+  },
+  "gallery": {
+    "title": "Guardian Gallery",
+    "allNfts": "All NFTs",
+    "myNfts": "My NFTs",
+    "guardians": "Guardians",
+    "frogs": "Frogs",
+    "creatures": "Creatures"
+  },
+  "escrow": {
+    "title": "Marketplace",
+    "list": "List for Sale",
+    "buy": "Buy Now",
+    "makeOffer": "Make Offer",
+    "price": "Price",
+    "seller": "Seller"
+  },
+  "voting": {
+    "title": "DAO Voting",
+    "activeProposals": "Active Proposals",
+    "vote": "Vote",
+    "voteFor": "Vote For",
+    "voteAgainst": "Vote Against"
+  },
+  "pool": {
+    "title": "Community Pool",
+    "totalEmissions": "Total Emissions",
+    "halvingProgress": "Halving Progress"
+  },
+  "stats": {
+    "title": "Your Guardian Journey",
+    "subtitle": "Your Role in the Saga",
+    "level": "Level",
+    "nftsOwned": "NFTs Owned",
+    "votescast": "Votes Cast",
+    "daysAsGuardian": "Days as Guardian",
+    "loginStreak": "Login Streak"
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
+  "language": {
+    "select": "Select Language"
+  }
+}

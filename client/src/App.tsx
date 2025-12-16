@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import '@/lib/i18n';
 import Home from "@/pages/Home";
 import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -28,6 +29,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { HealthCheckBanner } from "@/components/HealthCheckBanner";
 import { GuardianProfileProvider } from "@/components/GuardianProfileProvider";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { Rocket } from "lucide-react";
 
 function GlobalErrorFallback() {
@@ -157,6 +159,7 @@ function App() {
                     <PendingTxBanner />
                     <Toaster />
                     <DiagnosticPanel />
+                    <LanguageSelector />
                   </TooltipProvider>
                 </GuardianProfileProvider>
               </TransactionProvider>

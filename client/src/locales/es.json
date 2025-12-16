@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "Centro",
+    "universe": "Universo",
+    "mint": "Acuñar",
+    "gallery": "Galería",
+    "escrow": "Mercado",
+    "voting": "Votación",
+    "pool": "Fondo",
+    "stats": "Estadísticas"
+  },
+  "common": {
+    "connectWallet": "Conectar Cartera",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "viewMore": "Ver Más",
+    "learnMore": "Saber Más"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Protege la Galaxia",
+    "welcome": "Bienvenido al Centro de Comando de Based Guardians"
+  },
+  "mint": {
+    "title": "Acuña Tu Guardián",
+    "price": "Precio",
+    "mintNow": "Acuñar Ahora",
+    "minting": "Acuñando...",
+    "soldOut": "Agotado",
+    "remaining": "Restantes"
+  },
+  "gallery": {
+    "title": "Galería de Guardianes",
+    "allNfts": "Todos los NFTs",
+    "myNfts": "Mis NFTs",
+    "guardians": "Guardianes",
+    "frogs": "Ranas",
+    "creatures": "Criaturas"
+  },
+  "escrow": {
+    "title": "Mercado",
+    "list": "Poner a la Venta",
+    "buy": "Comprar Ahora",
+    "makeOffer": "Hacer Oferta",
+    "price": "Precio",
+    "seller": "Vendedor"
+  },
+  "voting": {
+    "title": "Votación DAO",
+    "activeProposals": "Propuestas Activas",
+    "vote": "Votar",
+    "voteFor": "Votar a Favor",
+    "voteAgainst": "Votar en Contra"
+  },
+  "pool": {
+    "title": "Fondo Comunitario",
+    "totalEmissions": "Emisiones Totales",
+    "halvingProgress": "Progreso de Halving"
+  },
+  "stats": {
+    "title": "Tu Viaje como Guardián",
+    "subtitle": "Tu Rol en la Saga",
+    "level": "Nivel",
+    "nftsOwned": "NFTs Poseídos",
+    "votescast": "Votos Emitidos",
+    "daysAsGuardian": "Días como Guardián",
+    "loginStreak": "Racha de Acceso"
+  },
+  "footer": {
+    "rights": "Todos los derechos reservados",
+    "terms": "Términos de Servicio",
+    "privacy": "Política de Privacidad"
+  },
+  "language": {
+    "select": "Seleccionar Idioma"
+  }
+}

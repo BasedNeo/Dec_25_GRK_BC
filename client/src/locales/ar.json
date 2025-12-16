@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "المركز",
+    "universe": "الكون",
+    "mint": "سك",
+    "gallery": "المعرض",
+    "escrow": "السوق",
+    "voting": "التصويت",
+    "pool": "المجمع",
+    "stats": "الإحصائيات"
+  },
+  "common": {
+    "connectWallet": "ربط المحفظة",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجاح",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "viewMore": "عرض المزيد",
+    "learnMore": "اعرف المزيد"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "احمِ المجرة",
+    "welcome": "مرحباً بك في مركز قيادة Based Guardians"
+  },
+  "mint": {
+    "title": "اسك حارسك",
+    "price": "السعر",
+    "mintNow": "اسك الآن",
+    "minting": "جاري السك...",
+    "soldOut": "نفذت الكمية",
+    "remaining": "متبقي"
+  },
+  "gallery": {
+    "title": "معرض الحراس",
+    "allNfts": "كل الـ NFTs",
+    "myNfts": "NFTs الخاصة بي",
+    "guardians": "الحراس",
+    "frogs": "الضفادع",
+    "creatures": "المخلوقات"
+  },
+  "escrow": {
+    "title": "السوق",
+    "list": "عرض للبيع",
+    "buy": "اشترِ الآن",
+    "makeOffer": "قدم عرضاً",
+    "price": "السعر",
+    "seller": "البائع"
+  },
+  "voting": {
+    "title": "تصويت DAO",
+    "activeProposals": "المقترحات النشطة",
+    "vote": "صوّت",
+    "voteFor": "صوّت لصالح",
+    "voteAgainst": "صوّت ضد"
+  },
+  "pool": {
+    "title": "مجمع المجتمع",
+    "totalEmissions": "إجمالي الانبعاثات",
+    "halvingProgress": "تقدم التنصيف"
+  },
+  "stats": {
+    "title": "رحلتك كحارس",
+    "subtitle": "دورك في الملحمة",
+    "level": "المستوى",
+    "nftsOwned": "NFTs المملوكة",
+    "votescast": "الأصوات المدلى بها",
+    "daysAsGuardian": "أيام كحارس",
+    "loginStreak": "سلسلة تسجيل الدخول"
+  },
+  "footer": {
+    "rights": "جميع الحقوق محفوظة",
+    "terms": "شروط الخدمة",
+    "privacy": "سياسة الخصوصية"
+  },
+  "language": {
+    "select": "اختر اللغة"
+  }
+}

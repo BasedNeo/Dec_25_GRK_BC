@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "ハブ",
+    "universe": "ユニバース",
+    "mint": "ミント",
+    "gallery": "ギャラリー",
+    "escrow": "マーケット",
+    "voting": "投票",
+    "pool": "プール",
+    "stats": "統計"
+  },
+  "common": {
+    "connectWallet": "ウォレット接続",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "submit": "送信",
+    "close": "閉じる",
+    "viewMore": "もっと見る",
+    "learnMore": "詳細"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "銀河を守れ",
+    "welcome": "Based Guardiansコマンドセンターへようこそ"
+  },
+  "mint": {
+    "title": "ガーディアンをミント",
+    "price": "価格",
+    "mintNow": "今すぐミント",
+    "minting": "ミント中...",
+    "soldOut": "完売",
+    "remaining": "残り"
+  },
+  "gallery": {
+    "title": "ガーディアンギャラリー",
+    "allNfts": "全NFT",
+    "myNfts": "マイNFT",
+    "guardians": "ガーディアン",
+    "frogs": "フロッグ",
+    "creatures": "クリーチャー"
+  },
+  "escrow": {
+    "title": "マーケットプレイス",
+    "list": "出品する",
+    "buy": "購入する",
+    "makeOffer": "オファーする",
+    "price": "価格",
+    "seller": "出品者"
+  },
+  "voting": {
+    "title": "DAO投票",
+    "activeProposals": "アクティブな提案",
+    "vote": "投票",
+    "voteFor": "賛成",
+    "voteAgainst": "反対"
+  },
+  "pool": {
+    "title": "コミュニティプール",
+    "totalEmissions": "総排出量",
+    "halvingProgress": "半減期進捗"
+  },
+  "stats": {
+    "title": "あなたのガーディアンの旅",
+    "subtitle": "サーガでの役割",
+    "level": "レベル",
+    "nftsOwned": "保有NFT",
+    "votescast": "投票数",
+    "daysAsGuardian": "ガーディアン日数",
+    "loginStreak": "連続ログイン"
+  },
+  "footer": {
+    "rights": "全著作権所有",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー"
+  },
+  "language": {
+    "select": "言語を選択"
+  }
+}

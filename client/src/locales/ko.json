@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "허브",
+    "universe": "유니버스",
+    "mint": "민트",
+    "gallery": "갤러리",
+    "escrow": "마켓",
+    "voting": "투표",
+    "pool": "풀",
+    "stats": "통계"
+  },
+  "common": {
+    "connectWallet": "지갑 연결",
+    "loading": "로딩 중...",
+    "error": "오류",
+    "success": "성공",
+    "cancel": "취소",
+    "save": "저장",
+    "submit": "제출",
+    "close": "닫기",
+    "viewMore": "더 보기",
+    "learnMore": "자세히 보기"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "은하를 지켜라",
+    "welcome": "Based Guardians 커맨드 센터에 오신 것을 환영합니다"
+  },
+  "mint": {
+    "title": "가디언 민트",
+    "price": "가격",
+    "mintNow": "지금 민트",
+    "minting": "민팅 중...",
+    "soldOut": "품절",
+    "remaining": "남음"
+  },
+  "gallery": {
+    "title": "가디언 갤러리",
+    "allNfts": "모든 NFT",
+    "myNfts": "내 NFT",
+    "guardians": "가디언",
+    "frogs": "프로그",
+    "creatures": "크리처"
+  },
+  "escrow": {
+    "title": "마켓플레이스",
+    "list": "판매 등록",
+    "buy": "구매하기",
+    "makeOffer": "오퍼하기",
+    "price": "가격",
+    "seller": "판매자"
+  },
+  "voting": {
+    "title": "DAO 투표",
+    "activeProposals": "활성 제안",
+    "vote": "투표",
+    "voteFor": "찬성",
+    "voteAgainst": "반대"
+  },
+  "pool": {
+    "title": "커뮤니티 풀",
+    "totalEmissions": "총 배출량",
+    "halvingProgress": "반감기 진행률"
+  },
+  "stats": {
+    "title": "당신의 가디언 여정",
+    "subtitle": "사가에서의 역할",
+    "level": "레벨",
+    "nftsOwned": "보유 NFT",
+    "votescast": "투표 수",
+    "daysAsGuardian": "가디언 일수",
+    "loginStreak": "연속 로그인"
+  },
+  "footer": {
+    "rights": "모든 권리 보유",
+    "terms": "이용약관",
+    "privacy": "개인정보 처리방침"
+  },
+  "language": {
+    "select": "언어 선택"
+  }
+}

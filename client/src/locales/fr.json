@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "hub": "Centre",
+    "universe": "Univers",
+    "mint": "Créer",
+    "gallery": "Galerie",
+    "escrow": "Marché",
+    "voting": "Vote",
+    "pool": "Pool",
+    "stats": "Stats"
+  },
+  "common": {
+    "connectWallet": "Connecter Portefeuille",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "submit": "Soumettre",
+    "close": "Fermer",
+    "viewMore": "Voir Plus",
+    "learnMore": "En Savoir Plus"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Protégez la Galaxie",
+    "welcome": "Bienvenue au Centre de Commande Based Guardians"
+  },
+  "mint": {
+    "title": "Créez Votre Guardian",
+    "price": "Prix",
+    "mintNow": "Créer Maintenant",
+    "minting": "Création...",
+    "soldOut": "Épuisé",
+    "remaining": "Restant"
+  },
+  "gallery": {
+    "title": "Galerie des Guardians",
+    "allNfts": "Tous les NFTs",
+    "myNfts": "Mes NFTs",
+    "guardians": "Guardians",
+    "frogs": "Grenouilles",
+    "creatures": "Créatures"
+  },
+  "escrow": {
+    "title": "Place de Marché",
+    "list": "Mettre en Vente",
+    "buy": "Acheter",
+    "makeOffer": "Faire une Offre",
+    "price": "Prix",
+    "seller": "Vendeur"
+  },
+  "voting": {
+    "title": "Vote DAO",
+    "activeProposals": "Propositions Actives",
+    "vote": "Voter",
+    "voteFor": "Voter Pour",
+    "voteAgainst": "Voter Contre"
+  },
+  "pool": {
+    "title": "Pool Communautaire",
+    "totalEmissions": "Émissions Totales",
+    "halvingProgress": "Progression du Halving"
+  },
+  "stats": {
+    "title": "Votre Voyage de Guardian",
+    "subtitle": "Votre Rôle dans la Saga",
+    "level": "Niveau",
+    "nftsOwned": "NFTs Possédés",
+    "votescast": "Votes Effectués",
+    "daysAsGuardian": "Jours en Guardian",
+    "loginStreak": "Série de Connexions"
+  },
+  "footer": {
+    "rights": "Tous droits réservés",
+    "terms": "Conditions d'Utilisation",
+    "privacy": "Politique de Confidentialité"
+  },
+  "language": {
+    "select": "Choisir la Langue"
+  }
+}
