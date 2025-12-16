@@ -96,10 +96,18 @@ export function useMint() {
   }, [confirmError]);
 
   const mint = useCallback(async (quantity: number = 1) => {
+    console.log('🟢 MINT FUNCTION CALLED');
+    console.log('   quantity:', quantity);
+    console.log('   isConnected:', isConnected);
+    console.log('   address:', address);
+    
     if (!isConnected || !address) {
+      console.log('❌ Not connected or no address - aborting');
       setError('Please connect your wallet');
       return;
     }
+
+    console.log('✅ Validation passed, starting mint...');
 
     try {
       setIsLoading(true);

@@ -134,12 +134,20 @@ export function Hero() {
 
   // Real Smart Contract Minting
   const handleMint = async () => {
+    console.log('🔴 MINT BUTTON CLICKED');
+    console.log('   isConnected:', isConnected);
+    console.log('   isPaused:', isPaused);
+    console.log('   mintQuantity:', mintQuantity);
+    console.log('   canAfford:', canAfford(mintQuantity));
+    
     if (!isConnected) {
+      console.log('❌ Not connected - opening connect modal');
       openConnectModal?.();
       return;
     }
 
     if (isPaused) {
+      console.log('❌ System paused');
       toast({
         title: "System Paused",
         description: "Minting is currently paused by the administrator.",
@@ -151,6 +159,7 @@ export function Hero() {
     // Analytics: Track Mint Attempt
     trackEvent('mint_attempt', 'Transaction', 'Hero Section', mintQuantity);
 
+    console.log('✅ Calling mint function...');
     // Call the real mint function
     await mint(mintQuantity);
   };
