@@ -35,6 +35,26 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
 
+export const storySubmissions = pgTable("story_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  authorName: text("author_name"),
+  walletAddress: text("wallet_address"),
+  email: text("email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewed: boolean("reviewed").default(false),
+});
+
+export const insertStorySchema = createInsertSchema(storySubmissions).omit({
+  id: true,
+  createdAt: true,
+  reviewed: true,
+});
+
+export type InsertStory = z.infer<typeof insertStorySchema>;
+export type Story = typeof storySubmissions.$inferSelect;
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   walletAddress: text("wallet_address").notNull(),
