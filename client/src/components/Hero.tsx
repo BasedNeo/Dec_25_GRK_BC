@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ const MINT_PRICE = 69420;
 const TOTAL_SUPPLY = 3732;
 import { NFT_SYMBOL, BLOCK_EXPLORER } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
-import confetti from "canvas-confetti";
 
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
@@ -26,6 +25,7 @@ import { MintBalancePanel } from "./MintBalancePanel";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useMint } from "@/hooks/useMint";
+import { useTransactionContext } from "@/context/TransactionContext";
 
 export function Hero() {
   const [mintQuantity, setMintQuantity] = useState(1);
@@ -35,6 +35,8 @@ export function Hero() {
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
   const { isConnected, chain } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { showTransaction } = useTransactionContext();
+  const overlayShownRef = useRef<string | null>(null);
   
   // Real minting hook
   const { mint, state: mintState, reset: resetMint, balance, canAfford, maxAffordable: maxMintable, status, txHash } = useMint();
@@ -152,16 +154,22 @@ export function Hero() {
     await mint(mintQuantity);
   };
 
+  // Show transaction overlay when we get a txHash
+  useEffect(() => {
+    if (txHash && overlayShownRef.current !== txHash) {
+      overlayShownRef.current = txHash;
+      const totalCost = (mintQuantity * MINT_PRICE).toLocaleString();
+      showTransaction(
+        txHash as `0x${string}`,
+        'mint',
+        `Minting ${mintQuantity} Guardian${mintQuantity > 1 ? 's' : ''} for ${totalCost} $BASED`
+      );
+    }
+  }, [txHash, mintQuantity, showTransaction]);
+
   // Fire confetti and refresh data on successful mint
   useEffect(() => {
     if (mintState.isSuccess) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00ffff', '#bf00ff', '#ffffff']
-      });
-
       // Analytics: Track Successful Mint
       trackEvent('mint_success', 'Transaction', 'Hero Section', mintQuantity);
 
@@ -171,6 +179,7 @@ export function Hero() {
       // Reset mint state after a delay so user can see success
       setTimeout(() => {
         resetMint();
+        overlayShownRef.current = null;
       }, 3000);
     }
   }, [mintState.isSuccess]);
