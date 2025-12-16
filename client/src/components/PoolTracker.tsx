@@ -294,13 +294,13 @@ export function PoolTracker() {
               <div className="bg-black/40 border border-green-500/30 rounded-xl p-5 flex flex-col items-center text-center">
                 <div className="flex items-center gap-2 mb-3">
                   <DollarSign size={18} className="text-green-400" />
-                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Royalties ({ROYALTY_SPLIT.TREASURY_PERCENT}%)</h3>
+                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Royalties</h3>
                 </div>
                 <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-revenue">
                   {displayValue(treasuryData.royaltyRevenue)} $BASED
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono">
-                  From {isDataReady ? formatNumber(treasuryData.salesVolume) : '---'} total sales volume
+                  2% of {isDataReady ? formatNumber(treasuryData.salesVolume) : '---'} marketplace volume
                 </span>
               </div>
               
