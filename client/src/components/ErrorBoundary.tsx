@@ -17,10 +17,34 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    const errorMessage = error?.message?.toLowerCase() || '';
+    const isWalletError = 
+      errorMessage.includes('disconnect') ||
+      errorMessage.includes('wallet') ||
+      errorMessage.includes('account') ||
+      errorMessage.includes('connector') ||
+      errorMessage.includes('provider');
+    
+    if (isWalletError) {
+      return { hasError: false };
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    const errorMessage = error?.message?.toLowerCase() || '';
+    const isWalletError = 
+      errorMessage.includes('disconnect') ||
+      errorMessage.includes('wallet') ||
+      errorMessage.includes('account') ||
+      errorMessage.includes('connector') ||
+      errorMessage.includes('provider');
+    
+    if (isWalletError) {
+      console.log('[ErrorBoundary] Ignoring wallet-related error:', error.message);
+      this.setState({ hasError: false });
+      return;
+    }
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
   }
 
