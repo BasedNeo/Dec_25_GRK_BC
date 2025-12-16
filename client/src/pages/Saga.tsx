@@ -1,8 +1,10 @@
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, Sparkles, Send, CheckCircle, Compass } from "lucide-react";
+import { ArrowLeft, BookOpen, Sparkles, Send, CheckCircle, Compass, Wallet } from "lucide-react";
 import { Link } from "wouter";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 function AnimatedStarfield() {
   const { scrollY } = useScroll();
@@ -172,9 +174,33 @@ function NebulaEffect() {
 }
 
 function ChooseYourAdventure() {
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [previousVote, setPreviousVote] = useState<number | null>(null);
+
+  // Check if wallet has already voted
+  useEffect(() => {
+    if (address) {
+      const votesData = localStorage.getItem('saga_votes');
+      if (votesData) {
+        const votes = JSON.parse(votesData);
+        if (votes[address.toLowerCase()]) {
+          setHasVoted(true);
+          setPreviousVote(votes[address.toLowerCase()]);
+        } else {
+          setHasVoted(false);
+          setPreviousVote(null);
+        }
+      }
+    } else {
+      setHasVoted(false);
+      setPreviousVote(null);
+    }
+  }, [address]);
 
   const adventureOptions = [
     {
@@ -204,9 +230,22 @@ function ChooseYourAdventure() {
   ];
 
   const handleSubmit = () => {
-    if (selectedOption === null) return;
+    if (!isConnected || !address) {
+      openConnectModal?.();
+      return;
+    }
+    if (selectedOption === null || hasVoted) return;
+    
     setIsSubmitting(true);
     setTimeout(() => {
+      // Save vote to localStorage
+      const votesData = localStorage.getItem('saga_votes');
+      const votes = votesData ? JSON.parse(votesData) : {};
+      votes[address.toLowerCase()] = selectedOption;
+      localStorage.setItem('saga_votes', JSON.stringify(votes));
+      
+      setHasVoted(true);
+      setPreviousVote(selectedOption);
       setIsSubmitting(false);
       setShowSuccess(true);
     }, 800);
@@ -235,20 +274,43 @@ function ChooseYourAdventure() {
             <Compass className="w-6 h-6 text-cyan-400" />
           </div>
           
-          <p className="text-center text-gray-300 mb-8 font-mono text-sm">
+          <p className="text-center text-gray-300 mb-4 font-mono text-sm">
             What should the Guardians do next? Cast your vote and help write the next chapter.
           </p>
+          
+          {hasVoted && previousVote && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-6 text-center">
+              <p className="text-green-400 text-sm font-mono flex items-center justify-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                You voted for: {adventureOptions.find(o => o.id === previousVote)?.title}
+              </p>
+            </div>
+          )}
+          
+          {!isConnected && (
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mb-6 text-center">
+              <p className="text-purple-400 text-sm font-mono flex items-center justify-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Connect your wallet to cast your vote
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             {adventureOptions.map((option) => (
               <motion.button
                 key={option.id}
-                onClick={() => setSelectedOption(option.id)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`p-4 rounded-xl border text-left transition-all duration-300 ${
-                  selectedOption === option.id
+                onClick={() => !hasVoted && setSelectedOption(option.id)}
+                whileHover={!hasVoted ? { scale: 1.02 } : {}}
+                whileTap={!hasVoted ? { scale: 0.98 } : {}}
+                disabled={hasVoted}
+                className={`p-4 rounded-xl border text-left transition-all duration-300 relative ${
+                  previousVote === option.id
+                    ? "bg-green-500/20 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                    : selectedOption === option.id
                     ? "bg-purple-500/20 border-purple-400 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                    : hasVoted
+                    ? "bg-black/20 border-white/5 opacity-50 cursor-not-allowed"
                     : "bg-black/40 border-white/10 hover:border-purple-500/50"
                 }`}
               >
@@ -256,6 +318,7 @@ function ChooseYourAdventure() {
                   <span className="text-2xl">{option.icon}</span>
                   <div>
                     <h4 className={`font-orbitron text-sm mb-1 ${
+                      previousVote === option.id ? "text-green-300" :
                       selectedOption === option.id ? "text-purple-300" : "text-white"
                     }`}>
                       {option.title}
@@ -265,7 +328,12 @@ function ChooseYourAdventure() {
                     </p>
                   </div>
                 </div>
-                {selectedOption === option.id && (
+                {previousVote === option.id && (
+                  <div className="absolute top-2 right-2">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                  </div>
+                )}
+                {selectedOption === option.id && !hasVoted && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -278,11 +346,27 @@ function ChooseYourAdventure() {
 
           <Button
             onClick={handleSubmit}
-            disabled={selectedOption === null || isSubmitting}
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-orbitron py-6 text-lg shadow-[0_0_30px_rgba(139,92,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={(isConnected && (selectedOption === null || isSubmitting || hasVoted))}
+            className={`w-full font-orbitron py-6 text-lg shadow-[0_0_30px_rgba(139,92,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed ${
+              hasVoted 
+                ? "bg-gradient-to-r from-green-600 to-green-700 cursor-not-allowed"
+                : !isConnected
+                ? "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500"
+                : "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500"
+            } text-white`}
           >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
+            {!isConnected ? (
+              <span className="flex items-center justify-center gap-2">
+                <Wallet className="w-5 h-5" />
+                Connect Wallet to Vote
+              </span>
+            ) : hasVoted ? (
+              <span className="flex items-center justify-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Vote Recorded
+              </span>
+            ) : isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -292,7 +376,7 @@ function ChooseYourAdventure() {
                 Transmitting to the Cosmos...
               </span>
             ) : (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 <Send className="w-5 h-5" />
                 Submit Your Choice
               </span>
