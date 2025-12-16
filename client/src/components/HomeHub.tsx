@@ -22,6 +22,14 @@ interface HomeHubProps {
 
 const menuItems = [
   { 
+    id: 'mint', 
+    label: 'MINT - TO LIFT OFF!', 
+    icon: Sparkles, 
+    description: 'Mint your Guardian NFT',
+    color: 'from-cyan-400 to-teal-500',
+    glow: 'cyan'
+  },
+  { 
     id: 'gallery', 
     label: 'PORTFOLIO', 
     icon: Wallet, 
@@ -68,14 +76,6 @@ const menuItems = [
     description: 'Participate in governance',
     color: 'from-amber-500 to-orange-500',
     glow: 'amber'
-  },
-  { 
-    id: 'mint', 
-    label: 'MINT', 
-    icon: Sparkles, 
-    description: 'Mint your Guardian NFT',
-    color: 'from-cyan-400 to-teal-500',
-    glow: 'cyan'
   },
   { 
     id: 'activity', 
@@ -132,7 +132,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 animation: 'gradientShift 8s ease-in-out infinite',
               }}
             >
-              MINT - TO LIFT OFF!
+              COMMAND CENTER
             </span>
           </h1>
           <style>{`
