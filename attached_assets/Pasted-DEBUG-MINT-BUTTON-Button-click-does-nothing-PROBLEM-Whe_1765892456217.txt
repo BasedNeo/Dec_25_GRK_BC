@@ -1,0 +1,118 @@
+DEBUG MINT BUTTON - Button click does nothing
+
+PROBLEM:
+When user clicks the mint button, nothing happens. No wallet popup, no errors, nothing.
+Minting worked 36 hours ago for NFT #149 but now button is unresponsive.
+
+STEP 1: ADD DEBUG LOGGING TO MINT BUTTON
+
+Find the mint button in the codebase (likely in Hero.tsx, MintButton.tsx, or similar).
+Add console.log to verify the click is registering:
+
+<Button
+  onClick={() => {
+    console.log('🔴 MINT BUTTON CLICKED'); // Add this first
+    console.log('Connected:', isConnected);
+    console.log('Address:', address);
+    console.log('Is Loading:', isLoading);
+    
+    // Then call mint
+    mint(1);
+  }}
+  disabled={isLoading || !isConnected}
+>
+  {isLoading ? 'Minting...' : 'Mint NFT'}
+</Button>
+
+STEP 2: CHECK IF useMint HOOK IS PROPERLY IMPORTED
+
+In the component with the mint button, verify:
+
+import { useMint } from '@/hooks/useMint';
+
+// Inside component:
+const { mint, isLoading, isConnected, error } = useMint();
+
+// Or if using useAccount separately:
+const { address, isConnected } = useAccount();
+const { mint, isLoading, error } = useMint();
+
+STEP 3: CHECK FOR SILENT ERRORS
+
+The mint function might be failing silently. Update useMint.ts:
+
+const mint = useCallback(async (quantity: number = 1) => {
+  console.log('🟢 MINT FUNCTION CALLED'); // Add this
+  console.log('   isConnected:', isConnected);
+  console.log('   address:', address);
+  
+  if (!isConnected) {
+    console.log('❌ Not connected - aborting');
+    setError('Please connect your wallet');
+    return;
+  }
+  
+  if (!address) {
+    console.log('❌ No address - aborting');
+    setError('Wallet address not found');
+    return;
+  }
+
+  console.log('✅ Validation passed, starting mint...');
+  
+  // Rest of mint code...
+}, [isConnected, address, writeContract]);
+
+STEP 4: CHECK IF BUTTON IS DISABLED
+
+The button might be disabled without visual feedback:
+
+// Log the disabled state
+console.log('Button disabled?', isLoading || !isConnected);
+
+// Make sure disabled state is visible
+<Button
+  onClick={() => mint(1)}
+  disabled={isLoading || !isConnected}
+  className={`${(!isConnected || isLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+>
+  {!isConnected ? 'Connect Wallet First' : isLoading ? 'Minting...' : 'Mint NFT'}
+</Button>
+
+STEP 5: CHECK FOR JAVASCRIPT ERRORS
+
+Open browser console (F12) and look for any red errors.
+Common issues:
+- "mint is not a function" = hook not imported correctly
+- "Cannot read property of undefined" = data not loaded
+- "isConnected is not defined" = useAccount not used
+
+STEP 6: FIND THE MINT BUTTON
+
+Search the codebase for where the mint button is:
+
+grep -r "mint(" src/components/
+grep -r "Mint" src/components/
+grep -r "useMint" src/components/
+
+Tell me which file(s) contain the mint button.
+
+STEP 7: SIMPLE TEST BUTTON
+
+As a test, add a simple button that ONLY logs:
+
+<button 
+  onClick={() => alert('Button works!')}
+  style={{ padding: '10px', background: 'red', color: 'white' }}
+>
+  TEST CLICK
+</button>
+
+If THIS works but mint doesn't, the issue is in the mint logic.
+If THIS also doesn't work, there's a bigger React/JS issue.
+
+REPORT BACK:
+1. Does the TEST button work?
+2. What shows in browser console when you click mint?
+3. Which file contains the mint button?
+4. Any red errors in console?
