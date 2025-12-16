@@ -409,7 +409,7 @@ export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: Nav
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex items-center gap-1 flex-shrink-0">
             {/* Wallet Balance - Mobile */}
             <WalletBalanceDisplay />
             
@@ -427,7 +427,7 @@ export function Navbar({ activeTab, onTabChange, isConnected, onOpenAdmin }: Nav
             
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground hover:text-primary transition-colors p-2 flex-shrink-0"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

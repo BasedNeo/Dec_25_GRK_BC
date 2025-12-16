@@ -39,8 +39,8 @@ class WalletBalanceServiceClass {
       this.cachedBalance = {
         wei: balanceWei,
         formatted: rawBalance.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 4
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1
         }),
         raw: rawBalance
       };
