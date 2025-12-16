@@ -1,6 +1,15 @@
 import "@rainbow-me/rainbowkit/styles.css";
-import { getDefaultConfig, getDefaultWallets } from "@rainbow-me/rainbowkit";
-import { rabbyWallet, trustWallet, okxWallet } from "@rainbow-me/rainbowkit/wallets";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { 
+  metaMaskWallet, 
+  rabbyWallet, 
+  coinbaseWallet, 
+  walletConnectWallet,
+  injectedWallet,
+  trustWallet, 
+  okxWallet,
+  braveWallet
+} from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
 
@@ -27,7 +36,7 @@ const basedL1 = {
     },
   },
   testnet: false,
-  fees: undefined, // Disable EIP-1559 - force legacy gas pricing
+  fees: undefined,
 } as const satisfies Chain;
 
 const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64';
@@ -39,12 +48,12 @@ export const config = getDefaultConfig({
   transports: {
     [basedL1.id]: fallback([
       http('https://mainnet.basedaibridge.com/rpc/', {
-        timeout: 15000,
+        timeout: 20000,
         retryCount: 3,
         retryDelay: 1000,
       }),
       http('https://rpc.basedaibridge.com/', {
-        timeout: 15000,
+        timeout: 20000,
         retryCount: 3,
         retryDelay: 1000,
       }),
@@ -52,10 +61,23 @@ export const config = getDefaultConfig({
   },
   ssr: false,
   wallets: [
-    ...getDefaultWallets().wallets,
     {
-      groupName: 'Popular',
-      wallets: [rabbyWallet, trustWallet, okxWallet],
+      groupName: 'Recommended',
+      wallets: [
+        injectedWallet,
+        metaMaskWallet,
+        rabbyWallet,
+        coinbaseWallet,
+      ],
+    },
+    {
+      groupName: 'More Options',
+      wallets: [
+        walletConnectWallet,
+        trustWallet,
+        okxWallet,
+        braveWallet,
+      ],
     },
   ],
 });
