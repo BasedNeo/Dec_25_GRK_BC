@@ -1299,18 +1299,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
       {/* Transaction Status Indicators */}
       {marketplace.state.isPending && (
-        <div className="fixed bottom-4 right-4 bg-cyan-500/20 border border-cyan-500 rounded-lg p-4 z-50 animate-pulse">
-          <p className="text-cyan-400 font-mono text-sm flex items-center gap-2">
-            <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+        <div className="fixed bottom-4 right-4 bg-cyan-400/50 border-2 border-cyan-300 rounded-lg p-4 z-50 shadow-[0_0_30px_rgba(0,255,255,0.6)] animate-[pulse_0.8s_ease-in-out_infinite]">
+          <p className="text-white font-mono text-sm flex items-center gap-2 font-bold drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]">
+            <span className="w-3 h-3 bg-white rounded-full animate-ping shadow-[0_0_10px_rgba(0,255,255,1)]"></span>
             Confirm in your wallet...
           </p>
         </div>
       )}
 
       {marketplace.state.isConfirming && (
-        <div className="fixed bottom-4 right-4 bg-amber-500/20 border border-amber-500 rounded-lg p-4 z-50 animate-pulse">
-          <p className="text-amber-400 font-mono text-sm flex items-center gap-2">
-            <span className="w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
+        <div className="fixed bottom-4 right-4 bg-amber-400/50 border-2 border-amber-300 rounded-lg p-4 z-50 shadow-[0_0_30px_rgba(251,191,36,0.6)] animate-[pulse_0.8s_ease-in-out_infinite]">
+          <p className="text-white font-mono text-sm flex items-center gap-2 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]">
+            <span className="w-3 h-3 bg-white rounded-full animate-ping shadow-[0_0_10px_rgba(251,191,36,1)]"></span>
             Transaction confirming...
           </p>
         </div>

@@ -261,13 +261,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             <div className="md:hidden absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/95 to-transparent z-20">
               {/* Transaction State Feedback - Mobile */}
               {marketplace.state.isPending && (
-                <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse mb-2">
-                  <p className="text-cyan-400 text-xs font-mono text-center">⏳ Confirm in wallet...</p>
+                <div className="p-2 bg-cyan-400/50 border-2 border-cyan-300 rounded-lg shadow-[0_0_20px_rgba(0,255,255,0.6)] animate-[pulse_0.8s_ease-in-out_infinite] mb-2">
+                  <p className="text-white text-xs font-mono text-center font-bold drop-shadow-[0_0_6px_rgba(0,255,255,0.8)]">⏳ Confirm in wallet...</p>
                 </div>
               )}
               {marketplace.state.isConfirming && (
-                <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse mb-2">
-                  <p className="text-amber-400 text-xs font-mono text-center">⏳ Confirming...</p>
+                <div className="p-2 bg-amber-400/50 border-2 border-amber-300 rounded-lg shadow-[0_0_20px_rgba(251,191,36,0.6)] animate-[pulse_0.8s_ease-in-out_infinite] mb-2">
+                  <p className="text-white text-xs font-mono text-center font-bold drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">⏳ Confirming...</p>
                 </div>
               )}
               {marketplace.state.isSuccess && (
@@ -578,13 +578,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                 {/* TRANSACTION STATE FEEDBACK - Desktop only */}
                 <div className="hidden md:block space-y-4">
                   {marketplace.state.isPending && (
-                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg animate-pulse">
-                      <p className="text-cyan-400 text-sm font-mono text-center">⏳ Confirm in your wallet...</p>
+                    <div className="p-3 bg-cyan-400/50 border-2 border-cyan-300 rounded-lg shadow-[0_0_25px_rgba(0,255,255,0.6)] animate-[pulse_0.8s_ease-in-out_infinite]">
+                      <p className="text-white text-sm font-mono text-center font-bold drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]">⏳ Confirm in your wallet...</p>
                     </div>
                   )}
                   {marketplace.state.isConfirming && (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg animate-pulse">
-                      <p className="text-amber-400 text-sm font-mono text-center">⏳ Transaction confirming on blockchain...</p>
+                    <div className="p-3 bg-amber-400/50 border-2 border-amber-300 rounded-lg shadow-[0_0_25px_rgba(251,191,36,0.6)] animate-[pulse_0.8s_ease-in-out_infinite]">
+                      <p className="text-white text-sm font-mono text-center font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]">⏳ Transaction confirming on blockchain...</p>
                     </div>
                   )}
                   {marketplace.state.isSuccess && (
