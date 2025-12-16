@@ -69,7 +69,6 @@ async function fetchActiveListings(): Promise<Map<number, { price: number; selle
             // Price is stored in wei (with 18 decimals), convert to whole tokens
             const priceInWei = listing[1] as bigint;
             const priceInTokens = Number(priceInWei) / 1e18;
-            console.log(`[Listings] Token ${tokenId}: ${priceInTokens} $BASED (raw: ${priceInWei})`);
             listingsMap.set(Number(tokenId), {
               price: priceInTokens,
               seller: listing[0] as string,
@@ -250,13 +249,11 @@ export function useGuardians(
 
              // 4. Fetch active listings and mark NFTs
              const activeListings = await fetchActiveListings();
-             console.log(`[useGuardians] Active listings count: ${activeListings.size}`, Array.from(activeListings.entries()));
              
              // Mark listed NFTs with their listing data
              allGuardians = allGuardians.map(g => {
                  const listing = activeListings.get(g.id);
                  if (listing) {
-                     console.log(`[useGuardians] Marking #${g.id} as listed at ${listing.price} $BASED`);
                      return { ...g, isListed: true, price: listing.price };
                  }
                  return { ...g, isListed: false };
@@ -273,11 +270,6 @@ export function useGuardians(
                'Common': 2, 
                'Most Common': 1 
              };
-             
-             // Log listed NFTs before sorting
-             const listedNFTs = allGuardians.filter(g => g.isListed);
-             console.log(`[useGuardians] Listed NFTs before sort:`, listedNFTs.map(g => ({ id: g.id, price: g.price })));
-             console.log(`[useGuardians] Current sortBy: ${filters.sortBy}`);
              
              allGuardians.sort((a, b) => {
                  // For listed-price-asc: Listed NFTs first, sorted by price

@@ -110,7 +110,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
             }
           }
           setMintedTokenIdsList(tokenIds);
-          console.log('[EscrowMarketplace] Fetched minted token IDs:', tokenIds);
         }
         
         // Fetch active listings directly from marketplace contract
@@ -118,7 +117,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           const activeListings = await marketplaceContract.getActiveListings();
           const listingIds = activeListings.map((id: bigint) => Number(id));
           setDirectListingIds(listingIds);
-          console.log('[EscrowMarketplace] Fetched active listing IDs (direct):', listingIds);
         } catch (listingError) {
           console.error('[EscrowMarketplace] Error fetching active listings:', listingError);
         }
@@ -391,21 +389,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // Get minted token IDs - use mintedTokenIdsList which is fetched from contract
   const mintedTokenIds = useMemo(() => {
-    // Prefer the directly fetched list (works in both CSV and Live mode)
     if (mintedTokenIdsList.length > 0) {
-      console.log('[EscrowMarketplace] Using mintedTokenIdsList:', mintedTokenIdsList);
       return new Set<number>(mintedTokenIdsList);
     }
-    // Fallback to directNFTs for live mode
-    console.log('[EscrowMarketplace] Using directNFTs fallback, count:', directNFTs.length);
     return new Set<number>(directNFTs.map(n => n.id));
   }, [mintedTokenIdsList, directNFTs]);
   
-  // Log marketplace listing data
-  useEffect(() => {
-    console.log('[EscrowMarketplace] Direct listing IDs:', directListingIds);
-    console.log('[EscrowMarketplace] Wagmi activeListingIds:', marketplace.activeListingIds);
-  }, [directListingIds, marketplace.activeListingIds]);
 
   const allItems = useMemo(() => {
      // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
@@ -423,8 +412,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      const combinedListings = directListingIds.length > 0 ? directListingIds : wagmiListings;
      const listedTokenIds = new Set<number>(combinedListings);
      
-     console.log('[EscrowMarketplace] Active listing IDs (using direct):', Array.from(listedTokenIds));
-     console.log('[EscrowMarketplace] Minted token IDs:', Array.from(mintedTokenIds));
      
      // Flatten pages and determine real status based on contract data
      let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
@@ -473,7 +460,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
          // Neither listed: sort by ID
          return a.id - b.id;
        });
-       console.log('[EscrowMarketplace] Sorted items (listed first):', items.slice(0, 5).map(i => ({ id: i.id, isListed: i.isListed })));
      }
      
      return items;
