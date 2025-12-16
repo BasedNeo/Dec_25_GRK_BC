@@ -132,17 +132,17 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
-    { id: 'universe', label: 'UNIVERSE' },
-    { id: 'mint', label: 'MINT' },
     { id: 'gallery', label: 'PORTFOLIO' },
-    { id: 'voting', label: 'VOTING' }, 
     { id: 'escrow', label: 'COLLECTION' },
+    { id: 'universe', label: 'UNIVERSE' },
     { id: 'pool', label: 'POOL' },
+    { id: 'voting', label: 'VOTING' }, 
+    { id: 'mint', label: 'MINT' },
     { id: 'activity', label: 'ACTIVITY' },
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -175,7 +175,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                {/* Price Feed - Visible on ALL screens */}
                <div 
                  id="priceBadge"
-                 className="flex flex-col justify-center px-3 py-1.5 rounded-md border border-white/10 bg-black/40 backdrop-blur-md transition-colors min-w-[120px] md:min-w-[140px]"
+                 className="flex flex-col justify-center px-4 py-2 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-300 min-w-[120px] md:min-w-[150px] hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,255,255,0.1)]"
                >
                   {/* Row 1: BASED (ETH) */}
                   <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
@@ -212,32 +212,28 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                </div>
             </div>
 
-          <div className="hidden md:flex items-center space-x-2">
-            {[
-              { id: 'universe', label: 'UNIVERSE' },
-              { id: 'mint', label: 'MINT' },
-              { id: 'gallery', label: 'PORTFOLIO' },
-              { id: 'voting', label: 'VOTING' }, 
-              { id: 'escrow', label: 'COLLECTION' },
-              { id: 'pool', label: 'POOL' },
-              { id: 'activity', label: 'ACTIVITY' },
-            ].map((item) => (
+          <div className="hidden md:flex items-center space-x-1">
+            {navItems.map((item) => (
               <button
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
                 onClick={() => onTabChange(item.id)}
-                className={`relative px-4 py-2 font-orbitron text-sm tracking-widest transition-colors ${
-                  activeTab === item.id ? 'text-primary' : 'text-foreground/80 hover:text-white'
+                className={`relative px-3 py-2.5 font-orbitron text-[11px] tracking-[0.15em] transition-all duration-300 rounded-lg group ${
+                  activeTab === item.id 
+                    ? 'text-cyan-400' 
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 {activeTab === item.id && (
                   <motion.div
                     layoutId="navbar-indicator"
-                    className="absolute inset-0 bg-primary/10 rounded-md -z-10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-cyan-400/10 to-transparent rounded-lg border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.15)] -z-10"
+                    transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                   />
                 )}
-                {item.label}
+                <span className={`relative ${activeTab === item.id ? 'drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]' : 'group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.3)]'}`}>
+                  {item.label}
+                </span>
               </button>
             ))}
             
@@ -366,7 +362,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                           return (
                             <Button 
                               onClick={openConnectModal} 
-                              className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider cyber-button shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.7)] transition-all duration-300"
+                              className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-xs tracking-[0.15em] px-6 py-2.5 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
                             >
                               CONNECT
                             </Button>
@@ -375,7 +371,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
                         if (chain.unsupported) {
                           return (
-                            <Button onClick={openChainModal} variant="destructive">
+                            <Button onClick={openChainModal} className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-xs tracking-wider rounded-xl">
                               Wrong network
                             </Button>
                           );
@@ -385,8 +381,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                           <div style={{ display: 'flex', gap: 12 }}>
                             <Button 
                               onClick={openAccountModal} 
-                              variant="outline"
-                              className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-orbitron tracking-wider cyber-button"
+                              className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:border-cyan-400/60 hover:shadow-[0_0_20px_rgba(0,255,255,0.2)] font-orbitron text-xs tracking-[0.1em] px-5 py-2.5 rounded-xl transition-all duration-300"
                             >
                               {account.displayName}
                             </Button>
@@ -433,25 +428,30 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-black/95 border-b border-white/10 backdrop-blur-xl overflow-hidden"
+            className="md:hidden bg-gradient-to-b from-black/98 to-black/95 border-b border-cyan-500/10 backdrop-blur-2xl overflow-hidden"
           >
-            <div className="px-4 pt-2 pb-8 space-y-4 flex flex-col items-center">
-              {navItems.map((item) => (
-                <button
+            <div className="px-6 pt-4 pb-10 space-y-2 flex flex-col items-center">
+              {navItems.map((item, index) => (
+                <motion.button
                   key={item.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
                   onClick={() => {
                     onTabChange(item.id);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full py-3 font-orbitron tracking-widest text-center ${
-                    activeTab === item.id ? 'text-primary bg-primary/10' : 'text-foreground/80'
+                  className={`w-full py-4 font-orbitron text-sm tracking-[0.2em] text-center rounded-xl transition-all duration-300 ${
+                    activeTab === item.id 
+                      ? 'text-cyan-400 bg-gradient-to-r from-cyan-500/15 via-cyan-400/10 to-transparent border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.1)]' 
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {item.label}
-                </button>
+                </motion.button>
               ))}
               
-              <div className="w-full flex justify-center gap-4 pt-4 border-t border-white/10 mt-4">
+              <div className="w-full flex justify-center gap-4 pt-6 border-t border-white/5 mt-4">
                 <NotificationSettings />
                 <ConnectButton />
               </div>
