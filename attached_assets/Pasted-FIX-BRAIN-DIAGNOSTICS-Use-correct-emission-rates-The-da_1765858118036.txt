@@ -1,0 +1,116 @@
+FIX BRAIN DIAGNOSTICS - Use correct emission rates
+
+The dashboard is calculating wrong values. Use these KNOWN emission rates:
+
+BRAIN/SUBNET (100%):
+- Annual: 23,500,000 $BASED/year
+- Daily: 64,384 $BASED/day (23,500,000 ÷ 365)
+
+COMMUNITY TREASURY (10%):
+- Annual: 2,350,000 $BASED/year  
+- Daily: 6,438 $BASED/day
+
+UPDATE client/src/hooks/useSubnetEmissions.ts
+
+REPLACE BRAIN_CONFIG with:
+
+const BRAIN_CONFIG = {
+  name: 'Based Guardians Brain',
+  wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
+  token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2',
+  communityShare: 0.10,
+  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(),
+  initialDeposit: 35000,
+  // Known emission rates (pre-halving)
+  brainAnnualOutput: 23500000, // Full subnet annual
+  brainDailyRate: 64384, // Full subnet daily (23.5M / 365)
+  communityDailyRate: 6438, // 10% of daily
+  communityAnnualRate: 2350000, // 10% of annual
+  nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(),
+  network: 'BasedAI',
+  networkUrl: 'https://www.getbased.ai/'
+};
+
+UPDATE the calculations to use known rates instead of calculating from balance:
+
+// Use known rates, not calculated from balance
+const dailyRate = BRAIN_CONFIG.communityDailyRate; // 6,438/day
+const brainAnnualOutput = BRAIN_CONFIG.brainAnnualOutput; // 23,500,000/year
+const brainDailyRate = BRAIN_CONFIG.brainDailyRate; // 64,384/day
+
+// Calculate days since start
+const daysSinceStart = Math.max(1, Math.floor((Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24)));
+
+// Passive emissions = days × daily rate
+const expectedEmissions = daysSinceStart * BRAIN_CONFIG.communityDailyRate;
+
+// Actual emissions from balance (for comparison)
+const actualEmissions = Math.max(0, brainBalance - BRAIN_CONFIG.initialDeposit);
+
+// Days until halving
+const daysUntilHalving = Math.max(0, Math.ceil((BRAIN_CONFIG.nextHalvingDate - Date.now()) / (1000 * 60 * 60 * 24)));
+
+UPDATE the return values:
+
+return {
+  brainBalance,
+  totalReceived: actualEmissions, // Balance minus deposit
+  expectedEmissions, // Days × 6,438
+  dailyRate, // 6,438 (known rate)
+  brainDailyRate, // 64,384 (full subnet)
+  brainAnnualOutput, // 23,500,000
+  communityAnnualRate: BRAIN_CONFIG.communityAnnualRate, // 2,350,000
+  daysActive: daysSinceStart,
+  daysUntilHalving,
+  initialDeposit: BRAIN_CONFIG.initialDeposit,
+  ...rest
+};
+
+UPDATE BrainDiagnostics.tsx display:
+
+EMISSION FLOW section:
+- Network → "BasedAI 100%"
+- Brain Wallet → Show balance: 56,544 $BASED  
+- Community → Show daily rate: "6,438/day" (not total)
+
+METRICS GRID (6 cards):
+
+Card 1: BRAIN ANNUAL OUTPUT
+- Value: 23,500,000
+- Subtitle: $BASED/year (100%)
+
+Card 2: COMMUNITY DAILY (10%)
+- Value: 6,438
+- Subtitle: $BASED/day
+
+Card 3: PASSIVE EMISSIONS
+- Value: {emissions.totalReceived} (balance - 35k deposit)
+- Subtitle: since Dec 1, 2025 ({emissions.daysActive} days)
+
+Card 4: WALLET BALANCE
+- Value: {emissions.brainBalance}
+- Subtitle: incl. 35,000 deposit
+
+Card 5: NEXT HALVING
+- Value: {emissions.daysUntilHalving} days
+- Subtitle: ~Dec 31, 2025
+
+Card 6: BRAIN STAKING
+- Value: 🔒
+- Subtitle: COMING SOON
+
+EXPECTED RESULT:
+┌─────────────────────────────────────────────────────┐
+│  EMISSION FLOW                                      │
+│  Network ──→ Brain Wallet ──→ Community             │
+│  BasedAI     56,544           6,438/day             │
+│  100%        $BASED           10%                   │
+├─────────────────────────────────────────────────────┤
+│  BRAIN ANNUAL    COMMUNITY DAILY    PASSIVE         │
+│  23,500,000      6,438              21,544          │
+│  $BASED/yr       $BASED/day         since Dec 1     │
+│                                                     │
+│  WALLET BAL      NEXT HALVING       BRAIN STAKING  │
+│  56,544          15 days            🔒              │
+│  incl 35k        ~Dec 31            COMING SOON     │
+└─────────────────────────────────────────────────────┘

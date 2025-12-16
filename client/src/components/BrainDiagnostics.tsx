@@ -285,7 +285,7 @@ export function BrainDiagnostics() {
             >
               <span className="text-[10px] text-muted-foreground font-mono uppercase">Brain Annual Output</span>
               <div className="text-xl font-mono font-bold text-purple-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.brainAnnualOutput, 0)}
+                {emissions.loading ? '...' : (emissions.brainAnnualOutput / 1000000).toFixed(1) + 'M'}
               </div>
               <span className="text-[10px] text-purple-500/70">$BASED/year (100%)</span>
             </motion.div>
@@ -313,7 +313,7 @@ export function BrainDiagnostics() {
               <div className="text-xl font-mono font-bold text-amber-400 mt-1">
                 {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
               </div>
-              <span className="text-[10px] text-amber-500/70">since Dec 1, 2025</span>
+              <span className="text-[10px] text-amber-500/70">since Dec 1 ({emissions.daysActive} days)</span>
             </motion.div>
 
             <motion.div

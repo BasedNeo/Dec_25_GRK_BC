@@ -5,11 +5,15 @@ import { ethers } from 'ethers';
 const BRAIN_CONFIG = {
   name: 'Based Guardians Brain',
   wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
-  token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2', // $BASED on ETH mainnet
-  communityShare: 0.10, // Community gets 10% of subnet emissions
-  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(), // Dec 1, 2025
-  initialDeposit: 35000, // Initial pool funding
-  estimatedDailyRate: 6000, // Expected ~6,000/day for community (10%)
+  token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2',
+  communityShare: 0.10,
+  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(),
+  initialDeposit: 35000,
+  // Known emission rates (pre-halving)
+  brainAnnualOutput: 23500000, // Full subnet annual
+  brainDailyRate: 64384, // Full subnet daily (23.5M / 365)
+  communityDailyRate: 6438, // 10% of daily
+  communityAnnualRate: 2350000, // 10% of annual
   nextHalvingDate: new Date('2025-12-31T00:00:00Z').getTime(),
   network: 'BasedAI',
   networkUrl: 'https://www.getbased.ai/'
@@ -48,14 +52,17 @@ export interface SubnetEmissionsData {
   // Core metrics
   brainBalance: number;
   totalReceived: number;
+  expectedEmissions: number;
   initialDeposit: number;
   communityShare: number;
   dailyRate: number;
   brainTotalDaily: number;
   brainAnnualOutput: number;
+  communityAnnualRate: number;
   weeklyTotal: number;
   monthlyProjection: number;
   daysUntilHalving: number;
+  daysActive: number;
   
   // Status
   status: 'active' | 'delayed' | 'inactive';
@@ -187,7 +194,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
         const daysActive = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
         
         // Use actual rate or estimated rate
-        const avgDailyRate = actualEmissions > 0 ? actualEmissions / daysActive : BRAIN_CONFIG.estimatedDailyRate;
+        const avgDailyRate = actualEmissions > 0 ? actualEmissions / daysActive : BRAIN_CONFIG.communityDailyRate;
         
         // Populate last 7 days with estimated average
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -249,20 +256,23 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     return () => clearInterval(interval);
   }, [fetchEmissions]);
 
-  // Calculate derived values
-  const daysSinceStart = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
+  // Use known rates, not calculated from balance
+  const dailyRate = BRAIN_CONFIG.communityDailyRate; // 6,438/day
+  const brainAnnualOutput = BRAIN_CONFIG.brainAnnualOutput; // 23,500,000/year
+  const brainTotalDaily = BRAIN_CONFIG.brainDailyRate; // 64,384/day
   
-  // Calculate daily rate - use calculated if reasonable, otherwise estimated
-  const calculatedRate = totalReceived / daysSinceStart;
-  const dailyRate = calculatedRate > 100 ? calculatedRate : BRAIN_CONFIG.estimatedDailyRate;
+  // Calculate days since start
+  const daysSinceStart = Math.max(1, Math.floor((Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24)));
+  
+  // Expected emissions = days × daily rate (for comparison)
+  const expectedEmissions = daysSinceStart * BRAIN_CONFIG.communityDailyRate;
+  
+  // Actual emissions from balance
+  const actualEmissions = Math.max(0, brainBalance - BRAIN_CONFIG.initialDeposit);
   
   const weeklyTotal = dailyBreakdown.reduce((sum, day) => sum + day.amount, 0);
-  const communityShare = totalReceived; // Total emissions received = community's share
+  const communityShare = actualEmissions; // Actual emissions = community's share
   const monthlyProjection = dailyRate * 30;
-  
-  // Calculate brain's FULL output (community only gets 10%)
-  const brainTotalDaily = dailyRate / BRAIN_CONFIG.communityShare; // Full 100%
-  const brainAnnualOutput = brainTotalDaily * 365;
   
   // Days until halving
   const daysUntilHalving = Math.max(0, Math.ceil((BRAIN_CONFIG.nextHalvingDate - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -284,15 +294,18 @@ export function useSubnetEmissions(): SubnetEmissionsData {
 
   return {
     brainBalance,
-    totalReceived,
+    totalReceived: actualEmissions,
+    expectedEmissions,
     initialDeposit: BRAIN_CONFIG.initialDeposit,
     communityShare,
     dailyRate,
     brainTotalDaily,
     brainAnnualOutput,
+    communityAnnualRate: BRAIN_CONFIG.communityAnnualRate,
     weeklyTotal,
     monthlyProjection,
     daysUntilHalving,
+    daysActive: daysSinceStart,
     status,
     lastEmissionTime,
     daysSinceStart,
