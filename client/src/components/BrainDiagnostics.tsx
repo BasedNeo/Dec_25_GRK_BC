@@ -420,38 +420,6 @@ export function BrainDiagnostics() {
               <RefreshCw size={12} className={`mr-2 ${emissions.loading ? 'animate-spin' : ''}`} />
               {emissions.loading ? 'SYNCING...' : 'REFRESH'}
             </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-cyan-500/30 hover:bg-cyan-500/10 text-xs font-mono text-cyan-400"
-            >
-              <a 
-                href={`https://etherscan.io/token/${BRAIN_CONFIG.token}?a=${BRAIN_CONFIG.wallet}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink size={12} className="mr-2" />
-                VIEW ON ETHERSCAN
-              </a>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-purple-500/30 hover:bg-purple-500/10 text-xs font-mono text-purple-400"
-            >
-              <a 
-                href={BRAIN_CONFIG.networkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink size={12} className="mr-2" />
-                VIEW ON BASEDAI
-              </a>
-            </Button>
           </div>
 
           {/* Last Updated */}
