@@ -582,7 +582,7 @@ export default function Saga() {
                 </p>
                 
                 <p className="text-center text-white font-bold text-lg">
-                  The Guardians must reunite. The Frogs must be found. The Creatures must be awakened. The Wizard Committer must be rescued.
+                  The Guardians must reunite. The Based Frogs prepare. The Creatures are awakened. The Wizard Committer must be rescued.
                 </p>
                 
                 <p className="text-center text-purple-400 font-mono mt-8">
