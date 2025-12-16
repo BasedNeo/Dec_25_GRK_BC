@@ -70,12 +70,23 @@ export function DiagnosticPanel() {
         'function paused() view returns (bool)'
       ], provider);
 
-      const [totalMinted, maxSupply, mintPrice, publicMintEnabled, paused] = await Promise.all([
-        nft.totalMinted(),
-        nft.MAX_SUPPLY(),
-        nft.MINT_PRICE(),
-        nft.publicMintEnabled(),
-        nft.paused()
+      // Add timeout wrapper for slow RPC
+      const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+        ]);
+      };
+
+      // Try to get totalMinted first with a 15s timeout
+      const totalMinted = await withTimeout(nft.totalMinted(), 15000);
+      
+      // If that works, get the rest
+      const [maxSupply, mintPrice, publicMintEnabled, paused] = await Promise.all([
+        withTimeout(nft.MAX_SUPPLY(), 10000),
+        withTimeout(nft.MINT_PRICE(), 10000),
+        withTimeout(nft.publicMintEnabled(), 10000),
+        withTimeout(nft.paused(), 10000)
       ]);
 
       results['NFT Contract'] = { status: 'pass', message: 'Connected' };
@@ -90,7 +101,8 @@ export function DiagnosticPanel() {
         message: paused ? 'YES - Paused!' : 'No' 
       };
     } catch (e: any) {
-      results['NFT Contract'] = { status: 'fail', message: e.message?.slice(0, 50) || 'Failed' };
+      const msg = e.message?.includes('Timeout') ? 'RPC timeout - try again' : (e.message?.slice(0, 50) || 'Failed');
+      results['NFT Contract'] = { status: 'fail', message: msg };
     }
 
     try {
