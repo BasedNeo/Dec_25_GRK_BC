@@ -606,7 +606,7 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                             className="relative flex md:flex-col items-center md:text-center pl-16 md:pl-0"
                         >
                             {/* Dot */}
-                            <div className={`absolute left-4 md:left-1/2 top-1/2 md:top-1/2 -translate-x-1 md:-translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 ${item.active ? 'bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-black border-cyan-500/30'}`} />
+                            <div className={`absolute left-6 md:left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 ${item.active ? 'bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-black border-cyan-500/30'}`} />
                             
                             <div className="md:mt-8 md:pt-4">
                                 <p className={`font-orbitron text-sm ${item.active ? 'text-cyan-400' : 'text-gray-400'}`}>{item.title}</p>
