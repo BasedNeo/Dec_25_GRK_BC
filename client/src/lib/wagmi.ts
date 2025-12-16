@@ -8,8 +8,13 @@ import {
   injectedWallet,
   trustWallet, 
   okxWallet,
+  braveWallet,
   rainbowWallet,
   phantomWallet,
+  zerionWallet,
+  safeWallet,
+  argentWallet,
+  ledgerWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
@@ -37,10 +42,41 @@ const basedL1 = {
     },
   },
   testnet: false,
-  fees: undefined,
 } as const satisfies Chain;
 
 const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64';
+
+const wallets = [
+  {
+    groupName: 'Popular',
+    wallets: [
+      injectedWallet,
+      metaMaskWallet,
+      rabbyWallet,
+      coinbaseWallet,
+      rainbowWallet,
+    ],
+  },
+  {
+    groupName: 'More Wallets',
+    wallets: [
+      walletConnectWallet,
+      trustWallet,
+      phantomWallet,
+      zerionWallet,
+      okxWallet,
+      braveWallet,
+    ],
+  },
+  {
+    groupName: 'Hardware & Multisig',
+    wallets: [
+      ledgerWallet,
+      safeWallet,
+      argentWallet,
+    ],
+  },
+];
 
 export const config = getDefaultConfig({
   appName: 'Based Guardians',
@@ -49,39 +85,19 @@ export const config = getDefaultConfig({
   transports: {
     [basedL1.id]: fallback([
       http('https://mainnet.basedaibridge.com/rpc/', {
-        timeout: 20000,
-        retryCount: 3,
-        retryDelay: 1000,
+        timeout: 30000,
+        retryCount: 5,
+        retryDelay: 1500,
       }),
       http('https://rpc.basedaibridge.com/', {
-        timeout: 20000,
-        retryCount: 3,
-        retryDelay: 1000,
+        timeout: 30000,
+        retryCount: 5,
+        retryDelay: 1500,
       }),
     ]),
   },
   ssr: false,
-  wallets: [
-    {
-      groupName: 'Popular',
-      wallets: [
-        injectedWallet,
-        rabbyWallet,
-        metaMaskWallet,
-        walletConnectWallet,
-      ],
-    },
-    {
-      groupName: 'More Wallets',
-      wallets: [
-        coinbaseWallet,
-        trustWallet,
-        okxWallet,
-        rainbowWallet,
-        phantomWallet,
-      ],
-    },
-  ],
+  wallets: wallets,
 });
 
 export { basedL1 };

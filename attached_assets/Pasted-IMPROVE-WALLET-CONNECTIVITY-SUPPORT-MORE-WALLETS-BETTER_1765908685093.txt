@@ -1,0 +1,218 @@
+IMPROVE WALLET CONNECTIVITY - SUPPORT MORE WALLETS & BETTER MOBILE
+
+We want to broaden wallet support and improve mobile connectivity.
+
+=== UPDATE client/src/lib/wagmi.ts ===
+
+Replace the entire file with this improved version:
+
+import "@rainbow-me/rainbowkit/styles.css";
+import { getDefaultConfig, connectorsForWallets } from "@rainbow-me/rainbowkit";
+import { 
+  metaMaskWallet, 
+  rabbyWallet, 
+  coinbaseWallet, 
+  walletConnectWallet,
+  injectedWallet,
+  trustWallet, 
+  okxWallet,
+  braveWallet,
+  rainbowWallet,
+  phantomWallet,
+  zerionWallet,
+  safeWallet,
+  argentWallet,
+  ledgerWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { type Chain } from 'wagmi/chains';
+import { http, fallback, createConfig } from 'wagmi';
+
+// BasedAI L1 Chain Definition
+const basedL1 = {
+  id: 32323,
+  name: 'BasedAI',
+  nativeCurrency: { 
+    name: 'Based', 
+    symbol: 'BASED', 
+    decimals: 18 
+  },
+  rpcUrls: {
+    default: { 
+      http: ['https://mainnet.basedaibridge.com/rpc/'] 
+    },
+    public: { 
+      http: ['https://mainnet.basedaibridge.com/rpc/'] 
+    },
+  },
+  blockExplorers: {
+    default: { 
+      name: 'Based Explorer', 
+      url: 'https://explorer.bf1337.org' 
+    },
+  },
+  testnet: false,
+} as const satisfies Chain;
+
+const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64';
+
+// Custom wallet groups for better organization
+const wallets = [
+  {
+    groupName: 'Popular',
+    wallets: [
+      injectedWallet,      // Auto-detects browser wallet
+      metaMaskWallet,
+      rabbyWallet,
+      coinbaseWallet,
+      rainbowWallet,
+    ],
+  },
+  {
+    groupName: 'More Wallets',
+    wallets: [
+      walletConnectWallet,
+      trustWallet,
+      phantomWallet,
+      zerionWallet,
+      okxWallet,
+      braveWallet,
+    ],
+  },
+  {
+    groupName: 'Hardware & Multisig',
+    wallets: [
+      ledgerWallet,
+      safeWallet,
+      argentWallet,
+    ],
+  },
+];
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: projectId,
+  chains: [basedL1],
+  transports: {
+    [basedL1.id]: fallback([
+      http('https://mainnet.basedaibridge.com/rpc/', {
+        timeout: 30000,  // Increased timeout for slower connections
+        retryCount: 5,   // More retries
+        retryDelay: 1500,
+      }),
+      http('https://rpc.basedaibridge.com/', {
+        timeout: 30000,
+        retryCount: 5,
+        retryDelay: 1500,
+      }),
+    ]),
+  },
+  ssr: false,
+  wallets: wallets,
+});
+
+export { basedL1 };
+
+=== ALSO ADD NETWORK SWITCH HELPER ===
+
+Create a new file: client/src/lib/networkHelper.ts
+
+export const BASEDAI_CHAIN_CONFIG = {
+  chainId: '0x7E53', // 32323 in hex
+  chainName: 'BasedAI',
+  nativeCurrency: {
+    name: 'Based',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: ['https://mainnet.basedaibridge.com/rpc/'],
+  blockExplorerUrls: ['https://explorer.bf1337.org'],
+};
+
+export async function addBasedAINetwork(): Promise<boolean> {
+  if (!window.ethereum) {
+    console.error('No wallet detected');
+    return false;
+  }
+
+  try {
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [BASEDAI_CHAIN_CONFIG],
+    });
+    return true;
+  } catch (error: any) {
+    // Chain already exists, try to switch
+    if (error.code === 4902) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASEDAI_CHAIN_CONFIG.chainId }],
+        });
+        return true;
+      } catch (switchError) {
+        console.error('Failed to switch network:', switchError);
+        return false;
+      }
+    }
+    console.error('Failed to add network:', error);
+    return false;
+  }
+}
+
+export async function switchToBasedAI(): Promise<boolean> {
+  if (!window.ethereum) return false;
+
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: BASEDAI_CHAIN_CONFIG.chainId }],
+    });
+    return true;
+  } catch (error: any) {
+    // Chain not added yet
+    if (error.code === 4902) {
+      return addBasedAINetwork();
+    }
+    return false;
+  }
+}
+
+=== IMPROVE NetworkSwitchBanner.tsx ===
+
+Update the NetworkSwitchBanner component to use the new helper:
+
+Add this import at the top:
+import { switchToBasedAI, addBasedAINetwork } from '@/lib/networkHelper';
+
+Update the switch button's onClick to:
+onClick={async () => {
+  const success = await switchToBasedAI();
+  if (!success) {
+    // Fallback: try adding the network
+    await addBasedAINetwork();
+  }
+}}
+
+=== SUMMARY OF IMPROVEMENTS ===
+
+1. Added 6 more wallet options:
+   - Rainbow (mobile-friendly)
+   - Phantom (popular cross-chain)
+   - Zerion (DeFi power users)
+   - Ledger (hardware wallet)
+   - Safe/Gnosis (multisig teams)
+   - Argent (smart wallet)
+
+2. Better wallet grouping for cleaner UI
+
+3. Increased RPC timeouts and retries for slower connections
+
+4. Network helper for one-click BasedAI network addition
+
+5. Better mobile deep-linking support via WalletConnect v2
+
+These changes will support more wallet types and improve the experience for:
+- Mobile users
+- Hardware wallet users  
+- Team/DAO multisig wallets
+- Users on slower connections

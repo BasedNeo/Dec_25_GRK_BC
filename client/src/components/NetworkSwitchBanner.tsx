@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { CHAIN_ID } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
+import { switchToBasedAI, addBasedAINetwork } from '@/lib/networkHelper';
 
 export function NetworkSwitchBanner() {
   const { isConnected, chain } = useAccount();
@@ -33,7 +34,12 @@ export function NetworkSwitchBanner() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => switchChain({ chainId: CHAIN_ID })} disabled={isPending} className="bg-white text-red-600 hover:bg-white/90 font-bold font-orbitron text-sm px-4 py-2 h-auto">
+            <Button onClick={async () => {
+              const success = await switchToBasedAI();
+              if (!success) {
+                await addBasedAINetwork();
+              }
+            }} disabled={isPending} className="bg-white text-red-600 hover:bg-white/90 font-bold font-orbitron text-sm px-4 py-2 h-auto">
               {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />SWITCHING...</> : <>⚡ SWITCH TO BASEDAI</>}
             </Button>
             <button onClick={() => setDismissed(true)} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X className="w-4 h-4" /></button>
