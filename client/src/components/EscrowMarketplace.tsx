@@ -1609,25 +1609,39 @@ function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = 
     );
 }
 
-// Offer Modal Component
+// Offer Modal Component - FIXED VERSION
 function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
     const [amount, setAmount] = useState<number>(0);
-    const [duration, setDuration] = useState("1 week");
+    const [duration, setDuration] = useState("7");
     const [isValidating, setIsValidating] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const { isConnected, address } = useAccount();
     const chainId = useChainId();
     const { switchChain } = useSwitchChain();
     const { toast } = useToast();
+    const { openConnectModal } = useConnectModal();
     
     // Real wallet balance
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [balanceLoading, setBalanceLoading] = useState(false);
     
-    const GAS_BUFFER = 100; // Reserve for gas fees
+    const GAS_BUFFER = 100;
     const maxOffer = walletBalance ? Math.max(0, walletBalance - GAS_BUFFER) : 0;
     const canAfford = walletBalance !== null && amount > 0 && amount <= maxOffer;
     const insufficientFunds = walletBalance !== null && amount > maxOffer;
+    
+    const durationOptions = [
+        { value: "1", label: "1 Day" },
+        { value: "3", label: "3 Days" },
+        { value: "7", label: "1 Week" },
+        { value: "30", label: "1 Month" },
+        { value: "90", label: "3 Months" },
+        { value: "365", label: "1 Year" },
+    ];
+    
+    const getDurationLabel = (value: string) => {
+        return durationOptions.find(opt => opt.value === value)?.label || "1 Week";
+    };
     
     // Fetch wallet balance when modal opens
     useEffect(() => {
@@ -1657,7 +1671,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
     // Reset when item changes
     useEffect(() => {
         if (item) {
-            setAmount(item.price ? Math.floor(item.price * 0.9) : 100);
+            setAmount(item.price ? Math.floor(item.price * 0.9) : 1000);
+            setDuration("7");
             setValidationError(null);
         }
     }, [item]);
@@ -1667,29 +1682,32 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
         if (isOpen && isConnected && chainId !== 32323) {
             toast({
                 title: "Wrong Network",
-                description: "This marketplace is on BasedAI (Chain ID 32323). Please switch.",
-                action: (
-                    <Button 
-                        size="sm" 
-                        onClick={() => switchChain({ chainId: 32323 })}
-                        className="bg-primary text-black hover:bg-primary/90"
-                    >
-                        Switch to BasedAI
-                    </Button>
-                ),
+                description: "Please switch to BasedAI Network to make offers.",
                 duration: 6000,
             });
         }
-    }, [isOpen, isConnected, chainId, switchChain, toast]);
+    }, [isOpen, isConnected, chainId, toast]);
     
     const handleSubmit = async () => {
+        console.log('[OfferModal] Submit clicked', { isConnected, amount, walletBalance, canAfford });
+        
+        setValidationError(null);
+        
         if (!isConnected) {
             setValidationError('Please connect your wallet first');
+            toast({ title: "Connect Wallet", description: "Please connect your wallet to make an offer", variant: "destructive" });
+            openConnectModal?.();
             return;
         }
         
-        if (amount <= 0) {
-            setValidationError('Please enter an offer amount');
+        if (chainId !== 32323) {
+            setValidationError('Please switch to BasedAI Network');
+            switchChain?.({ chainId: 32323 });
+            return;
+        }
+        
+        if (!amount || amount <= 0) {
+            setValidationError('Please enter an offer amount greater than 0');
             return;
         }
         
@@ -1698,22 +1716,23 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
             return;
         }
         
-        if (amount > walletBalance) {
-            setValidationError(`Insufficient balance. You have ${walletBalance.toLocaleString()} $BASED but are offering ${amount.toLocaleString()} $BASED.`);
-            return;
-        }
-        
         if (amount > maxOffer) {
-            setValidationError(`You need to keep ~${GAS_BUFFER} $BASED for gas fees. Maximum offer: ${maxOffer.toLocaleString()} $BASED`);
+            setValidationError(`Insufficient balance. Maximum offer: ${maxOffer.toLocaleString()} $BASED (keeping ${GAS_BUFFER} for gas)`);
             return;
         }
         
+        console.log('[OfferModal] Validation passed, submitting offer...');
         setIsValidating(true);
-        setValidationError(null);
         
-        // Proceed with offer submission
-        onSubmit(amount, duration);
-        setIsValidating(false);
+        try {
+            const durationLabel = getDurationLabel(duration);
+            await onSubmit(amount, durationLabel);
+        } catch (error) {
+            console.error('[OfferModal] Submit error:', error);
+            setValidationError('Failed to submit offer. Please try again.');
+        } finally {
+            setIsValidating(false);
+        }
     };
     
     const setMaxOffer = () => {
@@ -1725,20 +1744,29 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
 
     if (!item) return null;
 
+    const isButtonDisabled = !isConnected || balanceLoading || isValidating;
+    const showWarning = isConnected && !canAfford && amount > 0 && !balanceLoading;
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose} modal={true}>
-            <DialogContent className="bg-black border-white/10 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto z-[99999]" style={{ zIndex: 99999 }}>
+            <DialogContent 
+                className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto"
+                style={{ zIndex: 99999 }}
+            >
                 <DialogHeader className="pt-8 sm:pt-0">
-                    <DialogTitle className="font-orbitron text-xl">MAKE AN OFFER</DialogTitle>
-                    <DialogDescription>
-                        Set your price for <span className="text-primary font-bold">{Security.sanitizeText(item.name)}</span>.
+                    <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
+                        <Gavel className="text-cyan-400" size={20} />
+                        MAKE AN OFFER
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                        Set your price for <span className="text-cyan-400 font-bold">{Security.sanitizeText(item.name)}</span>
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
                     {/* Amount Input */}
                     <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">OFFER AMOUNT ($BASED)</Label>
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono tracking-wider">OFFER AMOUNT ($BASED)</Label>
                         <div className="flex gap-2">
                              <Input 
                                 type="text"
@@ -1750,7 +1778,8 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                                     setAmount(val ? parseInt(val, 10) : 0);
                                     setValidationError(null);
                                 }}
-                                className={`bg-white/5 border-white/10 text-white font-mono text-lg ${insufficientFunds ? 'border-red-500/50' : ''}`}
+                                className={`bg-white/5 border-white/20 text-white font-mono text-lg focus:border-cyan-500/50 focus:ring-cyan-500/20 ${insufficientFunds ? 'border-red-500/50' : ''}`}
+                                placeholder="Enter amount..."
                                 data-testid="offer-amount-input"
                              />
                              <Button 
@@ -1758,7 +1787,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                                 size="sm" 
                                 onClick={setMaxOffer}
                                 disabled={!walletBalance || maxOffer <= 0}
-                                className="bg-white/5 border-white/10 text-cyan-400 hover:bg-cyan-500/10 font-mono text-xs px-3"
+                                className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 font-mono text-xs px-4 h-10"
                                 data-testid="max-offer-btn"
                              >
                                 MAX
@@ -1767,7 +1796,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         <div className="flex justify-between text-[10px] text-muted-foreground">
                             <span data-testid="offer-balance-display">
                                 {balanceLoading ? (
-                                    'Loading balance...'
+                                    <span className="animate-pulse">Loading balance...</span>
                                 ) : walletBalance !== null ? (
                                     <>Balance: <span className={insufficientFunds ? 'text-red-400' : 'text-emerald-400'}>{walletBalance.toLocaleString()}</span> $BASED</>
                                 ) : isConnected ? (
@@ -1786,15 +1815,15 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                     
                     {/* Validation Error */}
                     {validationError && (
-                        <div className="p-3 rounded bg-red-500/10 border border-red-500/30 flex items-start gap-2" data-testid="offer-validation-error">
+                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-2 animate-shake" data-testid="offer-validation-error">
                             <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
                             <span className="text-xs text-red-300">{validationError}</span>
                         </div>
                     )}
                     
                     {/* Insufficient Funds Warning */}
-                    {insufficientFunds && !validationError && (
-                        <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 flex items-start gap-2" data-testid="insufficient-funds-warning">
+                    {showWarning && !validationError && (
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2" data-testid="insufficient-funds-warning">
                             <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
                             <div className="text-xs text-amber-300">
                                 <p className="font-semibold">Insufficient Balance</p>
@@ -1803,70 +1832,98 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                         </div>
                     )}
 
-                    {/* Duration Select */}
+                    {/* Duration Select - FIXED with proper z-index */}
                     <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">OFFER DURATION</Label>
-                        <Select value={duration} onValueChange={setDuration}>
-                            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                                <SelectValue />
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono tracking-wider">OFFER DURATION</Label>
+                        <Select value={duration} onValueChange={(val) => { console.log('[OfferModal] Duration changed:', val); setDuration(val); }}>
+                            <SelectTrigger 
+                                className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-cyan-500/50 focus:border-cyan-500/50 focus:ring-cyan-500/20 h-12"
+                                data-testid="duration-select-trigger"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Timer size={16} className="text-cyan-400" />
+                                    <SelectValue placeholder="Select duration">{getDurationLabel(duration)}</SelectValue>
+                                </div>
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="1 day">1 Day</SelectItem>
-                                <SelectItem value="3 days">3 Days</SelectItem>
-                                <SelectItem value="1 week">1 Week</SelectItem>
-                                <SelectItem value="1 month">1 Month</SelectItem>
-                                <SelectItem value="3 months">3 Months</SelectItem>
-                                <SelectItem value="indefinitely">Indefinitely</SelectItem>
+                            <SelectContent 
+                                className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white"
+                                style={{ zIndex: 999999 }}
+                                position="popper"
+                                sideOffset={4}
+                            >
+                                {durationOptions.map((opt) => (
+                                    <SelectItem 
+                                        key={opt.value} 
+                                        value={opt.value}
+                                        className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 cursor-pointer py-3"
+                                    >
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     {/* Gas Estimate */}
-                    <div className="p-3 rounded bg-white/5 border border-white/10 flex justify-between items-center">
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <Flame size={14} className="text-orange-500" />
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1 cursor-help group">
-                                            <span className="text-xs text-muted-foreground group-hover:text-white transition-colors border-b border-dotted border-muted-foreground/50">Est. Gas Fee</span>
-                                            <Info size={10} className="text-muted-foreground group-hover:text-white transition-colors" />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="bg-black border-white/20 text-white text-xs max-w-[200px]">
-                                        <p>Gas paid in $BASED (BasedAI native token). ~{GAS_BUFFER} $BASED reserved for transaction fees.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                            <span className="text-xs text-muted-foreground">Est. Gas Fee</span>
                         </div>
                         <div className="text-right">
-                            <span className="text-xs font-mono text-white block">~0.002 $BASED</span>
-                            <span className="text-[10px] text-muted-foreground block whitespace-nowrap">(on BasedAI chain)</span>
+                            <span className="text-xs font-mono text-white">~0.002 $BASED</span>
                         </div>
                     </div>
                     
                     {/* Important Disclaimer */}
-                    <div className="p-3 rounded bg-amber-500/5 border border-amber-500/20">
-                        <p className="text-[10px] text-amber-200/80 text-center">
-                            <strong>⚠️ Note:</strong> Your $BASED is <strong>NOT locked</strong> until seller accepts. 
-                            You must maintain sufficient balance when the seller accepts, or the offer will fail.
+                    <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                        <p className="text-[10px] text-cyan-200/80 text-center">
+                            <strong>ℹ️ Note:</strong> Your $BASED is <strong>NOT locked</strong> until seller accepts. 
+                            Maintain sufficient balance when seller accepts.
                         </p>
                     </div>
                 </div>
 
-                <DialogFooter className="flex gap-2 sm:gap-2 flex-col sm:flex-row pb-6 sm:pb-0">
-                    <Button variant="ghost" onClick={onClose} className="flex-1 w-full">CANCEL</Button>
+                <DialogFooter className="flex gap-3 sm:gap-3 flex-col sm:flex-row pb-6 sm:pb-0">
+                    <Button 
+                        variant="ghost" 
+                        onClick={onClose} 
+                        className="flex-1 w-full border border-white/20 text-white hover:bg-white/10 h-12"
+                    >
+                        CANCEL
+                    </Button>
                     <Button 
                         onClick={handleSubmit} 
-                        disabled={!isConnected || !canAfford || isValidating || balanceLoading}
-                        className={`flex-1 w-full font-bold font-orbitron ${
-                            canAfford 
-                                ? 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.4)]' 
-                                : 'bg-gray-800 border border-cyan-500/30 text-cyan-400/50 cursor-not-allowed'
+                        disabled={isButtonDisabled}
+                        className={`flex-1 w-full font-bold font-orbitron h-12 text-base transition-all duration-300 ${
+                            isButtonDisabled
+                                ? 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-60'
+                                : showWarning
+                                    ? 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.4)]'
+                                    : 'bg-gradient-to-r from-cyan-500 to-cyan-400 text-black hover:from-cyan-400 hover:to-cyan-300 shadow-[0_0_25px_rgba(0,255,255,0.5)] hover:shadow-[0_0_35px_rgba(0,255,255,0.7)]'
                         }`}
                         data-testid="submit-offer-btn"
                     >
-                        {isValidating ? 'VALIDATING...' : balanceLoading ? 'LOADING...' : 'SUBMIT OFFER'}
+                        {isValidating ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="animate-spin" size={18} />
+                                SUBMITTING...
+                            </span>
+                        ) : balanceLoading ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="animate-spin" size={18} />
+                                LOADING...
+                            </span>
+                        ) : !isConnected ? (
+                            'CONNECT WALLET'
+                        ) : showWarning ? (
+                            'SUBMIT ANYWAY'
+                        ) : (
+                            <span className="flex items-center gap-2">
+                                <Gavel size={18} />
+                                SUBMIT OFFER
+                            </span>
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>
