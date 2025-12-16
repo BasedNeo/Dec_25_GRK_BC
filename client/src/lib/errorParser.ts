@@ -36,6 +36,9 @@ export function parseContractError(error: any): string {
   
   // Listing errors
   if (message.includes('ListingNotActive') || message.includes('Listing not active')) return 'This NFT is no longer listed';
+  if (message.includes('listing') && message.includes('not') && message.includes('valid')) return 'This NFT is no longer available - it may have already been sold';
+  if (message.includes('listing') && message.includes('expired')) return 'This listing has expired';
+  if (message.includes('invalid') && message.includes('listing')) return 'This listing is no longer valid';
   
   // Approval errors - check for ERC721 transfer errors which indicate approval issues
   if (message.includes('Not approved') || message.includes('not approved')) return 'Please approve marketplace first';
@@ -83,6 +86,14 @@ export function parseContractError(error: any): string {
   if (message.includes('timeout') || message.includes('Timeout')) return 'Request timed out - try again';
   if (message.includes('disconnected')) return 'Wallet disconnected - please reconnect';
   if (message.includes('chain') || message.includes('Chain')) return 'Wrong network - please switch to BasedAI';
+  
+  // RPC errors
+  if (message.includes('RPC') && message.includes('failed')) return 'Network error - please check your connection and try again';
+  if (message.includes('query timeout')) return 'Network timeout - please try again';
+  if (message.includes('eth_call')) return 'Network error - please try again';
+  
+  // Already sold
+  if (message.includes('sold')) return 'This NFT has already been sold';
   
   // Default fallback
   return 'Transaction failed - please try again';

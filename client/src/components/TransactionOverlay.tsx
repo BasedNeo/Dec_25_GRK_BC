@@ -246,9 +246,19 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
             {actualStatus === 'error' && (
               <div className="mb-4">
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-red-400" data-testid="text-error-message">
+                  <p className="text-sm text-red-400 font-medium mb-2" data-testid="text-error-message">
                     {actualError || 'Transaction failed. Please try again.'}
                   </p>
+                  {actualError && actualError.length > 50 && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-muted-foreground cursor-pointer hover:text-white/70 transition-colors">
+                        Technical details
+                      </summary>
+                      <pre className="mt-2 text-[10px] bg-black/50 p-2 rounded overflow-auto max-h-24 text-left text-gray-400">
+                        {JSON.stringify({ error: actualError, hash: transaction?.hash }, null, 2)}
+                      </pre>
+                    </details>
+                  )}
                 </div>
               </div>
             )}

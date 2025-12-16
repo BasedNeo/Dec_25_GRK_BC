@@ -1,0 +1,198 @@
+FIX ERROR REPORTING - Make transaction errors user-friendly
+
+PROBLEMS:
+1. Transaction modal shows "0 $BASED" instead of actual price
+2. Error messages show raw RPC data instead of helpful messages
+3. No detection for common failure reasons (already sold, insufficient funds, etc.)
+
+═══════════════════════════════════════════════════════════════
+1. FIX TRANSACTION PRICE DISPLAY
+═══════════════════════════════════════════════════════════════
+
+When displaying pending/failed transactions, show the actual price.
+
+UPDATE the transaction tracking state to include price:
+
+interface PendingTransaction {
+  type: 'buy' | 'list' | 'delist' | 'offer' | 'mint';
+  tokenId: number;
+  price?: string;
+  hash?: string;
+  status: 'pending' | 'confirmed' | 'failed';
+}
+
+When initiating a buy:
+setPendingTx({
+  type: 'buy',
+  tokenId: tokenId,
+  price: listingPrice.toString(), // PASS THE ACTUAL PRICE
+  status: 'pending'
+});
+
+Display in modal:
+{pendingTx.type === 'buy' && (
+  <p>Buying Guardian #{pendingTx.tokenId} for {pendingTx.price || '...'} $BASED</p>
+)}
+
+═══════════════════════════════════════════════════════════════
+2. PARSE ERROR MESSAGES INTO USER-FRIENDLY TEXT
+═══════════════════════════════════════════════════════════════
+
+CREATE a helper function to parse blockchain errors:
+
+function parseTransactionError(error: any): string {
+  const errorString = error?.message || error?.toString() || '';
+  
+  // Common error patterns and user-friendly messages
+  const errorMappings: { pattern: RegExp | string; message: string }[] = [
+    // Already sold / invalid listing
+    { pattern: /listing.*not.*valid/i, message: 'This NFT is no longer available - it may have already been sold.' },
+    { pattern: /listing.*expired/i, message: 'This listing has expired.' },
+    { pattern: /invalid.*listing/i, message: 'This listing is no longer valid.' },
+    
+    // Insufficient funds
+    { pattern: /insufficient.*funds/i, message: 'Insufficient $BASED balance to complete this purchase.' },
+    { pattern: /insufficient.*balance/i, message: 'You don\'t have enough $BASED for this transaction.' },
+    
+    // Wrong price
+    { pattern: /wrong.*price/i, message: 'The listing price has changed. Please refresh and try again.' },
+    { pattern: /price.*mismatch/i, message: 'Price mismatch - the listing may have been updated.' },
+    
+    // Not owner
+    { pattern: /not.*owner/i, message: 'You don\'t own this NFT.' },
+    { pattern: /caller.*not.*owner/i, message: 'Only the NFT owner can perform this action.' },
+    
+    // Not approved
+    { pattern: /not.*approved/i, message: 'Marketplace not approved. Please approve first.' },
+    { pattern: /transfer.*not.*approved/i, message: 'Please approve the marketplace to transfer your NFT.' },
+    
+    // Already listed
+    { pattern: /already.*listed/i, message: 'This NFT is already listed for sale.' },
+    
+    // Gas issues
+    { pattern: /gas.*required.*exceeds/i, message: 'Transaction would fail - the NFT may already be sold.' },
+    { pattern: /out.*of.*gas/i, message: 'Transaction ran out of gas. Please try again.' },
+    
+    // RPC errors
+    { pattern: /rpc.*request.*failed/i, message: 'Network error - please check your connection and try again.' },
+    { pattern: /network.*error/i, message: 'Network connection issue. Please try again.' },
+    
+    // User rejected
+    { pattern: /user.*rejected/i, message: 'Transaction cancelled.' },
+    { pattern: /user.*denied/i, message: 'Transaction cancelled by user.' },
+    
+    // Execution reverted (generic)
+    { pattern: /execution.*reverted/i, message: 'Transaction failed - the NFT may no longer be available.' },
+  ];
+  
+  for (const { pattern, message } of errorMappings) {
+    if (typeof pattern === 'string') {
+      if (errorString.toLowerCase().includes(pattern.toLowerCase())) {
+        return message;
+      }
+    } else if (pattern.test(errorString)) {
+      return message;
+    }
+  }
+  
+  // Default message
+  return 'Transaction failed. Please try again or contact support if the issue persists.';
+}
+
+═══════════════════════════════════════════════════════════════
+3. UPDATE ERROR DISPLAY IN TRANSACTION MODAL
+═══════════════════════════════════════════════════════════════
+
+Instead of showing raw RPC error data, show parsed message:
+
+// BEFORE (raw error):
+<div className="text-red-400 text-xs">
+  {error.message}
+</div>
+
+// AFTER (user-friendly):
+<div className="text-red-400">
+  <p className="font-medium mb-2">{parseTransactionError(error)}</p>
+  
+  {/* Collapsible technical details for advanced users */}
+  <details className="mt-2">
+    <summary className="text-xs text-muted-foreground cursor-pointer">
+      Technical details
+    </summary>
+    <pre className="mt-2 text-[10px] bg-black/50 p-2 rounded overflow-auto max-h-32">
+      {JSON.stringify(error, null, 2)}
+    </pre>
+  </details>
+</div>
+
+═══════════════════════════════════════════════════════════════
+4. ADD PRE-TRANSACTION VALIDATION
+═══════════════════════════════════════════════════════════════
+
+Before submitting a buy transaction, check if listing is still valid:
+
+async function validateBeforeBuy(listingId: number): Promise<{ valid: boolean; reason?: string }> {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const marketplace = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
+    
+    // Check if listing exists and is valid
+    const listing = await marketplace.listings(listingId);
+    
+    if (!listing || listing.seller === ethers.ZeroAddress) {
+      return { valid: false, reason: 'This NFT is no longer listed for sale.' };
+    }
+    
+    if (listing.sold) {
+      return { valid: false, reason: 'This NFT has already been sold.' };
+    }
+    
+    // Check if seller still owns the NFT
+    const nftContract = new ethers.Contract(NFT_CONTRACT, ['function ownerOf(uint256) view returns (address)'], provider);
+    const owner = await nftContract.ownerOf(listing.tokenId);
+    
+    if (owner.toLowerCase() !== listing.seller.toLowerCase()) {
+      return { valid: false, reason: 'The seller no longer owns this NFT.' };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    console.error('Validation failed:', e);
+    return { valid: true }; // Proceed anyway, let contract handle it
+  }
+}
+
+// Use before buying:
+const validation = await validateBeforeBuy(listingId);
+if (!validation.valid) {
+  setError(validation.reason);
+  return;
+}
+
+═══════════════════════════════════════════════════════════════
+5. IMPROVE TOAST NOTIFICATIONS
+═══════════════════════════════════════════════════════════════
+
+Show clear success/error toasts:
+
+// Success
+toast.success('NFT purchased successfully!', {
+  description: `Guardian #${tokenId} is now in your wallet.`
+});
+
+// Error with helpful message
+toast.error('Purchase failed', {
+  description: parseTransactionError(error)
+});
+
+// Already sold
+toast.warning('NFT no longer available', {
+  description: 'This NFT was purchased by someone else. Try another one!'
+});
+
+EXPECTED RESULTS:
+✅ Transaction modal shows correct price (72,333 $BASED)
+✅ Errors show helpful messages ("NFT already sold" not raw RPC data)
+✅ Pre-validation catches issues before submitting transaction
+✅ Technical details hidden but available for debugging
+✅ Better UX for users who don't understand blockchain errors
