@@ -65,11 +65,6 @@ export function useMint() {
       setError(null);
 
       const totalPrice = MINT_PRICE * quantity;
-      
-      console.log('🚀 Minting NFT...');
-      console.log('   Quantity:', quantity);
-      console.log('   Total Price:', totalPrice, '$BASED');
-      console.log('   Contract:', NFT_CONTRACT);
 
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
