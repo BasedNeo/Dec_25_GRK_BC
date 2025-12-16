@@ -1,0 +1,205 @@
+DIAGNOSE MINTING ISSUE - Minting fails even though user has enough $BASED
+
+PROBLEM:
+- User has sufficient $BASED balance
+- App shows they can mint
+- Transaction fails when attempting to mint
+- Minting worked yesterday but fails today
+
+CREATE DIAGNOSTIC FUNCTION:
+
+Add a "Debug Mint" button (admin only) that runs these checks before minting:
+
+async function diagnoseMinting(userAddress: string) {
+  const results: Record<string, any> = {};
+  const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+  
+  console.log('🔍 Starting mint diagnostics...');
+  
+  // 1. Check RPC Connection
+  try {
+    const blockNumber = await provider.getBlockNumber();
+    results.rpcConnection = { status: '✅', blockNumber };
+    console.log('✅ RPC Connected - Block:', blockNumber);
+  } catch (e) {
+    results.rpcConnection = { status: '❌', error: e.message };
+    console.error('❌ RPC Failed:', e.message);
+  }
+  
+  // 2. Check User Balance
+  try {
+    const balance = await provider.getBalance(userAddress);
+    const balanceInBased = parseFloat(ethers.formatEther(balance));
+    results.userBalance = { status: balanceInBased >= 69420 ? '✅' : '❌', balance: balanceInBased };
+    console.log('💰 Balance:', balanceInBased, '$BASED', balanceInBased >= 69420 ? '✅' : '❌ (Need 69,420)');
+  } catch (e) {
+    results.userBalance = { status: '❌', error: e.message };
+    console.error('❌ Balance check failed:', e.message);
+  }
+  
+  // 3. Check NFT Contract State
+  const nftContract = new ethers.Contract(
+    '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+    [
+      'function paused() view returns (bool)',
+      'function publicMintEnabled() view returns (bool)',
+      'function totalMinted() view returns (uint256)',
+      'function maxSupply() view returns (uint256)',
+      'function mintPrice() view returns (uint256)',
+      'function maxPerWallet() view returns (uint256)',
+      'function numberMinted(address) view returns (uint256)'
+    ],
+    provider
+  );
+  
+  try {
+    const [paused, publicMintEnabled, totalMinted, maxSupply, mintPrice, maxPerWallet] = await Promise.all([
+      nftContract.paused().catch(() => 'N/A'),
+      nftContract.publicMintEnabled().catch(() => 'N/A'),
+      nftContract.totalMinted().catch(() => 'N/A'),
+      nftContract.maxSupply().catch(() => 'N/A'),
+      nftContract.mintPrice().catch(() => 'N/A'),
+      nftContract.maxPerWallet().catch(() => 'N/A'),
+    ]);
+    
+    results.contractState = {
+      paused: paused === 'N/A' ? 'N/A' : (paused ? '❌ YES' : '✅ NO'),
+      publicMintEnabled: publicMintEnabled === 'N/A' ? 'N/A' : (publicMintEnabled ? '✅ YES' : '❌ NO'),
+      totalMinted: totalMinted?.toString() || 'N/A',
+      maxSupply: maxSupply?.toString() || 'N/A',
+      mintPrice: mintPrice ? ethers.formatEther(mintPrice) : 'N/A',
+      maxPerWallet: maxPerWallet?.toString() || 'N/A',
+    };
+    
+    console.log('📋 Contract State:');
+    console.log('   Paused:', results.contractState.paused);
+    console.log('   Public Mint:', results.contractState.publicMintEnabled);
+    console.log('   Minted:', results.contractState.totalMinted, '/', results.contractState.maxSupply);
+    console.log('   Mint Price:', results.contractState.mintPrice, '$BASED');
+    console.log('   Max Per Wallet:', results.contractState.maxPerWallet);
+  } catch (e) {
+    results.contractState = { status: '❌', error: e.message };
+    console.error('❌ Contract state check failed:', e.message);
+  }
+  
+  // 4. Check User's Mint Count
+  try {
+    const userMinted = await nftContract.numberMinted(userAddress);
+    const maxPerWallet = await nftContract.maxPerWallet().catch(() => BigInt(10));
+    const canMintMore = Number(userMinted) < Number(maxPerWallet);
+    results.userMintStatus = {
+      minted: Number(userMinted),
+      maxAllowed: Number(maxPerWallet),
+      canMintMore: canMintMore ? '✅ YES' : '❌ NO (limit reached)'
+    };
+    console.log('👤 User Mint Status:');
+    console.log('   Already Minted:', Number(userMinted));
+    console.log('   Max Allowed:', Number(maxPerWallet));
+    console.log('   Can Mint More:', results.userMintStatus.canMintMore);
+  } catch (e) {
+    results.userMintStatus = { status: '❌', error: e.message };
+    console.error('❌ User mint status check failed:', e.message);
+  }
+  
+  // 5. Test Gas Estimation
+  try {
+    const mintPrice = await nftContract.mintPrice();
+    const gasEstimate = await provider.estimateGas({
+      from: userAddress,
+      to: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+      value: mintPrice,
+      data: nftContract.interface.encodeFunctionData('mint', [1])
+    });
+    results.gasEstimate = { status: '✅', gas: gasEstimate.toString() };
+    console.log('⛽ Gas Estimate:', gasEstimate.toString());
+  } catch (e) {
+    results.gasEstimate = { status: '❌', error: e.message };
+    console.error('❌ Gas estimation failed:', e.message);
+    console.error('   This usually means the transaction would revert!');
+    console.error('   Reason:', e.message);
+  }
+  
+  // 6. Check Current Gas Price
+  try {
+    const feeData = await provider.getFeeData();
+    results.gasPrice = {
+      gasPrice: feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') + ' gwei' : 'N/A',
+      maxFeePerGas: feeData.maxFeePerGas ? ethers.formatUnits(feeData.maxFeePerGas, 'gwei') + ' gwei' : 'N/A',
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? ethers.formatUnits(feeData.maxPriorityFeePerGas, 'gwei') + ' gwei' : 'N/A',
+    };
+    console.log('💨 Gas Prices:');
+    console.log('   Gas Price:', results.gasPrice.gasPrice);
+    console.log('   Max Fee:', results.gasPrice.maxFeePerGas);
+    console.log('   Priority Fee:', results.gasPrice.maxPriorityFeePerGas);
+    
+    // Check if gas price is suspiciously low
+    if (feeData.gasPrice && feeData.gasPrice < BigInt(100000)) {
+      console.warn('⚠️ WARNING: Gas price is extremely low! This may cause issues.');
+    }
+  } catch (e) {
+    results.gasPrice = { status: '❌', error: e.message };
+    console.error('❌ Gas price check failed:', e.message);
+  }
+  
+  // Summary
+  console.log('\n📊 DIAGNOSTIC SUMMARY:');
+  console.log('========================');
+  console.log(JSON.stringify(results, null, 2));
+  
+  return results;
+}
+
+ADD TO UI:
+
+In the minting component or admin panel, add a diagnostic button:
+
+{isAdmin && (
+  <Button
+    onClick={async () => {
+      if (!address) return;
+      console.clear();
+      const results = await diagnoseMinting(address);
+      
+      // Show results in a modal or alert
+      alert(`Diagnostic Results:\n\n${JSON.stringify(results, null, 2)}`);
+    }}
+    variant="outline"
+    className="text-xs border-yellow-500/50 text-yellow-400"
+  >
+    🔍 Debug Mint
+  </Button>
+)}
+
+ALSO ADD to useMint hook - log before transaction:
+
+const mintNFT = async (quantity: number) => {
+  console.log('🚀 Starting mint...');
+  console.log('   Quantity:', quantity);
+  console.log('   Price:', 69420 * quantity, '$BASED');
+  console.log('   User:', address);
+  
+  // Run quick diagnostics first
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const block = await provider.getBlockNumber();
+    console.log('   RPC OK, block:', block);
+    
+    const balance = await provider.getBalance(address);
+    console.log('   Balance:', ethers.formatEther(balance), '$BASED');
+    
+    const feeData = await provider.getFeeData();
+    console.log('   Gas price:', feeData.gasPrice?.toString());
+  } catch (e) {
+    console.error('   Pre-check failed:', e);
+  }
+  
+  // Then proceed with mint...
+};
+
+RUN THE DIAGNOSTIC:
+1. Connect admin wallet
+2. Click "Debug Mint" button
+3. Check browser console (F12) for full output
+4. Share the results
+
+This will tell us exactly why minting is failing!

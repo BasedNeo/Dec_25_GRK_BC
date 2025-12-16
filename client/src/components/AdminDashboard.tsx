@@ -199,6 +199,128 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     
     addLog('Diagnostics exported.');
   };
+
+  const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
+
+  const diagnoseMinting = async () => {
+    if (!address) return;
+    setLoading('mintDebug');
+    addLog('🔍 Starting mint diagnostics...');
+    
+    const results: Record<string, any> = {};
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    
+    try {
+      const blockNumber = await provider.getBlockNumber();
+      results.rpcConnection = { status: '✅', blockNumber };
+      addLog(`✅ RPC Connected - Block: ${blockNumber}`);
+    } catch (e: any) {
+      results.rpcConnection = { status: '❌', error: e.message };
+      addLog(`❌ RPC Failed: ${e.message}`);
+    }
+    
+    try {
+      const balance = await provider.getBalance(address);
+      const balanceInBased = parseFloat(ethers.formatEther(balance));
+      results.userBalance = { status: balanceInBased >= 69420 ? '✅' : '❌', balance: balanceInBased };
+      addLog(`💰 Balance: ${balanceInBased.toLocaleString()} $BASED ${balanceInBased >= 69420 ? '✅' : '❌ (Need 69,420)'}`);
+    } catch (e: any) {
+      results.userBalance = { status: '❌', error: e.message };
+      addLog(`❌ Balance check failed: ${e.message}`);
+    }
+    
+    const nftContract = new ethers.Contract(
+      NFT_CONTRACT,
+      [
+        'function paused() view returns (bool)',
+        'function publicMintEnabled() view returns (bool)',
+        'function totalMinted() view returns (uint256)',
+        'function maxSupply() view returns (uint256)',
+        'function mintPrice() view returns (uint256)',
+        'function maxPerWallet() view returns (uint256)',
+        'function numberMinted(address) view returns (uint256)',
+        'function mint(uint256) payable'
+      ],
+      provider
+    );
+    
+    try {
+      const [paused, publicMintEnabled, totalMinted, maxSupply, mintPrice, maxPerWallet] = await Promise.all([
+        nftContract.paused().catch(() => 'N/A'),
+        nftContract.publicMintEnabled().catch(() => 'N/A'),
+        nftContract.totalMinted().catch(() => 'N/A'),
+        nftContract.maxSupply().catch(() => 'N/A'),
+        nftContract.mintPrice().catch(() => 'N/A'),
+        nftContract.maxPerWallet().catch(() => 'N/A'),
+      ]);
+      
+      results.contractState = {
+        paused: paused === 'N/A' ? 'N/A' : (paused ? '❌ YES' : '✅ NO'),
+        publicMintEnabled: publicMintEnabled === 'N/A' ? 'N/A' : (publicMintEnabled ? '✅ YES' : '❌ NO'),
+        totalMinted: totalMinted?.toString() || 'N/A',
+        maxSupply: maxSupply?.toString() || 'N/A',
+        mintPrice: mintPrice ? ethers.formatEther(mintPrice) : 'N/A',
+        maxPerWallet: maxPerWallet?.toString() || 'N/A',
+      };
+      
+      addLog(`📋 Contract: Paused=${results.contractState.paused}, PublicMint=${results.contractState.publicMintEnabled}`);
+      addLog(`📋 Minted: ${results.contractState.totalMinted}/${results.contractState.maxSupply}, Price: ${results.contractState.mintPrice} $BASED`);
+    } catch (e: any) {
+      results.contractState = { status: '❌', error: e.message };
+      addLog(`❌ Contract state check failed: ${e.message}`);
+    }
+    
+    try {
+      const userMinted = await nftContract.numberMinted(address);
+      const maxPerWallet = await nftContract.maxPerWallet().catch(() => BigInt(10));
+      const canMintMore = Number(userMinted) < Number(maxPerWallet);
+      results.userMintStatus = {
+        minted: Number(userMinted),
+        maxAllowed: Number(maxPerWallet),
+        canMintMore: canMintMore ? '✅ YES' : '❌ NO (limit reached)'
+      };
+      addLog(`👤 User minted: ${Number(userMinted)}/${Number(maxPerWallet)} - Can mint: ${results.userMintStatus.canMintMore}`);
+    } catch (e: any) {
+      results.userMintStatus = { status: '❌', error: e.message };
+      addLog(`❌ User mint status check failed: ${e.message}`);
+    }
+    
+    try {
+      const mintPrice = await nftContract.mintPrice();
+      const gasEstimate = await provider.estimateGas({
+        from: address,
+        to: NFT_CONTRACT,
+        value: mintPrice,
+        data: nftContract.interface.encodeFunctionData('mint', [1])
+      });
+      results.gasEstimate = { status: '✅', gas: gasEstimate.toString() };
+      addLog(`⛽ Gas Estimate: ${gasEstimate.toString()}`);
+    } catch (e: any) {
+      results.gasEstimate = { status: '❌', error: e.message };
+      addLog(`❌ Gas estimation failed: ${e.message}`);
+      addLog(`⚠️ This usually means the transaction would REVERT!`);
+    }
+    
+    try {
+      const feeData = await provider.getFeeData();
+      results.gasPrice = {
+        gasPrice: feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') + ' gwei' : 'N/A',
+        maxFeePerGas: feeData.maxFeePerGas ? ethers.formatUnits(feeData.maxFeePerGas, 'gwei') + ' gwei' : 'N/A',
+      };
+      addLog(`💨 Gas Price: ${results.gasPrice.gasPrice}`);
+      
+      if (feeData.gasPrice && feeData.gasPrice < BigInt(100000)) {
+        addLog(`⚠️ WARNING: Gas price extremely low!`);
+      }
+    } catch (e: any) {
+      results.gasPrice = { status: '❌', error: e.message };
+      addLog(`❌ Gas price check failed: ${e.message}`);
+    }
+    
+    setMintDiagnostics(results);
+    setLoading(null);
+    addLog('📊 Mint diagnostics complete.');
+  };
   
   useEffect(() => {
     if (isOpen) {
@@ -338,6 +460,17 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               <Button
                 variant="outline"
                 size="sm"
+                onClick={diagnoseMinting}
+                disabled={loading === 'mintDebug'}
+                className="flex flex-col items-center p-4 h-auto border-yellow-500/30 hover:bg-yellow-500/10"
+              >
+                <AlertTriangle size={20} className={`mb-2 text-yellow-400 ${loading === 'mintDebug' ? 'animate-pulse' : ''}`} />
+                <span className="text-xs">🔍 Debug Mint</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportDiagnostics}
                 className="flex flex-col items-center p-4 h-auto border-purple-500/30 hover:bg-purple-500/10"
               >
@@ -377,6 +510,54 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               
             </div>
           </div>
+          
+          {mintDiagnostics && (
+            <div className="mb-6 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+              <h3 className="text-sm font-bold text-yellow-400 mb-3">🔍 Mint Diagnostics Results</h3>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">RPC:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.rpcConnection?.status}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Balance:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.userBalance?.balance?.toLocaleString()} $BASED {mintDiagnostics.userBalance?.status}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Contract Paused:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.contractState?.paused}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Public Mint:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.contractState?.publicMintEnabled}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Minted:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.contractState?.totalMinted}/{mintDiagnostics.contractState?.maxSupply}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">User Minted:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.userMintStatus?.minted}/{mintDiagnostics.userMintStatus?.maxAllowed} {mintDiagnostics.userMintStatus?.canMintMore}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Gas Estimate:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.gasEstimate?.status} {mintDiagnostics.gasEstimate?.gas || mintDiagnostics.gasEstimate?.error?.slice(0, 30)}</span>
+                </div>
+                <div className="bg-black/40 p-2 rounded">
+                  <span className="text-gray-400">Gas Price:</span>
+                  <span className="ml-2 text-white">{mintDiagnostics.gasPrice?.gasPrice}</span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setMintDiagnostics(null)}
+                className="mt-3 text-xs text-gray-400"
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
           
           <div className="mb-6 p-3 bg-black/40 rounded-lg">
             <div className="flex items-center justify-between text-xs">
