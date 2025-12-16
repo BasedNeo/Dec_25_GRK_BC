@@ -1,24 +1,21 @@
 import { calculateBackedValue } from "@/lib/mockData";
 import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
+import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { BrainDiagnostics } from "./BrainDiagnostics";
 import { motion } from "framer-motion";
 import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign, Info, X } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
-import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
+import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const MINT_PRICE = 69420;
 
 const NFT_ABI = ["function totalMinted() view returns (uint256)"];
-const MARKETPLACE_ABI = [
-  "event Sold(uint256 indexed listingId, address indexed buyer, uint256 price)"
-];
 
 export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
-  const [salesVolume, setSalesVolume] = useState<number | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -26,8 +23,10 @@ export function PoolTracker() {
   const [showInfoModal, setShowInfoModal] = useState(false);
   
   const subnetEmissions = useSubnetEmissions();
+  const { stats: activityStats } = useActivityFeed();
   
-  const isDataReady = mintedCount !== null && salesVolume !== null;
+  const salesVolume = activityStats?.totalVolume ?? 0;
+  const isDataReady = mintedCount !== null;
 
   const fetchMintedCount = useCallback(async () => {
     try {
@@ -41,50 +40,12 @@ export function PoolTracker() {
     }
   }, []);
 
-  const fetchSalesVolume = useCallback(async () => {
-    try {
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
-      const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
-      
-      // Get current block number and query only last 10000 blocks to avoid timeout
-      const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - 10000);
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<number>((_, reject) => 
-        setTimeout(() => reject(new Error('Query timeout')), 8000)
-      );
-      
-      const queryPromise = (async () => {
-        const filter = contract.filters.Sold();
-        const events = await contract.queryFilter(filter, fromBlock, "latest");
-        
-        let totalVolume = 0;
-        for (const event of events) {
-          const log = event as ethers.EventLog;
-          if (log.args && log.args.price) {
-            totalVolume += parseFloat(ethers.formatEther(log.args.price));
-          }
-        }
-        return totalVolume;
-      })();
-      
-      return await Promise.race([queryPromise, timeoutPromise]);
-    } catch (e) {
-      // Silently fail - sales volume is optional data
-      return 0;
-    }
-  }, []);
-
   const updateData = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const [minted, volume] = await Promise.all([
-        fetchMintedCount(),
-        fetchSalesVolume()
-      ]);
+      const minted = await fetchMintedCount();
       
       if (minted !== null) {
         setMintedCount(minted);
@@ -92,7 +53,6 @@ export function PoolTracker() {
         setError("Failed to fetch minted count from contract");
       }
       
-      setSalesVolume(volume);
       setLastUpdated(new Date());
     } catch (e) {
       console.error("Update failed:", e);
@@ -112,17 +72,10 @@ export function PoolTracker() {
       });
     }, 60 * 1000);
 
-    const salesInterval = setInterval(() => {
-      fetchSalesVolume().then(volume => {
-        setSalesVolume(volume);
-      });
-    }, 2 * 60 * 1000);
-
     return () => {
       clearInterval(mintInterval);
-      clearInterval(salesInterval);
     };
-  }, [fetchMintedCount, fetchSalesVolume]);
+  }, [fetchMintedCount]);
 
   const treasuryData = useMemo(() => {
     const minted = mintedCount ?? 0;
