@@ -1,39 +1,50 @@
+/**
+ * MyOffersPanel - Dashboard showing all offers the user has made
+ * Commercial-ready with inline editing and cancellation
+ */
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { 
   Clock, X, Edit3, RefreshCw, CheckCircle2, AlertTriangle, 
-  Loader2, ExternalLink, DollarSign, Timer, Gavel, Wallet
+  Loader2, ExternalLink, Trash2, DollarSign, Timer,
+  ChevronRight, Filter, MoreVertical
 } from 'lucide-react';
 import { useMyOffers, MyOffer } from '@/hooks/useMyOffers';
-import { useOffersV3 } from '@/hooks/useOffersV3';
+import { useMarketplace } from '@/hooks/useMarketplace';
 import { useToast } from '@/hooks/use-toast';
 import { NFTImage } from './NFTImage';
 import { formatDistanceToNow } from 'date-fns';
-import { BLOCK_EXPLORER, NFT_CONTRACT } from '@/lib/constants';
+import { BLOCK_EXPLORER } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAccount } from 'wagmi';
 
 interface EditOfferModalProps {
   offer: MyOffer | null;
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (newAmount: number) => void;
-  isSubmitting: boolean;
 }
 
-function EditOfferModal({ offer, isOpen, onClose, onSubmit, isSubmitting }: EditOfferModalProps) {
+function EditOfferModal({ offer, isOpen, onClose, onSubmit }: EditOfferModalProps) {
   const [newAmount, setNewAmount] = useState(offer?.amount || 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!offer) return null;
 
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    await onSubmit(newAmount);
+    setIsSubmitting(false);
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white sm:max-w-md" style={{ zIndex: 99999 }}>
+      <DialogContent className="bg-black border-cyan-500/30 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-orbitron flex items-center gap-2 text-cyan-400">
             <Edit3 size={18} /> EDIT OFFER
@@ -42,7 +53,7 @@ function EditOfferModal({ offer, isOpen, onClose, onSubmit, isSubmitting }: Edit
         
         <div className="py-4 space-y-4">
           <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
-            <div className="w-16 h-16 rounded overflow-hidden border border-white/10">
+            <div className="w-16 h-16 rounded overflow-hidden">
               <NFTImage src={offer.nftImage} alt={offer.nftName} id={offer.tokenId} className="w-full h-full object-cover" />
             </div>
             <div>
@@ -61,23 +72,16 @@ function EditOfferModal({ offer, isOpen, onClose, onSubmit, isSubmitting }: Edit
             />
           </div>
           
-          {offer.isV3 ? (
-            <div className="p-3 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-300">
-              <CheckCircle2 size={14} className="inline mr-2" />
-              V3 Offer: This will cancel the old signature and create a new one (FREE).
-            </div>
-          ) : (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300">
-              <AlertTriangle size={14} className="inline mr-2" />
-              This will cancel your current offer and create a new one. Gas fees apply.
-            </div>
-          )}
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300">
+            <AlertTriangle size={14} className="inline mr-2" />
+            This will cancel your current offer and create a new one. Gas fees apply.
+          </div>
         </div>
         
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={onClose} className="border border-white/20">CANCEL</Button>
+          <Button variant="ghost" onClick={onClose}>CANCEL</Button>
           <Button 
-            onClick={() => onSubmit(newAmount)}
+            onClick={handleSubmit}
             disabled={isSubmitting || newAmount <= 0}
             className="bg-cyan-500 text-black hover:bg-cyan-400 font-bold"
           >
@@ -91,7 +95,6 @@ function EditOfferModal({ offer, isOpen, onClose, onSubmit, isSubmitting }: Edit
 }
 
 export function MyOffersPanel() {
-  const { isConnected } = useAccount();
   const { 
     offers, 
     activeOffers, 
@@ -103,28 +106,26 @@ export function MyOffersPanel() {
     cancelOffer,
     activeCount 
   } = useMyOffers();
-  const offersV3 = useOffersV3();
+  const marketplace = useMarketplace();
   const { toast } = useToast();
   
   const [filter, setFilter] = useState<'all' | 'active' | 'accepted' | 'expired'>('all');
   const [editingOffer, setEditingOffer] = useState<MyOffer | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
   const handleCancel = async (offer: MyOffer) => {
     setCancellingId(offer.tokenId);
     try {
-      await cancelOffer(offer.tokenId, offer.isV3 || false, offer.v3Offer?.id);
+      await cancelOffer(offer.tokenId);
       toast({
         title: "Offer Cancelled",
-        description: `Your offer on ${offer.nftName} has been removed.`,
-        className: "bg-black border-green-500 text-green-400"
+        description: `Your offer on ${offer.nftName} has been cancelled.`,
+        className: "bg-black border-green-500 text-green-500"
       });
-    } catch (err: unknown) {
-      const error = err as Error;
+    } catch (err: any) {
       toast({
         title: "Cancel Failed",
-        description: error.message || "Could not cancel offer",
+        description: err.message || "Could not cancel offer",
         variant: "destructive"
       });
     } finally {
@@ -135,31 +136,23 @@ export function MyOffersPanel() {
   const handleEdit = async (newAmount: number) => {
     if (!editingOffer) return;
     
-    setIsEditSubmitting(true);
     try {
-      if (editingOffer.isV3 && editingOffer.v3Offer) {
-        await offersV3.cancelOffer(editingOffer.v3Offer.id);
-        await offersV3.makeOffer(editingOffer.tokenId, newAmount, 7);
-      } else {
-        await cancelOffer(editingOffer.tokenId, false);
-      }
-      
+      // Cancel old offer
+      await cancelOffer(editingOffer.tokenId);
+      // Make new offer
+      await marketplace.makeOffer(editingOffer.tokenId, newAmount, 7);
       toast({
         title: "Offer Updated",
         description: `New offer of ${newAmount.toLocaleString()} $BASED submitted.`,
-        className: "bg-black border-green-500 text-green-400"
+        className: "bg-black border-green-500 text-green-500"
       });
-      setEditingOffer(null);
       refresh();
-    } catch (err: unknown) {
-      const error = err as Error;
+    } catch (err: any) {
       toast({
         title: "Update Failed",
-        description: error.message || "Could not update offer",
+        description: err.message || "Could not update offer",
         variant: "destructive"
       });
-    } finally {
-      setIsEditSubmitting(false);
     }
   };
 
@@ -171,17 +164,16 @@ export function MyOffersPanel() {
         ? acceptedOffers 
         : expiredOffers;
 
-  const getStatusBadge = (status: MyOffer['status'], isV3?: boolean) => {
-    const v3Badge = isV3 ? <span className="ml-1 text-[8px] opacity-60">V3</span> : null;
+  const getStatusBadge = (status: MyOffer['status']) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/50">Active{v3Badge}</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/50">Active</Badge>;
       case 'accepted':
-        return <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 animate-pulse">Accepted!{v3Badge}</Badge>;
+        return <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 animate-pulse">Accepted!</Badge>;
       case 'expired':
-        return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/50">Expired{v3Badge}</Badge>;
+        return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/50">Expired</Badge>;
       case 'cancelled':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/50">Cancelled{v3Badge}</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/50">Cancelled</Badge>;
     }
   };
 
@@ -196,16 +188,6 @@ export function MyOffersPanel() {
     if (days > 0) return `${days}d ${hours}h`;
     return `${hours}h ${Math.floor((diff % 3600) / 60)}m`;
   };
-
-  if (!isConnected) {
-    return (
-      <Card className="p-8 bg-black/40 border-white/10 text-center">
-        <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-orbitron text-white mb-2">Connect Wallet</h3>
-        <p className="text-muted-foreground text-sm">Connect your wallet to view your offers</p>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -230,10 +212,10 @@ export function MyOffersPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h3 className="text-xl font-orbitron text-white flex items-center gap-2">
-            <Gavel className="text-cyan-400" size={20} />
             MY OFFERS
             {activeCount > 0 && (
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 ml-2">
@@ -246,24 +228,19 @@ export function MyOffersPanel() {
           </p>
         </div>
         
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={refresh}
-          className="border-white/10 text-white hover:bg-white/5"
-          data-testid="button-refresh-my-offers"
-        >
-          <RefreshCw size={14} className="mr-2" /> Refresh
-        </Button>
-      </div>
-
-      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-        <p className="text-xs text-green-300 flex items-center gap-2">
-          <CheckCircle2 size={14} />
-          V3 Offers are FREE (signature only). Your funds stay in your wallet until purchase completes.
-        </p>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refresh}
+            className="border-white/10 text-white hover:bg-white/5"
+          >
+            <RefreshCw size={14} className="mr-2" /> Refresh
+          </Button>
+        </div>
       </div>
       
+      {/* Filter Tabs */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)} className="w-full">
         <TabsList className="bg-white/5 border border-white/10 p-1 w-full justify-start">
           <TabsTrigger value="all" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
@@ -281,6 +258,7 @@ export function MyOffersPanel() {
         </TabsList>
       </Tabs>
       
+      {/* Offers List */}
       {filteredOffers.length > 0 ? (
         <div className="space-y-3">
           <AnimatePresence>
@@ -292,8 +270,9 @@ export function MyOffersPanel() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="bg-white/5 border-white/10 hover:border-cyan-500/30 transition-all p-4" data-testid={`my-offer-card-${offer.tokenId}`}>
+                <Card className="bg-white/5 border-white/10 hover:border-cyan-500/30 transition-all p-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {/* NFT Image */}
                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-white/10">
                       <NFTImage 
                         src={offer.nftImage} 
@@ -303,10 +282,11 @@ export function MyOffersPanel() {
                       />
                     </div>
                     
+                    {/* Details */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-orbitron text-white truncate">{offer.nftName}</h4>
-                        {getStatusBadge(offer.status, offer.isV3)}
+                        {getStatusBadge(offer.status)}
                       </div>
                       
                       <div className="flex flex-wrap gap-4 text-sm">
@@ -335,6 +315,7 @@ export function MyOffersPanel() {
                       </div>
                     </div>
                     
+                    {/* Actions */}
                     <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
                       {offer.status === 'active' && (
                         <>
@@ -343,7 +324,6 @@ export function MyOffersPanel() {
                             variant="outline"
                             onClick={() => setEditingOffer(offer)}
                             className="flex-1 sm:flex-none border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                            data-testid={`button-edit-offer-${offer.tokenId}`}
                           >
                             <Edit3 size={14} className="mr-1" /> Edit
                           </Button>
@@ -353,7 +333,6 @@ export function MyOffersPanel() {
                             onClick={() => handleCancel(offer)}
                             disabled={cancellingId === offer.tokenId}
                             className="flex-1 sm:flex-none border-red-500/30 text-red-400 hover:bg-red-500/10"
-                            data-testid={`button-cancel-offer-${offer.tokenId}`}
                           >
                             {cancellingId === offer.tokenId ? (
                               <Loader2 size={14} className="animate-spin mr-1" />
@@ -365,22 +344,17 @@ export function MyOffersPanel() {
                         </>
                       )}
                       
-                      {offer.status === 'accepted' && offer.isV3 && offer.v3Offer && (
-                        <Button
-                          size="sm"
-                          onClick={() => offersV3.completePurchase(offer.tokenId, BigInt(offer.v3Offer!.priceWei))}
-                          className="flex-1 sm:flex-none bg-green-500 text-black hover:bg-green-400 font-bold"
-                          data-testid={`button-complete-purchase-${offer.tokenId}`}
-                        >
-                          <CheckCircle2 size={14} className="mr-1" /> Complete Purchase
-                        </Button>
+                      {offer.status === 'accepted' && (
+                        <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 px-4 py-2">
+                          <CheckCircle2 size={14} className="mr-1" /> Seller Accepted!
+                        </Badge>
                       )}
                       
                       <a
-                        href={`${BLOCK_EXPLORER}/token/${NFT_CONTRACT}?a=${offer.tokenId}`}
+                        href={`${BLOCK_EXPLORER}/address/${NFT_CONTRACT}?a=${offer.tokenId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 hover:bg-white/5 rounded border border-white/10"
+                        className="p-2 hover:bg-white/5 rounded"
                         title="View on Explorer"
                       >
                         <ExternalLink size={14} className="text-muted-foreground" />
@@ -405,15 +379,24 @@ export function MyOffersPanel() {
         </div>
       )}
       
+      {/* Edit Modal */}
       <EditOfferModal
         offer={editingOffer}
         isOpen={!!editingOffer}
         onClose={() => setEditingOffer(null)}
         onSubmit={handleEdit}
-        isSubmitting={isEditSubmitting}
       />
+      
+      {/* Transaction Status */}
+      {marketplace.state.isPending && (
+        <div className="fixed bottom-4 right-4 bg-cyan-500/90 text-black px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50">
+          <Loader2 size={16} className="animate-spin" />
+          <span className="font-mono text-sm">Confirm in wallet...</span>
+        </div>
+      )}
     </div>
   );
 }
 
-export default MyOffersPanel;
+// Export for use in Portfolio import
+import { NFT_CONTRACT } from '@/lib/constants';
