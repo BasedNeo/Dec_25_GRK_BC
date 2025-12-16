@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-export const GA_ID = import.meta.env.VITE_GA_ID || 'G-XXXXXXXXXX';
+export const GA_ID = import.meta.env.VITE_GA_ID || '';
 
 export const initAnalytics = () => {
   if (typeof window === 'undefined') return;

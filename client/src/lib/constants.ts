@@ -58,3 +58,6 @@ export const ADMIN_WALLETS = [
 // === PROPOSAL CREATOR WALLETS ===
 // Alias for backward compatibility
 export const PROPOSAL_CREATOR_WALLETS = ADMIN_WALLETS;
+
+// === SITE CONFIG ===
+export const SITE_URL = "https://basedguardians.com";

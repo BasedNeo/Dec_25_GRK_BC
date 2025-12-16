@@ -68,7 +68,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (isWalletError(error)) {
-      console.log('[ErrorBoundary] Wallet operation (not an error):', error.message);
       this.setState({ hasError: false });
       return;
     }
