@@ -38,8 +38,10 @@ import { NFTDetailModal } from "./NFTDetailModal";
 import { BuyButton } from "./BuyButton";
 import { useMarketplace, useListing, useFloorPrice } from "@/hooks/useMarketplace";
 import { useOffersForOwner } from "@/hooks/useOffers";
+import { useOffersV3 } from "@/hooks/useOffersV3";
 import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { parseEther } from "viem";
+import { MyOffersPanel } from "./MyOffersPanel";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
@@ -60,6 +62,9 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Real Marketplace Contract Integration ---
   const marketplace = useMarketplace();
+  
+  // --- V3 Off-Chain Offers (gasless, like Aftermint) ---
+  const offersV3 = useOffersV3();
   
   // --- Floor Price ---
   const { floorPrice, isLoading: floorPriceLoading } = useFloorPrice();
@@ -673,15 +678,15 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       const expirationDays = daysMatch ? parseInt(daysMatch[1]) : 7;
 
       try {
-          await marketplace.makeOffer(offerItem.id, amount, expirationDays);
-          trackEvent('nft_offer', 'Marketplace', `Item #${offerItem.id}`, amount);
+          // Use V3 off-chain offers (gasless, like Aftermint)
+          const success = await offersV3.makeOffer(offerItem.id, amount, expirationDays);
           
-          // Show success on confirmation (handled by hook, but add confetti here)
-          if (marketplace.state.isSuccess) {
+          if (success) {
+              trackEvent('nft_offer_v3', 'Marketplace', `Item #${offerItem.id}`, amount);
               confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 }, colors: ['#00ffff', '#bf00ff'] });
           }
-      } catch (error) {
-          console.error('Offer failed:', error);
+      } catch {
+          // Error handled in hook
       } finally {
           setIsSubmitting(false);
       }
@@ -1253,40 +1258,63 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                         <Button onClick={openConnectModal} className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)]">CONNECT NOW</Button>
                      </div>
                  ) : (
-                     <div className="space-y-4">
-                         {receivedOffers.length > 0 ? receivedOffers.map(offer => (
-                             <Card key={offer.id} className="p-6 bg-white/5 border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-                                 <div className="flex items-center gap-4">
-                                     <div className="w-16 h-16 bg-secondary/20 rounded-lg overflow-hidden relative">
-                                        {/* Placeholder Image for Offer Item */}
-                                        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">IMG</div>
-                                     </div>
-                                     <div>
-                                         <h4 className="text-lg font-orbitron text-white">{offer.nftName}</h4>
-                                         <p className="text-xs text-muted-foreground font-mono">Offer from {offer.offerer}</p>
-                                         <div className="flex items-center gap-2 mt-1">
-                                             <Badge variant="outline" className="border-accent text-accent">{offer.amount} $BASED</Badge>
-                                             <span className="text-[10px] text-muted-foreground">{offer.time}</span>
-                                         </div>
-                                     </div>
-                                 </div>
-                                 
-                                 <div className="flex gap-2 w-full md:w-auto">
-                                     <Button variant="outline" className="flex-1 md:flex-none border-red-500/50 text-red-500 hover:bg-red-500/10" onClick={() => handleRejectOffer(offer.id)}>
-                                         REJECT
-                                     </Button>
-                                     <Button className="flex-1 md:flex-none bg-green-500 text-black hover:bg-green-600" onClick={() => handleAcceptOffer(offer.id, offer.nftId, offer.offerer)}>
-                                         ACCEPT OFFER
-                                     </Button>
-                                 </div>
-                             </Card>
-                         )) : (
-                            <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl">
-                                <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-orbitron text-white mb-2">NO ACTIVE OFFERS</h3>
-                                <p className="text-muted-foreground">You haven't received any offers yet.</p>
-                            </div>
-                         )}
+                     <div className="space-y-8">
+                         {/* Info Banner about V3 Offers */}
+                         <div className="p-4 rounded-lg bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 border border-cyan-500/30">
+                           <div className="flex items-start gap-3">
+                             <Gavel className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                             <div>
+                               <h4 className="text-sm font-orbitron text-white mb-1">GASLESS OFFERS</h4>
+                               <p className="text-xs text-white/60">
+                                 Making offers is now FREE! Sign a message to submit your offer - no gas required. 
+                                 Funds stay in your wallet until the seller accepts and you complete the purchase.
+                               </p>
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* My Offers (V3 Off-chain) */}
+                         <MyOffersPanel />
+
+                         {/* Received Offers Section */}
+                         <div className="space-y-4">
+                           <h3 className="text-lg font-orbitron text-white flex items-center gap-2">
+                             <MessageCircle className="text-purple-400" size={20} />
+                             RECEIVED OFFERS ({receivedOffers.length})
+                           </h3>
+                           {receivedOffers.length > 0 ? receivedOffers.map(offer => (
+                               <Card key={offer.id} className="p-6 bg-white/5 border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                                   <div className="flex items-center gap-4">
+                                       <div className="w-16 h-16 bg-secondary/20 rounded-lg overflow-hidden relative">
+                                          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">#{offer.nftId}</div>
+                                       </div>
+                                       <div>
+                                           <h4 className="text-lg font-orbitron text-white">{offer.nftName}</h4>
+                                           <p className="text-xs text-muted-foreground font-mono">Offer from {offer.offerer.slice(0, 6)}...{offer.offerer.slice(-4)}</p>
+                                           <div className="flex items-center gap-2 mt-1">
+                                               <Badge variant="outline" className="border-accent text-accent">{offer.amount.toLocaleString()} $BASED</Badge>
+                                               <span className="text-[10px] text-muted-foreground">{offer.time}</span>
+                                           </div>
+                                       </div>
+                                   </div>
+                                   
+                                   <div className="flex gap-2 w-full md:w-auto">
+                                       <Button variant="outline" className="flex-1 md:flex-none border-red-500/50 text-red-500 hover:bg-red-500/10" onClick={() => handleRejectOffer(offer.id)}>
+                                           REJECT
+                                       </Button>
+                                       <Button className="flex-1 md:flex-none bg-green-500 text-black hover:bg-green-600" onClick={() => handleAcceptOffer(offer.id, offer.nftId, offer.offerer)}>
+                                           ACCEPT OFFER
+                                       </Button>
+                                   </div>
+                               </Card>
+                           )) : (
+                              <div className="flex flex-col items-center justify-center py-12 border border-dashed border-white/10 rounded-xl">
+                                  <MessageCircle className="w-12 h-12 text-muted-foreground mb-3" />
+                                  <h3 className="text-lg font-orbitron text-white mb-1">NO RECEIVED OFFERS</h3>
+                                  <p className="text-muted-foreground text-sm">You haven't received any offers on your NFTs yet.</p>
+                              </div>
+                           )}
+                         </div>
                      </div>
                  )}
             </TabsContent>
