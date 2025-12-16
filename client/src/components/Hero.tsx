@@ -486,6 +486,40 @@ export function Hero() {
         </motion.div>
 
       </div>
+
+      {/* See Your Stats CTA */}
+      <motion.div 
+        className="mt-16 mb-8 flex justify-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8, duration: 0.5 }}
+      >
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'stats' }))}
+          className="group relative overflow-hidden px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-900/30 via-cyan-900/30 to-purple-900/30 border border-white/10 hover:border-cyan-500/50 transition-all duration-500"
+          data-testid="button-see-stats"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,255,0.1),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
+          <div className="relative flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <TrendingUp className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-orbitron tracking-wider text-white group-hover:text-cyan-300 transition-colors">
+                SEE YOUR STATS
+              </div>
+              <div className="text-[10px] text-white/40 font-mono tracking-wide">
+                Track your Guardian journey
+              </div>
+            </div>
+            <div className="ml-2 text-white/30 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all duration-300">
+              →
+            </div>
+          </div>
+        </button>
+      </motion.div>
     </section>
   );
 }
