@@ -4,15 +4,13 @@ import { Button } from "@/components/ui/button";
 import { X, ChevronRight, CheckCircle2 } from "lucide-react";
 
 export function OnboardingTour() {
+  // Tour is now disabled - keeping component for potential future use
   const [isVisible, setIsVisible] = useState(false);
-  const [step, setStep] = useState(0);
 
+  // Disabled: Tour no longer shows automatically
+  // The DisclaimerModal now handles the welcome experience
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem("bguard_tour_seen_v1");
-    if (!hasSeenTour) {
-      // Delay start slightly
-      setTimeout(() => setIsVisible(true), 1000);
-    }
+    // Tour disabled - welcome modal handles onboarding
   }, []);
 
   const handleComplete = () => {
@@ -22,8 +20,8 @@ export function OnboardingTour() {
 
   const steps = [
     {
-      title: "WELCOME TO BASED GUARDIANS (BETA)",
-      desc: "Connect your wallet to begin your journey in the Based Universe. This is the V1 Beta release on BasedAI L1.",
+      title: "WELCOME TO BASED GUARDIANS",
+      desc: "Connect your wallet to begin your journey in the Based Universe.",
       target: "top-right", 
     },
     {
@@ -37,6 +35,11 @@ export function OnboardingTour() {
       target: "top-center",
     }
   ];
+
+  const [step, setStep] = useState(0);
+
+  // Component is kept but disabled
+  if (!isVisible) return null;
 
   return (
     <AnimatePresence>
