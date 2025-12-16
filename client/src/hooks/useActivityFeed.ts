@@ -136,7 +136,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       
       // Collect all unique block numbers for batch timestamp fetching
       const allEvents = [...transferEvents.slice(-limit), ...listedEvents, ...soldEvents];
-      const uniqueBlocks = [...new Set(allEvents.map(e => e.blockNumber))];
+      const uniqueBlocks = Array.from(new Set(allEvents.map(e => e.blockNumber)));
       
       // Batch fetch timestamps for blocks not in cache
       const uncachedBlocks = uniqueBlocks.filter(b => !blockTimestampCache.has(b));
