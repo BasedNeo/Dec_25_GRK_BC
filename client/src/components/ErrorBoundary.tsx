@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { Rocket } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -51,56 +52,79 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(191,0,255,0.08)_0%,transparent_60%)]" />
-          <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-red-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.08)_0%,transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(191,0,255,0.06)_0%,transparent_40%)]" />
           
-          <div className="text-center p-8 relative z-10 max-w-md">
-            <div className="mb-6">
-              <div className="text-6xl mb-4 animate-pulse">⚠️</div>
-              <div className="font-orbitron text-xs tracking-[0.3em] text-red-500/60 mb-2">// SYSTEM MALFUNCTION</div>
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  opacity: Math.random() * 0.6 + 0.2,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${Math.random() * 2 + 2}s`
+                }}
+              />
+            ))}
+          </div>
+          
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
+          
+          <div className="text-center p-8 relative z-10 max-w-lg">
+            <div className="mb-8">
+              <div className="text-7xl mb-4">
+                <span className="inline-block animate-bounce" style={{ animationDelay: '0s' }}>🛸</span>
+              </div>
+              <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
+                // transmission interrupted
+              </div>
             </div>
             
-            <h1 className="text-3xl md:text-4xl font-orbitron font-bold mb-4 bg-gradient-to-r from-red-500 via-orange-400 to-red-500 bg-clip-text text-transparent">
-              GUARDIAN DOWN
+            <h1 className="text-3xl md:text-4xl font-orbitron font-bold mb-6 text-white leading-tight">
+              A Small Glitch in the{' '}
+              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-pulse">
+                Galaxy
+              </span>
             </h1>
             
-            <p className="text-gray-400 mb-2 font-mono text-sm">
-              The simulation encountered an anomaly.
+            <p className="text-gray-300 mb-2 text-base">
+              Even the best starships hit turbulence sometimes.
             </p>
-            <p className="text-gray-500 mb-6 font-mono text-xs">
-              Don't worry, your NFTs are safe on-chain.
+            <p className="text-gray-500 mb-8 text-sm">
+              Your assets are safe. Let's get you back on course.
             </p>
             
-            <div className="bg-black/50 border border-red-500/20 rounded-lg p-4 mb-6 text-left">
-              <p className="text-red-400/80 font-mono text-[10px] break-all">
-                ERROR: {this.state.error?.message || 'Unknown quantum disturbance'}
+            <button 
+              onClick={() => window.location.reload()}
+              className="group px-8 py-4 bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black rounded-xl font-orbitron font-bold text-base hover:shadow-[0_0_40px_rgba(0,255,255,0.5)] transition-all duration-300 flex items-center justify-center gap-3 mx-auto transform hover:scale-105"
+              data-testid="button-error-reload"
+            >
+              <Rocket className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              LAUNCH AGAIN
+            </button>
+            
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="mt-4 px-6 py-2 text-cyan-400/70 hover:text-cyan-400 font-mono text-xs transition-colors"
+              data-testid="button-error-home"
+            >
+              or return to Command Center →
+            </button>
+            
+            <div className="mt-12 p-4 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm">
+              <p className="text-gray-500 text-[10px] font-mono mb-1">Debug info for the curious:</p>
+              <p className="text-cyan-400/60 font-mono text-[10px] break-all">
+                {this.state.error?.message || 'Unknown cosmic disturbance'}
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black rounded-lg font-orbitron font-bold text-sm hover:shadow-[0_0_20px_rgba(0,255,255,0.4)] transition-all duration-300 flex items-center justify-center gap-2"
-                data-testid="button-error-reload"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                REBOOT SYSTEM
-              </button>
-              <button 
-                onClick={() => window.location.href = '/'}
-                className="px-6 py-3 bg-transparent border border-cyan-500/50 text-cyan-400 rounded-lg font-orbitron font-bold text-sm hover:bg-cyan-500/10 transition-all duration-300"
-                data-testid="button-error-home"
-              >
-                RETURN TO BASE
-              </button>
-            </div>
-            
-            <p className="text-gray-600 text-[10px] mt-8 font-mono">
-              Based Guardians Command Center v1.0
+            <p className="text-gray-600/50 text-[10px] mt-8 font-mono">
+              Based Guardians • Protecting the Galaxy
             </p>
           </div>
         </div>
