@@ -30,61 +30,38 @@ export function Footer() {
 
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
-    const maxRetries = 3;
-    let lastError: Error | null = null;
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: safeFeedback,
+          email: safeEmail || null,
+          walletAddress: null,
+        }),
+      });
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[Footer] Submitting feedback (attempt ${attempt}/${maxRetries})`);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        const response = await fetch('/api/feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: safeFeedback,
-            email: safeEmail || null,
-            walletAddress: null,
-          }),
-          signal: controller.signal,
+      if (response.ok) {
+        setFeedback("");
+        setEmail("");
+        toast({
+          title: "Feedback Sent",
+          description: "Thank you! Your feedback has been saved and our team will review it.",
+          className: "bg-black border-primary text-primary font-orbitron",
         });
-        
-        clearTimeout(timeoutId);
-
-        const data = await response.json();
-        console.log('[Footer] Response:', response.status, data);
-
-        if (response.ok) {
-          setFeedback("");
-          setEmail("");
-          toast({
-            title: "Feedback Sent",
-            description: "Thank you! Your feedback has been saved and our team will review it.",
-            className: "bg-black border-primary text-primary font-orbitron",
-          });
-          setIsSubmitting(false);
-          return;
-        } else {
-          throw new Error(data.error || 'Server error');
-        }
-      } catch (error: any) {
-        console.error(`[Footer] Attempt ${attempt} failed:`, error);
-        lastError = error;
-        
-        if (attempt < maxRetries) {
-          await new Promise(r => setTimeout(r, 1000 * attempt));
-        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Server error');
       }
+    } catch (error: any) {
+      toast({
+        title: "Connection Issue",
+        description: "Could not reach the server. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    toast({
-      title: "Connection Issue",
-      description: "Could not reach the server. Please check your connection and try again.",
-      variant: "destructive",
-    });
-    setIsSubmitting(false);
   };
 
   return (
