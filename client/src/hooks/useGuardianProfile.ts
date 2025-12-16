@@ -62,8 +62,8 @@ export function useGuardianProfile() {
           localStorage.setItem(`lastWelcomeIndex_${address.toLowerCase()}`, nextIndex.toString());
         }
       }
-    } catch (e) {
-      console.error('Failed to login:', e);
+    } catch {
+      // Login failed silently
     }
     setLoading(false);
   }, [address, isConnected]);
@@ -86,7 +86,7 @@ export function useGuardianProfile() {
         const error = await res.json();
         return { success: false, error: error.error || 'Failed to set name' };
       }
-    } catch (e) {
+    } catch {
       return { success: false, error: 'Network error' };
     }
   }, [address]);

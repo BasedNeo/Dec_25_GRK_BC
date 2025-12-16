@@ -236,8 +236,8 @@ export function UserStats() {
         }
         
         setNftBreakdown({ guardians, frogs, creatures });
-      } catch (e) {
-        console.error('Failed to fetch NFT data:', e);
+      } catch {
+        // Failed to fetch NFT data
       }
       setLoading(false);
     };
@@ -262,8 +262,6 @@ export function UserStats() {
 
         const currentBlock = await provider.getBlockNumber();
         const fromBlock = Math.max(0, currentBlock - 2000000); // ~2M blocks back
-        
-        const userAddr = address.toLowerCase();
         
         // Get transfers TO user (acquisitions)
         const incomingFilter = contract.filters.Transfer(null, address);
@@ -300,8 +298,7 @@ export function UserStats() {
           currentHolding,
           loading: false
         });
-      } catch (e) {
-        console.error('Failed to fetch diamond hands data:', e);
+      } catch {
         setDiamondHandsData(prev => ({ ...prev, loading: false }));
       }
     };

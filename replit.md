@@ -11,6 +11,10 @@ Key features include:
 - Advisory DAO voting system
 - Community pool tracking with emissions calculations
 - Real-time $BASED token price feeds from CoinGecko
+- User gamification with 8 levels, badges, and Diamond Hands status tracking
+- Custom Guardian names with wallet suffix (e.g., "Hero#A4F")
+- Welcome back messages for returning users (after 24+ hours)
+- Multi-language support (10 languages) with language selector
 
 ## User Preferences
 
@@ -68,3 +72,12 @@ Preferred communication style: Simple, everyday language.
 ### Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string
 - Optional: `VITE_GA_ID` - Google Analytics tracking ID
+
+## Recent Changes (December 2024)
+
+- Added Diamond Hands Status feature: Tracks NFT holding duration and retention rate via blockchain Transfer events (6 levels: Ice → Diamond)
+- Added Guardian Profile system: Custom usernames with wallet suffix for uniqueness, stored in database
+- Added Welcome Back messages: 4 rotating messages for users returning after 24+ hours
+- Added Internationalization (i18n): Language selector in lower-right corner, supports 10 languages (EN, ES, ZH, JA, KO, DE, FR, PT, RU, AR)
+- Added first-time visitor name prompt modal
+- Database: Added `guardian_profiles` table for username and login tracking
