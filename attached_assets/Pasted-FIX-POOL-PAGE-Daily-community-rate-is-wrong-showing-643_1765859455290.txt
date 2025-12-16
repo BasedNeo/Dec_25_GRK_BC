@@ -1,0 +1,75 @@
+FIX POOL PAGE - Daily community rate is wrong (showing 643 instead of 6,438)
+
+PROBLEM:
+The Daily Community Rate shows ~643.80 but should be ~6,438
+This is 10x too low - the calculation is dividing somewhere it shouldn't.
+
+KNOWN VALUES:
+- Brain Daily Output (100%): 64,384 $BASED/day
+- Community Share: 10%
+- Community Daily Rate: 6,438 $BASED/day (NOT 643.80)
+- Emissions Start: Dec 1, 2025
+- Current Days: ~15 days
+- Expected Lifetime Emissions: 15 × 6,438 = ~96,570 $BASED
+
+FIX in useSubnetEmissions.ts:
+
+The communityDailyRate should be 6438, not calculated from balance.
+
+FIND where dailyRate is being calculated and REPLACE with known value:
+
+// Use KNOWN daily rate, not calculated from balance
+const communityDailyRate = 6438; // Known: 10% of brain's ~64,384/day
+
+// Calculate expected lifetime emissions
+const daysSinceStart = Math.max(1, Math.floor((Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24)));
+const expectedEmissions = daysSinceStart * communityDailyRate;
+
+// Monthly projection
+const monthlyProjection = communityDailyRate * 30; // = 193,140
+
+MAKE SURE these values are returned:
+return {
+  ...other values,
+  dailyRate: 6438, // HARDCODE this known value
+  communityDailyRate: 6438,
+  monthlyProjection: 6438 * 30, // = 193,140
+  expectedEmissions: daysSinceStart * 6438,
+};
+
+FIX in PoolTracker.tsx:
+
+Find where it displays "Daily Community Rate" and ensure it uses the correct value:
+
+// Should show 6,438 not 643.80
+<span>{formatNumber(6438, 0)} $BASED/day</span>
+
+OR if using emissions hook:
+<span>{formatNumber(subnetEmissions.dailyRate, 0)} $BASED/day</span>
+
+Make sure subnetEmissions.dailyRate = 6438
+
+ALSO FIX "From Emissions" card subtitle:
+CHANGE FROM: "~643.80/day • Live from ETH"
+CHANGE TO: "~6,438/day • 10% of brain"
+
+ALSO FIX Monthly Projection:
+Should be: 6,438 × 30 = 193,140 $BASED
+NOT: 19,314
+
+EXPECTED AFTER FIX:
+┌─────────────────────────────────────────────────────┐
+│  FROM EMISSIONS (10%)                               │
+│  96,570 $BASED                                      │
+│  (15 days × 6,438/day since Dec 1)                 │
+│  ~6,438/day • 10% of brain                         │
+├─────────────────────────────────────────────────────┤
+│  DAILY COMMUNITY RATE    MONTHLY PROJECTION        │
+│  6,438 $BASED/day        193,140 $BASED            │
+└─────────────────────────────────────────────────────┘
+
+The issue is likely the code is calculating:
+  dailyRate = totalReceived / daysSinceStart
+  21,544 / 15 = 1,436 (then maybe dividing by something else = 643)
+
+Instead it should use the KNOWN rate of 6,438/day.

@@ -135,7 +135,7 @@ export function PoolTracker() {
       passiveEmissions,
       totalTreasury,
       backedValuePerNFT,
-      currentDailyRate: subnetEmissions.dailyRate * 0.10, // 10% community share
+      currentDailyRate: subnetEmissions.dailyRate, // Already community 10% rate (6,438)
       nextHalvingIn: null, // Real emissions don't have programmatic halvings
       nextHalvingRate: null,
       minted,
@@ -144,7 +144,7 @@ export function PoolTracker() {
       brainBalance: subnetEmissions.brainBalance,
       totalBrainEmissions: subnetEmissions.totalReceived,
       weeklyTotal: subnetEmissions.weeklyTotal,
-      monthlyProjection: subnetEmissions.monthlyProjection * 0.10,
+      monthlyProjection: subnetEmissions.monthlyProjection, // Already community rate * 30
       brainStatus: subnetEmissions.status
     };
   }, [mintedCount, salesVolume, subnetEmissions]);
@@ -317,10 +317,10 @@ export function PoolTracker() {
                   <h3 className="text-xs font-bold text-white font-orbitron uppercase">Daily Community Rate</h3>
                 </div>
                 <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
-                  ~{formatNumber(treasuryData.currentDailyRate, 2)} $BASED/day
+                  ~{formatNumber(treasuryData.currentDailyRate, 0)} $BASED/day
                 </span>
                 <span className="text-[9px] text-muted-foreground font-mono mt-1">
-                  10% of ~{formatNumber(subnetEmissions.dailyRate, 2)}/day brain emissions
+                  10% of ~{formatNumber(subnetEmissions.brainTotalDaily, 0)}/day brain output
                 </span>
               </div>
               
