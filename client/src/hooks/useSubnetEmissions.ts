@@ -1,0 +1,260 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ethers } from 'ethers';
+
+// BasedAI Brain Configuration
+const BRAIN_CONFIG = {
+  name: 'Based Guardians Brain',
+  wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
+  token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2', // $BASED on ETH mainnet
+  communityShare: 0.10, // 10% goes to community treasury
+  emissionsStart: new Date('2025-12-10T00:00:00Z').getTime(),
+  network: 'BasedAI',
+  networkUrl: 'https://www.getbased.ai/'
+};
+
+// Free Ethereum mainnet RPC endpoints (fallback chain)
+const ETH_RPC_ENDPOINTS = [
+  'https://eth.llamarpc.com',
+  'https://rpc.ankr.com/eth',
+  'https://ethereum.publicnode.com',
+  'https://eth.drpc.org'
+];
+
+const ERC20_ABI = [
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)'
+];
+
+export interface EmissionEvent {
+  from: string;
+  amount: number;
+  timestamp: number;
+  txHash: string;
+  blockNumber: number;
+}
+
+export interface DailyEmission {
+  date: string;
+  amount: number;
+  dayOfWeek: string;
+}
+
+export interface SubnetEmissionsData {
+  // Core metrics
+  brainBalance: number;
+  totalReceived: number;
+  communityShare: number;
+  dailyRate: number;
+  weeklyTotal: number;
+  monthlyProjection: number;
+  
+  // Status
+  status: 'active' | 'delayed' | 'inactive';
+  lastEmissionTime: number | null;
+  daysSinceStart: number;
+  
+  // Historical
+  recentEvents: EmissionEvent[];
+  dailyBreakdown: DailyEmission[];
+  
+  // Meta
+  loading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+  
+  // Config
+  config: typeof BRAIN_CONFIG;
+  
+  // Actions
+  refresh: () => Promise<void>;
+}
+
+async function getWorkingProvider(): Promise<ethers.JsonRpcProvider> {
+  for (const rpc of ETH_RPC_ENDPOINTS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpc);
+      await provider.getBlockNumber(); // Test connection
+      return provider;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('All RPC endpoints failed');
+}
+
+export function useSubnetEmissions(): SubnetEmissionsData {
+  const [brainBalance, setBrainBalance] = useState<number>(0);
+  const [totalReceived, setTotalReceived] = useState<number>(0);
+  const [recentEvents, setRecentEvents] = useState<EmissionEvent[]>([]);
+  const [dailyBreakdown, setDailyBreakdown] = useState<DailyEmission[]>([]);
+  const [lastEmissionTime, setLastEmissionTime] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  
+  const cache = useRef<{ data: any; timestamp: number } | null>(null);
+  const CACHE_DURATION = 60000; // 1 minute cache
+
+  const fetchEmissions = useCallback(async () => {
+    // Check cache
+    if (cache.current && Date.now() - cache.current.timestamp < CACHE_DURATION) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const provider = await getWorkingProvider();
+      const tokenContract = new ethers.Contract(BRAIN_CONFIG.token, ERC20_ABI, provider);
+
+      // 1. Get current brain wallet balance
+      const balance = await tokenContract.balanceOf(BRAIN_CONFIG.wallet);
+      const balanceNum = parseFloat(ethers.formatEther(balance));
+      setBrainBalance(balanceNum);
+
+      // 2. Get current block for event query range
+      const currentBlock = await provider.getBlockNumber();
+      // Query last ~30 days of blocks (assuming ~12 sec blocks on ETH = ~7200 blocks/day)
+      const blocksToQuery = 7200 * 30;
+      const fromBlock = Math.max(0, currentBlock - blocksToQuery);
+
+      // 3. Query Transfer events TO the brain wallet
+      const filter = tokenContract.filters.Transfer(null, BRAIN_CONFIG.wallet);
+      let events: ethers.EventLog[] = [];
+      
+      try {
+        const rawEvents = await tokenContract.queryFilter(filter, fromBlock, 'latest');
+        events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
+      } catch (e) {
+        // If query fails, try smaller range
+        const smallerFromBlock = currentBlock - 50000;
+        const rawEvents = await tokenContract.queryFilter(filter, smallerFromBlock, 'latest');
+        events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
+      }
+
+      // 4. Process events
+      let total = 0;
+      const processedEvents: EmissionEvent[] = [];
+      const dailyAmounts: Record<string, number> = {};
+
+      for (const event of events) {
+        if (event.args && event.args.value) {
+          const amount = parseFloat(ethers.formatEther(event.args.value));
+          total += amount;
+
+          // Get block timestamp
+          let timestamp = Date.now();
+          try {
+            const block = await provider.getBlock(event.blockNumber);
+            if (block) {
+              timestamp = block.timestamp * 1000;
+            }
+          } catch {
+            // Use estimated timestamp based on block number difference
+            timestamp = Date.now() - ((currentBlock - event.blockNumber) * 12000);
+          }
+
+          processedEvents.push({
+            from: event.args.from,
+            amount,
+            timestamp,
+            txHash: event.transactionHash,
+            blockNumber: event.blockNumber
+          });
+
+          // Aggregate by day
+          const dateKey = new Date(timestamp).toISOString().split('T')[0];
+          dailyAmounts[dateKey] = (dailyAmounts[dateKey] || 0) + amount;
+        }
+      }
+
+      setTotalReceived(total);
+      
+      // Sort events by timestamp (newest first)
+      processedEvents.sort((a, b) => b.timestamp - a.timestamp);
+      setRecentEvents(processedEvents.slice(0, 20)); // Keep last 20
+
+      // Set last emission time
+      if (processedEvents.length > 0) {
+        setLastEmissionTime(processedEvents[0].timestamp);
+      }
+
+      // Create daily breakdown for last 7 days
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dailyData: DailyEmission[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toISOString().split('T')[0];
+        dailyData.push({
+          date: dateKey,
+          amount: dailyAmounts[dateKey] || 0,
+          dayOfWeek: days[date.getDay()]
+        });
+      }
+      setDailyBreakdown(dailyData);
+
+      // Cache results
+      cache.current = {
+        data: { brainBalance: balanceNum, totalReceived: total },
+        timestamp: Date.now()
+      };
+
+      setLastUpdated(new Date());
+    } catch (e) {
+      console.error('Failed to fetch subnet emissions:', e);
+      setError(e instanceof Error ? e.message : 'Failed to fetch emission data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmissions();
+    const interval = setInterval(fetchEmissions, 60000); // Poll every minute
+    return () => clearInterval(interval);
+  }, [fetchEmissions]);
+
+  // Calculate derived values
+  const daysSinceStart = Math.max(1, (Date.now() - BRAIN_CONFIG.emissionsStart) / (1000 * 60 * 60 * 24));
+  const dailyRate = totalReceived / daysSinceStart;
+  const weeklyTotal = dailyBreakdown.reduce((sum, day) => sum + day.amount, 0);
+  const communityShare = totalReceived * BRAIN_CONFIG.communityShare;
+  const monthlyProjection = dailyRate * 30;
+
+  // Determine status
+  let status: 'active' | 'delayed' | 'inactive' = 'active';
+  if (lastEmissionTime) {
+    const hoursSinceLastEmission = (Date.now() - lastEmissionTime) / (1000 * 60 * 60);
+    if (hoursSinceLastEmission > 168) { // 7 days
+      status = 'inactive';
+    } else if (hoursSinceLastEmission > 24) {
+      status = 'delayed';
+    }
+  }
+
+  return {
+    brainBalance,
+    totalReceived,
+    communityShare,
+    dailyRate,
+    weeklyTotal,
+    monthlyProjection,
+    status,
+    lastEmissionTime,
+    daysSinceStart,
+    recentEvents,
+    dailyBreakdown,
+    loading,
+    error,
+    lastUpdated,
+    config: BRAIN_CONFIG,
+    refresh: fetchEmissions
+  };
+}
+
+// Export config for use elsewhere
+export { BRAIN_CONFIG };

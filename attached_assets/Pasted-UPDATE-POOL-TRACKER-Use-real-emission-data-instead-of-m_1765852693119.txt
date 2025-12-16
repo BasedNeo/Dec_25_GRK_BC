@@ -1,0 +1,150 @@
+UPDATE POOL TRACKER - Use real emission data instead of mock calculations
+
+Update the PoolTracker component to use the new useSubnetEmissions hook
+for REAL blockchain data instead of the mock calculatePassiveEmissions function.
+
+FILE TO MODIFY: client/src/components/PoolTracker.tsx
+
+STEP 1: Update imports at the top of the file
+
+Replace this line:
+import { calculatePassiveEmissions, calculateBackedValue } from "@/lib/mockData";
+
+With this:
+import { calculateBackedValue } from "@/lib/mockData";
+import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
+
+STEP 2: Inside the PoolTracker function, add the hook
+
+After the existing useState declarations (around line 22), add:
+const subnetEmissions = useSubnetEmissions();
+
+STEP 3: Update the treasuryData useMemo calculation
+
+Find this section (around line 106-133):
+const treasuryData = useMemo(() => {
+  const minted = mintedCount ?? 0;
+  const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+  const royaltyRevenue = salesVolume * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+  const emissionsData = calculatePassiveEmissions();
+  const passiveEmissions = emissionsData.total;
+  ...
+}, [mintedCount, salesVolume]);
+
+Replace with:
+const treasuryData = useMemo(() => {
+  const minted = mintedCount ?? 0;
+  const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+  const royaltyRevenue = salesVolume * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+  
+  // Use REAL emission data from blockchain
+  const passiveEmissions = subnetEmissions.communityShare; // 10% of brain emissions
+  
+  const totalTreasury = mintRevenue + royaltyRevenue + passiveEmissions;
+  const backedValuePerNFT = calculateBackedValue();
+  
+  return {
+    mintRevenue,
+    royaltyRevenue,
+    passiveEmissions,
+    totalTreasury,
+    backedValuePerNFT,
+    currentDailyRate: subnetEmissions.dailyRate * 0.10, // 10% community share
+    nextHalvingIn: null, // Real emissions don't have programmatic halvings
+    nextHalvingRate: null,
+    minted,
+    salesVolume,
+    // New real data
+    brainBalance: subnetEmissions.brainBalance,
+    totalBrainEmissions: subnetEmissions.totalReceived,
+    weeklyTotal: subnetEmissions.weeklyTotal,
+    monthlyProjection: subnetEmissions.monthlyProjection * 0.10,
+    brainStatus: subnetEmissions.status
+  };
+}, [mintedCount, salesVolume, subnetEmissions]);
+
+STEP 4: Update the "From Emissions" card to show real data
+
+Find this card (around line 222-233):
+<div className="bg-black/40 border border-cyan-500/30 rounded-xl p-5 flex flex-col items-center text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+  <div className="flex items-center gap-2 mb-3">
+    <Zap size={18} className="text-cyan-400" />
+    <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Emissions</h3>
+  </div>
+  <span className="text-2xl font-mono font-bold text-cyan-400 mb-1" data-testid="text-passive-emissions">
+    {formatNumber(treasuryData.passiveEmissions)} $BASED
+  </span>
+  <span className="text-[10px] text-muted-foreground font-mono">
+    Since Dec 10, 2025
+  </span>
+</div>
+
+Replace with:
+<div className="bg-black/40 border border-cyan-500/30 rounded-xl p-5 flex flex-col items-center text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+  <div className="flex items-center gap-2 mb-3">
+    <Zap size={18} className="text-cyan-400" />
+    <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Emissions (10%)</h3>
+    {subnetEmissions.loading ? (
+      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+    ) : (
+      <span className={`w-2 h-2 rounded-full ${
+        treasuryData.brainStatus === 'active' ? 'bg-green-400 animate-pulse' :
+        treasuryData.brainStatus === 'delayed' ? 'bg-yellow-400' : 'bg-red-400'
+      }`} />
+    )}
+  </div>
+  <span className="text-2xl font-mono font-bold text-cyan-400 mb-1" data-testid="text-passive-emissions">
+    {subnetEmissions.loading ? '...' : formatNumber(treasuryData.passiveEmissions)} $BASED
+  </span>
+  <span className="text-[10px] text-muted-foreground font-mono">
+    Community share of {formatNumber(treasuryData.totalBrainEmissions || 0)} total
+  </span>
+  <span className="text-[9px] text-cyan-500/50 font-mono mt-1">
+    ~{formatNumber(treasuryData.currentDailyRate, 2)}/day • Live from ETH
+  </span>
+</div>
+
+STEP 5: Update the "Current Daily Emissions" card
+
+Find this card (around line 264-271):
+<div className="bg-black/40 border border-amber-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+  <div className="flex items-center gap-2 mb-2">
+    <TrendingUp size={16} className="text-amber-400" />
+    <h3 className="text-xs font-bold text-white font-orbitron uppercase">Current Daily Emissions</h3>
+  </div>
+  <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
+    {formatNumber(treasuryData.currentDailyRate)} $BASED/day
+  </span>
+</div>
+
+Replace with:
+<div className="bg-black/40 border border-amber-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+  <div className="flex items-center gap-2 mb-2">
+    <TrendingUp size={16} className="text-amber-400" />
+    <h3 className="text-xs font-bold text-white font-orbitron uppercase">Daily Community Rate</h3>
+  </div>
+  <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
+    ~{formatNumber(treasuryData.currentDailyRate, 2)} $BASED/day
+  </span>
+  <span className="text-[9px] text-muted-foreground font-mono mt-1">
+    10% of ~{formatNumber(subnetEmissions.dailyRate, 2)}/day brain emissions
+  </span>
+</div>
+
+STEP 6: Update the "Next Halving" card to show real projections
+
+Replace the "Next Halving" card with a "Monthly Projection" card:
+<div className="bg-black/40 border border-purple-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+  <div className="flex items-center gap-2 mb-2">
+    <Timer size={16} className="text-purple-400" />
+    <h3 className="text-xs font-bold text-white font-orbitron uppercase">Monthly Projection</h3>
+  </div>
+  <span className="text-xl font-mono font-bold text-purple-400" data-testid="text-monthly-projection">
+    ~{formatNumber(treasuryData.monthlyProjection || 0)} $BASED
+  </span>
+  <span className="text-[9px] text-muted-foreground font-mono mt-1">
+    Community share at current rate
+  </span>
+</div>
+
+The Pool page now shows REAL emission data from the blockchain!
