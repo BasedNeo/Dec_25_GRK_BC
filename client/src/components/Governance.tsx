@@ -1,5 +1,6 @@
 /**
  * Governance Component - DAO Voting System
+ * Shows advisory proposals with local voting + on-chain proposals when available
  */
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { 
   Vote, Plus, Clock, CheckCircle2, XCircle, Users, Zap, 
-  ChevronDown, ChevronUp, Loader2, AlertCircle, Shield
+  ChevronDown, ChevronUp, Loader2, AlertCircle, Shield, MessageSquare
 } from 'lucide-react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { PROPOSAL_CREATOR_WALLETS } from '@/lib/constants';
@@ -32,6 +33,7 @@ import {
   calculateVotePercentage,
   Proposal
 } from '@/hooks/useGovernance';
+import { MOCK_PROPOSALS, Proposal as AdvisoryProposal } from '@/lib/mockData';
 const CATEGORIES = ['Community', 'Treasury', 'Roadmap', 'Partnership', 'Other'];
 
 export function Governance() {
@@ -115,7 +117,7 @@ export function Governance() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={<Vote className="w-5 h-5 text-white" />} label="Total Proposals" value={governance.proposalCount} />
+          <StatCard icon={<Vote className="w-5 h-5 text-white" />} label="Advisory Proposals" value={MOCK_PROPOSALS.length} />
           <StatCard icon={<Shield className="w-5 h-5 text-white" />} label="Min NFTs to Propose" value={governance.minNFTsToPropose} />
           <StatCard icon={<Users className="w-5 h-5 text-white" />} label="Quorum Required" value={`${governance.quorumPercentage}%`} />
           <StatCard icon={<Zap className="w-5 h-5 text-white" />} label="Your NFTs" value={governance.votingPower} />
@@ -229,26 +231,46 @@ export function Governance() {
 
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
-                <Vote className="w-5 h-5 text-primary" /> PROPOSALS
+                <Vote className="w-5 h-5 text-primary" /> ADVISORY PROPOSALS
+                <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400 ml-2">
+                  <MessageSquare className="w-3 h-3 mr-1" /> Community Input
+                </Badge>
               </h2>
-              {governance.proposalCount === 0 ? (
-                <Card className="p-8 bg-white/5 border-white/10 text-center">
-                  <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>
-                </Card>
-              ) : (
-                Array.from({ length: governance.proposalCount }, (_, i) => i + 1).map(proposalId => (
-                  <ProposalCard 
-                    key={proposalId}
-                    proposalId={proposalId}
-                    isExpanded={expandedProposal === proposalId}
-                    onToggle={() => setExpandedProposal(expandedProposal === proposalId ? null : proposalId)}
-                    onVote={handleVote}
-                    isPending={governance.isPending}
-                    isConfirming={governance.isConfirming}
-                    quorumPercentage={governance.quorumPercentage}
-                  />
-                ))
+              <p className="text-xs text-muted-foreground -mt-2 mb-4">
+                These advisory proposals help gauge community sentiment. Your vote is recorded locally and helps shape future decisions.
+              </p>
+              {MOCK_PROPOSALS.map(proposal => (
+                <AdvisoryProposalCard 
+                  key={proposal.id}
+                  proposal={proposal}
+                  isExpanded={expandedProposal === proposal.id}
+                  onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
+                  isConnected={governance.isConnected}
+                  votingPower={governance.votingPower}
+                />
+              ))}
+              
+              {governance.proposalCount > 0 && (
+                <>
+                  <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2 mt-8">
+                    <Shield className="w-5 h-5 text-cyan-400" /> ON-CHAIN PROPOSALS
+                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400 ml-2">
+                      Binding
+                    </Badge>
+                  </h2>
+                  {Array.from({ length: governance.proposalCount }, (_, i) => i + 1).map(proposalId => (
+                    <ProposalCard 
+                      key={proposalId}
+                      proposalId={proposalId}
+                      isExpanded={expandedProposal === proposalId + 100}
+                      onToggle={() => setExpandedProposal(expandedProposal === proposalId + 100 ? null : proposalId + 100)}
+                      onVote={handleVote}
+                      isPending={governance.isPending}
+                      isConfirming={governance.isConfirming}
+                      quorumPercentage={governance.quorumPercentage}
+                    />
+                  ))}
+                </>
               )}
             </div>
           </>
@@ -447,6 +469,154 @@ function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isC
                 ) : (
                   <div className="p-3 rounded bg-white/5 border border-white/10 text-center text-sm text-muted-foreground">
                     Voting has ended for this proposal
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+    </motion.div>
+  );
+}
+
+interface AdvisoryProposalCardProps {
+  proposal: AdvisoryProposal;
+  isExpanded: boolean;
+  onToggle: () => void;
+  isConnected: boolean;
+  votingPower: number;
+}
+
+function AdvisoryProposalCard({ proposal, isExpanded, onToggle, isConnected, votingPower }: AdvisoryProposalCardProps) {
+  const { toast } = useToast();
+  const [votes, setVotes] = useState<Record<string, number>>({});
+  const [userVote, setUserVote] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedVotes = localStorage.getItem(`advisory_votes_${proposal.id}`);
+    if (storedVotes) setVotes(JSON.parse(storedVotes));
+    const storedUserVote = localStorage.getItem(`advisory_user_vote_${proposal.id}`);
+    if (storedUserVote) setUserVote(storedUserVote);
+  }, [proposal.id]);
+
+  const handleVote = (optionId: string) => {
+    if (!isConnected) {
+      toast({ title: 'Connect Wallet', description: 'Please connect your wallet to vote', variant: 'destructive' });
+      return;
+    }
+    if (userVote) {
+      toast({ title: 'Already Voted', description: 'You have already voted on this proposal', variant: 'destructive' });
+      return;
+    }
+    
+    const power = Math.max(1, votingPower);
+    const newVotes = { ...votes, [optionId]: (votes[optionId] || proposal.options.find(o => o.id === optionId)?.votes || 0) + power };
+    setVotes(newVotes);
+    setUserVote(optionId);
+    localStorage.setItem(`advisory_votes_${proposal.id}`, JSON.stringify(newVotes));
+    localStorage.setItem(`advisory_user_vote_${proposal.id}`, optionId);
+    
+    const currentVoteCount = parseInt(localStorage.getItem('user_votes') || '0');
+    localStorage.setItem('user_votes', String(currentVoteCount + 1));
+    
+    toast({ title: 'Vote Recorded!', description: `Your advisory vote has been recorded with ${power} voting power`, className: 'bg-black border-purple-500 text-purple-400' });
+  };
+
+  const getVoteCount = (optionId: string) => votes[optionId] ?? proposal.options.find(o => o.id === optionId)?.votes ?? 0;
+  const totalVotes = proposal.options.reduce((sum, opt) => sum + getVoteCount(opt.id), 0);
+  const getPercentage = (optionId: string) => totalVotes === 0 ? 0 : Math.round((getVoteCount(optionId) / totalVotes) * 100);
+
+  const statusColor = proposal.status === 'Active' ? 'text-cyan-400 border-cyan-500/30' : 
+                      proposal.status === 'Passed' ? 'text-green-400 border-green-500/30' :
+                      proposal.status === 'Executed' ? 'text-purple-400 border-purple-500/30' : 'text-red-400 border-red-500/30';
+
+  const endDate = new Date(proposal.endTime);
+  const isActive = proposal.status === 'Active' && endDate > new Date();
+  const timeLeft = isActive ? Math.max(0, Math.floor((endDate.getTime() - Date.now()) / 1000)) : 0;
+
+  return (
+    <motion.div layout>
+      <Card className="bg-white/5 border-white/10 overflow-hidden" data-testid={`advisory-proposal-${proposal.id}`}>
+        <div className="p-4 cursor-pointer hover:bg-white/5 transition-colors" onClick={onToggle}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold font-mono">
+                #{proposal.id}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className={`text-xs ${statusColor}`}>{proposal.status}</Badge>
+                  <Badge variant="outline" className="text-xs border-white/20 text-white/60">
+                    {proposal.type === 'binary' ? 'Yes/No' : 'Multiple Choice'}
+                  </Badge>
+                </div>
+                <h3 className="font-bold text-white">{proposal.title}</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  <span>{totalVotes} votes</span>
+                </div>
+                {isActive && (
+                  <div className="flex items-center gap-1 text-xs text-purple-400">
+                    <Clock className="w-3 h-3" />
+                    <span>{formatTimeRemaining(timeLeft)}</span>
+                  </div>
+                )}
+              </div>
+              {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="px-4 pb-4 border-t border-white/10 pt-4 space-y-4">
+                <p className="text-sm text-muted-foreground">{proposal.description}</p>
+                
+                <div className="space-y-3">
+                  {proposal.options.map(option => {
+                    const count = getVoteCount(option.id);
+                    const pct = getPercentage(option.id);
+                    const isUserChoice = userVote === option.id;
+                    const optionColor = option.id === 'yes' || option.label === 'For' ? 'bg-green-500' :
+                                        option.id === 'no' || option.label === 'Against' ? 'bg-red-500' :
+                                        option.id === 'abstain' ? 'bg-gray-500' : 'bg-purple-500';
+                    
+                    return (
+                      <div key={option.id} className={`relative overflow-hidden rounded-lg border ${isUserChoice ? 'border-purple-500' : 'border-white/10'}`}>
+                        <div className="absolute inset-0 bg-white/5" />
+                        <div className={`absolute left-0 top-0 h-full ${optionColor} opacity-30`} style={{ width: `${pct}%` }} />
+                        <div className="relative p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isUserChoice && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
+                            <span className="font-medium text-white">{option.label}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground">{count} votes</span>
+                            <span className="font-bold text-white">{pct}%</span>
+                            {isActive && !userVote && (
+                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleVote(option.id); }} 
+                                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20" data-testid={`vote-${proposal.id}-${option.id}`}>
+                                Vote
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {userVote && (
+                  <div className="p-3 rounded bg-purple-500/10 border border-purple-500/30 text-center">
+                    <span className="text-sm text-purple-400">
+                      You voted for "{proposal.options.find(o => o.id === userVote)?.label}" with {Math.max(1, votingPower)} voting power
+                    </span>
                   </div>
                 )}
               </div>
