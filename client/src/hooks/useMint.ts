@@ -72,7 +72,8 @@ export function useMint() {
         functionName: 'mint',
         args: [BigInt(quantity)],
         value: parseEther(totalPrice.toString()),
-        gas: BigInt(500000), // Explicit gas limit - THIS WAS KEY
+        gas: BigInt(300000),
+        gasPrice: BigInt(1000000000), // 1 gwei - BasedAI L1 needs explicit gas price
       });
 
     } catch (e: any) {
