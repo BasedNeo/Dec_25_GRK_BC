@@ -223,8 +223,8 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
       </div>
       <div className={`text-2xl font-bold font-orbitron ${color}`}>
         {value}
-        {suffix && <span className="text-sm ml-1 text-muted-foreground">{suffix}</span>}
       </div>
+      {suffix && <div className="text-sm text-muted-foreground mt-0.5">{suffix}</div>}
     </Card>
   );
 }
