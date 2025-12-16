@@ -32,8 +32,6 @@ import {
   calculateVotePercentage,
   Proposal
 } from '@/hooks/useGovernance';
-import { MOCK_PROPOSALS, Proposal as MockProposal } from '@/lib/mockData';
-
 const CATEGORIES = ['Community', 'Treasury', 'Roadmap', 'Partnership', 'Other'];
 
 export function Governance() {
@@ -47,24 +45,9 @@ export function Governance() {
   const [newDescription, setNewDescription] = useState('');
   const [newExpirationDays, setNewExpirationDays] = useState('7');
   const [expandedProposal, setExpandedProposal] = useState<number | null>(null);
-  const [proposals, setProposals] = useState<MockProposal[]>(MOCK_PROPOSALS);
 
-  const handleVote = (proposalId: number, optionId: string, votePower: number) => {
-    setProposals(prevProposals => 
-      prevProposals.map(p => {
-        if (p.id === proposalId) {
-          const newOptions = p.options.map(o => 
-            o.id === optionId ? { ...o, votes: o.votes + votePower } : o
-          );
-          return {
-            ...p,
-            options: newOptions,
-            totalVotes: p.totalVotes + votePower
-          };
-        }
-        return p;
-      })
-    );
+  const handleVote = async (proposalId: number, support: boolean) => {
+    await governance.vote(proposalId, support);
   };
 
   const isAllowedCreator = governance.isConnected && governance.address && 
@@ -248,21 +231,22 @@ export function Governance() {
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
                 <Vote className="w-5 h-5 text-primary" /> PROPOSALS
               </h2>
-              {proposals.length === 0 ? (
+              {governance.proposalCount === 0 ? (
                 <Card className="p-8 bg-white/5 border-white/10 text-center">
                   <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No proposals yet. Be the first to create one!</p>
                 </Card>
               ) : (
-                proposals.map(proposal => (
-                  <MockProposalCard 
-                    key={proposal.id}
-                    proposal={proposal}
-                    isExpanded={expandedProposal === proposal.id}
-                    onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
-                    quorumPercentage={governance.quorumPercentage}
+                Array.from({ length: governance.proposalCount }, (_, i) => i + 1).map(proposalId => (
+                  <ProposalCard 
+                    key={proposalId}
+                    proposalId={proposalId}
+                    isExpanded={expandedProposal === proposalId}
+                    onToggle={() => setExpandedProposal(expandedProposal === proposalId ? null : proposalId)}
                     onVote={handleVote}
-                    votePower={governance.votingPower}
+                    isPending={governance.isPending}
+                    isConfirming={governance.isConfirming}
+                    quorumPercentage={governance.quorumPercentage}
                   />
                 ))
               )}
@@ -459,174 +443,6 @@ function ProposalCard({ proposalId, isExpanded, onToggle, onVote, isPending, isC
                       {(isPending || isConfirming) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       <XCircle className="w-4 h-4 mr-2" /> VOTE AGAINST
                     </Button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded bg-white/5 border border-white/10 text-center text-sm text-muted-foreground">
-                    Voting has ended for this proposal
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Card>
-    </motion.div>
-  );
-}
-
-// Mock Proposal Card for displaying MOCK_PROPOSALS
-interface MockProposalCardProps {
-  proposal: typeof MOCK_PROPOSALS[0];
-  isExpanded: boolean;
-  onToggle: () => void;
-  quorumPercentage: number;
-  onVote: (proposalId: number, optionId: string, votePower: number) => void;
-  votePower: number;
-}
-
-function MockProposalCard({ proposal, isExpanded, onToggle, quorumPercentage, onVote, votePower }: MockProposalCardProps) {
-  const { toast } = useToast();
-  const [hasVoted, setHasVoted] = useState(false);
-  const [userVoteFor, setUserVoteFor] = useState<string | null>(null);
-  const isActive = proposal.status === 'Active';
-  const endTime = new Date(proposal.endTime);
-  const now = new Date();
-  const timeRemainingMs = endTime.getTime() - now.getTime();
-  const daysRemaining = Math.max(0, Math.ceil(timeRemainingMs / (1000 * 60 * 60 * 24)));
-  
-  // Calculate vote percentages
-  const forVotes = proposal.options.find(o => o.id === 'yes' || o.id === 'spacecraft')?.votes || 0;
-  const againstVotes = proposal.options.find(o => o.id === 'no' || o.id === 'planet')?.votes || 0;
-  const totalVotes = proposal.totalVotes || (forVotes + againstVotes);
-  const forPercent = totalVotes > 0 ? Math.round((forVotes / totalVotes) * 100) : 50;
-  const againstPercent = totalVotes > 0 ? Math.round((againstVotes / totalVotes) * 100) : 50;
-  
-  const handleLocalVote = (optionId: string) => {
-    if (hasVoted) {
-      toast({ title: "Already Voted", description: "You have already cast your vote on this proposal", variant: "destructive" });
-      return;
-    }
-    if (votePower === 0) {
-      toast({ title: "No Voting Power", description: "You need to own at least one Guardian NFT to vote", variant: "destructive" });
-      return;
-    }
-    setHasVoted(true);
-    setUserVoteFor(optionId);
-    onVote(proposal.id, optionId, votePower);
-    const optionLabel = proposal.options.find(o => o.id === optionId)?.label || optionId;
-    toast({ 
-      title: "Vote Cast!", 
-      description: `You cast ${votePower} vote${votePower > 1 ? 's' : ''} for "${optionLabel}"`,
-      className: "bg-black border-green-500 text-green-500"
-    });
-  };
-
-  const statusColors: Record<string, string> = {
-    'Active': 'border-green-500 text-green-400',
-    'Passed': 'border-blue-500 text-blue-400',
-    'Rejected': 'border-red-500 text-red-400',
-    'Executed': 'border-purple-500 text-purple-400'
-  };
-
-  return (
-    <motion.div layout>
-      <Card className="bg-white/5 border-white/10 overflow-hidden" data-testid={`proposal-card-${proposal.id}`}>
-        <div 
-          className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={onToggle}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold font-mono">
-                #{proposal.id}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="text-xs border-white/20">
-                    {proposal.type === 'binary' ? 'Binary Vote' : 'Multiple Choice'}
-                  </Badge>
-                  <Badge variant="outline" className={`text-xs ${statusColors[proposal.status]}`}>
-                    {proposal.status}
-                  </Badge>
-                </div>
-                <h3 className="font-bold text-white text-sm md:text-base">{proposal.title}</h3>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Users className="w-3 h-3" />
-                  <span>{totalVotes} votes</span>
-                </div>
-                {isActive && (
-                  <div className="flex items-center gap-1 text-xs text-primary">
-                    <Clock className="w-3 h-3" />
-                    <span>{daysRemaining} days left</span>
-                  </div>
-                )}
-              </div>
-              {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
-            </div>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pb-4 border-t border-white/10 pt-4 space-y-4">
-                <p className="text-sm text-muted-foreground">{proposal.description}</p>
-                
-                {/* Vote Options */}
-                <div className="space-y-2">
-                  {proposal.options.map(option => {
-                    const optionPercent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-                    return (
-                      <div key={option.id} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white">{option.label}</span>
-                          <span className="text-muted-foreground">{option.votes} votes ({optionPercent}%)</span>
-                        </div>
-                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${optionPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {hasVoted ? (
-                  <div className="p-3 rounded bg-white/5 border border-green-500/30 text-center text-sm">
-                    <span className="text-muted-foreground">You voted for </span>
-                    <span className="text-green-400 font-semibold">
-                      "{proposal.options.find(o => o.id === userVoteFor)?.label || userVoteFor}"
-                    </span>
-                  </div>
-                ) : isActive ? (
-                  <div className="flex flex-wrap gap-2">
-                    {proposal.options.map(option => (
-                      <Button 
-                        key={option.id}
-                        onClick={() => handleLocalVote(option.id)}
-                        className={`flex-1 min-w-[120px] ${
-                          option.id === 'yes' || option.id === 'spacecraft' 
-                            ? 'bg-green-600 hover:bg-green-700' 
-                            : option.id === 'no' || option.id === 'planet'
-                            ? 'bg-red-600 hover:bg-red-700'
-                            : 'bg-gray-600 hover:bg-gray-700'
-                        } text-white`}
-                        data-testid={`vote-${option.id}-${proposal.id}`}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
                   </div>
                 ) : (
                   <div className="p-3 rounded bg-white/5 border border-white/10 text-center text-sm text-muted-foreground">
