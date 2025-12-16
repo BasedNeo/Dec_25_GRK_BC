@@ -8,6 +8,7 @@ import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Odyssey from "@/pages/Odyssey";
 import Creators from "@/pages/Creators";
+import Saga from "@/pages/Saga";
 import NotFound from "@/pages/not-found";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/odyssey" component={Odyssey} />
       <Route path="/creators" component={Creators} />
+      <Route path="/saga" component={Saga} />
       <Route component={NotFound} />
     </Switch>
   );
