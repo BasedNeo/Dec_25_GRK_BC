@@ -459,7 +459,7 @@ function ChooseYourAdventure() {
                   "Active Guardians are the most noble and righteous. Keep up the spirit and you will inherit the stars."
                 </p>
                 <p className="text-purple-400 text-xs mt-4 font-orbitron">
-                  — The Wizard Committer
+                  — Kyle, Based Guardian 1420
                 </p>
               </div>
 
