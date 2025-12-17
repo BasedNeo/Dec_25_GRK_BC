@@ -527,5 +527,59 @@ export async function registerRoutes(
     }
   });
 
+  // Race-to-Base Game Score Endpoints
+  app.post("/api/game/score", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string().min(10),
+        score: z.number().min(0),
+        level: z.number().min(1).max(5),
+        customName: z.string().max(20).optional(),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid score data", details: parsed.error.errors });
+      }
+
+      const result = await storage.submitGameScore(
+        parsed.data.walletAddress,
+        parsed.data.score,
+        parsed.data.level,
+        parsed.data.customName
+      );
+
+      console.log(`[Game] Score submitted: ${parsed.data.walletAddress.slice(0, 8)}... - ${parsed.data.score} points`);
+      return res.json({ success: true, stats: result });
+    } catch (error) {
+      console.error("[Game] Error submitting score:", error);
+      return res.status(500).json({ error: "Failed to submit score" });
+    }
+  });
+
+  app.get("/api/game/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const leaderboard = await storage.getGameLeaderboard(limit);
+      return res.json(leaderboard);
+    } catch (error) {
+      console.error("[Game] Error fetching leaderboard:", error);
+      return res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/game/stats/:wallet", async (req, res) => {
+    try {
+      const stats = await storage.getPlayerGameStats(req.params.wallet);
+      if (!stats) {
+        return res.json({ exists: false, stats: null });
+      }
+      return res.json({ exists: true, stats });
+    } catch (error) {
+      console.error("[Game] Error fetching player stats:", error);
+      return res.status(500).json({ error: "Failed to fetch player stats" });
+    }
+  });
+
   return httpServer;
 }
