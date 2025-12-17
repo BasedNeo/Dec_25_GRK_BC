@@ -10,6 +10,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Odyssey from "@/pages/Odyssey";
 import Creators from "@/pages/Creators";
 import Saga from "@/pages/Saga";
+import GuardianDefender from "@/pages/GuardianDefender";
 import NotFound from "@/pages/not-found";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
@@ -115,6 +116,7 @@ function Router() {
       <Route path="/odyssey" component={Odyssey} />
       <Route path="/creators" component={Creators} />
       <Route path="/saga" component={Saga} />
+      <Route path="/game" component={GuardianDefender} />
       <Route component={NotFound} />
     </Switch>
   );

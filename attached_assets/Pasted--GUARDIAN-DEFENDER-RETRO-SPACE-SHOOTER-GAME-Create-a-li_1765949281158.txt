@@ -1,0 +1,615 @@
+=== GUARDIAN DEFENDER - RETRO SPACE SHOOTER GAME ===
+
+Create a lightweight Galaga-style space shooter that integrates with the existing wallet system.
+Must be under 20KB total, pure Canvas, no game engine dependencies.
+
+═══════════════════════════════════════════════════════════
+GAME DESIGN
+═══════════════════════════════════════════════════════════
+
+THEME: "Guardian Defender" - Protect the Based Network from invaders
+STYLE: Retro 80s pixel art, neon colors (cyan, purple, green)
+CONTROLS: Arrow keys + Space (desktop), Touch drag + tap (mobile)
+
+GAMEPLAY:
+- Player ship at bottom, moves left/right
+- Enemies spawn in waves from top
+- Shoot enemies for points
+- 3 lives, lose one if enemy reaches bottom or hits you
+- Waves get progressively harder
+- High score tracked per wallet
+
+SCORING:
+- Basic enemy: 10 points
+- Fast enemy: 25 points
+- Boss (every 5 waves): 100 points
+- Survival bonus: +50 per wave completed
+
+═══════════════════════════════════════════════════════════
+FILE STRUCTURE
+═══════════════════════════════════════════════════════════
+
+CREATE: /client/src/components/GuardianDefender.tsx
+CREATE: /client/src/hooks/useGameScores.ts
+CREATE: /client/src/lib/gameEngine.ts
+
+═══════════════════════════════════════════════════════════
+PART 1: GAME ENGINE (Pure TypeScript)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/lib/gameEngine.ts
+
+export interface GameObject {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+  active: boolean;
+}
+
+export interface GameState {
+  player: GameObject;
+  bullets: GameObject[];
+  enemies: GameObject[];
+  score: number;
+  lives: number;
+  wave: number;
+  gameOver: boolean;
+  isPaused: boolean;
+}
+
+export function createInitialState(canvasWidth: number, canvasHeight: number): GameState {
+  return {
+    player: {
+      x: canvasWidth / 2 - 20,
+      y: canvasHeight - 60,
+      width: 40,
+      height: 40,
+      speed: 8,
+      active: true,
+    },
+    bullets: [],
+    enemies: [],
+    score: 0,
+    lives: 3,
+    wave: 1,
+    gameOver: false,
+    isPaused: false,
+  };
+}
+
+export function spawnWave(state: GameState, canvasWidth: number): void {
+  const enemyCount = 5 + state.wave * 2;
+  const spacing = canvasWidth / (enemyCount + 1);
+  
+  for (let i = 0; i < enemyCount; i++) {
+    state.enemies.push({
+      x: spacing * (i + 1) - 15,
+      y: -30 - (Math.floor(i / 5) * 40),
+      width: 30,
+      height: 30,
+      speed: 1 + state.wave * 0.3,
+      active: true,
+    });
+  }
+}
+
+export function updateGame(state: GameState, canvasWidth: number, canvasHeight: number): void {
+  if (state.gameOver || state.isPaused) return;
+
+  // Move bullets
+  state.bullets = state.bullets.filter(b => {
+    b.y -= 10;
+    return b.y > -10 && b.active;
+  });
+
+  // Move enemies
+  state.enemies.forEach(enemy => {
+    enemy.y += enemy.speed;
+    
+    // Check if enemy reached bottom
+    if (enemy.y > canvasHeight - 50) {
+      enemy.active = false;
+      state.lives--;
+      if (state.lives <= 0) state.gameOver = true;
+    }
+  });
+
+  // Collision detection: bullets vs enemies
+  state.bullets.forEach(bullet => {
+    state.enemies.forEach(enemy => {
+      if (bullet.active && enemy.active && checkCollision(bullet, enemy)) {
+        bullet.active = false;
+        enemy.active = false;
+        state.score += 10 + state.wave * 5;
+      }
+    });
+  });
+
+  // Collision detection: player vs enemies
+  state.enemies.forEach(enemy => {
+    if (enemy.active && checkCollision(state.player, enemy)) {
+      enemy.active = false;
+      state.lives--;
+      if (state.lives <= 0) state.gameOver = true;
+    }
+  });
+
+  // Remove inactive enemies
+  state.enemies = state.enemies.filter(e => e.active);
+
+  // Next wave if all enemies cleared
+  if (state.enemies.length === 0 && !state.gameOver) {
+    state.wave++;
+    state.score += 50; // Wave bonus
+    spawnWave(state, canvasWidth);
+  }
+}
+
+function checkCollision(a: GameObject, b: GameObject): boolean {
+  return a.x < b.x + b.width &&
+         a.x + a.width > b.x &&
+         a.y < b.y + b.height &&
+         a.y + a.height > b.y;
+}
+
+export function shoot(state: GameState): void {
+  if (state.gameOver || state.isPaused) return;
+  state.bullets.push({
+    x: state.player.x + state.player.width / 2 - 3,
+    y: state.player.y,
+    width: 6,
+    height: 15,
+    speed: 10,
+    active: true,
+  });
+}
+
+export function movePlayer(state: GameState, direction: 'left' | 'right', canvasWidth: number): void {
+  if (state.gameOver || state.isPaused) return;
+  if (direction === 'left') {
+    state.player.x = Math.max(0, state.player.x - state.player.speed);
+  } else {
+    state.player.x = Math.min(canvasWidth - state.player.width, state.player.x + state.player.speed);
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: SCORE TRACKING HOOK
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/hooks/useGameScores.ts
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount } from 'wagmi';
+
+interface ScoreEntry {
+  wallet: string;
+  score: number;
+  wave: number;
+  timestamp: number;
+}
+
+const STORAGE_KEY = 'guardian_defender_scores';
+const MAX_SCORES = 10;
+
+export function useGameScores() {
+  const { address } = useAccount();
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [personalBest, setPersonalBest] = useState<number>(0);
+
+  // Load scores on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as ScoreEntry[];
+        setScores(parsed);
+        if (address) {
+          const myBest = parsed.filter(s => s.wallet.toLowerCase() === address.toLowerCase())
+            .sort((a, b) => b.score - a.score)[0];
+          setPersonalBest(myBest?.score || 0);
+        }
+      } catch {}
+    }
+  }, [address]);
+
+  const submitScore = useCallback((score: number, wave: number) => {
+    if (!address || score === 0) return;
+
+    const newEntry: ScoreEntry = {
+      wallet: address,
+      score,
+      wave,
+      timestamp: Date.now(),
+    };
+
+    const updated = [...scores, newEntry]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_SCORES);
+
+    setScores(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    if (score > personalBest) {
+      setPersonalBest(score);
+    }
+
+    return updated;
+  }, [address, scores, personalBest]);
+
+  const getLeaderboard = useCallback(() => {
+    return scores.slice(0, 10);
+  }, [scores]);
+
+  return {
+    scores,
+    personalBest,
+    submitScore,
+    getLeaderboard,
+    isConnected: !!address,
+  };
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: GAME COMPONENT
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/components/GuardianDefender.tsx
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { Gamepad2, Trophy, Heart, Zap, Play, RotateCcw } from 'lucide-react';
+import { useGameScores } from '@/hooks/useGameScores';
+import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
+import {
+  createInitialState,
+  updateGame,
+  spawnWave,
+  shoot,
+  movePlayer,
+  GameState,
+} from '@/lib/gameEngine';
+
+const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = 600;
+
+export function GuardianDefender() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameStateRef = useRef<GameState | null>(null);
+  const animationRef = useRef<number>(0);
+  const keysRef = useRef<Set<string>>(new Set());
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentScore, setCurrentScore] = useState(0);
+  const [currentWave, setCurrentWave] = useState(1);
+  const [currentLives, setCurrentLives] = useState(3);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { submitScore, getLeaderboard, personalBest } = useGameScores();
+  const { isHolder } = useIsGuardianHolder();
+
+  // Extra life for Guardian holders
+  const startingLives = isHolder ? 4 : 3;
+
+  const startGame = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const state = createInitialState(CANVAS_WIDTH, CANVAS_HEIGHT);
+    state.lives = startingLives;
+    gameStateRef.current = state;
+    spawnWave(state, CANVAS_WIDTH);
+    setIsPlaying(true);
+    setCurrentScore(0);
+    setCurrentWave(1);
+    setCurrentLives(startingLives);
+  }, [startingLives]);
+
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    cancelAnimationFrame(animationRef.current);
+    
+    if (gameStateRef.current && isConnected) {
+      submitScore(gameStateRef.current.score, gameStateRef.current.wave);
+    }
+  }, [isConnected, submitScore]);
+
+  // Game loop
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    let lastShot = 0;
+
+    const gameLoop = (timestamp: number) => {
+      const state = gameStateRef.current;
+      if (!state) return;
+
+      // Handle continuous input
+      if (keysRef.current.has('ArrowLeft') || keysRef.current.has('a')) {
+        movePlayer(state, 'left', CANVAS_WIDTH);
+      }
+      if (keysRef.current.has('ArrowRight') || keysRef.current.has('d')) {
+        movePlayer(state, 'right', CANVAS_WIDTH);
+      }
+      if ((keysRef.current.has(' ') || keysRef.current.has('ArrowUp')) && timestamp - lastShot > 200) {
+        shoot(state);
+        lastShot = timestamp;
+      }
+
+      // Update game state
+      updateGame(state, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      // Update UI state
+      setCurrentScore(state.score);
+      setCurrentWave(state.wave);
+      setCurrentLives(state.lives);
+
+      // Clear canvas
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      // Draw stars background
+      ctx.fillStyle = '#ffffff20';
+      for (let i = 0; i < 50; i++) {
+        const x = (i * 73) % CANVAS_WIDTH;
+        const y = ((i * 137) + timestamp * 0.02) % CANVAS_HEIGHT;
+        ctx.fillRect(x, y, 2, 2);
+      }
+
+      // Draw player (cyan ship)
+      ctx.fillStyle = isHolder ? '#6cff61' : '#00ffff';
+      ctx.beginPath();
+      ctx.moveTo(state.player.x + state.player.width / 2, state.player.y);
+      ctx.lineTo(state.player.x, state.player.y + state.player.height);
+      ctx.lineTo(state.player.x + state.player.width, state.player.y + state.player.height);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw bullets (cyan)
+      ctx.fillStyle = '#00ffff';
+      state.bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+      });
+
+      // Draw enemies (purple/magenta)
+      state.enemies.forEach(enemy => {
+        ctx.fillStyle = '#bf00ff';
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        ctx.fillStyle = '#ff00ff40';
+        ctx.fillRect(enemy.x + 5, enemy.y + 5, enemy.width - 10, enemy.height - 10);
+      });
+
+      // Check game over
+      if (state.gameOver) {
+        endGame();
+        return;
+      }
+
+      animationRef.current = requestAnimationFrame(gameLoop);
+    };
+
+    animationRef.current = requestAnimationFrame(gameLoop);
+
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isPlaying, isHolder, endGame]);
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'a', 'd'].includes(e.key)) {
+        e.preventDefault();
+        keysRef.current.add(e.key);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Touch controls for mobile
+  const handleTouch = useCallback((e: React.TouchEvent, action: 'left' | 'right' | 'shoot') => {
+    e.preventDefault();
+    const state = gameStateRef.current;
+    if (!state || !isPlaying) return;
+    
+    if (action === 'shoot') {
+      shoot(state);
+    } else {
+      movePlayer(state, action, CANVAS_WIDTH);
+    }
+  }, [isPlaying]);
+
+  const leaderboard = getLeaderboard();
+
+  return (
+    <Card className="bg-black/80 border-cyan-500/30 p-6 max-w-md mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Gamepad2 className="text-cyan-400" />
+          <h2 className="text-xl font-orbitron text-white">GUARDIAN DEFENDER</h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowLeaderboard(!showLeaderboard)}
+          className="text-cyan-400"
+        >
+          <Trophy size={16} />
+        </Button>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="flex justify-between mb-4 text-sm font-mono">
+        <div className="flex items-center gap-1 text-cyan-400">
+          <Zap size={14} /> {currentScore.toLocaleString()}
+        </div>
+        <div className="text-purple-400">WAVE {currentWave}</div>
+        <div className="flex items-center gap-1 text-red-400">
+          {Array.from({ length: currentLives }).map((_, i) => (
+            <Heart key={i} size={14} fill="currentColor" />
+          ))}
+        </div>
+      </div>
+
+      {/* Game Canvas */}
+      <div className="relative rounded-lg overflow-hidden border border-cyan-500/30">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="w-full bg-[#0a0a0f]"
+          style={{ imageRendering: 'pixelated' }}
+        />
+
+        {/* Start/Game Over Overlay */}
+        {!isPlaying && (
+          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
+            {currentScore > 0 ? (
+              <>
+                <h3 className="text-2xl font-orbitron text-red-500 mb-2">GAME OVER</h3>
+                <p className="text-cyan-400 font-mono mb-1">Score: {currentScore.toLocaleString()}</p>
+                <p className="text-purple-400 font-mono mb-4">Wave: {currentWave}</p>
+                {!isConnected && (
+                  <Button onClick={openConnectModal} className="mb-4 bg-cyan-500 text-black">
+                    Connect to Save Score
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-orbitron text-cyan-400 mb-2">READY?</h3>
+                <p className="text-xs text-gray-400 mb-4 text-center px-4">
+                  Arrow keys to move • Space to shoot
+                </p>
+                {isHolder && (
+                  <p className="text-xs text-[#6cff61] mb-4 flex items-center gap-1">
+                    <Heart size={12} fill="currentColor" /> +1 Life (Guardian Holder)
+                  </p>
+                )}
+              </>
+            )}
+            <Button onClick={startGame} className="bg-cyan-500 text-black font-bold">
+              {currentScore > 0 ? <><RotateCcw size={16} className="mr-2" /> PLAY AGAIN</> : <><Play size={16} className="mr-2" /> START</>}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Controls */}
+      <div className="flex justify-between mt-4 md:hidden">
+        <Button
+          onTouchStart={(e) => handleTouch(e, 'left')}
+          className="w-20 h-12 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+        >
+          ←
+        </Button>
+        <Button
+          onTouchStart={(e) => handleTouch(e, 'shoot')}
+          className="w-20 h-12 bg-red-500/20 text-red-400 border border-red-500/50"
+        >
+          FIRE
+        </Button>
+        <Button
+          onTouchStart={(e) => handleTouch(e, 'right')}
+          className="w-20 h-12 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+        >
+          →
+        </Button>
+      </div>
+
+      {/* Leaderboard */}
+      {showLeaderboard && (
+        <div className="mt-4 p-4 bg-white/5 rounded-lg border border-cyan-500/20">
+          <h4 className="text-sm font-orbitron text-cyan-400 mb-3 flex items-center gap-2">
+            <Trophy size={14} /> TOP SCORES
+          </h4>
+          {leaderboard.length === 0 ? (
+            <p className="text-xs text-gray-500">No scores yet. Be the first!</p>
+          ) : (
+            <div className="space-y-2">
+              {leaderboard.map((entry, i) => (
+                <div key={i} className="flex justify-between text-xs font-mono">
+                  <span className={i === 0 ? 'text-yellow-400' : 'text-gray-400'}>
+                    {i + 1}. {entry.wallet.slice(0, 6)}...{entry.wallet.slice(-4)}
+                  </span>
+                  <span className="text-cyan-400">{entry.score.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {personalBest > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10 text-xs">
+              <span className="text-gray-400">Your Best: </span>
+              <span className="text-[#6cff61] font-bold">{personalBest.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Controls Help */}
+      <p className="text-[10px] text-center text-gray-500 mt-4">
+        ← → or A/D to move • SPACE or ↑ to shoot
+      </p>
+    </Card>
+  );
+}
+
+export default GuardianDefender;
+
+═══════════════════════════════════════════════════════════
+PART 4: ADD TO APP (Optional Route or Tab)
+═══════════════════════════════════════════════════════════
+
+Option A: Add as a new page route
+Option B: Add as a tab in the existing layout
+Option C: Add as a popup/modal from a "PLAY" button
+
+Suggest adding a "PLAY" button in the header or navigation that opens the game.
+
+═══════════════════════════════════════════════════════════
+NFT HOLDER PERKS IMPLEMENTED
+═══════════════════════════════════════════════════════════
+
+✓ Guardian holders get +1 starting life (4 instead of 3)
+✓ Guardian holder ship is GREEN instead of CYAN
+✓ Visual indicator on start screen
+
+Future perks to add:
+- Special ship designs based on NFT rarity
+- Power-ups at wave start
+- Double points for legendary holders
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+[ ] Game renders and starts
+[ ] Player moves with arrow keys
+[ ] Shooting works with space
+[ ] Enemies spawn and move down
+[ ] Collisions register (score increases)
+[ ] Lives decrease when hit
+[ ] Game over triggers correctly
+[ ] Score saves to localStorage
+[ ] Leaderboard displays
+[ ] Guardian holders get green ship + extra life
+[ ] Mobile touch controls work

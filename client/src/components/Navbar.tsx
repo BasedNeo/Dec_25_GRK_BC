@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,7 @@ interface NavbarProps {
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   // const { toast } = useToast(); // Using custom toast
@@ -140,6 +142,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'stats', label: t('nav.stats', 'Stats') },
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },
+    { id: 'game', label: t('nav.game', 'Game') },
   ];
 
   return (
@@ -215,7 +218,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               <button
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
-                onClick={() => onTabChange(item.id)}
+                onClick={() => {
+                  if (item.id === 'game') {
+                    setLocation('/game');
+                  } else {
+                    onTabChange(item.id);
+                  }
+                }}
                 className={`relative px-3 py-2.5 font-orbitron text-[11px] tracking-[0.15em] transition-all duration-300 rounded-lg group ${
                   activeTab === item.id 
                     ? 'text-cyan-400' 
@@ -423,7 +432,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 <button
                   key={item.id}
                   onClick={() => {
-                    onTabChange(item.id);
+                    if (item.id === 'game') {
+                      setLocation('/game');
+                    } else {
+                      onTabChange(item.id);
+                    }
                     setIsMobileMenuOpen(false);
                   }}
                   className={`w-full py-4 font-orbitron text-sm tracking-[0.2em] text-center rounded-xl transition-all duration-200 ${

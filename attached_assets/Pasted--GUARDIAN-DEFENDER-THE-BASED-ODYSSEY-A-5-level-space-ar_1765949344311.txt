@@ -1,0 +1,1067 @@
+=== GUARDIAN DEFENDER: THE BASED ODYSSEY ===
+
+A 5-level space arcade game that uses your existing ship icon and leaderboard.
+Levels 1-4: Galaga-style shooter with unique alien types
+Level 5: Lunar Lander precision landing on an alien world
+Cumulative scoring that builds your lifetime Guardian rank.
+
+═══════════════════════════════════════════════════════════
+GAME DESIGN OVERVIEW
+═══════════════════════════════════════════════════════════
+
+LEVELS 1-4: SHOOTER COMBAT
+- Use existing app ship icon (import from assets)
+- Each level introduces new alien type
+- Clear all waves to advance
+- Boss every 2nd level
+
+LEVEL 5: LUNAR LANDER FINALE
+- Ship transforms to landing mode
+- Gravity + thrust physics
+- Land softly on the Based Outpost
+- Fuel management adds tension
+
+ENDING: "THE GUARDIAN REVELATION"
+- Clever message based on performance
+- Points added to LIFETIME score
+- Rank progression unlocks titles
+
+═══════════════════════════════════════════════════════════
+ALIEN DESIGNS (Unique & Memorable)
+═══════════════════════════════════════════════════════════
+
+LEVEL 1 - "GLITCH SWARM"
+Visual: Pixelated cubes that flicker/glitch
+Behavior: Simple downward movement, random horizontal jitter
+Color: Neon pink (#ff00ff) with cyan (#00ffff) glitch artifacts
+Points: 10 each
+Pattern: Grid formation, descends together
+
+LEVEL 2 - "VOID JELLIES"  
+Visual: Translucent dome with trailing tentacles (3 wavy lines)
+Behavior: Float down in sine wave pattern, pulsing glow
+Color: Deep purple core (#8b00ff) with transparent cyan trails
+Points: 25 each
+Special: Tentacles block bullets (must hit dome)
+Pattern: Scattered, each has unique wave phase
+
+LEVEL 3 - "CHAIN SERPENTS"
+Visual: 5 connected segments (head + 4 body), snake-like
+Behavior: Head leads, body follows with delay (like classic Snake)
+Color: Gradient green (#00ff88) to cyan, eyes glow red
+Points: 15 per segment, 50 bonus for killing head first
+Special: Kill head = whole serpent dies. Kill body = segments split
+Pattern: 3 serpents weaving across screen
+
+LEVEL 4 - "FRACTAL HORRORS"
+Visual: Large geometric shape (hexagon) made of smaller shapes
+Behavior: Slowly descends, rotates
+Color: White outer (#ffffff), purple inner (#bf00ff), pulsing
+Points: 100 base, but...
+Special: When hit, SPLITS into 3 smaller triangles that scatter fast
+        Small triangles worth 25 each, harder to hit
+Pattern: 2 large fractals, split = 6 fast triangles
+
+BOSS (Levels 2 & 4) - "THE SENTINEL"
+Visual: Large eye with geometric iris, surrounded by orbiting shields
+Behavior: Moves slowly, fires seeking projectiles
+Color: Red eye (#ff0000), cyan shields (#00ffff)
+Points: 500
+Special: Must destroy 4 shields before eye is vulnerable
+         Eye blinks (invulnerable) periodically
+Pattern: Center-top, shields orbit in circle
+
+═══════════════════════════════════════════════════════════
+LEVEL 5 - LUNAR LANDER: "BASED OUTPOST DESCENT"
+═══════════════════════════════════════════════════════════
+
+SCENE SETUP:
+- Alien planet surface at bottom (purple/cyan terrain)
+- Stars and distant nebula in background
+- Landing pad with pulsing beacon lights
+- Your ship enters from top with momentum
+
+PHYSICS:
+- Gravity: 0.05 units/frame (gentle pull down)
+- Thrust: 0.12 units/frame (stronger than gravity)
+- Max velocity: 8 units/frame
+- Rotation: Optional (can simplify to just vertical thrust + left/right strafe)
+- Fuel: 100 units, thrust costs 0.5/frame
+
+CONTROLS:
+- UP/SPACE: Main thruster (fires exhaust, burns fuel)
+- LEFT/RIGHT: Horizontal strafe (small thrust, less fuel)
+- Goal: Land on pad with velocity < 2 units
+
+TERRAIN:
+- Jagged mountains on sides (instant death if touched)
+- Flat landing pad in center (width: 80px)
+- Visual: Purple rock (#4a0080) with cyan crystal highlights (#00ffff)
+
+LANDING OUTCOMES:
+- Perfect (velocity < 1): "FLAWLESS LANDING" +500 bonus
+- Good (velocity < 2): "SAFE LANDING" +200 bonus  
+- Crash (velocity >= 2): "HULL BREACH" - lose 1 life, retry
+- Fuel empty: Ship falls, crash
+
+VISUAL TOUCHES:
+- Thruster flame animation (orange/yellow particles)
+- Dust particles when near ground
+- Landing pad lights pulse faster as you approach
+- Velocity indicator on HUD (green/yellow/red)
+- Fuel gauge depleting
+
+═══════════════════════════════════════════════════════════
+THE GUARDIAN REVELATION (Ending Message)
+═══════════════════════════════════════════════════════════
+
+After successful landing, cinematic text sequence:
+
+[Screen fades to starfield]
+
+"TRANSMISSION RECEIVED..."
+
+[Pause 1 second]
+
+"Guardian, you've crossed the void and touched down on the furthest 
+reaches of the Based Network."
+
+[Pause 1.5 seconds]
+
+"Your journey earned you {SCORE} Neural Points."
+
+[Show score breakdown with animations]
+- Combat Score: {combatScore}
+- Survival Bonus: {livesRemaining * 100}
+- Landing Bonus: {landingBonus}
+- TOTAL: {totalScore}
+
+[Pause 1 second]
+
+"These points strengthen the collective. Every Guardian who plays 
+adds to our network's power."
+
+[Show lifetime stats]
+- Your Lifetime Points: {lifetimeTotal}
+- Your Rank: {rank} (e.g., "Void Walker", "Star Commander", etc.)
+- Global Rank: #{position} of {totalPlayers}
+
+[Pause 1 second]
+
+"Return tomorrow. The void awaits."
+
+[Show buttons: PLAY AGAIN | VIEW LEADERBOARD | SHARE SCORE]
+
+RANK TITLES (Based on lifetime points):
+- 0-999: "Cadet"
+- 1,000-4,999: "Pilot"
+- 5,000-14,999: "Void Walker"
+- 15,000-49,999: "Star Commander"
+- 50,000-99,999: "Fleet Admiral"
+- 100,000+: "Based Eternal"
+
+═══════════════════════════════════════════════════════════
+FILE STRUCTURE
+═══════════════════════════════════════════════════════════
+
+CREATE: /client/src/components/GuardianDefender/
+  - index.tsx (main game component)
+  - GameCanvas.tsx (canvas rendering)
+  - ShooterLevel.tsx (levels 1-4 logic)
+  - LanderLevel.tsx (level 5 logic)
+  - Revelation.tsx (ending sequence)
+  - types.ts (shared interfaces)
+
+CREATE: /client/src/lib/gameEngine/
+  - aliens.ts (alien behavior & rendering)
+  - physics.ts (lander physics)
+  - renderer.ts (draw functions)
+  - sounds.ts (optional: web audio)
+
+UPDATE: /client/src/hooks/useGameScores.ts (integrate with existing leaderboard)
+
+═══════════════════════════════════════════════════════════
+PART 1: TYPES & CONSTANTS
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/components/GuardianDefender/types.ts
+
+export interface Vector2 {
+  x: number;
+  y: number;
+}
+
+export interface GameObject {
+  pos: Vector2;
+  vel: Vector2;
+  size: Vector2;
+  active: boolean;
+}
+
+export interface Alien extends GameObject {
+  type: 'glitch' | 'jelly' | 'serpent' | 'fractal' | 'sentinel';
+  health: number;
+  points: number;
+  phase: number; // For animation/movement patterns
+  segments?: Vector2[]; // For serpent type
+  shields?: number; // For sentinel
+}
+
+export interface Bullet extends GameObject {
+  isEnemy: boolean;
+}
+
+export interface GameState {
+  level: number;
+  phase: 'shooter' | 'lander' | 'revelation';
+  player: GameObject & { fuel: number };
+  bullets: Bullet[];
+  aliens: Alien[];
+  score: number;
+  lives: number;
+  gameOver: boolean;
+  levelComplete: boolean;
+  landingVelocity?: number;
+}
+
+export interface PlayerStats {
+  sessionScore: number;
+  lifetimeScore: number;
+  gamesPlayed: number;
+  bestScore: number;
+  rank: string;
+  globalPosition: number;
+}
+
+export const RANKS = [
+  { threshold: 0, title: 'Cadet', color: '#808080' },
+  { threshold: 1000, title: 'Pilot', color: '#00ff88' },
+  { threshold: 5000, title: 'Void Walker', color: '#00ffff' },
+  { threshold: 15000, title: 'Star Commander', color: '#bf00ff' },
+  { threshold: 50000, title: 'Fleet Admiral', color: '#ff8800' },
+  { threshold: 100000, title: 'Based Eternal', color: '#ffd700' },
+];
+
+export function getRank(lifetimeScore: number): { title: string; color: string } {
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (lifetimeScore >= RANKS[i].threshold) return RANKS[i];
+  }
+  return RANKS[0];
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: ALIEN RENDERING & BEHAVIOR
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/lib/gameEngine/aliens.ts
+
+import { Alien, Vector2 } from '@/components/GuardianDefender/types';
+
+// GLITCH SWARM - Pixelated cubes with glitch effect
+export function drawGlitch(ctx: CanvasRenderingContext2D, alien: Alien, time: number) {
+  const { x, y } = alien.pos;
+  const glitchOffset = Math.sin(time * 0.1 + alien.phase) * 3;
+  
+  // Main body (pink)
+  ctx.fillStyle = '#ff00ff';
+  ctx.fillRect(x + glitchOffset, y, 24, 24);
+  
+  // Glitch artifacts (cyan)
+  ctx.fillStyle = '#00ffff';
+  if (Math.random() > 0.7) {
+    ctx.fillRect(x - 4 + glitchOffset, y + 8, 8, 4);
+    ctx.fillRect(x + 20 + glitchOffset, y + 12, 8, 4);
+  }
+  
+  // Eyes
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x + 6 + glitchOffset, y + 8, 4, 4);
+  ctx.fillRect(x + 14 + glitchOffset, y + 8, 4, 4);
+}
+
+// VOID JELLIES - Translucent with tentacles
+export function drawJelly(ctx: CanvasRenderingContext2D, alien: Alien, time: number) {
+  const { x, y } = alien.pos;
+  const pulse = Math.sin(time * 0.05 + alien.phase) * 0.3 + 1;
+  
+  // Dome (translucent purple)
+  ctx.fillStyle = 'rgba(139, 0, 255, 0.6)';
+  ctx.beginPath();
+  ctx.arc(x + 15, y + 12, 15 * pulse, Math.PI, 0);
+  ctx.fill();
+  
+  // Tentacles (wavy cyan lines)
+  ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    const tentX = x + 5 + i * 10;
+    ctx.beginPath();
+    ctx.moveTo(tentX, y + 12);
+    for (let j = 1; j <= 4; j++) {
+      const wave = Math.sin(time * 0.08 + alien.phase + i + j * 0.5) * 5;
+      ctx.lineTo(tentX + wave, y + 12 + j * 8);
+    }
+    ctx.stroke();
+  }
+  
+  // Inner glow
+  ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+  ctx.beginPath();
+  ctx.arc(x + 15, y + 10, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// CHAIN SERPENT - Connected segments
+export function drawSerpent(ctx: CanvasRenderingContext2D, alien: Alien, time: number) {
+  if (!alien.segments) return;
+  
+  const gradient = ctx.createLinearGradient(0, 0, 100, 0);
+  gradient.addColorStop(0, '#00ff88');
+  gradient.addColorStop(1, '#00ffff');
+  
+  // Draw body segments (tail to head)
+  alien.segments.forEach((seg, i) => {
+    const isHead = i === 0;
+    const size = isHead ? 18 : 14;
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(seg.x, seg.y, size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Head eyes
+    if (isHead) {
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(seg.x - 4, seg.y - 2, 3, 0, Math.PI * 2);
+      ctx.arc(seg.x + 4, seg.y - 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  
+  // Connection lines
+  ctx.strokeStyle = '#00ff8880';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  alien.segments.forEach((seg, i) => {
+    if (i === 0) ctx.moveTo(seg.x, seg.y);
+    else ctx.lineTo(seg.x, seg.y);
+  });
+  ctx.stroke();
+}
+
+// FRACTAL HORROR - Large hexagon that splits
+export function drawFractal(ctx: CanvasRenderingContext2D, alien: Alien, time: number) {
+  const { x, y } = alien.pos;
+  const rotation = time * 0.02 + alien.phase;
+  const size = alien.health > 1 ? 40 : 20; // Smaller after split
+  
+  ctx.save();
+  ctx.translate(x + size/2, y + size/2);
+  ctx.rotate(rotation);
+  
+  // Outer hexagon (white)
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  drawHexagon(ctx, 0, 0, size/2);
+  
+  // Inner hexagon (purple, pulsing)
+  const innerPulse = Math.sin(time * 0.1) * 0.2 + 0.6;
+  ctx.fillStyle = `rgba(191, 0, 255, ${innerPulse})`;
+  drawHexagon(ctx, 0, 0, size/3, true);
+  
+  ctx.restore();
+}
+
+function drawHexagon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fill = false) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const px = cx + r * Math.cos(angle);
+    const py = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  if (fill) ctx.fill();
+  else ctx.stroke();
+}
+
+// SENTINEL BOSS - Eye with orbiting shields
+export function drawSentinel(ctx: CanvasRenderingContext2D, alien: Alien, time: number) {
+  const { x, y } = alien.pos;
+  const blink = Math.sin(time * 0.03) > 0.9; // Blink occasionally
+  
+  // Orbiting shields
+  const shieldCount = alien.shields || 0;
+  for (let i = 0; i < shieldCount; i++) {
+    const angle = (time * 0.03) + (Math.PI * 2 / 4) * i;
+    const shieldX = x + 40 + Math.cos(angle) * 50;
+    const shieldY = y + 40 + Math.sin(angle) * 35;
+    
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(shieldX, shieldY, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Shield glow
+    ctx.strokeStyle = '#00ffff40';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+  
+  // Eye socket (dark)
+  ctx.fillStyle = '#1a0030';
+  ctx.beginPath();
+  ctx.ellipse(x + 40, y + 40, 35, 30, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Eye (red, or closed if blinking)
+  if (!blink) {
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(x + 40, y + 40, 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pupil
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(x + 40, y + 40, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Glint
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + 34, y + 34, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Closed eyelid
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x + 10, y + 40);
+    ctx.lineTo(x + 70, y + 40);
+    ctx.stroke();
+  }
+}
+
+// Alien behavior updates
+export function updateGlitch(alien: Alien, time: number): void {
+  alien.pos.y += 1;
+  alien.pos.x += Math.sin(time * 0.1 + alien.phase) * 0.5;
+}
+
+export function updateJelly(alien: Alien, time: number): void {
+  alien.pos.y += 0.8;
+  alien.pos.x += Math.sin(time * 0.05 + alien.phase) * 2;
+}
+
+export function updateSerpent(alien: Alien): void {
+  if (!alien.segments || alien.segments.length === 0) return;
+  
+  // Head moves in pattern
+  const head = alien.segments[0];
+  head.x += alien.vel.x;
+  head.y += 0.5;
+  
+  // Bounce off walls
+  if (head.x < 20 || head.x > 380) alien.vel.x *= -1;
+  
+  // Body follows with delay
+  for (let i = 1; i < alien.segments.length; i++) {
+    const prev = alien.segments[i - 1];
+    const curr = alien.segments[i];
+    const dx = prev.x - curr.x;
+    const dy = prev.y - curr.y;
+    curr.x += dx * 0.15;
+    curr.y += dy * 0.15;
+  }
+  
+  alien.pos = { ...head }; // Hitbox follows head
+}
+
+export function updateFractal(alien: Alien): void {
+  alien.pos.y += 0.3;
+  alien.phase += 0.02;
+}
+
+export function updateSentinel(alien: Alien, time: number): void {
+  // Slow side-to-side movement
+  alien.pos.x = 160 + Math.sin(time * 0.01) * 100;
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: LANDER PHYSICS
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/lib/gameEngine/physics.ts
+
+import { GameState, Vector2 } from '@/components/GuardianDefender/types';
+
+export const LANDER_CONFIG = {
+  GRAVITY: 0.05,
+  THRUST_POWER: 0.12,
+  STRAFE_POWER: 0.08,
+  MAX_VELOCITY: 8,
+  FUEL_BURN_RATE: 0.5,
+  SAFE_LANDING_VELOCITY: 2,
+  PERFECT_LANDING_VELOCITY: 1,
+  LANDING_PAD_X: 160,
+  LANDING_PAD_WIDTH: 80,
+  GROUND_Y: 550,
+};
+
+export interface LanderState {
+  pos: Vector2;
+  vel: Vector2;
+  fuel: number;
+  thrusting: boolean;
+  landed: boolean;
+  crashed: boolean;
+}
+
+export function createLanderState(): LanderState {
+  return {
+    pos: { x: 200, y: 50 },
+    vel: { x: 0, y: 0 },
+    fuel: 100,
+    thrusting: false,
+    landed: false,
+    crashed: false,
+  };
+}
+
+export function updateLander(
+  state: LanderState, 
+  input: { thrust: boolean; left: boolean; right: boolean }
+): void {
+  if (state.landed || state.crashed) return;
+
+  // Apply gravity
+  state.vel.y += LANDER_CONFIG.GRAVITY;
+
+  // Apply thrust if fuel available
+  if (input.thrust && state.fuel > 0) {
+    state.vel.y -= LANDER_CONFIG.THRUST_POWER;
+    state.fuel -= LANDER_CONFIG.FUEL_BURN_RATE;
+    state.thrusting = true;
+  } else {
+    state.thrusting = false;
+  }
+
+  // Horizontal strafe
+  if (input.left && state.fuel > 0) {
+    state.vel.x -= LANDER_CONFIG.STRAFE_POWER;
+    state.fuel -= LANDER_CONFIG.FUEL_BURN_RATE * 0.3;
+  }
+  if (input.right && state.fuel > 0) {
+    state.vel.x += LANDER_CONFIG.STRAFE_POWER;
+    state.fuel -= LANDER_CONFIG.FUEL_BURN_RATE * 0.3;
+  }
+
+  // Clamp velocity
+  const speed = Math.sqrt(state.vel.x ** 2 + state.vel.y ** 2);
+  if (speed > LANDER_CONFIG.MAX_VELOCITY) {
+    const scale = LANDER_CONFIG.MAX_VELOCITY / speed;
+    state.vel.x *= scale;
+    state.vel.y *= scale;
+  }
+
+  // Apply velocity
+  state.pos.x += state.vel.x;
+  state.pos.y += state.vel.y;
+
+  // Bounds
+  state.pos.x = Math.max(20, Math.min(380, state.pos.x));
+
+  // Check landing/crash
+  if (state.pos.y >= LANDER_CONFIG.GROUND_Y - 30) {
+    const onPad = 
+      state.pos.x >= LANDER_CONFIG.LANDING_PAD_X - 20 &&
+      state.pos.x <= LANDER_CONFIG.LANDING_PAD_X + LANDER_CONFIG.LANDING_PAD_WIDTH + 20;
+
+    const landingSpeed = Math.abs(state.vel.y);
+
+    if (onPad && landingSpeed < LANDER_CONFIG.SAFE_LANDING_VELOCITY) {
+      state.landed = true;
+      state.vel = { x: 0, y: 0 };
+      state.pos.y = LANDER_CONFIG.GROUND_Y - 30;
+    } else {
+      state.crashed = true;
+    }
+  }
+
+  // Side terrain collision (simplified)
+  if (state.pos.y > 400) {
+    const terrainLeft = 60 + Math.sin(state.pos.y * 0.02) * 30;
+    const terrainRight = 340 - Math.sin(state.pos.y * 0.02 + 1) * 30;
+    
+    if (state.pos.x < terrainLeft || state.pos.x > terrainRight) {
+      state.crashed = true;
+    }
+  }
+}
+
+export function getLandingBonus(velocity: number): { bonus: number; message: string } {
+  if (velocity < LANDER_CONFIG.PERFECT_LANDING_VELOCITY) {
+    return { bonus: 500, message: 'FLAWLESS LANDING' };
+  } else if (velocity < LANDER_CONFIG.SAFE_LANDING_VELOCITY) {
+    return { bonus: 200, message: 'SAFE LANDING' };
+  }
+  return { bonus: 0, message: 'HULL BREACH' };
+}
+
+export function drawLanderScene(
+  ctx: CanvasRenderingContext2D, 
+  state: LanderState, 
+  time: number
+): void {
+  const { LANDING_PAD_X, LANDING_PAD_WIDTH, GROUND_Y } = LANDER_CONFIG;
+
+  // Starfield
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, 400, 600);
+  
+  for (let i = 0; i < 80; i++) {
+    const x = (i * 73 + time * 0.01) % 400;
+    const y = (i * 137) % 400;
+    const brightness = 0.3 + Math.sin(time * 0.01 + i) * 0.2;
+    ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  // Distant planet/nebula
+  const nebGrad = ctx.createRadialGradient(350, 100, 10, 350, 100, 80);
+  nebGrad.addColorStop(0, 'rgba(191, 0, 255, 0.3)');
+  nebGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = nebGrad;
+  ctx.fillRect(270, 20, 160, 160);
+
+  // Terrain (purple mountains)
+  ctx.fillStyle = '#2a0040';
+  ctx.beginPath();
+  ctx.moveTo(0, 600);
+  ctx.lineTo(0, 480);
+  for (let x = 0; x <= 400; x += 20) {
+    const y = 480 + Math.sin(x * 0.03) * 40 + Math.sin(x * 0.07) * 20;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(400, 600);
+  ctx.closePath();
+  ctx.fill();
+
+  // Foreground terrain with gap for landing pad
+  ctx.fillStyle = '#4a0080';
+  ctx.beginPath();
+  ctx.moveTo(0, 600);
+  ctx.lineTo(0, GROUND_Y);
+  ctx.lineTo(LANDING_PAD_X - 10, GROUND_Y);
+  ctx.lineTo(LANDING_PAD_X - 10, GROUND_Y + 10);
+  ctx.lineTo(LANDING_PAD_X + LANDING_PAD_WIDTH + 10, GROUND_Y + 10);
+  ctx.lineTo(LANDING_PAD_X + LANDING_PAD_WIDTH + 10, GROUND_Y);
+  ctx.lineTo(400, GROUND_Y);
+  ctx.lineTo(400, 600);
+  ctx.closePath();
+  ctx.fill();
+
+  // Crystal highlights
+  ctx.fillStyle = '#00ffff40';
+  for (let i = 0; i < 8; i++) {
+    const cx = 30 + i * 50;
+    const cy = GROUND_Y - 5 - Math.abs(Math.sin(i * 1.5)) * 15;
+    if (cx < LANDING_PAD_X - 20 || cx > LANDING_PAD_X + LANDING_PAD_WIDTH + 20) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - 5, cy + 15);
+      ctx.lineTo(cx + 5, cy + 15);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Landing pad
+  ctx.fillStyle = '#333333';
+  ctx.fillRect(LANDING_PAD_X, GROUND_Y, LANDING_PAD_WIDTH, 10);
+  
+  // Pad lights (pulsing faster as ship approaches)
+  const proximity = Math.max(0, 1 - (GROUND_Y - state.pos.y) / 500);
+  const pulseSpeed = 0.05 + proximity * 0.15;
+  const lightOn = Math.sin(time * pulseSpeed) > 0;
+  
+  ctx.fillStyle = lightOn ? '#00ff00' : '#004400';
+  ctx.beginPath();
+  ctx.arc(LANDING_PAD_X + 10, GROUND_Y + 5, 4, 0, Math.PI * 2);
+  ctx.arc(LANDING_PAD_X + LANDING_PAD_WIDTH - 10, GROUND_Y + 5, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ship
+  if (!state.crashed) {
+    ctx.save();
+    ctx.translate(state.pos.x, state.pos.y);
+    
+    // Thruster flame
+    if (state.thrusting) {
+      const flameHeight = 15 + Math.random() * 10;
+      const flameGrad = ctx.createLinearGradient(0, 20, 0, 20 + flameHeight);
+      flameGrad.addColorStop(0, '#ffaa00');
+      flameGrad.addColorStop(0.5, '#ff4400');
+      flameGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = flameGrad;
+      ctx.beginPath();
+      ctx.moveTo(-8, 20);
+      ctx.lineTo(0, 20 + flameHeight);
+      ctx.lineTo(8, 20);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // Ship body (use your ship icon colors)
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.moveTo(0, -20);
+    ctx.lineTo(-15, 20);
+    ctx.lineTo(15, 20);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Cockpit
+    ctx.fillStyle = '#ffffff40';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+  } else {
+    // Explosion effect
+    ctx.fillStyle = '#ff4400';
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 / 8) * i + time * 0.1;
+      const dist = 20 + Math.sin(time * 0.2 + i) * 10;
+      ctx.beginPath();
+      ctx.arc(
+        state.pos.x + Math.cos(angle) * dist,
+        state.pos.y + Math.sin(angle) * dist,
+        5 + Math.random() * 5,
+        0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+
+  // HUD - Velocity indicator
+  const velocity = Math.sqrt(state.vel.x ** 2 + state.vel.y ** 2);
+  const velColor = velocity < 1 ? '#00ff00' : velocity < 2 ? '#ffff00' : '#ff0000';
+  ctx.fillStyle = '#00000080';
+  ctx.fillRect(10, 10, 100, 50);
+  ctx.strokeStyle = '#00ffff40';
+  ctx.strokeRect(10, 10, 100, 50);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '10px monospace';
+  ctx.fillText('VELOCITY', 20, 25);
+  ctx.fillStyle = velColor;
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText(velocity.toFixed(1), 20, 45);
+
+  // HUD - Fuel gauge
+  ctx.fillStyle = '#00000080';
+  ctx.fillRect(290, 10, 100, 50);
+  ctx.strokeStyle = '#00ffff40';
+  ctx.strokeRect(290, 10, 100, 50);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '10px monospace';
+  ctx.fillText('FUEL', 340, 25);
+  
+  const fuelColor = state.fuel > 30 ? '#00ff00' : state.fuel > 10 ? '#ffff00' : '#ff0000';
+  ctx.fillStyle = '#333333';
+  ctx.fillRect(300, 35, 80, 15);
+  ctx.fillStyle = fuelColor;
+  ctx.fillRect(300, 35, 80 * (state.fuel / 100), 15);
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: REVELATION ENDING SEQUENCE
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/components/GuardianDefender/Revelation.tsx
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { getRank, RANKS } from './types';
+import { Trophy, RotateCcw, Share2 } from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+interface RevelationProps {
+  combatScore: number;
+  livesRemaining: number;
+  landingBonus: number;
+  lifetimeTotal: number;
+  globalPosition: number;
+  onPlayAgain: () => void;
+  onViewLeaderboard: () => void;
+}
+
+export function Revelation({
+  combatScore,
+  livesRemaining,
+  landingBonus,
+  lifetimeTotal,
+  globalPosition,
+  onPlayAgain,
+  onViewLeaderboard,
+}: RevelationProps) {
+  const [phase, setPhase] = useState(0);
+  const totalScore = combatScore + (livesRemaining * 100) + landingBonus;
+  const rank = getRank(lifetimeTotal);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setPhase(1), 1000),
+      setTimeout(() => setPhase(2), 2500),
+      setTimeout(() => setPhase(3), 4000),
+      setTimeout(() => setPhase(4), 6000),
+      setTimeout(() => {
+        setPhase(5);
+        confetti({ 
+          particleCount: 100, 
+          spread: 70, 
+          colors: ['#00ffff', '#bf00ff', '#6cff61'] 
+        });
+      }, 7500),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const shareScore = () => {
+    const text = `🚀 I just scored ${totalScore.toLocaleString()} in Guardian Defender!\n\n` +
+                 `Rank: ${rank.title}\n` +
+                 `Global: #${globalPosition}\n\n` +
+                 `Play at basedguardians.com`;
+    
+    if (navigator.share) {
+      navigator.share({ text });
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 bg-black flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+      {/* Starfield background */}
+      <div className="absolute inset-0 opacity-30">
+        {Array.from({ length: 50 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+            style={{
+              left: `${(i * 17) % 100}%`,
+              top: `${(i * 23) % 100}%`,
+              animationDelay: `${i * 0.1}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Content with fade-in animations */}
+      <div className="relative z-10 max-w-md">
+        {phase >= 0 && (
+          <p className="text-cyan-400 font-mono text-sm mb-4 animate-pulse">
+            TRANSMISSION RECEIVED...
+          </p>
+        )}
+
+        {phase >= 1 && (
+          <p className="text-white text-lg mb-6 leading-relaxed animate-fadeIn">
+            Guardian, you've crossed the void and touched down on the furthest 
+            reaches of the <span className="text-cyan-400">Based Network</span>.
+          </p>
+        )}
+
+        {phase >= 2 && (
+          <div className="mb-6 animate-fadeIn">
+            <p className="text-purple-400 text-sm mb-3">Your journey earned you:</p>
+            <div className="bg-white/5 rounded-lg p-4 space-y-2 text-left font-mono text-sm border border-cyan-500/30">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Combat Score:</span>
+                <span className="text-white">{combatScore.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Survival Bonus:</span>
+                <span className="text-green-400">+{(livesRemaining * 100).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Landing Bonus:</span>
+                <span className="text-cyan-400">+{landingBonus.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-white/10">
+                <span className="text-white font-bold">TOTAL:</span>
+                <span className="text-[#6cff61] font-bold text-lg">{totalScore.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {phase >= 3 && (
+          <p className="text-white/70 text-sm mb-6 italic animate-fadeIn">
+            "These points strengthen the collective. Every Guardian who plays 
+            adds to our network's power."
+          </p>
+        )}
+
+        {phase >= 4 && (
+          <div className="mb-6 animate-fadeIn">
+            <div className="bg-gradient-to-r from-purple-500/20 to-cyan-500/20 rounded-lg p-4 border border-purple-500/30">
+              <p className="text-xs text-gray-400 mb-2">YOUR STATUS</p>
+              <p className="text-2xl font-orbitron mb-1" style={{ color: rank.color }}>
+                {rank.title}
+              </p>
+              <p className="text-sm text-gray-400">
+                Lifetime: <span className="text-white">{lifetimeTotal.toLocaleString()}</span> pts
+              </p>
+              <p className="text-sm text-gray-400">
+                Global Rank: <span className="text-cyan-400">#{globalPosition}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {phase >= 5 && (
+          <div className="animate-fadeIn">
+            <p className="text-cyan-400 mb-6 font-mono">
+              Return tomorrow. The void awaits.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                onClick={onPlayAgain}
+                className="bg-cyan-500 text-black font-bold hover:bg-cyan-400"
+              >
+                <RotateCcw size={16} className="mr-2" />
+                PLAY AGAIN
+              </Button>
+              <Button
+                onClick={onViewLeaderboard}
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500/20"
+              >
+                <Trophy size={16} className="mr-2" />
+                LEADERBOARD
+              </Button>
+              <Button
+                onClick={shareScore}
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10"
+              >
+                <Share2 size={16} className="mr-2" />
+                SHARE
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+═══════════════════════════════════════════════════════════
+PART 5: MAIN GAME COMPONENT (ORCHESTRATOR)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/components/GuardianDefender/index.tsx
+
+[This file orchestrates everything - imports ShooterLevel for 1-4, 
+LanderLevel for 5, and Revelation for ending. 
+Manages overall game state, level transitions, and score accumulation.
+Integrates with existing leaderboard via useGameScores hook.
+Uses useIsGuardianHolder for NFT holder perks.]
+
+Key features:
+- Level 1-4: Call ShooterLevel component with appropriate alien type
+- After level 4 complete: Transition to LanderLevel
+- After successful landing: Show Revelation
+- Track cumulative score across all levels
+- Save to leaderboard on game complete
+- NFT holders get: +1 life, green ship, 1.5x score multiplier
+
+═══════════════════════════════════════════════════════════
+INTEGRATION WITH EXISTING LEADERBOARD
+═══════════════════════════════════════════════════════════
+
+UPDATE: /client/src/hooks/useGameScores.ts
+
+Add these fields to track lifetime progress:
+
+interface PlayerStats {
+  wallet: string;
+  lifetimeScore: number;
+  gamesPlayed: number;
+  bestSingleRun: number;
+  highestWave: number;
+  perfectLandings: number;
+  rank: string;
+}
+
+Modify submitScore to:
+1. Add to lifetimeScore (cumulative)
+2. Update bestSingleRun if new high
+3. Increment gamesPlayed
+4. Recalculate rank
+
+═══════════════════════════════════════════════════════════
+NFT HOLDER PERKS
+═══════════════════════════════════════════════════════════
+
+Guardian holders receive:
+- +1 starting life (4 instead of 3)
+- Ship color: Green (#6cff61) instead of Cyan
+- 1.5x score multiplier on all points
+- Exclusive "Guardian Commander" title available at 50k points
+
+Display holder status on game start screen.
+
+═══════════════════════════════════════════════════════════
+ADD TO APP NAVIGATION
+═══════════════════════════════════════════════════════════
+
+Add a "PLAY" button to your header/nav that opens the game.
+Could be a modal, new route, or tab - your choice.
+
+Suggested: Modal overlay so users don't leave the main app.
+
+═══════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════
+
+SHOOTER LEVELS:
+[ ] Level 1: Glitch aliens spawn and move
+[ ] Level 2: Jelly aliens with tentacles render correctly
+[ ] Level 3: Serpent chain movement works
+[ ] Level 4: Fractal splits when hit
+[ ] Boss appears on levels 2 & 4
+[ ] Score accumulates correctly
+[ ] Lives decrease on hit
+[ ] Level transitions smoothly
+
+LANDER LEVEL:
+[ ] Ship responds to thrust/strafe
+[ ] Gravity pulls ship down
+[ ] Fuel depletes when thrusting
+[ ] Landing pad detection works
+[ ] Crash detection works
+[ ] Velocity indicator updates
+[ ] Perfect/Good landing bonuses apply
+
+REVELATION:
+[ ] Text sequence plays with correct timing
+[ ] Score breakdown displays correctly
+[ ] Rank calculates from lifetime total
+[ ] Confetti triggers
+[ ] Buttons work (Play Again, Leaderboard, Share)
+
+INTEGRATION:
+[ ] Score saves to localStorage
+[ ] Lifetime score accumulates across games
+[ ] Leaderboard displays correctly
+[ ] NFT holder perks apply
+[ ] Works on mobile with touch controls
