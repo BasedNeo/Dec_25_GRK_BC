@@ -1,56 +1,119 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePriceTicker } from '@/hooks/usePriceTicker';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useTokenPrice } from '@/hooks/useTokenPrice';
+
+const ROTATE_INTERVAL = 3000;
 
 export function PriceTicker() {
-  const { currentAsset, currentPrice, isLoading, dataSource } = usePriceTicker();
+  const [showBased, setShowBased] = useState(true);
+  const { btcPrice, ethPrice, isLoading: cryptoLoading, securityStatus } = usePriceTicker();
+  const { data: basedPrice } = useTokenPrice();
 
-  if (isLoading || !currentAsset || !currentPrice) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10">
-        <div className="w-4 h-4 rounded-full bg-gray-600 animate-pulse" />
-        <div className="w-16 h-4 bg-gray-600 rounded animate-pulse" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowBased(prev => !prev);
+    }, ROTATE_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
 
-  const isPositive = currentPrice.change24h >= 0;
+  const formatPrice = (price: number, decimals: number) => {
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  };
+
+  const isVerified = securityStatus === 'verified';
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10 hover:border-cyan-500/30 transition-colors cursor-default">
+    <div 
+      id="priceBadge"
+      className="flex flex-col justify-center px-4 py-2 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-300 min-w-[140px] md:min-w-[170px] hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,255,255,0.1)]"
+    >
       <AnimatePresence mode="wait">
-        <motion.div
-          key={currentAsset.symbol}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="flex items-center gap-2"
-        >
-          {currentAsset.logo && (
-            <img 
-              src={currentAsset.logo} 
-              alt={currentAsset.symbol} 
-              className="w-4 h-4 rounded-full"
-            />
-          )}
-          <span className="text-white font-mono text-xs font-medium">
-            {currentAsset.symbol}
-          </span>
-          <span className="text-cyan-400 font-mono text-xs">
-            ${currentPrice.price.toLocaleString(undefined, { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: currentPrice.price < 1 ? 4 : 2 
-            })}
-          </span>
-          <span className={`flex items-center gap-0.5 text-[10px] font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-            {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-            {isPositive ? '+' : ''}{currentPrice.change24h.toFixed(2)}%
-          </span>
-          <span className="text-gray-700 text-[8px] ml-0.5" title={`Data: ${dataSource}`}>
-            {dataSource === 'binance' ? '◉' : dataSource === 'coingecko' ? '○' : '◌'}
-          </span>
-        </motion.div>
+        {showBased ? (
+          <motion.div
+            key="based"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
+                <span className="font-bold text-white font-mono">
+                  {basedPrice === undefined 
+                    ? <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                    : basedPrice.usdPrice > 0 
+                      ? formatPrice(basedPrice.usdPrice, 4)
+                      : '—'
+                  }
+                </span>
+              </div>
+              {basedPrice && basedPrice.usdPrice > 0 && basedPrice.change24h !== undefined && (
+                <span className={`font-bold font-mono ${basedPrice.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {basedPrice.change24h >= 0 ? '▲' : '▼'} {Math.abs(basedPrice.change24h || 0).toFixed(1)}%
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
+              <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
+              <span className="font-bold text-cyan-400 font-mono">
+                {basedPrice === undefined 
+                  ? <div className="h-3 w-16 rounded skeleton inline-block align-middle" />
+                  : basedPrice.basedL1Price > 0 
+                    ? formatPrice(basedPrice.basedL1Price, 7)
+                    : '—'
+                }
+              </span>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="crypto"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground font-mono font-bold">$BTC:</span>
+                <span className="font-bold text-orange-400 font-mono">
+                  {cryptoLoading || !btcPrice
+                    ? <div className="h-3 w-14 rounded skeleton inline-block align-middle" />
+                    : formatPrice(btcPrice.price, 0)
+                  }
+                </span>
+              </div>
+              {btcPrice && (
+                <span className={`font-bold font-mono text-[9px] ${btcPrice.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {btcPrice.change24h >= 0 ? '▲' : '▼'} {Math.abs(btcPrice.change24h).toFixed(1)}%
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-between gap-2 text-[10px] leading-tight mt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground font-mono font-bold">$ETH:</span>
+                <span className="font-bold text-purple-400 font-mono">
+                  {cryptoLoading || !ethPrice
+                    ? <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
+                    : formatPrice(ethPrice.price, 0)
+                  }
+                </span>
+              </div>
+              {ethPrice && (
+                <span className={`font-bold font-mono text-[9px] ${ethPrice.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {ethPrice.change24h >= 0 ? '▲' : '▼'} {Math.abs(ethPrice.change24h).toFixed(1)}%
+                </span>
+              )}
+              {isVerified && (
+                <span className="text-green-500 text-[8px]" title="Multi-source verified">✓</span>
+              )}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import confetti from "canvas-confetti";
 import { showToast } from "@/lib/customToast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
 import { NotificationSettings } from "./NotificationSettings";
 import { PriceTicker } from "./PriceTicker";
@@ -75,8 +74,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const { isPaused } = useSecurity();
   
-  // Price Data
-  const { data: priceData } = useTokenPrice();
   
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -174,49 +171,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
           {/* Desktop Navigation */}
           <div className="flex items-center gap-2 ml-auto md:ml-4 mr-2 md:mr-0 price-feed-container flex-shrink-0">
-               {/* Price Feed - Visible on ALL screens */}
-               <div 
-                 id="priceBadge"
-                 className="flex flex-col justify-center px-4 py-2 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-300 min-w-[120px] md:min-w-[150px] hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,255,255,0.1)]"
-               >
-                  {/* Row 1: BASED (ETH) */}
-                  <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-tight">
-                      <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground font-mono font-bold">$BASED (ETH):</span>
-                          <span className="font-bold text-white font-mono">
-                            {priceData === undefined 
-                              ? <div className="h-3 w-12 rounded skeleton inline-block align-middle" />
-                              : priceData.usdPrice > 0 
-                                ? `$${priceData.usdPrice.toFixed(4)}` 
-                                : '—'
-                            }
-                          </span>
-                      </div>
-                      {priceData && priceData.usdPrice > 0 && priceData.change24h !== undefined && (
-                        <span className={`font-bold font-mono ${priceData.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                           {priceData.change24h >= 0 ? '▲' : '▼'} {Math.abs(priceData.change24h || 0).toFixed(1)}%
-                        </span>
-                      )}
-                  </div>
-                  
-                  {/* Row 2: BASED (L1) */}
-                  <div className="flex items-center gap-2 text-[10px] leading-tight mt-0.5">
-                      <span className="text-muted-foreground font-mono font-bold">$BASED (L1):</span>
-                      <span className="font-bold text-cyan-400 font-mono">
-                        {priceData === undefined 
-                          ? <div className="h-3 w-16 rounded skeleton inline-block align-middle" />
-                          : priceData.basedL1Price > 0 
-                            ? `$${priceData.basedL1Price.toFixed(7)}` 
-                            : '—'
-                        }
-                      </span>
-                  </div>
-               </div>
-               
-               {/* BTC/ETH Price Ticker - Hidden on mobile */}
-               <div className="hidden lg:block">
-                 <PriceTicker />
-               </div>
+               {/* Rotating Price Feed - $BASED ↔ BTC/ETH every 3 seconds */}
+               <PriceTicker />
             </div>
 
           <div className="hidden md:flex items-center space-x-1">
