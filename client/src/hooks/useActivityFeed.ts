@@ -114,15 +114,20 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
+      // ⚠️ LOCKED: Block range for activity feed
       // Look back ~40000 blocks to capture sales from the last ~22 hours
       // BasedAI ~2 sec blocks, so 40000 blocks ≈ 22 hours of history
-      // All sales volume comes from on-chain events (no hardcoded baseline)
+      // All sales volume comes from on-chain Sold events (never hardcoded)
       const fromBlock = Math.max(0, currentBlock - 40000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
       
-      // PARALLEL: Fetch all data at once
+      // ⚠️ LOCKED: Event fetching - this is the source of truth for all activity
+      // PARALLEL: Fetch all data at once from NFT and Marketplace contracts
+      // - Transfer events: detect mints (from 0x0) and transfers
+      // - Listed events: detect new marketplace listings
+      // - Sold events: detect sales (used for royalty volume calculation)
       const [
         totalMinted,
         transferEvents,
@@ -255,11 +260,20 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
 
   // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
   // See replit.md "LOCKED CALCULATIONS" section for details
+  // 
+  // PATHWAY: Sales volume calculation
+  // 1. Activity feed fetches Sold events from MARKETPLACE_CONTRACT
+  // 2. Each Sold event has a price in $BASED (from log.args[3])
+  // 3. recentVolume = sum of all sale prices from on-chain events
+  // 4. totalVolume = CUMULATIVE_SALES_BASELINE (0) + recentVolume
+  // 5. This totalVolume is used by PoolTracker for royalty calculation
+  //
+  // NEVER hardcode sales volume - it must always come from on-chain Sold events
   const recentVolume = activities
     .filter(a => a.type === 'sale' && a.price)
     .reduce((sum, a) => sum + Number(a.price || 0), 0);
     
-  // LOCKED: totalVolume = CUMULATIVE_SALES_BASELINE.volume + recentVolume
+  // LOCKED: totalVolume = CUMULATIVE_SALES_BASELINE.volume (0) + recentVolume (from on-chain)
   const stats = {
     // CUMULATIVE from CONTRACT (real total)
     totalMinted: contractStats.totalMinted,
