@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePriceTicker } from '@/hooks/usePriceTicker';
 import { useTokenPrice } from '@/hooks/useTokenPrice';
 
-const ROTATE_INTERVAL = 3000;
+const ROTATE_INTERVAL = 5000;
 
 export function PriceTicker() {
   const [showBased, setShowBased] = useState(true);
