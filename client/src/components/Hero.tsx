@@ -231,8 +231,8 @@ export function Hero() {
             SERIES 01: GENESIS
           </Badge>
           
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 sm:mb-6 leading-tight text-white">
-            BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">({NFT_SYMBOL})</span>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 sm:mb-6 leading-tight text-white text-center lg:text-left w-full">
+            BASED GUARDIANS
           </h1>
           
           <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mb-6 sm:mb-8 font-rajdhani leading-relaxed max-w-lg">
