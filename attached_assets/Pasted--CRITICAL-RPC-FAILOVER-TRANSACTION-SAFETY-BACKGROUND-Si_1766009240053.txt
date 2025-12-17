@@ -1,0 +1,372 @@
+=== CRITICAL: RPC FAILOVER + TRANSACTION SAFETY ===
+
+BACKGROUND: Single RPC endpoint = single point of failure. Transactions can fail silently. Need multi-endpoint failover + retry logic.
+
+═══════════════════════════════════════════════════════════
+PART 1: MULTI-RPC PROVIDER WITH FAILOVER
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/rpcProvider.ts
+
+import { ethers } from 'ethers';
+
+const RPC_ENDPOINTS = [
+  'https://mainnet.basedaibridge.com/rpc/',
+  'https://rpc.basedaibridge.com/',
+  // Add more as they become available
+];
+
+interface RPCHealth {
+  endpoint: string;
+  latency: number;
+  failCount: number;
+  lastFail: number;
+  working: boolean;
+}
+
+class MultiRPCProvider {
+  private providers: Map<string, ethers.JsonRpcProvider> = new Map();
+  private health: Map<string, RPCHealth> = new Map();
+  private currentIndex = 0;
+  private readonly MAX_FAILS = 3;
+  private readonly FAIL_TIMEOUT = 60000; // 1 minute
+
+  constructor() {
+    RPC_ENDPOINTS.forEach((endpoint, index) => {
+      this.providers.set(endpoint, new ethers.JsonRpcProvider(endpoint));
+      this.health.set(endpoint, {
+        endpoint,
+        latency: 0,
+        failCount: 0,
+        lastFail: 0,
+        working: true,
+      });
+    });
+    
+    // Monitor health every 30 seconds
+    if (typeof window !== 'undefined') {
+      setInterval(() => this.healthCheck(), 30000);
+      this.healthCheck(); // Initial check
+    }
+  }
+
+  private async healthCheck() {
+    for (const [endpoint, provider] of this.providers) {
+      try {
+        const start = Date.now();
+        await provider.getBlockNumber();
+        const latency = Date.now() - start;
+        
+        const health = this.health.get(endpoint)!;
+        health.latency = latency;
+        health.failCount = 0;
+        health.working = true;
+        
+        console.log(`[RPC] ${endpoint} - OK (${latency}ms)`);
+      } catch (error) {
+        const health = this.health.get(endpoint)!;
+        health.failCount++;
+        health.lastFail = Date.now();
+        health.working = health.failCount < this.MAX_FAILS;
+        
+        console.warn(`[RPC] ${endpoint} - FAIL (${health.failCount}/${this.MAX_FAILS})`);
+      }
+    }
+  }
+
+  private getHealthyEndpoints(): string[] {
+    return Array.from(this.health.values())
+      .filter(h => {
+        // Consider working if under max fails OR enough time has passed
+        return h.working || (Date.now() - h.lastFail > this.FAIL_TIMEOUT);
+      })
+      .sort((a, b) => a.latency - b.latency) // Fastest first
+      .map(h => h.endpoint);
+  }
+
+  async executeWithFailover<T>(
+    operation: (provider: ethers.JsonRpcProvider) => Promise<T>,
+    maxRetries = 3
+  ): Promise<T> {
+    const endpoints = this.getHealthyEndpoints();
+    
+    if (endpoints.length === 0) {
+      throw new Error('All RPC endpoints are down');
+    }
+
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const endpoint = endpoints[attempt % endpoints.length];
+      const provider = this.providers.get(endpoint)!;
+      
+      try {
+        const result = await operation(provider);
+        
+        // Reset fail count on success
+        const health = this.health.get(endpoint)!;
+        health.failCount = 0;
+        health.working = true;
+        
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Mark endpoint as potentially failing
+        const health = this.health.get(endpoint)!;
+        health.failCount++;
+        health.lastFail = Date.now();
+        
+        console.warn(`[RPC] Attempt ${attempt + 1}/${maxRetries} failed on ${endpoint}:`, error.message);
+        
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+    }
+
+    throw lastError || new Error('All RPC attempts failed');
+  }
+
+  getProvider(): ethers.JsonRpcProvider {
+    const endpoints = this.getHealthyEndpoints();
+    if (endpoints.length === 0) {
+      console.warn('[RPC] No healthy endpoints, using first endpoint');
+      return this.providers.values().next().value;
+    }
+    
+    const endpoint = endpoints[0];
+    return this.providers.get(endpoint)!;
+  }
+
+  getStatus() {
+    return Array.from(this.health.values()).map(h => ({
+      endpoint: h.endpoint.replace('https://', '').split('/')[0],
+      status: h.working ? '✅' : '❌',
+      latency: `${h.latency}ms`,
+      fails: `${h.failCount}/${this.MAX_FAILS}`
+    }));
+  }
+}
+
+export const rpcProvider = new MultiRPCProvider();
+
+// Expose for debugging
+if (typeof window !== 'undefined') {
+  (window as any).rpcStatus = () => {
+    console.table(rpcProvider.getStatus());
+  };
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: SAFE TRANSACTION WRAPPER
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/safeTransaction.ts
+
+import { parseEther, formatEther } from 'viem';
+import { rpcProvider } from './rpcProvider';
+
+interface TransactionParams {
+  to: string;
+  value?: bigint;
+  data?: string;
+  gasLimit?: bigint;
+}
+
+interface TransactionResult {
+  success: boolean;
+  txHash?: string;
+  error?: string;
+  receipt?: any;
+}
+
+export class SafeTransaction {
+  private static readonly CONFIRMATION_BLOCKS = 2;
+  private static readonly MAX_WAIT_TIME = 120000; // 2 minutes
+
+  static async estimateGas(params: TransactionParams): Promise<bigint> {
+    return await rpcProvider.executeWithFailover(async (provider) => {
+      const estimate = await provider.estimateGas({
+        to: params.to,
+        value: params.value,
+        data: params.data,
+      });
+      
+      // Add 20% buffer
+      return estimate * BigInt(120) / BigInt(100);
+    });
+  }
+
+  static async getGasPrice(): Promise<bigint> {
+    return await rpcProvider.executeWithFailover(async (provider) => {
+      const feeData = await provider.getFeeData();
+      return feeData.gasPrice || BigInt(10000000000); // 10 gwei default
+    });
+  }
+
+  static async verifyBalance(address: string, requiredAmount: bigint): Promise<boolean> {
+    return await rpcProvider.executeWithFailover(async (provider) => {
+      const balance = await provider.getBalance(address);
+      return balance >= requiredAmount;
+    });
+  }
+
+  static async waitForConfirmation(
+    txHash: string,
+    confirmations = this.CONFIRMATION_BLOCKS
+  ): Promise<TransactionResult> {
+    const startTime = Date.now();
+    
+    return await rpcProvider.executeWithFailover(async (provider) => {
+      while (Date.now() - startTime < this.MAX_WAIT_TIME) {
+        try {
+          const receipt = await provider.getTransactionReceipt(txHash);
+          
+          if (receipt) {
+            if (receipt.status === 0) {
+              return {
+                success: false,
+                txHash,
+                error: 'Transaction reverted',
+                receipt,
+              };
+            }
+            
+            const currentBlock = await provider.getBlockNumber();
+            const confirmedBlocks = currentBlock - receipt.blockNumber;
+            
+            if (confirmedBlocks >= confirmations) {
+              return {
+                success: true,
+                txHash,
+                receipt,
+              };
+            }
+          }
+          
+          // Wait 3 seconds before checking again
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch (error: any) {
+          console.warn('[SafeTransaction] Confirmation check failed:', error.message);
+        }
+      }
+      
+      return {
+        success: false,
+        txHash,
+        error: 'Transaction confirmation timeout',
+      };
+    });
+  }
+
+  static async getNonce(address: string): Promise<number> {
+    return await rpcProvider.executeWithFailover(async (provider) => {
+      return await provider.getTransactionCount(address, 'pending');
+    });
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE MARKETPLACE TO USE SAFE TRANSACTIONS
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/core/commerce/useMarketplace.ts
+
+ADD IMPORT (line 1):
+import { SafeTransaction } from '@/lib/safeTransaction';
+
+FIND buyNFT function (line 451):
+const buyNFT = useCallback(async (tokenId: number, priceWei: bigint) => {
+  if (!checkNetwork()) return;
+
+REPLACE WITH:
+const buyNFT = useCallback(async (tokenId: number, priceWei: bigint) => {
+  if (!checkNetwork() || !address) return;
+
+  // Pre-flight checks
+  try {
+    // 1. Verify balance
+    const hasBalance = await SafeTransaction.verifyBalance(address, priceWei);
+    if (!hasBalance) {
+      toast({ 
+        title: "Insufficient Balance", 
+        description: "You don't have enough $BASED for this purchase", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // 2. Estimate gas
+    toast({
+      title: "Preparing Transaction",
+      description: "Estimating gas costs...",
+      className: "bg-black border-cyan-500 text-cyan-500",
+    });
+
+    const estimatedGas = await SafeTransaction.estimateGas({
+      to: MARKETPLACE_CONTRACT,
+      value: priceWei,
+    });
+
+    console.log(`[Marketplace] Gas estimate: ${estimatedGas.toString()}`);
+
+  } catch (error: any) {
+    toast({
+      title: "Pre-flight Check Failed",
+      description: error.message || "Transaction would likely fail. Please try again.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setState(prev => ({ ...prev, action: 'buy' }));
+  const priceFormatted = formatEther(priceWei);
+  lastActionRef.current = { 
+    action: 'buy', 
+    description: `Buying Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED`, 
+    retryFn: () => buyNFT(tokenId, priceWei) 
+  };
+
+  toast({
+    title: "Buy NFT",
+    description: `Purchasing Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED...`,
+    className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
+  });
+
+  writeContract({
+    address: MARKETPLACE_CONTRACT as `0x${string}`,
+    abi: MARKETPLACE_ABI,
+    functionName: 'buyNFT',
+    args: [BigInt(tokenId)],
+    value: priceWei,
+    chainId: CHAIN_ID,
+    gas: GAS_SETTINGS.BUY,
+  });
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. Restart server
+2. Open browser console, run:
+   rpcStatus()
+   // Should show RPC health table
+
+3. Test transaction:
+   - Try to buy an NFT
+   - Should see "Preparing Transaction" toast
+   - Should estimate gas before proceeding
+   
+4. Test RPC failover:
+   - In rpcProvider.ts, temporarily break first endpoint
+   - Transaction should still work using backup
+
+CHECKLIST:
+□ rpcProvider.ts created
+□ safeTransaction.ts created
+□ useMarketplace.ts updated with pre-flight checks
+□ rpcStatus() command works in console
+□ Transactions verify balance before submitting
+□ Gas estimation runs before transaction

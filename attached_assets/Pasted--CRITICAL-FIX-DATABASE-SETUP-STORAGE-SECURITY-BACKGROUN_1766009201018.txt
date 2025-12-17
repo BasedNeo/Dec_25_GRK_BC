@@ -1,0 +1,318 @@
+=== CRITICAL: FIX DATABASE SETUP + STORAGE SECURITY ===
+
+BACKGROUND: The guardian_profiles table doesn't exist, and localStorage has no protection against overflow or injection.
+
+═══════════════════════════════════════════════════════════
+PART 1: DATABASE MIGRATION + VERIFICATION
+═══════════════════════════════════════════════════════════
+
+STEP 1: Check Database Connection
+──────────────────────────────────
+Run in terminal:
+echo $DATABASE_URL
+
+Expected: Should show PostgreSQL connection string
+If empty: Add to Replit Secrets (Lock icon in left sidebar)
+
+STEP 2: Run Database Migration
+──────────────────────────────────
+npm run db:push
+
+Expected output: "✅ Pushing schema..."
+If error "relation already exists": GOOD - tables exist
+If error "can't connect": Check DATABASE_URL format
+
+STEP 3: Verify Tables Created
+──────────────────────────────────
+CREATE VERIFICATION SCRIPT: script/verify-db.ts
+
+import { db } from './server/db';
+import { guardianProfiles, gameScores, proposals, proposalVotes, diamondHandsStats } from '@shared/schema';
+
+async function verifyTables() {
+  try {
+    console.log('🔍 Verifying database tables...\n');
+    
+    // Test each table
+    const tests = [
+      { name: 'guardian_profiles', query: () => db.select().from(guardianProfiles).limit(1) },
+      { name: 'game_scores', query: () => db.select().from(gameScores).limit(1) },
+      { name: 'proposals', query: () => db.select().from(proposals).limit(1) },
+      { name: 'proposal_votes', query: () => db.select().from(proposalVotes).limit(1) },
+      { name: 'diamond_hands_stats', query: () => db.select().from(diamondHandsStats).limit(1) }
+    ];
+    
+    for (const test of tests) {
+      try {
+        await test.query();
+        console.log(`✅ ${test.name} - OK`);
+      } catch (e: any) {
+        console.error(`❌ ${test.name} - FAILED: ${e.message}`);
+        process.exit(1);
+      }
+    }
+    
+    console.log('\n✅ All tables verified successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Database verification failed:', error);
+    process.exit(1);
+  }
+}
+
+verifyTables();
+
+ADD TO package.json scripts:
+"db:verify": "tsx script/verify-db.ts"
+
+RUN: npm run db:verify
+
+═══════════════════════════════════════════════════════════
+PART 2: SECURE LOCALSTORAGE MANAGER
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/secureStorage.ts
+
+const MAX_STORAGE_SIZE = 4_500_000; // 4.5MB (留出空间)
+const STORAGE_PREFIX = 'bg_secure_';
+
+interface StorageItem<T> {
+  data: T;
+  timestamp: number;
+  checksum: string;
+}
+
+function generateChecksum(data: string): string {
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function getCurrentStorageSize(): number {
+  let total = 0;
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      total += localStorage[key].length + key.length;
+    }
+  }
+  return total;
+}
+
+export class SecureStorage {
+  private static cleanupOldEntries() {
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
+      
+      try {
+        const item = JSON.parse(localStorage.getItem(key) || '{}');
+        // Delete items older than 30 days
+        if (now - item.timestamp > 30 * 24 * 60 * 60 * 1000) {
+          keysToDelete.push(key);
+        }
+      } catch {
+        keysToDelete.push(key); // Delete corrupted items
+      }
+    }
+    
+    keysToDelete.forEach(key => localStorage.removeItem(key));
+    return keysToDelete.length;
+  }
+
+  static set<T>(key: string, value: T): boolean {
+    try {
+      const fullKey = STORAGE_PREFIX + key;
+      const jsonData = JSON.stringify(value);
+      
+      // Size check
+      if (getCurrentStorageSize() + jsonData.length > MAX_STORAGE_SIZE) {
+        console.warn('[SecureStorage] Size limit reached, cleaning up...');
+        this.cleanupOldEntries();
+        
+        // Check again after cleanup
+        if (getCurrentStorageSize() + jsonData.length > MAX_STORAGE_SIZE) {
+          console.error('[SecureStorage] Still over limit after cleanup');
+          return false;
+        }
+      }
+      
+      const item: StorageItem<T> = {
+        data: value,
+        timestamp: Date.now(),
+        checksum: generateChecksum(jsonData)
+      };
+      
+      localStorage.setItem(fullKey, JSON.stringify(item));
+      return true;
+    } catch (e) {
+      console.error('[SecureStorage] Set failed:', e);
+      return false;
+    }
+  }
+
+  static get<T>(key: string, maxAge?: number): T | null {
+    try {
+      const fullKey = STORAGE_PREFIX + key;
+      const stored = localStorage.getItem(fullKey);
+      if (!stored) return null;
+      
+      const item = JSON.parse(stored) as StorageItem<T>;
+      
+      // Age check
+      if (maxAge && Date.now() - item.timestamp > maxAge) {
+        localStorage.removeItem(fullKey);
+        return null;
+      }
+      
+      // Integrity check
+      const jsonData = JSON.stringify(item.data);
+      if (item.checksum !== generateChecksum(jsonData)) {
+        console.warn('[SecureStorage] Checksum mismatch, removing corrupted data');
+        localStorage.removeItem(fullKey);
+        return null;
+      }
+      
+      return item.data;
+    } catch (e) {
+      console.error('[SecureStorage] Get failed:', e);
+      return null;
+    }
+  }
+
+  static remove(key: string): void {
+    localStorage.removeItem(STORAGE_PREFIX + key);
+  }
+
+  static clear(): void {
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_PREFIX)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => localStorage.removeItem(key));
+  }
+
+  static getStorageInfo(): { used: number; available: number; items: number } {
+    const used = getCurrentStorageSize();
+    let itemCount = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_PREFIX)) itemCount++;
+    }
+    
+    return {
+      used,
+      available: MAX_STORAGE_SIZE - used,
+      items: itemCount
+    };
+  }
+}
+
+// Auto-cleanup on load
+if (typeof window !== 'undefined') {
+  SecureStorage['cleanupOldEntries']();
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: MIGRATE OFFERS TO SECURE STORAGE
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/hooks/useOffersV3.ts
+
+FIND (line 154-165):
+function getStoredOffers(): OffchainOffer[] {
+  try {
+    const stored = localStorage.getItem(OFFERS_STORAGE_KEY);
+    if (!stored) return [];
+    let offers = JSON.parse(stored) as OffchainOffer[];
+    const cleaned = cleanupOffers(offers);
+    if (cleaned.length !== offers.length) saveOffers(cleaned);
+    return cleaned;
+  } catch {
+    return [];
+  }
+}
+
+REPLACE WITH:
+import { SecureStorage } from '@/lib/secureStorage';
+
+function getStoredOffers(): OffchainOffer[] {
+  try {
+    // Try secure storage first
+    const offers = SecureStorage.get<OffchainOffer[]>('offers_v3');
+    if (offers) {
+      const cleaned = cleanupOffers(offers);
+      if (cleaned.length !== offers.length) saveOffers(cleaned);
+      return cleaned;
+    }
+    
+    // Migrate from old storage if exists
+    const oldStored = localStorage.getItem(OFFERS_STORAGE_KEY);
+    if (oldStored) {
+      const oldOffers = JSON.parse(oldStored) as OffchainOffer[];
+      saveOffers(oldOffers);
+      localStorage.removeItem(OFFERS_STORAGE_KEY); // Clean up old
+      return cleanupOffers(oldOffers);
+    }
+    
+    return [];
+  } catch (e) {
+    console.error('[Offers] Storage read error:', e);
+    return [];
+  }
+}
+
+FIND (line 167-173):
+function saveOffers(offers: OffchainOffer[]) {
+  try {
+    localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(offers));
+  } catch {
+    // Storage error
+  }
+}
+
+REPLACE WITH:
+function saveOffers(offers: OffchainOffer[]) {
+  const success = SecureStorage.set('offers_v3', offers);
+  if (!success) {
+    console.error('[Offers] Failed to save - storage full or error');
+    // Keep only most recent 100 offers
+    const trimmed = offers.slice(-100);
+    SecureStorage.set('offers_v3', trimmed);
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: RESTART & TEST
+═══════════════════════════════════════════════════════════
+
+1. Stop server (Ctrl+C)
+2. npm run db:verify
+3. npm run dev
+4. Test name registration:
+   - Connect wallet
+   - Go to Stats
+   - Set name "TestUser"
+   - Should save successfully
+5. Check browser console - no errors
+6. Check SecureStorage: Open DevTools Console, run:
+   SecureStorage.getStorageInfo()
+   // Should show: { used: <number>, available: <number>, items: <number> }
+
+VERIFICATION CHECKLIST:
+□ Database tables verified
+□ SecureStorage.ts created
+□ useOffersV3.ts migrated
+□ Old offers migrated automatically
+□ Name registration works
+□ No console errors
+□ Storage info command works
