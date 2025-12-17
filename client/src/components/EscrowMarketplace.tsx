@@ -198,6 +198,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       expiresAt: number;
       time: string;
       status: string;
+      message?: string;
     }[] = [];
     offersByToken.forEach((offers, tokenId) => {
       offers.forEach((offer, idx) => {
@@ -209,7 +210,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           amount: Number(offer.amount),
           expiresAt: offer.expiresAt,
           time: new Date(offer.expiresAt * 1000).toLocaleDateString(),
-          status: 'active'
+          status: 'active',
+          message: (offer as { message?: string }).message
         });
       });
     });
@@ -1383,6 +1385,17 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                                                <Badge variant="outline" className="border-accent text-accent">{offer.amount.toLocaleString()} $BASED</Badge>
                                                <span className="text-[10px] text-muted-foreground">{offer.time}</span>
                                            </div>
+                                           {offer.message && (
+                                               <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg max-w-md">
+                                                   <div className="flex items-start gap-2">
+                                                       <ShieldCheck size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                                                       <div>
+                                                           <p className="text-[10px] text-purple-400 font-bold mb-1">GUARDIAN HOLDER</p>
+                                                           <p className="text-sm text-white/90 italic">"{offer.message}"</p>
+                                                       </div>
+                                                   </div>
+                                               </div>
+                                           )}
                                        </div>
                                    </div>
                                    

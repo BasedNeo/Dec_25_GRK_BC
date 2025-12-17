@@ -333,6 +333,13 @@ export function MyOffersPanel() {
                           </span>
                         </div>
                       </div>
+                      
+                      {offer.v3Offer?.message && (
+                        <div className="mt-2 p-2 bg-purple-500/10 border-l-2 border-purple-500 rounded-r text-xs">
+                          <span className="text-purple-400 font-bold">Your message: </span>
+                          <span className="text-white/70 italic">"{offer.v3Offer.message}"</span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">

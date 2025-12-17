@@ -142,6 +142,13 @@ client/src/lib/constants.ts
 - NFT cards in portfolio now display offer details with Accept/Decline buttons directly visible
 - Mobile wallet connect optimized: Custom styled connect button matching desktop, full wallet list scrollable, touch-friendly 56px minimum targets
 - RainbowKit modal CSS polish: Mobile-first responsive design, proper icon sizing, all wallet groups visible
+- NFT-Gated Offer Messaging: Guardian holders (1+ NFT) can send personal messages with offers
+  - useIsGuardianHolder hook checks NFT ownership via balanceOf
+  - Messages are sanitized with DOMPurify, max 280 characters
+  - Non-holders see unlock prompt with Mint/Buy CTAs
+  - Messages displayed with "GUARDIAN HOLDER" badge in received offers
+  - Rate limiting: max 5 offers per hour
+  - Auto-cleanup prevents localStorage overflow
 
 ## Wallet Configuration
 
