@@ -106,7 +106,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     activeOffers: 0,
   });
 
-  // Fetch activities from blockchain - OPTIMIZED with parallel calls
+  // Fetch activities from blockchain - OPTIMIZED with chunked queries
   const fetchActivities = useCallback(async () => {
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -118,27 +118,67 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Look back ~500000 blocks to capture all historical activity
       // BasedAI ~2 sec blocks, so 500000 blocks ≈ 11.5 days of history
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const fromBlock = Math.max(0, currentBlock - 500000);
+      const totalBlockRange = 500000;
+      const fromBlock = Math.max(0, currentBlock - totalBlockRange);
+      const CHUNK_SIZE = 20000; // Query 20k blocks at a time to avoid timeout
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
       
+      // Get totalMinted immediately (doesn't need chunking)
+      const totalMinted = await nftContract.totalMinted().catch((e: Error) => { 
+        console.warn('totalMinted failed:', e.message); 
+        return 0; 
+      });
+      
       // ⚠️ LOCKED: Event fetching - this is the source of truth for all activity
-      // PARALLEL: Fetch all data at once from NFT and Marketplace contracts
+      // CHUNKED QUERIES: Fetch events in 20k block chunks to avoid RPC timeout
       // - Transfer events: detect mints (from 0x0) and transfers
       // - Listed events: detect new marketplace listings
       // - Sold events: detect sales (used for royalty volume calculation)
-      const [
-        totalMinted,
-        transferEvents,
-        listedEvents,
-        soldEvents
-      ] = await Promise.all([
-        nftContract.totalMinted().catch((e: Error) => { console.warn('totalMinted failed:', e.message); return 0; }),
-        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Transfer events failed:', e.message); return []; }),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Listed events failed:', e.message); return []; }),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Sold events failed:', e.message); return []; })
-      ]);
+      
+      const allTransferEvents: ethers.Log[] = [];
+      const allListedEvents: ethers.Log[] = [];
+      const allSoldEvents: ethers.Log[] = [];
+      
+      // Create chunk ranges
+      const chunks: Array<{from: number, to: number}> = [];
+      for (let start = fromBlock; start < currentBlock; start += CHUNK_SIZE) {
+        chunks.push({
+          from: start,
+          to: Math.min(start + CHUNK_SIZE - 1, currentBlock)
+        });
+      }
+      
+      console.log(`Activity Feed: Fetching ${chunks.length} chunks of ${CHUNK_SIZE} blocks each`);
+      
+      // Fetch all chunks in parallel (batches of 5 to avoid overwhelming RPC)
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+        const batch = chunks.slice(i, i + BATCH_SIZE);
+        
+        const batchPromises = batch.flatMap(chunk => [
+          nftContract.queryFilter(nftContract.filters.Transfer(), chunk.from, chunk.to)
+            .catch(() => []),
+          marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), chunk.from, chunk.to)
+            .catch(() => []),
+          marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), chunk.from, chunk.to)
+            .catch(() => [])
+        ]);
+        
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Every 3 results is [transfers, listed, sold] for one chunk
+        for (let j = 0; j < batch.length; j++) {
+          allTransferEvents.push(...(batchResults[j * 3] || []));
+          allListedEvents.push(...(batchResults[j * 3 + 1] || []));
+          allSoldEvents.push(...(batchResults[j * 3 + 2] || []));
+        }
+      }
+      
+      const transferEvents = allTransferEvents;
+      const listedEvents = allListedEvents;
+      const soldEvents = allSoldEvents;
       
       console.log(`Activity Feed: Block ${fromBlock}-${currentBlock}, Transfers: ${transferEvents.length}, Listed: ${listedEvents.length}, Sold: ${soldEvents.length}`);
       
