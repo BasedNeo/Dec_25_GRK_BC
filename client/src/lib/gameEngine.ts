@@ -285,9 +285,11 @@ export function updateGame(state: GameState, w: number, h: number): void {
   });
   
   state.spawnTimer--;
-  if (state.spawnTimer <= 0 && state.aliens.length === 0) {
+  const activeAliens = state.aliens.filter(a => a.active).length;
+  if (state.spawnTimer <= 0 && activeAliens === 0) {
     state.wave++;
     state.difficulty = 1 + state.wave * 0.1;
+    state.aliens = []; // Clear old aliens array
     spawnWave(state, w);
     state.spawnTimer = 999999;
     state.enemiesKilledThisWave = 0;
