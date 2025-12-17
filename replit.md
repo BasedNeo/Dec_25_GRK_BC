@@ -66,6 +66,7 @@ Protected folder structure to isolate core commerce and game code:
 ```
 /client/src/
 ├── core/                          ← PROTECTED: Commerce, auth, contracts
+│   ├── PROTECTION_MANIFEST.json   ← Checksums for all protected files
 │   ├── README.md                  ← Documents what's protected and why
 │   ├── contracts/index.ts         ← Contract addresses
 │   ├── commerce/                  ← Minting, marketplace, offers
@@ -88,6 +89,12 @@ Protected folder structure to isolate core commerce and game code:
 **Feature Flags** (lib/featureFlags.ts):
 - Toggle features via localStorage for testing/emergency shutoff
 - Flags: mintingEnabled, marketplaceEnabled, offersV3Enabled, gameEnabled, etc.
+
+**Core Protection System** (script/backup-core.ts):
+- SHA-256 checksums track all protected files
+- Backups stored in `.core-backups/` (50 versions max per file)
+- Commands: `npx tsx script/backup-core.ts verify|backup|restore|list`
+- LOCKED files (constants.ts, mockData.ts, schema.ts) fail verification if modified
 
 ## System Architecture
 

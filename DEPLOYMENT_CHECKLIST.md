@@ -4,17 +4,18 @@ Run these checks BEFORE every deployment to production.
 
 ## 1. Core Integrity Check
 ```bash
-npm run core:verify
+npx tsx script/backup-core.ts verify
 ```
 - Expected: All protected files pass integrity check
 - If failed: Review changes, restore from backup if needed
 
 ## 2. Database Verification
 ```bash
+npx tsx script/backup-core.ts verify
 npm run db:push
 ```
 - Expected: All tables exist and accessible
-- If failed: Run migrations to apply changes
+- If failed: Run `npm run db:push` to apply migrations
 
 ## 3. Security Tests
 ```bash
@@ -73,7 +74,7 @@ timers()
 
 ## 8. Final Backup
 ```bash
-npm run core:backup
+npx tsx script/backup-core.ts backup
 ```
 - All protected files backed up before deployment
 
@@ -89,4 +90,22 @@ npm run build
 Only after ALL checks pass:
 ```bash
 npm run start
+```
+
+---
+
+## Quick Commands Reference
+
+```bash
+# Verify all protected files
+npx tsx script/backup-core.ts verify
+
+# Create backups of all protected files
+npx tsx script/backup-core.ts backup
+
+# Restore a file from backup
+npx tsx script/backup-core.ts restore <file-path>
+
+# List all backups for a file
+npx tsx script/backup-core.ts list <file-path>
 ```
