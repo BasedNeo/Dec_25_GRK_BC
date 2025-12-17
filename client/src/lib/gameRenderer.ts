@@ -1,4 +1,12 @@
 import { GameState, Alien, Bullet, Explosion, PowerUp } from './gameEngine';
+import fudImage from '@assets/generated_images/red_fud_text_game_sprite.png';
+
+// Preload FUD image
+let fudImageElement: HTMLImageElement | null = null;
+if (typeof window !== 'undefined') {
+  fudImageElement = new Image();
+  fudImageElement.src = fudImage;
+}
 
 const COLORS = {
   shipCyan: '#00ffff',
@@ -211,20 +219,21 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       break;
       
     case 'galaga':
-      ctx.fillStyle = COLORS.alienGreen;
-      ctx.beginPath();
-      ctx.moveTo(0, -14);
-      ctx.bezierCurveTo(-16, -8, -16, 10, 0, 14);
-      ctx.bezierCurveTo(16, 10, 16, -8, 0, -14);
-      ctx.fill();
-      ctx.fillStyle = '#004400';
-      ctx.beginPath();
-      ctx.arc(0, 2, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(255, 255, 0, ${0.5 + 0.3 * Math.sin(time * 0.1)})`;
-      ctx.beginPath();
-      ctx.arc(0, 2, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // Use FUD image for galaga aliens
+      if (fudImageElement && fudImageElement.complete) {
+        const imgSize = 32;
+        ctx.drawImage(fudImageElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
+      } else {
+        // Fallback: Draw FUD text if image not loaded
+        ctx.fillStyle = '#ff0000';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 10;
+        ctx.fillText('FUD', 0, 0);
+        ctx.shadowBlur = 0;
+      }
       break;
   }
   
