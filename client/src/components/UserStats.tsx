@@ -324,6 +324,33 @@ export function UserStats() {
   const diamondHandsLevel = getDiamondHandsLevel();
   const diamondHandsLevelData = diamondHandsLevel >= 0 ? DIAMOND_HANDS_LEVELS[diamondHandsLevel] : null;
 
+  useEffect(() => {
+    if (!address || diamondHandsData.loading || diamondHandsData.currentHolding === 0) return;
+    
+    const updateLeaderboard = async () => {
+      try {
+        await fetch('/api/diamond-hands/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: address,
+            customName: profile?.customName || null,
+            daysHolding: diamondHandsData.daysHolding,
+            retentionRate: diamondHandsData.retentionRate,
+            currentHolding: diamondHandsData.currentHolding,
+            totalAcquired: diamondHandsData.totalAcquired,
+            totalSold: diamondHandsData.totalSold,
+            level: Math.max(0, diamondHandsLevel),
+          }),
+        });
+      } catch {
+        // Silently fail - leaderboard is not critical
+      }
+    };
+    
+    updateLeaderboard();
+  }, [address, diamondHandsData, diamondHandsLevel, profile?.customName]);
+
   const hasAllTypes = nftBreakdown.guardians > 0 && nftBreakdown.frogs > 0 && nftBreakdown.creatures > 0;
   const pagesPercent = (pagesVisited.length / PAGES.length) * 100;
   const allPagesVisited = pagesVisited.length >= PAGES.length;
@@ -385,8 +412,11 @@ export function UserStats() {
     
     if (cleaned.length >= 2) {
       setCheckingName(true);
-      const available = await checkNameAvailable(cleaned);
-      setNameAvailable(available);
+      const result = await checkNameAvailable(cleaned);
+      setNameAvailable(result.available);
+      if (result.error) {
+        setNameError(result.error);
+      }
       setCheckingName(false);
     }
   };

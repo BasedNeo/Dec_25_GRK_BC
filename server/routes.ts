@@ -311,5 +311,41 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/diamond-hands/update", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string().min(10),
+        customName: z.string().max(20).nullable().optional(),
+        daysHolding: z.number().min(0),
+        retentionRate: z.number().min(0).max(100),
+        currentHolding: z.number().min(0),
+        totalAcquired: z.number().min(0),
+        totalSold: z.number().min(0),
+        level: z.number().min(0).max(5),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid data" });
+      }
+
+      const result = await storage.upsertDiamondHandsStats(parsed.data);
+      return res.json({ success: true, stats: result });
+    } catch (error) {
+      console.error("[DiamondHands] Error updating stats:", error);
+      return res.status(500).json({ error: "Failed to update stats" });
+    }
+  });
+
+  app.get("/api/diamond-hands/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getDiamondHandsLeaderboard(limit);
+      return res.json(leaderboard);
+    } catch (error) {
+      console.error("[DiamondHands] Error fetching leaderboard:", error);
+      return res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
   return httpServer;
 }

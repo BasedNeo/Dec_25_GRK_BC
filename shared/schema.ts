@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -105,3 +105,24 @@ export const insertGuardianProfileSchema = createInsertSchema(guardianProfiles).
 
 export type InsertGuardianProfile = z.infer<typeof insertGuardianProfileSchema>;
 export type GuardianProfile = typeof guardianProfiles.$inferSelect;
+
+export const diamondHandsStats = pgTable("diamond_hands_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull().unique(),
+  customName: varchar("custom_name", { length: 20 }),
+  daysHolding: integer("days_holding").default(0).notNull(),
+  retentionRate: integer("retention_rate").default(0).notNull(),
+  currentHolding: integer("current_holding").default(0).notNull(),
+  totalAcquired: integer("total_acquired").default(0).notNull(),
+  totalSold: integer("total_sold").default(0).notNull(),
+  level: integer("level").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDiamondHandsStatsSchema = createInsertSchema(diamondHandsStats).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertDiamondHandsStats = z.infer<typeof insertDiamondHandsStatsSchema>;
+export type DiamondHandsStats = typeof diamondHandsStats.$inferSelect;

@@ -36,6 +36,7 @@ import {
   formatTimeAgo 
 } from '@/hooks/useActivityFeed';
 import { BLOCK_EXPLORER } from '@/lib/constants';
+import { DiamondHandsLeaderboard } from './DiamondHandsLeaderboard';
 
 interface ActivityFeedProps {
   limit?: number;
@@ -209,6 +210,12 @@ export function ActivityFeed({
             </AnimatePresence>
           )}
         </Card>
+
+        {!compact && (
+          <div className="mt-8">
+            <DiamondHandsLeaderboard />
+          </div>
+        )}
       </div>
     </section>
   );

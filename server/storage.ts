@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count } from "drizzle-orm";
@@ -207,6 +207,42 @@ export class DatabaseStorage implements IStorage {
     if (results.length === 0) return false;
     if (excludeWallet && results[0].walletAddress === excludeWallet.toLowerCase()) return false;
     return true;
+  }
+
+  async upsertDiamondHandsStats(data: InsertDiamondHandsStats): Promise<DiamondHandsStats> {
+    const addr = data.walletAddress.toLowerCase();
+    const existing = await db.select().from(diamondHandsStats)
+      .where(eq(diamondHandsStats.walletAddress, addr));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(diamondHandsStats)
+        .set({
+          customName: data.customName,
+          daysHolding: data.daysHolding,
+          retentionRate: data.retentionRate,
+          currentHolding: data.currentHolding,
+          totalAcquired: data.totalAcquired,
+          totalSold: data.totalSold,
+          level: data.level,
+          updatedAt: new Date(),
+        })
+        .where(eq(diamondHandsStats.walletAddress, addr))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db.insert(diamondHandsStats).values({
+      ...data,
+      walletAddress: addr,
+    }).returning();
+    return created;
+  }
+
+  async getDiamondHandsLeaderboard(limit: number = 20): Promise<DiamondHandsStats[]> {
+    return db.select().from(diamondHandsStats)
+      .where(sql`${diamondHandsStats.currentHolding} > 0`)
+      .orderBy(desc(diamondHandsStats.level), desc(diamondHandsStats.daysHolding), desc(diamondHandsStats.retentionRate))
+      .limit(limit);
   }
 }
 
