@@ -1,0 +1,252 @@
+=== ARCHITECTURE INSULATION - PROTECT CORE FUNCTIONS ===
+
+Reorganize the codebase to isolate core commerce and game code from future updates.
+This prevents accidental breaking changes.
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE PROTECTED CORE FOLDER STRUCTURE
+═══════════════════════════════════════════════════════════
+
+Create this folder structure (move existing files):
+
+/client/src/
+├── core/                          ← PROTECTED: Do not modify without review
+│   ├── README.md                  ← Documents what's protected and why
+│   ├── contracts/                 ← Contract ABIs and addresses
+│   │   ├── index.ts
+│   │   └── abis.ts
+│   ├── commerce/                  ← Minting, marketplace, offers
+│   │   ├── useMint.ts
+│   │   ├── useMarketplace.ts
+│   │   └── useOffers.ts
+│   ├── auth/                      ← Wallet connection, access control
+│   │   ├── useWalletAuth.ts
+│   │   └── useIsGuardianHolder.ts
+│   └── types.ts                   ← Shared TypeScript interfaces
+│
+├── game/                          ← ISOLATED: Self-contained game module
+│   ├── engine/
+│   │   ├── gameEngine.ts
+│   │   └── gameRenderer.ts
+│   ├── hooks/
+│   │   ├── useGameAccess.ts
+│   │   └── useGameScores.ts
+│   ├── components/
+│   │   └── GuardianDefender.tsx
+│   └── index.ts                   ← Single export point
+│
+├── features/                      ← MODULAR: New features go here
+│   ├── messaging/
+│   ├── leaderboard/
+│   └── ...
+│
+└── ui/                            ← SAFE: UI components, styling
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE CORE README (PROTECTION DOCUMENTATION)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/core/README.md
+
+# 🔒 PROTECTED CORE - READ BEFORE MODIFYING
+
+This folder contains **mission-critical commerce functions** that have been tested
+and verified to work correctly. Modifications require careful review.
+
+## ⚠️ MODIFICATION RULES
+
+1. **NEVER modify without creating a backup first**
+2. **Test ALL commerce functions after any change**
+3. **Document any changes in the changelog below**
+
+## 📦 What's Protected
+
+| File | Purpose | Last Verified |
+|------|---------|---------------|
+| `commerce/useMint.ts` | NFT minting (8M gas) | [DATE] |
+| `commerce/useMarketplace.ts` | Listings, buying | [DATE] |
+| `commerce/useOffers.ts` | V3 offer system | [DATE] |
+| `contracts/index.ts` | Contract addresses | [DATE] |
+| `auth/useIsGuardianHolder.ts` | NFT gate check | [DATE] |
+
+## 🧪 Required Tests After Changes
+
+- [ ] Mint 1 NFT successfully
+- [ ] List NFT for sale
+- [ ] Buy listed NFT
+- [ ] Make offer (V3 signature)
+- [ ] Cancel offer
+- [ ] Game gate blocks non-holders
+- [ ] Game gate allows holders
+
+## 📝 Changelog
+
+| Date | Change | Author |
+|------|--------|--------|
+| [DATE] | Initial protection setup | - |═══════════════════════════════════════════════════════════
+PART 3: CREATE CORE TYPES (IMMUTABLE CONTRACTS)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/core/types.ts
+
+/**
+ * 🔒 PROTECTED: These types define the interface contracts.
+ * Changing these may break dependent code.
+ */
+
+// === COMMERCE TYPES ===
+export interface MintResult {
+  success: boolean;
+  txHash?: string;
+  tokenId?: number;
+  error?: string;
+}
+
+export interface ListingData {
+  tokenId: number;
+  price: bigint;
+  seller: `0x${string}`;
+  active: boolean;
+}
+
+export interface OfferData {
+  id: string;
+  tokenId: number;
+  amount: bigint;
+  buyer: `0x${string}`;
+  expiration: number;
+  status: 'pending' | 'accepted' | 'completed' | 'expired' | 'cancelled';
+  signature?: string;
+  message?: string;
+}
+
+// === GAME TYPES ===
+export interface GameAccessState {
+  canPlay: boolean;
+  reason: string;
+  playsRemaining: number;
+  cooldownSeconds: number;
+}
+
+export interface PlayerStats {
+  lifetimeScore: number;
+  bestScore: number;
+  gamesPlayed: number;
+  rank: string;
+}
+
+// === AUTH TYPES ===
+export interface WalletState {
+  address: `0x${string}` | undefined;
+  isConnected: boolean;
+  isHolder: boolean;
+  balance: bigint;
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: CREATE FEATURE FLAGS SYSTEM
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/lib/featureFlags.ts
+
+/**
+ * Feature flags allow enabling/disabling features without code changes.
+ * Toggle features for testing, gradual rollout, or emergency shutoff.
+ */
+
+interface FeatureFlags {
+  // Commerce
+  mintingEnabled: boolean;
+  marketplaceEnabled: boolean;
+  offersV3Enabled: boolean;
+  
+  // Game
+  gameEnabled: boolean;
+  gameLeaderboardEnabled: boolean;
+  
+  // Messaging
+  offerMessagingEnabled: boolean;
+  
+  // Debug
+  debugMode: boolean;
+  showDiagnostics: boolean;
+}
+
+// Default production flags
+const PRODUCTION_FLAGS: FeatureFlags = {
+  mintingEnabled: true,
+  marketplaceEnabled: true,
+  offersV3Enabled: true,
+  gameEnabled: true,
+  gameLeaderboardEnabled: true,
+  offerMessagingEnabled: true,
+  debugMode: false,
+  showDiagnostics: false,
+};
+
+// Override from localStorage for testing
+function getFlags(): FeatureFlags {
+  const stored = localStorage.getItem('feature_flags');
+  if (stored) {
+    try {
+      return { ...PRODUCTION_FLAGS, ...JSON.parse(stored) };
+    } catch {}
+  }
+  return PRODUCTION_FLAGS;
+}
+
+export const flags = getFlags();
+
+// Admin function to toggle flags
+export function setFlag(key: keyof FeatureFlags, value: boolean): void {
+  const current = getFlags();
+  current[key] = value;
+  localStorage.setItem('feature_flags', JSON.stringify(current));
+  window.location.reload(); // Reload to apply
+}
+
+// Hook for components
+export function useFeatureFlags() {
+  return flags;
+}
+
+═══════════════════════════════════════════════════════════
+PART 5: CREATE CORE BARREL EXPORT
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/core/index.ts
+
+/**
+ * 🔒 CORE MODULE EXPORTS
+ * Import from here, not from individual files.
+ * This creates a stable API boundary.
+ */
+
+// Types (frozen contracts)
+export * from './types';
+
+// Commerce hooks
+export { useMint } from './commerce/useMint';
+export { useMarketplace } from './commerce/useMarketplace';
+export { useOffers } from './commerce/useOffers';
+
+// Auth hooks
+export { useIsGuardianHolder } from './auth/useIsGuardianHolder';
+
+// Contracts
+export { NFT_CONTRACT, MARKETPLACE_CONTRACT, MARKETPLACE_V3_CONTRACT } from './contracts';
+
+═══════════════════════════════════════════════════════════
+PART 6: UPDATE IMPORTS THROUGHOUT APP
+═══════════════════════════════════════════════════════════
+
+After moving files, update all imports to use the barrel:
+
+BEFORE:
+import { useMint } from '@/hooks/useMint';
+import { NFT_CONTRACT } from '@/lib/constants';
+
+AFTER:
+import { useMint, NFT_CONTRACT } from '@/core';
+
+This creates a stable import path that won't break.
