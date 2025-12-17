@@ -202,7 +202,7 @@ export function Hero() {
   };
 
   return (
-    <section id="hero" className="min-h-screen pt-6 sm:pt-8 pb-8 sm:pb-12 flex items-center relative overflow-hidden bg-black">
+    <section id="hero" className="min-h-screen pt-6 sm:pt-8 pb-8 sm:pb-12 flex flex-col items-center justify-center relative overflow-hidden bg-black">
       {/* Beta Ribbon (Red Corner Badge) */}
       <div className="absolute top-6 sm:top-8 left-0 w-28 sm:w-32 h-28 sm:h-32 overflow-hidden z-20 pointer-events-none">
         <div className="absolute top-0 left-0 transform -translate-x-10 translate-y-5 sm:translate-y-6 -rotate-45 bg-red-600 text-white font-bold font-orbitron text-[9px] sm:text-[10px] py-1 w-36 sm:w-40 text-center shadow-lg border border-red-400/50">
