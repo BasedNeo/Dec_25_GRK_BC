@@ -1,0 +1,63 @@
+=== FINAL PRODUCTION CLEANUP ===
+
+STEP 1: Remove ALL remaining console.log statements across the codebase
+
+Search and remove console.log/console.warn/console.error from:
+- /client/src/hooks/useMarketplace.ts (line 385: console.warn)
+- /client/src/components/ErrorBoundary.tsx (any remaining)
+- /client/src/lib/errorHandler.ts
+- /client/src/hooks/useOffers.ts
+- Any other files with debug logging
+
+Keep ONLY console.error for actual production errors in catch blocks if needed.
+
+STEP 2: Type Safety - Replace 'any' types
+
+In /client/src/hooks/useMint.ts line 199:
+FIND: } catch (e: any) {
+REPLACE: } catch (e: unknown) {
+
+In /client/src/lib/errorParser.ts - audit all 'any' types and add proper interfaces.
+
+STEP 3: Add rate limiting constants
+In /client/src/lib/constants.ts, add at the bottom:
+
+// === RATE LIMITING ===
+export const RATE_LIMITS = {
+  RPC_CALLS_PER_MINUTE: 60,
+  CACHE_DURATION_MS: 30000,
+  RETRY_DELAY_MS: 1000,
+  MAX_RETRIES: 3,
+};
+
+// === GAS SETTINGS (BasedAI optimized) ===
+export const GAS_SETTINGS = {
+  MINT: BigInt(8000000),
+  LIST: BigInt(300000),
+  BUY: BigInt(400000),
+  APPROVE: BigInt(200000),
+  OFFER: BigInt(300000),
+  DEFAULT_GAS_PRICE: BigInt(10000000000), // 10 gwei
+};
+
+STEP 4: Update useMarketplace.ts to use GAS_SETTINGS
+Import GAS_SETTINGS from constants and replace hardcoded gas values:
+- Line 337: gas: GAS_SETTINGS.APPROVE
+- Line 426: gas: GAS_SETTINGS.LIST
+- Line 448: gas: BigInt(150000) → keep as is (delist is cheap)
+- Line 472: gas: GAS_SETTINGS.BUY
+- Line 497: gas: GAS_SETTINGS.OFFER
+
+STEP 5: Verify all contract addresses are correct
+/client/src/lib/constants.ts should have:
+- NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59"
+- MARKETPLACE_CONTRACT = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c"
+- MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3"
+
+VERIFICATION CHECKLIST:
+[ ] Minting gas is 8,000,000
+[ ] No console.log in production code
+[ ] V3 offers hook exists and works
+[ ] MyOffersPanel component exists
+[ ] All contract addresses verified
+[ ] Gas settings centralized

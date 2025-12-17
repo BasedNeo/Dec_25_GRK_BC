@@ -15,7 +15,7 @@ import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAcc
 import { parseEther, formatEther } from 'viem';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT, GAS_SETTINGS } from '@/lib/constants';
 import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 
@@ -334,7 +334,7 @@ export function useMarketplace() {
       functionName: 'setApprovalForAll',
       args: [MARKETPLACE_CONTRACT as `0x${string}`, true],
       chainId: CHAIN_ID,
-      gas: BigInt(200000),
+      gas: GAS_SETTINGS.APPROVE,
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -380,9 +380,8 @@ export function useMarketplace() {
           return;
         }
       }
-    } catch (e) {
+    } catch {
       // If check fails, continue anyway - the contract will revert if needed
-      console.warn('[listNFT] Pre-flight listing check failed:', e);
     }
 
     // Refetch approval status before listing to ensure we have latest
@@ -423,7 +422,7 @@ export function useMarketplace() {
       functionName: 'listNFT',
       args: [BigInt(tokenId), priceWei],
       chainId: CHAIN_ID,
-      gas: BigInt(300000),  // V2 uses less gas (no escrow transfer)
+      gas: GAS_SETTINGS.LIST,
     });
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
@@ -445,7 +444,7 @@ export function useMarketplace() {
       functionName: 'delistNFT',
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
-      gas: BigInt(150000),  // V2 uses less gas
+      gas: GAS_SETTINGS.DELIST,
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -469,7 +468,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId)],
       value: priceWei,
       chainId: CHAIN_ID,
-      gas: BigInt(400000),
+      gas: GAS_SETTINGS.BUY,
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -494,7 +493,7 @@ export function useMarketplace() {
       args: [BigInt(tokenId), BigInt(expirationDays)],
       value: offerWei,
       chainId: CHAIN_ID,
-      gas: BigInt(300000),
+      gas: GAS_SETTINGS.OFFER,
     });
   }, [checkNetwork, toast, writeContract]);
 
@@ -510,7 +509,7 @@ export function useMarketplace() {
       functionName: 'cancelOffer',
       args: [BigInt(tokenId)],
       chainId: CHAIN_ID,
-      gas: BigInt(200000),
+      gas: GAS_SETTINGS.APPROVE,
     });
   }, [checkNetwork, writeContract]);
 
@@ -526,7 +525,7 @@ export function useMarketplace() {
       functionName: 'acceptOffer',
       args: [BigInt(tokenId), offererAddress as `0x${string}`],
       chainId: CHAIN_ID,
-      gas: BigInt(400000),
+      gas: GAS_SETTINGS.BUY,
     });
   }, [checkNetwork, writeContract]);
 

@@ -63,3 +63,22 @@ export const PROPOSAL_CREATOR_WALLETS = ADMIN_WALLETS;
 
 // === SITE CONFIG ===
 export const SITE_URL = "https://basedguardians.com";
+
+// === RATE LIMITING ===
+export const RATE_LIMITS = {
+  RPC_CALLS_PER_MINUTE: 60,
+  CACHE_DURATION_MS: 30000,
+  RETRY_DELAY_MS: 1000,
+  MAX_RETRIES: 3,
+};
+
+// === GAS SETTINGS (BasedAI optimized) ===
+export const GAS_SETTINGS = {
+  MINT: BigInt(8000000),
+  LIST: BigInt(300000),
+  BUY: BigInt(400000),
+  APPROVE: BigInt(200000),
+  OFFER: BigInt(300000),
+  DELIST: BigInt(150000),
+  DEFAULT_GAS_PRICE: BigInt(10000000000), // 10 gwei
+};

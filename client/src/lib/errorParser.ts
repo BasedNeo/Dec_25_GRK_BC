@@ -6,9 +6,10 @@
 
 const DEBUG = import.meta.env.DEV;
 
-export function parseContractError(error: any): string {
-  const message = error?.message || error?.toString() || 'Unknown error';
-  const shortMessage = error?.shortMessage || '';
+export function parseContractError(error: unknown): string {
+  const err = error as { message?: string; shortMessage?: string; toString?: () => string } | null;
+  const message = err?.message || err?.toString?.() || 'Unknown error';
+  const shortMessage = err?.shortMessage || '';
   
   // Log full error in dev for debugging
   if (DEBUG) {
@@ -102,8 +103,9 @@ export function parseContractError(error: any): string {
 /**
  * Check if error is user-initiated cancellation
  */
-export function isUserRejection(error: any): boolean {
-  const message = error?.message || error?.toString() || '';
+export function isUserRejection(error: unknown): boolean {
+  const err = error as { message?: string; toString?: () => string } | null;
+  const message = err?.message || err?.toString?.() || '';
   return message.includes('user rejected') || 
          message.includes('User rejected') || 
          message.includes('User denied') ||

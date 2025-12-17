@@ -67,8 +67,8 @@ export function useOffersForOwner() {
         }
         
         setOffers(offerMap);
-      } catch (error) {
-        console.error('[useOffers] Failed to fetch offers:', error);
+      } catch {
+        // Silent fail - offers fetch is non-critical
       } finally {
         setIsLoading(false);
       }
