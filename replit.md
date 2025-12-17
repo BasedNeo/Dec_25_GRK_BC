@@ -149,6 +149,14 @@ client/src/lib/constants.ts
   - Messages displayed with "GUARDIAN HOLDER" badge in received offers
   - Rate limiting: max 5 offers per hour
   - Auto-cleanup prevents localStorage overflow
+- **Guardian Defender Game**: 5-level space arcade game accessible via "Game" nav item
+  - Route: /game (GuardianDefender.tsx)
+  - Levels 1-4: Galaga-style shooter with unique alien types (Glitch, Jelly, Serpent, Fractal, Sentinel boss)
+  - Level 5: Lunar Lander physics-based landing on Based Outpost
+  - Uses cyberpunk rocket image from attached_assets
+  - Responsive canvas with mobile touch controls
+  - Lifetime score tracking with 6 rank tiers (Cadet → Based Eternal)
+  - Revelation ending sequence with score breakdown
 
 ## Wallet Configuration
 
