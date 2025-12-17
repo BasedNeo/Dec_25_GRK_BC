@@ -115,12 +115,12 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await provider.getBlockNumber();
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Look back ~500000 blocks to capture all historical activity
-      // BasedAI ~2 sec blocks, so 500000 blocks ≈ 11.5 days of history
+      // Query from NFT deployment block (approximately block 870000) to capture all activity
+      // BasedAI ~2 sec blocks - we chunk queries to avoid RPC timeout
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const totalBlockRange = 500000;
-      const fromBlock = Math.max(0, currentBlock - totalBlockRange);
-      const CHUNK_SIZE = 20000; // Query 20k blocks at a time to avoid timeout
+      const NFT_DEPLOY_BLOCK = 870000; // Approximate deployment block
+      const fromBlock = NFT_DEPLOY_BLOCK;
+      const CHUNK_SIZE = 50000; // Query 50k blocks at a time to speed up
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
