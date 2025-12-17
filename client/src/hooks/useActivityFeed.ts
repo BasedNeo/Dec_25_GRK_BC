@@ -105,9 +105,10 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
-      // Look back ~50000 blocks for better historical coverage
-      // BasedAI ~2 sec blocks, so 50000 blocks ≈ 28 hours of history
-      const fromBlock = Math.max(0, currentBlock - 50000);
+      // Look back ~10000 blocks for good coverage without RPC issues
+      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
+      // Historical data is handled by CUMULATIVE_SALES_BASELINE
+      const fromBlock = Math.max(0, currentBlock - 10000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
