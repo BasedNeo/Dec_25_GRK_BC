@@ -398,8 +398,7 @@ div[data-rk] {
 /* Ensure close/disconnect buttons in account modal are clickable */
 [data-rk] button[aria-label*="Close"],
 [data-rk] button[aria-label*="Disconnect"],
-[data-rk] [data-testid*="disconnect"],
-[data-rk] button:contains("Disconnect") {
+[data-rk] [data-testid*="disconnect"] {
   pointer-events: auto !important;
   cursor: pointer !important;
   z-index: 99999 !important;
