@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "lastVerified": "2024-12-17",
+  "protectedFiles": [
+    {
+      "path": "client/src/core/commerce/useMint.ts",
+      "criticality": "CRITICAL",
+      "reason": "NFT minting with fixed price (69,420 $BASED)",
+      "lastModified": "2024-12-15",
+      "checksum": "e8ad045d0b76bfeb376c2855edbb2d5599a78ae19f71b25e9c34c12500d296c2",
+      "testRequired": true,
+      "tests": [
+        "mint-1-nft",
+        "mint-max-affordable",
+        "mint-soldout-check"
+      ]
+    },
+    {
+      "path": "client/src/core/commerce/useMarketplace.ts",
+      "criticality": "CRITICAL",
+      "reason": "Marketplace listing, buying, offer acceptance",
+      "lastModified": "2024-12-15",
+      "checksum": "7380f74125cb13e69f2665a888916d438c64636b55f494d10b64511808a88bf2",
+      "testRequired": true,
+      "tests": [
+        "list-nft",
+        "buy-nft",
+        "approve-marketplace"
+      ]
+    },
+    {
+      "path": "client/src/core/commerce/useOffers.ts",
+      "criticality": "HIGH",
+      "reason": "V3 off-chain offer system",
+      "lastModified": "2024-12-15",
+      "checksum": "7ed7c1250a21acc1aa5a8ebf6e3c433d188eb42958722f8956386db21128b3c3",
+      "testRequired": true,
+      "tests": [
+        "make-offer-v3",
+        "accept-offer-v3",
+        "complete-purchase"
+      ]
+    },
+    {
+      "path": "client/src/lib/constants.ts",
+      "criticality": "CRITICAL",
+      "reason": "Contract addresses, revenue splits (LOCKED)",
+      "lastModified": "2024-12-10",
+      "checksum": "f156f6f8b83ffb8d03bc9fd9b81115e50dd27b0ce8edcb5cecb410023c464755",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    },
+    {
+      "path": "client/src/lib/mockData.ts",
+      "criticality": "HIGH",
+      "reason": "Treasury calculations (LOCKED formulas)",
+      "lastModified": "2024-12-10",
+      "checksum": "9c78dcd48e3a0f8c1376cd0e47fe6c3970e46c1bc7e49f4f76669d8677d48d1a",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    },
+    {
+      "path": "server/routes.ts",
+      "criticality": "HIGH",
+      "reason": "API endpoints, rate limiting, validation",
+      "lastModified": "2024-12-17",
+      "checksum": "959375c01c5a5a2dd88ca1fbdd5dce96047a05fc19a3e3185a65a668a5fbd2b9",
+      "testRequired": true,
+      "tests": [
+        "api-profile-login",
+        "api-profile-name",
+        "api-rate-limit"
+      ]
+    },
+    {
+      "path": "server/storage.ts",
+      "criticality": "HIGH",
+      "reason": "Database operations",
+      "lastModified": "2024-12-15",
+      "checksum": "c8e235288e9ca5974f3ca1df66dc531ef0e054a046095680e9b7a0b5f93f36e4",
+      "testRequired": true,
+      "tests": [
+        "db-profile-create",
+        "db-name-check"
+      ]
+    },
+    {
+      "path": "shared/schema.ts",
+      "criticality": "CRITICAL",
+      "reason": "Database schema (DO NOT MODIFY WITHOUT MIGRATION)",
+      "lastModified": "2024-12-10",
+      "checksum": "6a5bc89c35301ec62118e04a078d06d15f56f567f54ad72d040b3b59505a051f",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    }
+  ],
+  "requiredTests": {
+    "mint-1-nft": "Successfully mint 1 NFT with correct price",
+    "list-nft": "Successfully list owned NFT for sale",
+    "buy-nft": "Successfully purchase listed NFT",
+    "approve-marketplace": "Approve marketplace for NFT transfers",
+    "make-offer-v3": "Create gasless V3 offer",
+    "accept-offer-v3": "Seller accepts V3 offer",
+    "api-rate-limit": "Rate limiter blocks >100 requests/15min"
+  }
+}
