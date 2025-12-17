@@ -1,0 +1,105 @@
+═══════════════════════════════════════════════════════════
+CONTEXT FOR REPLIT AGENT
+═══════════════════════════════════════════════════════════
+
+PROJECT STRUCTURE:
+- /client/src/hooks/ → Custom React hooks (useMarketplace, useOffersV3, useMint, etc.)
+- /client/src/components/ → UI components (EscrowMarketplace.tsx is the main marketplace)
+- /client/src/lib/ → Utilities (constants.ts, errorParser.ts, cache.ts)
+- Uses: React, TypeScript, Viem, Wagmi, RainbowKit, TanStack Query, Tailwind, shadcn/ui
+
+EXISTING PATTERNS TO FOLLOW:
+- Hooks use useCallback for functions, useState for state
+- Toast notifications via: const { toast } = useToast();
+- Contract reads use: useReadContract from wagmi
+- Styling uses Tailwind + shadcn components (Button, Card, Dialog, etc.)
+- Colors: cyan-400/500 (primary), purple-400/500 (accent), [#6cff61] (mint green)
+
+KEY FILES YOU'LL MODIFY:
+1. /client/src/hooks/useOffersV3.ts - Add message field and cleanup
+2. /client/src/components/EscrowMarketplace.tsx - OfferModal UI changes
+3. /client/src/components/MyOffersPanel.tsx - Display messages
+4. NEW: /client/src/hooks/useIsGuardianHolder.ts - Ownership check
+
+DEPENDENCIES ALREADY INSTALLED:
+- wagmi, viem (blockchain)
+- dompurify (sanitization - import dynamically)
+- lucide-react (icons: ShieldCheck, Loader2, Zap, MessageCircle)
+- date-fns (if needed for formatting)
+
+═══════════════════════════════════════════════════════════
+COMMON PITFALLS TO AVOID
+═══════════════════════════════════════════════════════════
+
+1. DON'T create new files in wrong locations - follow existing structure
+2. DON'T use 'any' type - use proper TypeScript interfaces
+3. DON'T forget to handle loading states (show Loader2 spinner)
+4. DON'T hardcode contract address - import from '@/lib/constants'
+5. DON'T use console.log in final code - remove debug statements
+6. DO import DOMPurify dynamically: const DOMPurify = (await import('dompurify')).default;
+7. DO match existing component styling (bg-white/5, border-white/10, etc.)
+8. DO use existing toast pattern for user feedback
+
+═══════════════════════════════════════════════════════════
+DEBUG CHECKPOINTS
+═══════════════════════════════════════════════════════════
+
+After each part, verify in browser console:
+
+PART 1 (Hook): 
+- Connect wallet that owns Guardian
+- In console: useIsGuardianHolder should return { isHolder: true }
+
+PART 2 (Offers):
+- Check localStorage key 'basedguardians_offers_v3'
+- Offers should have 'message' field when present
+
+PART 3 (Modal):
+- Non-holder: Should see purple "Own a Guardian" box
+- Holder: Should see green-bordered textarea
+
+PART 4-5 (Display):
+- Submit offer with message
+- Check My Offers tab - message should appear
+- Check seller's Received tab - message with badge
+
+═══════════════════════════════════════════════════════════
+IF SOMETHING BREAKS
+═══════════════════════════════════════════════════════════
+
+If OfferModal stops rendering:
+- Check for missing imports (useIsGuardianHolder, ShieldCheck, Loader2)
+- Check for syntax errors in JSX (unclosed tags)
+
+If offers stop saving:
+- Check OffchainOffer interface matches what's being saved
+- Check localStorage isn't full (clear with localStorage.clear())
+
+If holder check fails:
+- Verify NFT_CONTRACT address in constants.ts is correct
+- Check wallet is connected to BasedAI network (chainId 32323)
+
+═══════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════
+
+Feature is COMPLETE when:
+[ ] New hook file created and exports useIsGuardianHolder
+[ ] OfferModal shows textarea for holders, unlock card for non-holders
+[ ] Messages save with offers (check localStorage)
+[ ] Messages display in My Offers panel
+[ ] Messages display in Received Offers with holder badge
+[ ] No TypeScript errors
+[ ] No console errors in browser
+[ ] Works on mobile (textarea doesn't break layout)
+
+═══════════════════════════════════════════════════════════
+QUESTIONS? ASK BEFORE PROCEEDING IF:
+═══════════════════════════════════════════════════════════
+
+- You can't find a file mentioned in the prompt
+- An import path doesn't resolve
+- You're unsure which line number to edit
+- The existing code structure differs from what's described
+
+Better to ask than to guess and break something!

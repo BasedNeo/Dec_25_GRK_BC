@@ -1,0 +1,280 @@
+=== NFT-GATED OFFER MESSAGING - OWN 1 GUARDIAN TO UNLOCK ===
+
+Guardian NFT holders can send personal messages with their offers.
+Own just 1 Guardian = messaging unlocked. Simple.
+
+FEATURE:
+- Own 1+ Guardian NFT → Can send messages with offers
+- Own 0 Guardians → See "Own a Guardian to unlock" + Mint/Buy CTAs
+- Messages are FREE (no extra transaction)
+- Auto-cleanup prevents storage overflow
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE OWNERSHIP CHECK HOOK
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/hooks/useIsGuardianHolder.ts
+
+import { useAccount, useReadContract } from 'wagmi';
+import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
+
+const NFT_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
+export function useIsGuardianHolder() {
+  const { address, isConnected } = useAccount();
+
+  const { data: balance, isLoading } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: NFT_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: !!address && isConnected, staleTime: 30000 },
+  });
+
+  // Own 1 or more = holder
+  const isHolder = balance ? Number(balance) >= 1 : false;
+
+  return { isHolder, isLoading };
+}
+
+export default useIsGuardianHolder;
+
+═══════════════════════════════════════════════════════════
+PART 2: UPDATE OFFER DATA & CLEANUP
+═══════════════════════════════════════════════════════════
+
+FILE: /client/src/hooks/useOffersV3.ts
+
+STEP 2A: Add message field to OffchainOffer interface:
+
+FIND:
+  createdAt: number;
+}
+
+REPLACE WITH:
+  createdAt: number;
+  message?: string; // Optional message from Guardian holder
+}
+
+STEP 2B: Add cleanup config and functions after imports:
+
+const RETENTION = {
+  MAX_OFFERS: 500,
+  MAX_PER_WALLET: 50,
+  RATE_LIMIT_HOURLY: 5,
+};
+
+function cleanupOffers(offers: OffchainOffer[]): OffchainOffer[] {
+  const now = Date.now();
+  return offers
+    .filter(o => {
+      if (o.status === 'pending' && o.expirationTime * 1000 < now) return false;
+      if (o.status === 'cancelled') return now - o.createdAt < 86400000;
+      if (o.status === 'completed') return now - o.createdAt < 2592000000;
+      return true;
+    })
+    .slice(0, RETENTION.MAX_OFFERS);
+}
+
+STEP 2C: Update getStoredOffers to auto-cleanup:
+
+FIND the getStoredOffers function body and REPLACE with:
+
+function getStoredOffers(): OffchainOffer[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    let offers = JSON.parse(stored) as OffchainOffer[];
+    const cleaned = cleanupOffers(offers);
+    if (cleaned.length !== offers.length) saveOffers(cleaned);
+    return cleaned;
+  } catch { return []; }
+}
+
+STEP 2D: Update makeOffer to accept message parameter:
+
+FIND the makeOffer function signature:
+const makeOffer = useCallback(async (tokenId: number, amountBased: number, durationDays: number = 7) => {
+
+REPLACE WITH:
+const makeOffer = useCallback(async (tokenId: number, amountBased: number, durationDays: number = 7, message?: string) => {
+
+STEP 2E: Inside makeOffer, add rate limiting after the address check:
+
+After: if (!address) throw new Error('Connect wallet');
+
+ADD:
+    // Rate limiting
+    const existing = getStoredOffers();
+    const recent = existing.filter(o => o.buyer.toLowerCase() === address.toLowerCase() && Date.now() - o.createdAt < 3600000);
+    if (recent.length >= RETENTION.RATE_LIMIT_HOURLY) {
+      toast({ title: "Slow down", description: "Max 5 offers per hour", variant: "destructive" });
+      return null;
+    }
+
+STEP 2F: Inside makeOffer, sanitize and store message:
+
+FIND where the offer object is created. Before it, ADD:
+
+      // Sanitize message
+      let cleanMessage: string | undefined;
+      if (message?.trim()) {
+        const DOMPurify = (await import('dompurify')).default;
+        cleanMessage = DOMPurify.sanitize(message.trim().slice(0, 280));
+      }
+
+THEN in the offer object creation, ADD the message field:
+
+      const offer: OffchainOffer = {
+        id: `${address}-${tokenId}-${Date.now()}`,
+        tokenId, buyer: address, amount: String(amountBased), amountWei,
+        expirationTime, nonce, signature, status: 'pending', createdAt: Date.now(),
+        message: cleanMessage, // ADD THIS LINE
+      };
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE OFFER MODAL UI
+═══════════════════════════════════════════════════════════
+
+FILE: /client/src/components/EscrowMarketplace.tsx
+
+STEP 3A: Add import at top:
+
+import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
+
+STEP 3B: In OfferModal component, add state and hook after existing state:
+
+    const [message, setMessage] = useState("");
+    const { isHolder, isLoading: holderLoading } = useIsGuardianHolder();
+
+STEP 3C: Add message section AFTER the duration select, BEFORE the V3 flow explanation.
+
+FIND the closing </Select> for duration (around line 1913).
+ADD THIS BLOCK after it:
+
+                    {/* MESSAGE - GUARDIAN HOLDER PERK */}
+                    <div className="space-y-2 pt-3 border-t border-white/10">
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono flex items-center gap-2">
+                            MESSAGE TO SELLER
+                            {isHolder && <span className="px-1.5 py-0.5 bg-[#6cff61]/20 text-[#6cff61] text-[9px] rounded font-bold">HOLDER PERK</span>}
+                        </Label>
+                        
+                        {holderLoading ? (
+                            <div className="h-20 bg-white/5 border border-white/10 rounded flex items-center justify-center">
+                                <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                            </div>
+                        ) : isHolder ? (
+                            <div>
+                                <div className="flex justify-end mb-1">
+                                    <span className={`text-[10px] ${message.length > 250 ? 'text-amber-400' : 'text-muted-foreground'}`}>{message.length}/280</span>
+                                </div>
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value.slice(0, 280))}
+                                    placeholder="Add a personal message to stand out..."
+                                    className="w-full h-20 px-3 py-2 bg-white/5 border border-[#6cff61]/30 rounded text-white text-sm resize-none focus:border-[#6cff61] placeholder:text-gray-500"
+                                    maxLength={280}
+                                />
+                                <p className="text-[10px] text-[#6cff61]/70 mt-1 flex items-center gap-1">
+                                    <ShieldCheck size={10} /> Exclusive to Guardian holders
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck className="w-8 h-8 text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-white mb-1">Own a Guardian to Unlock</p>
+                                        <p className="text-xs text-white/60 mb-3">Send personal messages with your offers.</p>
+                                        <div className="flex gap-2">
+                                            <a href="https://aftermint.trade/mint/based-guardians" target="_blank" rel="noopener noreferrer"
+                                               className="px-3 py-1.5 bg-[#6cff61] text-black text-xs font-bold rounded" onClick={e => e.stopPropagation()}>
+                                                MINT
+                                            </a>
+                                            <button onClick={(e) => { e.stopPropagation(); onClose(); }}
+                                                    className="px-3 py-1.5 bg-white/10 text-white text-xs font-bold rounded border border-white/20">
+                                                BUY
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+STEP 3D: Update handleSubmit to pass message:
+
+FIND the try block in handleSubmit and update the makeOffer call:
+
+        const success = await makeOffer(item.id, amount, parseInt(duration), isHolder ? message.trim() : undefined);
+        if (success) {
+            setMessage("");
+            onClose();
+        }
+
+STEP 3E: Reset message when item changes:
+
+FIND the useEffect with setAmount/setDuration and ADD:
+            setMessage("");
+
+═══════════════════════════════════════════════════════════
+PART 4: SHOW MESSAGES IN RECEIVED OFFERS
+═══════════════════════════════════════════════════════════
+
+FILE: /client/src/components/EscrowMarketplace.tsx
+
+In the received offers section (TabsContent value="offers"), inside each offer Card, ADD after the offer details div:
+
+                        {offer.message && (
+                            <div className="w-full mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                    <ShieldCheck size={14} className="text-purple-400 mt-0.5" />
+                                    <div>
+                                        <p className="text-[10px] text-purple-400 font-bold mb-1">GUARDIAN HOLDER</p>
+                                        <p className="text-sm text-white/90 italic">"{offer.message}"</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+═══════════════════════════════════════════════════════════
+PART 5: SHOW MESSAGES IN MY OFFERS PANEL
+═══════════════════════════════════════════════════════════
+
+FILE: /client/src/components/MyOffersPanel.tsx
+
+In each offer row, ADD after status badge:
+
+                {offer.message && (
+                    <div className="mt-2 p-2 bg-purple-500/10 border-l-2 border-purple-500 rounded-r text-xs">
+                        <span className="text-purple-400 font-bold">Your message: </span>
+                        <span className="text-white/70 italic">"{offer.message}"</span>
+                    </div>
+                )}
+
+═══════════════════════════════════════════════════════════
+TESTING
+═══════════════════════════════════════════════════════════
+
+Wallet WITH 1+ Guardian:
+- Opens offer modal → sees message textarea
+- Can type up to 280 chars
+- Message included with offer
+
+Wallet WITH 0 Guardians:
+- Opens offer modal → sees "Own a Guardian to Unlock"
+- Sees MINT and BUY buttons
+- Can still submit offer (just no message)
+
+Seller sees:
+- Message with "GUARDIAN HOLDER" badge
+- Adds credibility to offer

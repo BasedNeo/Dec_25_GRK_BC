@@ -34,6 +34,7 @@ export interface OffchainOffer {
   createdAt: number;
   acceptedAt?: number;
   completionDeadline?: number;
+  message?: string;
 }
 
 export interface PendingSale {
@@ -48,6 +49,24 @@ export interface PendingSale {
 }
 
 const OFFERS_STORAGE_KEY = 'basedguardians_offers_v3';
+
+const RETENTION = {
+  MAX_OFFERS: 500,
+  MAX_PER_WALLET: 50,
+  RATE_LIMIT_HOURLY: 5,
+};
+
+function cleanupOffers(offers: OffchainOffer[]): OffchainOffer[] {
+  const now = Date.now();
+  return offers
+    .filter(o => {
+      if (o.status === 'pending' && o.expiration * 1000 < now) return false;
+      if (o.status === 'cancelled') return now - (o.createdAt * 1000) < 86400000;
+      if (o.status === 'completed') return now - (o.createdAt * 1000) < 2592000000;
+      return true;
+    })
+    .slice(0, RETENTION.MAX_OFFERS);
+}
 
 const MARKETPLACE_V3_ABI = [
   {
@@ -135,7 +154,11 @@ const MARKETPLACE_V3_ABI = [
 function getStoredOffers(): OffchainOffer[] {
   try {
     const stored = localStorage.getItem(OFFERS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    let offers = JSON.parse(stored) as OffchainOffer[];
+    const cleaned = cleanupOffers(offers);
+    if (cleaned.length !== offers.length) saveOffers(cleaned);
+    return cleaned;
   } catch {
     return [];
   }
@@ -235,7 +258,8 @@ export function useOffersV3() {
   const makeOffer = useCallback(async (
     tokenId: number, 
     priceInBased: number, 
-    expirationDays: number = 7
+    expirationDays: number = 7,
+    message?: string
   ): Promise<boolean> => {
     if (!isConnected || !address) {
       toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
@@ -244,6 +268,13 @@ export function useOffersV3() {
 
     if (chainId !== CHAIN_ID) {
       toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
+      return false;
+    }
+
+    const existing = getStoredOffers();
+    const recent = existing.filter(o => o.buyer.toLowerCase() === address.toLowerCase() && Date.now() - (o.createdAt * 1000) < 3600000);
+    if (recent.length >= RETENTION.RATE_LIMIT_HOURLY) {
+      toast({ title: "Slow down", description: "Max 5 offers per hour", variant: "destructive" });
       return false;
     }
 
@@ -276,6 +307,12 @@ export function useOffersV3() {
         message: offerData,
       });
 
+      let cleanMessage: string | undefined;
+      if (message?.trim()) {
+        const DOMPurify = (await import('dompurify')).default;
+        cleanMessage = DOMPurify.sanitize(message.trim().slice(0, 280));
+      }
+
       const offer: OffchainOffer = {
         id: `${tokenId}-${address}-${Date.now()}`,
         tokenId,
@@ -287,6 +324,7 @@ export function useOffersV3() {
         signature,
         status: 'pending',
         createdAt: Math.floor(Date.now() / 1000),
+        message: cleanMessage,
       };
 
       addOffer(offer);

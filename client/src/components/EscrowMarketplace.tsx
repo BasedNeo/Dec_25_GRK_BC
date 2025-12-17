@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Check,
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
@@ -1823,9 +1824,11 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
 function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onClose: () => void, item: MarketItem | null, onSubmit: (amount: number, duration: string) => void }) {
     const [amount, setAmount] = useState<number>(0);
     const [duration, setDuration] = useState("7");
+    const [message, setMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const { isConnected, address } = useAccount();
+    const { isHolder, isLoading: holderLoading } = useIsGuardianHolder();
     const chainId = useChainId();
     const { switchChain } = useSwitchChain();
     const { toast } = useToast();
@@ -1875,6 +1878,7 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
         if (item) {
             setAmount(item.price ? Math.floor(item.price * 0.9) : 1000);
             setDuration("7");
+            setMessage("");
             setValidationError(null);
         }
     }, [item]);
@@ -1903,8 +1907,9 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
         
         try {
             // V3: Use off-chain signing - funds stay in wallet!
-            const success = await makeOffer(item.id, amount, parseInt(duration));
+            const success = await makeOffer(item.id, amount, parseInt(duration), isHolder ? message.trim() : undefined);
             if (success) {
+                setMessage("");
                 onClose();
             }
         } catch {
@@ -2035,6 +2040,57 @@ function OfferModal({ isOpen, onClose, item, onSubmit }: { isOpen: boolean, onCl
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* MESSAGE - GUARDIAN HOLDER PERK */}
+                    <div className="space-y-2 pt-3 border-t border-white/10">
+                        <Label className="text-xs text-cyan-400/70 uppercase font-mono flex items-center gap-2">
+                            MESSAGE TO SELLER
+                            {isHolder && <span className="px-1.5 py-0.5 bg-[#6cff61]/20 text-[#6cff61] text-[9px] rounded font-bold">HOLDER PERK</span>}
+                        </Label>
+                        
+                        {holderLoading ? (
+                            <div className="h-20 bg-white/5 border border-white/10 rounded flex items-center justify-center">
+                                <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                            </div>
+                        ) : isHolder ? (
+                            <div>
+                                <div className="flex justify-end mb-1">
+                                    <span className={`text-[10px] ${message.length > 250 ? 'text-amber-400' : 'text-muted-foreground'}`}>{message.length}/280</span>
+                                </div>
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value.slice(0, 280))}
+                                    placeholder="Add a personal message to stand out..."
+                                    className="w-full h-20 px-3 py-2 bg-white/5 border border-[#6cff61]/30 rounded text-white text-sm resize-none focus:border-[#6cff61] focus:outline-none placeholder:text-gray-500"
+                                    maxLength={280}
+                                />
+                                <p className="text-[10px] text-[#6cff61]/70 mt-1 flex items-center gap-1">
+                                    <ShieldCheck size={10} /> Exclusive to Guardian holders
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck className="w-8 h-8 text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-white mb-1">Own a Guardian to Unlock</p>
+                                        <p className="text-xs text-white/60 mb-3">Send personal messages with your offers.</p>
+                                        <div className="flex gap-2">
+                                            <a href="#mint" 
+                                               className="px-3 py-1.5 bg-[#6cff61] text-black text-xs font-bold rounded hover:bg-[#5de554] transition-colors" 
+                                               onClick={(e) => { e.stopPropagation(); onClose(); }}>
+                                                MINT
+                                            </a>
+                                            <button onClick={(e) => { e.stopPropagation(); onClose(); }}
+                                                    className="px-3 py-1.5 bg-white/10 text-white text-xs font-bold rounded border border-white/20 hover:bg-white/20 transition-colors">
+                                                BUY
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* V3 Flow Explanation */}
