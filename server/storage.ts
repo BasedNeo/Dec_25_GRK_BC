@@ -22,6 +22,8 @@ export interface IStorage {
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
   updatePushSubscriptionPreferences(endpoint: string, preferences: { notifyListings?: boolean; notifyOffers?: boolean; notifySales?: boolean }): Promise<PushSubscription | undefined>;
+  addEmail(email: string, source: string): Promise<EmailEntry | null>;
+  getAllEmails(): Promise<EmailEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
