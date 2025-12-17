@@ -184,7 +184,8 @@ Protected folder structure to isolate core commerce and game code:
 - **Retro Command Game**: 5-level space arcade minigame accessible to ALL users via "Game" nav item (last menu option)
   - Route: /game (GuardianDefender.tsx)
   - Game renamed from "Guardian Defender" to "Retro Command" 
-  - Open access: No wallet or NFT required to play (4 plays/day limit, 30s cooldown)
+  - Open access: No wallet or NFT required to play (20 plays/day limit, 30s cooldown)
+  - Custom entities: "FUD" text (red) as grunt aliens, white chickens as bee aliens
   - Guardian holders get perks: +1 life, 1.5x score multiplier, green ship
   - "Race-to-Base" teaser shown: "Coming Soon - It will be incredible"
   - Levels 1-4: Galaga-style shooter with unique alien types

@@ -123,36 +123,56 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
   
   switch (alien.type) {
     case 'grunt':
-      ctx.fillStyle = COLORS.alienBlue;
-      ctx.beginPath();
-      ctx.arc(0, 0, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(0, 136, 255, 0.5)`;
-      ctx.beginPath();
-      ctx.ellipse(-10, 0, 6, 4, frame ? 0.3 : -0.3, 0, Math.PI * 2);
-      ctx.ellipse(10, 0, 6, 4, frame ? -0.3 : 0.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(-3, -3, 2, 0, Math.PI * 2);
-      ctx.arc(3, -3, 2, 0, Math.PI * 2);
-      ctx.fill();
+      // FUD text as alien - red text
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('FUD', 0, 0);
+      // Add subtle glow effect
+      ctx.shadowColor = '#ff0000';
+      ctx.shadowBlur = frame ? 8 : 4;
+      ctx.fillText('FUD', 0, 0);
+      ctx.shadowBlur = 0;
       break;
       
     case 'bee':
-      ctx.fillStyle = COLORS.alienYellow;
+      // White chicken alien
+      ctx.fillStyle = '#ffffff';
+      // Body - oval
       ctx.beginPath();
-      ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 2, 10, 12, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.fillRect(-8, -3, 16, 2);
-      ctx.fillRect(-8, 3, 16, 2);
-      ctx.fillStyle = COLORS.alienYellow;
+      // Head
       ctx.beginPath();
-      ctx.moveTo(0, 12);
-      ctx.lineTo(-3, 16);
-      ctx.lineTo(3, 16);
+      ctx.arc(0, -10, 7, 0, Math.PI * 2);
+      ctx.fill();
+      // Beak - orange
+      ctx.fillStyle = '#ff8800';
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.lineTo(-4, -5);
+      ctx.lineTo(4, -5);
       ctx.closePath();
+      ctx.fill();
+      // Red comb on top
+      ctx.fillStyle = '#ff3333';
+      ctx.beginPath();
+      ctx.arc(-3, -16, 3, 0, Math.PI * 2);
+      ctx.arc(0, -17, 3, 0, Math.PI * 2);
+      ctx.arc(3, -16, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(-3, -11, 1.5, 0, Math.PI * 2);
+      ctx.arc(3, -11, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Wings (flapping animation)
+      ctx.fillStyle = '#eeeeee';
+      ctx.beginPath();
+      ctx.ellipse(-10, 2, 5, 7, frame ? 0.4 : -0.2, 0, Math.PI * 2);
+      ctx.ellipse(10, 2, 5, 7, frame ? -0.4 : 0.2, 0, Math.PI * 2);
       ctx.fill();
       break;
       
