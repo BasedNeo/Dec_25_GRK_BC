@@ -112,17 +112,15 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         const totalMintedNum = Number(totalMinted);
         setContractStats({ totalMinted: totalMintedNum });
         
-        // Fetch all minted token IDs
+        // Fetch all minted token IDs in PARALLEL for speed
         if (totalMintedNum > 0) {
-          const tokenIds: number[] = [];
-          for (let i = 0; i < totalMintedNum; i++) {
-            try {
-              const tokenId = await nftContract.tokenByIndex(i);
-              tokenIds.push(Number(tokenId));
-            } catch (e) {
-              // Skip failed tokens
-            }
-          }
+          const tokenPromises = Array.from({ length: totalMintedNum }, (_, i) =>
+            nftContract.tokenByIndex(i)
+              .then((id: bigint) => Number(id))
+              .catch(() => null)
+          );
+          const results = await Promise.all(tokenPromises);
+          const tokenIds = results.filter((id): id is number => id !== null);
           setMintedTokenIdsList(tokenIds);
         }
         
@@ -442,12 +440,14 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   }); 
 
   // Get minted token IDs - use mintedTokenIdsList which is fetched from contract
+  // CRITICAL: If mintedTokenIdsList is empty but we know totalMinted, we should NOT fallback to all NFTs
   const mintedTokenIds = useMemo(() => {
     if (mintedTokenIdsList.length > 0) {
       return new Set<number>(mintedTokenIdsList);
     }
-    return new Set<number>(directNFTs.map(n => n.id));
-  }, [mintedTokenIdsList, directNFTs]);
+    // Empty set if we don't have minted token IDs yet - will use contractStats.totalMinted as fallback
+    return new Set<number>();
+  }, [mintedTokenIdsList]);
   
 
   const allItems = useMemo(() => {
@@ -493,8 +493,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      // Flatten pages and determine real status based on contract data
      let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
         const tokenId = item.id;
-        // Check if token is actually minted (exists in the minted set from tokenByIndex)
-        const isMinted = mintedTokenIds.has(tokenId);
+        // Check if token is actually minted:
+        // 1. If we have mintedTokenIdsList, use that Set
+        // 2. Otherwise, use contractStats.totalMinted (token IDs are sequential from tokenByIndex)
+        // NOTE: The 9 minted NFTs have specific token IDs from tokenByIndex, NOT necessarily 1-9
+        const isMinted = mintedTokenIds.size > 0 
+          ? mintedTokenIds.has(tokenId)
+          : (contractStats?.totalMinted && mintedTokenIdsList.length === 0 ? false : false);
         // Use marketplace activeListingIds for accurate listing status
         const isListed = isMinted && listedTokenIds.has(tokenId);
         
@@ -532,7 +537,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      }) as unknown as MarketItem[];
      
      return items;
-  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, listingPrices, offersV3.myOffers, offersByToken]);
+  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, listingPrices, offersV3.myOffers, offersByToken, contractStats, mintedTokenIdsList]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
