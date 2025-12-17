@@ -1042,6 +1042,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
         <DialogTitle className="text-xl font-orbitron text-cyan-400 mb-4">
           Random Mint Process
         </DialogTitle>
+        <DialogDescription className="sr-only">Information about the random mint process for Based Guardians</DialogDescription>
         <div className="text-gray-300 space-y-4">
           <p>
             Based Guardians uses a <span className="text-cyan-400 font-semibold">random mint</span> system. 

@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function DisclaimerModal() {
             WELCOME GUARDIAN
             <Sparkles className="h-5 w-5" />
           </DialogTitle>
+          <DialogDescription className="sr-only">Welcome disclaimer for Based Guardians beta application</DialogDescription>
           <div className="text-gray-300 pt-4 font-rajdhani text-base leading-relaxed text-center">
             <p className="mb-4">
               Thanks for trying our application! Our team works to make it better every day.

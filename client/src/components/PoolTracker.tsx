@@ -25,7 +25,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
 import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const MINT_PRICE = 69420;
 
@@ -179,6 +179,7 @@ export function PoolTracker() {
                       <X size={20} />
                     </button>
                   </DialogTitle>
+                  <DialogDescription className="sr-only">Details about treasury calculation methodology</DialogDescription>
                 </DialogHeader>
                 <div className="text-gray-300 mt-4">
                   <p className="text-base leading-relaxed">
