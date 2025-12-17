@@ -1,7 +1,22 @@
+/**
+ * useSubnetEmissions Hook
+ * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED SYSTEMS - FINANCIAL GRADE" section
+ * 
+ * Fetches brain emissions data for treasury calculations.
+ * This is a critical financial calculation component.
+ * 
+ * LOCKED SETTINGS:
+ * - Brain wallet: 0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4
+ * - Community share: 10% of brain emissions
+ * - Daily rate: 6,438 $BASED (community share)
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 
-// BasedAI Brain Configuration
+// ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
   name: 'Based Guardians Brain',
   wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',

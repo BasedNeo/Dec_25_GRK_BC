@@ -1,3 +1,17 @@
+/**
+ * ValueEstimation Component
+ * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED SYSTEMS - FINANCIAL GRADE" section
+ * 
+ * Displays backed value per NFT calculations:
+ * - Base value: 51% of 69,420 mint price
+ * - Pool share: emissions + royalties distributed per NFT
+ * - Rarity multipliers applied to pool share
+ * 
+ * This is a financial-grade component. All formulas are locked.
+ */
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { calculateBackedValue } from "@/lib/mockData";

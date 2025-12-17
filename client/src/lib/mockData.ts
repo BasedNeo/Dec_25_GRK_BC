@@ -1,3 +1,17 @@
+/**
+ * mockData.ts - Guardian Data & Financial Calculations
+ * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED SYSTEMS - FINANCIAL GRADE" section
+ * 
+ * Contains critical financial calculation functions:
+ * - calculateBackedValue(): Computes backed value per NFT
+ * - calculatePassiveEmissions(): Computes community pool emissions
+ * - RARITY_CONFIG: Rarity weights and multipliers
+ * 
+ * This is a financial-grade component. All formulas are locked.
+ */
+
 import guardian1 from '@/assets/generated_images/cyberpunk_guardian_neon_armor_purple_cyan.png';
 import guardian2 from '@/assets/generated_images/cyberpunk_guardian_robotic_holographic_neon_green.png';
 import guardian3 from '@/assets/generated_images/cyberpunk_guardian_hooded_mysterious_neon_blue.png';
@@ -279,7 +293,9 @@ export const calculatePassiveEmissions = () => {
 // Deprecate old calculateEmissions in favor of this new logic
 export const calculateEmissions = () => calculatePassiveEmissions().total;
 
+// ⚠️ LOCKED: calculateBackedValue - Do NOT modify without explicit user request
 export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
+  // LOCKED FORMULA: backedValue = mintShare + boostedPoolShare
   // 1. Base per-NFT from mints: 51% of 69,420 = 35,404.20
   const mintShare = MINT_PRICE * NFT_MINT_TREASURY_PERCENT; 
   

@@ -20,18 +20,42 @@ Key features include:
 
 Preferred communication style: Simple, everyday language.
 
-### LOCKED CALCULATIONS (Do NOT modify without explicit user request)
-The following calculations and formulas are LOCKED and should NOT be changed:
+### LOCKED SYSTEMS - FINANCIAL GRADE (Do NOT modify without explicit user request)
+
+⚠️ **CRITICAL**: This app functions as a financial tool. All calculation, data gathering, and reporting systems are LOCKED. Do not modify any of these without explicit user request.
+
+#### Locked Components:
 - **PoolTracker.tsx**: Treasury calculations (mint revenue, royalty revenue, emissions)
 - **ValueEstimation.tsx**: Backed value per NFT, community treasury display
-- **useActivityFeed.ts**: Total volume calculation, block range (10000), event fetching logic
+- **useActivityFeed.ts**: Total volume calculation, block range, event fetching logic
 - **ActivityFeed.tsx**: Stats display, activity parsing, filter logic
-- **constants.ts**: MINT_SPLIT, ROYALTY_SPLIT, CUMULATIVE_SALES_BASELINE values
-- Formula: mintRevenue = minted × 69,420 × 51%
-- Formula: royaltyRevenue = salesVolume × 2%
-- Formula: backedValue = totalTreasury ÷ mintedNFTs
-- Block range: 40,000 blocks (~22 hours) for activity feed - captures all recent sales
+- **useSubnetEmissions.ts**: Brain emissions data, community share calculations
+- **mockData.ts**: calculateBackedValue(), calculatePassiveEmissions(), RARITY_CONFIG
+- **constants.ts**: MINT_SPLIT, ROYALTY_SPLIT, CUMULATIVE_SALES_BASELINE, contract addresses
+
+#### Locked Formulas:
+- `mintRevenue = minted × 69,420 × 51%`
+- `royaltyRevenue = salesVolume × 2%`
+- `backedValue = totalTreasury ÷ mintedNFTs`
+- `totalVolume = sum of on-chain Sold event prices (NEVER hardcoded)`
+- `communityShare = brainEmissions × 10%`
+
+#### Locked Data Sources:
+- Block range: 40,000 blocks (~22 hours) for activity feed
 - Event types: Transfer (mints), Listed, Sold from NFT and Marketplace contracts
+- Emissions: From Brain wallet (0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4)
+- Sales volume: From on-chain Sold events only (never hardcoded)
+
+#### Protected Files (check for ⚠️ LOCKED comments):
+```
+client/src/components/PoolTracker.tsx
+client/src/components/ValueEstimation.tsx
+client/src/components/ActivityFeed.tsx
+client/src/hooks/useActivityFeed.ts
+client/src/hooks/useSubnetEmissions.ts
+client/src/lib/mockData.ts
+client/src/lib/constants.ts
+```
 
 ## System Architecture
 

@@ -1,3 +1,17 @@
+/**
+ * constants.ts - Application Constants & Contract Addresses
+ * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED SYSTEMS - FINANCIAL GRADE" section
+ * 
+ * Contains critical financial constants:
+ * - Contract addresses (NFT, Marketplace, Governance)
+ * - Revenue split percentages (MINT_SPLIT, ROYALTY_SPLIT)
+ * - CUMULATIVE_SALES_BASELINE (set to 0 - all from on-chain)
+ * 
+ * This is a financial-grade component. All values are locked.
+ */
+
 export const RPC_URL = "https://mainnet.basedaibridge.com/rpc/";
 export const CHAIN_ID = 32323;
 
@@ -30,16 +44,18 @@ export const MINT_SPLITTER = "0x371c67FE6e839F921279FcdD7dCb1Fd74eeD1d76";
 export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
 
 // === REVENUE SPLIT CONFIGURATION ===
+// ⚠️ LOCKED: Revenue splits - Do NOT modify without explicit user request
 export const MINT_SPLIT = {
-  TREASURY_PERCENT: 51,
-  CREATOR_PERCENT: 49
+  TREASURY_PERCENT: 51,  // LOCKED: 51% of mint revenue to community treasury
+  CREATOR_PERCENT: 49    // LOCKED: 49% of mint revenue to creator
 };
 
+// ⚠️ LOCKED: Royalty splits - Do NOT modify without explicit user request
 export const ROYALTY_SPLIT = {
-  TOTAL_ROYALTY_PERCENT: 10,
-  TREASURY_PERCENT: 2,
-  ROYALTY_WALLET_PERCENT: 4,
-  CREATOR_PERCENT: 4
+  TOTAL_ROYALTY_PERCENT: 10,  // LOCKED: 10% total royalty on sales
+  TREASURY_PERCENT: 2,         // LOCKED: 2% to community treasury
+  ROYALTY_WALLET_PERCENT: 4,   // LOCKED: 4% to royalty wallet
+  CREATOR_PERCENT: 4           // LOCKED: 4% to creator
 };
 
 export const PLATFORM_FEE_PERCENT = 1;

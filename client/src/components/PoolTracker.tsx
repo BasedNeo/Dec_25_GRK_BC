@@ -1,3 +1,17 @@
+/**
+ * PoolTracker Component
+ * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED SYSTEMS - FINANCIAL GRADE" section
+ * 
+ * Displays community treasury calculations:
+ * - Mint Revenue: minted × 69,420 × 51%
+ * - Royalty Revenue: salesVolume × 2%
+ * - Emissions data from Brain wallet
+ * 
+ * This is a financial-grade component. All formulas are locked.
+ */
+
 import { calculateBackedValue } from "@/lib/mockData";
 import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
