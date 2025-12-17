@@ -36,7 +36,7 @@ export function PriceTicker() {
   return (
     <div 
       id="priceBadge"
-      className="flex flex-col justify-center px-4 py-2.5 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 min-w-[150px] md:min-w-[180px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
+      className="flex flex-col justify-center px-4 py-2.5 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[200px] md:w-[220px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
     >
       <AnimatePresence mode="wait">
         {showBased ? (
