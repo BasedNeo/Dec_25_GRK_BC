@@ -181,14 +181,22 @@ Protected folder structure to isolate core commerce and game code:
   - Messages displayed with "GUARDIAN HOLDER" badge in received offers
   - Rate limiting: max 5 offers per hour
   - Auto-cleanup prevents localStorage overflow
-- **Guardian Defender Game**: 5-level space arcade game accessible via "Game" nav item
+- **Retro Command Game**: 5-level space arcade minigame accessible to ALL users via "Game" nav item (last menu option)
   - Route: /game (GuardianDefender.tsx)
-  - Levels 1-4: Galaga-style shooter with unique alien types (Glitch, Jelly, Serpent, Fractal, Sentinel boss)
-  - Level 5: Lunar Lander physics-based landing on Based Outpost
-  - Uses cyberpunk rocket image from attached_assets
+  - Game renamed from "Guardian Defender" to "Retro Command" 
+  - Open access: No wallet or NFT required to play (4 plays/day limit, 30s cooldown)
+  - Guardian holders get perks: +1 life, 1.5x score multiplier, green ship
+  - "Race-to-Base" teaser shown: "Coming Soon - It will be incredible"
+  - Levels 1-4: Galaga-style shooter with unique alien types
+  - Level 5: Lunar Lander physics-based landing
   - Responsive canvas with mobile touch controls
   - Lifetime score tracking with 6 rank tiers (Cadet → Based Eternal)
-  - Revelation ending sequence with score breakdown
+- **Price Ticker Enhancements**: 8-second rotation between $BASED and BTC/ETH prices
+  - Fixed-width box (175px/190px) to prevent layout shift
+  - Elegant blur/fade/scale transitions (0.6s duration)
+  - Multi-source validation (Binance primary, CoinGecko fallback)
+- **Mobile Marketplace Fixes**: Improved touch targets for Make Offer button (min 44px height)
+  - Added touch-manipulation and active states for better mobile feedback
 
 ## Wallet Configuration
 
