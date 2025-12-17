@@ -1,0 +1,198 @@
+=== GUARDIAN DEFENDER: SECURITY SETUP ===
+
+Create the security layer and gate system BEFORE building the game.
+Must own 1 Guardian NFT to play. Prevents bots with rate limiting.
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE GAME GATE HOOK
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/hooks/useGameAccess.ts
+
+import { useState, useCallback } from 'react';
+import { useAccount, useSignMessage } from 'wagmi';
+import { useIsGuardianHolder } from './useIsGuardianHolder';
+
+const MAX_DAILY_PLAYS = 10;
+const COOLDOWN_SECONDS = 30;
+const STORAGE_KEY = 'guardian_game_access';
+
+interface AccessState {
+  canPlay: boolean;
+  reason: string;
+  playsRemaining: number;
+  cooldownSeconds: number;
+}
+
+export function useGameAccess() {
+  const { address, isConnected } = useAccount();
+  const { isHolder, isLoading: holderLoading } = useIsGuardianHolder();
+  const { signMessageAsync } = useSignMessage();
+  const [sessionActive, setSessionActive] = useState(false);
+
+  const checkAccess = useCallback((): AccessState => {
+    if (!isConnected) return { canPlay: false, reason: 'Connect wallet', playsRemaining: 0, cooldownSeconds: 0 };
+    if (!isHolder) return { canPlay: false, reason: 'Own a Guardian NFT to play', playsRemaining: 0, cooldownSeconds: 0 };
+
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let data = { date: today, plays: 0, lastPlay: 0, wallet: address?.toLowerCase() };
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.date === today && parsed.wallet === address?.toLowerCase()) {
+          data = parsed;
+        }
+      } catch {}
+    }
+
+    const playsRemaining = MAX_DAILY_PLAYS - data.plays;
+    const elapsed = (Date.now() - data.lastPlay) / 1000;
+    const cooldownSeconds = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed));
+
+    if (playsRemaining <= 0) return { canPlay: false, reason: 'Daily limit reached (resets at midnight)', playsRemaining: 0, cooldownSeconds: 0 };
+    if (cooldownSeconds > 0) return { canPlay: false, reason: `Wait ${cooldownSeconds}s`, playsRemaining, cooldownSeconds };
+
+    return { canPlay: true, reason: 'Ready', playsRemaining, cooldownSeconds: 0 };
+  }, [isConnected, isHolder, address]);
+
+  const startSession = useCallback(async (): Promise<boolean> => {
+    if (!address) return false;
+    
+    try {
+      const message = `Start Guardian Defender\nWallet: ${address}\nTime: ${Date.now()}`;
+      await signMessageAsync({ message });
+      setSessionActive(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [address, signMessageAsync]);
+
+  const recordPlay = useCallback(() => {
+    if (!address) return;
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let data = { date: today, plays: 1, lastPlay: Date.now(), wallet: address.toLowerCase() };
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.date === today && parsed.wallet === address.toLowerCase()) {
+          data.plays = parsed.plays + 1;
+        }
+      } catch {}
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [address]);
+
+  return {
+    checkAccess,
+    startSession,
+    recordPlay,
+    sessionActive,
+    isHolder,
+    isLoading: holderLoading,
+    isConnected,
+  };
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE GAME SCORES HOOK
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: /client/src/hooks/useGameScores.ts
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount } from 'wagmi';
+
+interface ScoreEntry {
+  wallet: string;
+  score: number;
+  wave: number;
+  timestamp: number;
+}
+
+interface PlayerStats {
+  lifetimeScore: number;
+  bestScore: number;
+  gamesPlayed: number;
+  rank: string;
+}
+
+const SCORES_KEY = 'guardian_game_scores';
+const STATS_KEY = 'guardian_game_stats_';
+
+const RANKS = [
+  { min: 0, title: 'Cadet', color: '#808080' },
+  { min: 1000, title: 'Pilot', color: '#00ff88' },
+  { min: 5000, title: 'Void Walker', color: '#00ffff' },
+  { min: 15000, title: 'Star Commander', color: '#bf00ff' },
+  { min: 50000, title: 'Fleet Admiral', color: '#ff8800' },
+  { min: 100000, title: 'Based Eternal', color: '#ffd700' },
+];
+
+export function useGameScores() {
+  const { address } = useAccount();
+  const [leaderboard, setLeaderboard] = useState<ScoreEntry[]>([]);
+  const [myStats, setMyStats] = useState<PlayerStats>({ lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' });
+
+  useEffect(() => {
+    const scores = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    setLeaderboard(scores.sort((a: ScoreEntry, b: ScoreEntry) => b.score - a.score).slice(0, 10));
+
+    if (address) {
+      const stats = JSON.parse(localStorage.getItem(STATS_KEY + address.toLowerCase()) || 'null');
+      if (stats) setMyStats(stats);
+    }
+  }, [address]);
+
+  const submitScore = useCallback((score: number, wave: number) => {
+    if (!address || score <= 0) return;
+
+    // Update leaderboard
+    const scores: ScoreEntry[] = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    scores.push({ wallet: address, score, wave, timestamp: Date.now() });
+    scores.sort((a, b) => b.score - a.score);
+    localStorage.setItem(SCORES_KEY, JSON.stringify(scores.slice(0, 50)));
+    setLeaderboard(scores.slice(0, 10));
+
+    // Update personal stats
+    const statsKey = STATS_KEY + address.toLowerCase();
+    const existing: PlayerStats = JSON.parse(localStorage.getItem(statsKey) || '{"lifetimeScore":0,"bestScore":0,"gamesPlayed":0,"rank":"Cadet"}');
+    
+    const newStats: PlayerStats = {
+      lifetimeScore: existing.lifetimeScore + score,
+      bestScore: Math.max(existing.bestScore, score),
+      gamesPlayed: existing.gamesPlayed + 1,
+      rank: RANKS.filter(r => existing.lifetimeScore + score >= r.min).pop()?.title || 'Cadet',
+    };
+    
+    localStorage.setItem(statsKey, JSON.stringify(newStats));
+    setMyStats(newStats);
+
+    return newStats;
+  }, [address]);
+
+  const getGlobalRank = useCallback(() => {
+    if (!address) return 0;
+    const scores: ScoreEntry[] = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    const myBest = scores.filter(s => s.wallet.toLowerCase() === address.toLowerCase())
+      .sort((a, b) => b.score - a.score)[0];
+    if (!myBest) return scores.length + 1;
+    return scores.filter(s => s.score > myBest.score).length + 1;
+  }, [address]);
+
+  return { leaderboard, myStats, submitScore, getGlobalRank, RANKS };
+}
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+[ ] useGameAccess hook created and exports correctly
+[ ] useGameScores hook created and exports correctly
+[ ] Both use existing useIsGuardianHolder hook
+[ ] localStorage keys don't conflict with existing app

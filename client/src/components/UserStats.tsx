@@ -5,7 +5,7 @@ import {
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
   Sparkles, Users, Flame, Calendar, TrendingUp,
-  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle
+  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2
 } from 'lucide-react';
 import { useGuardianProfileContext } from './GuardianProfileProvider';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { ethers } from 'ethers';
 import { RPC_URL, NFT_CONTRACT } from '@/lib/constants';
 import confetti from 'canvas-confetti';
+import { usePlayerGameStats } from '@/hooks/useGameScores';
+import { RaceToBaseLeaderboard } from '@/components/RaceToBaseLeaderboard';
+import { Link } from 'wouter';
 
 const NFT_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -176,6 +179,104 @@ function BasedHuntIcon({ className }: { className?: string }) {
       <path d="M7 7L10 10" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" strokeDasharray="1 2"/>
       <path d="M25 7L22 10" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" strokeDasharray="1 2"/>
     </svg>
+  );
+}
+
+const GAME_RANKS: Record<string, { color: string; bg: string }> = {
+  'Cadet': { color: 'text-gray-400', bg: 'bg-gray-500/20' },
+  'Pilot': { color: 'text-green-400', bg: 'bg-green-500/20' },
+  'Void Walker': { color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
+  'Star Commander': { color: 'text-purple-400', bg: 'bg-purple-500/20' },
+  'Fleet Admiral': { color: 'text-orange-400', bg: 'bg-orange-500/20' },
+  'Based Eternal': { color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+};
+
+function GameStatsSection() {
+  const { data: playerStats } = usePlayerGameStats();
+  const hasGameData = playerStats?.exists && playerStats.stats;
+  const stats = playerStats?.stats;
+  const rankStyle = stats ? GAME_RANKS[stats.rank] || GAME_RANKS['Cadet'] : GAME_RANKS['Cadet'];
+
+  return (
+    <>
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 1.0 }}
+        className="mt-8"
+      >
+        <Card className="bg-black/60 border-cyan-500/30 p-5 backdrop-blur-sm relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/20 rounded-lg">
+                  <Gamepad2 className="w-5 h-5 text-cyan-400" />
+                </div>
+                <h3 className="font-orbitron font-bold text-white">Guardian Defender Stats</h3>
+              </div>
+              <Link href="/game">
+                <Button size="sm" variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10" data-testid="button-play-minigame">
+                  <Rocket className="w-3 h-3 mr-1" />
+                  Play
+                </Button>
+              </Link>
+            </div>
+            
+            {hasGameData ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/20 text-center">
+                    <div className="text-2xl font-orbitron text-cyan-400">{stats!.lifetimeScore.toLocaleString()}</div>
+                    <p className="text-[10px] text-cyan-400/60 mt-1 font-mono">LIFETIME SCORE</p>
+                  </div>
+                  <div className="bg-black/40 rounded-lg p-3 border border-yellow-500/20 text-center">
+                    <div className="text-2xl font-orbitron text-yellow-400">{stats!.highScore.toLocaleString()}</div>
+                    <p className="text-[10px] text-yellow-400/60 mt-1 font-mono">HIGH SCORE</p>
+                  </div>
+                  <div className="bg-black/40 rounded-lg p-3 border border-purple-500/20 text-center">
+                    <div className="text-2xl font-orbitron text-purple-400">{stats!.gamesPlayed}</div>
+                    <p className="text-[10px] text-purple-400/60 mt-1 font-mono">GAMES PLAYED</p>
+                  </div>
+                  <div className="bg-black/40 rounded-lg p-3 border border-green-500/20 text-center">
+                    <div className={`text-lg font-orbitron ${rankStyle.color}`}>{stats!.rank}</div>
+                    <p className="text-[10px] text-green-400/60 mt-1 font-mono">PILOT RANK</p>
+                  </div>
+                </div>
+                
+                <div className="text-center text-xs text-white/40">
+                  <Sparkles className="w-3 h-3 inline mr-1" />
+                  Race-to-Base Minigame - Full P2E coming Q1 2025
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <Gamepad2 className="w-12 h-12 text-white/20 mx-auto mb-3" />
+                <p className="text-white/40 text-sm mb-2">No game stats yet</p>
+                <p className="text-white/30 text-xs mb-4">Play Guardian Defender to start tracking your scores!</p>
+                <Link href="/game">
+                  <Button size="sm" className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30">
+                    <Rocket className="w-4 h-4 mr-1" />
+                    Start Playing
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </Card>
+      </motion.div>
+      
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 1.1 }}
+        className="mt-6"
+      >
+        <RaceToBaseLeaderboard />
+      </motion.div>
+    </>
   );
 }
 
@@ -1206,69 +1307,7 @@ export function UserStats() {
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.0 }}
-          className="mt-8"
-        >
-          <Card className="bg-black/60 border-purple-500/30 p-5 backdrop-blur-sm relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
-            
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Swords className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <h3 className="font-orbitron font-bold text-white">My Race-to-Based Stats</h3>
-                </div>
-                <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 text-[10px] animate-pulse">
-                  COMING SOON
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/20 text-center group hover:border-cyan-500/40 transition-colors">
-                  <SpeedRaceIcon className="w-6 h-6 text-cyan-400/50 mx-auto mb-1" />
-                  <div className="text-xl font-orbitron text-gray-500">--</div>
-                  <p className="text-[10px] text-cyan-400/60 mt-1 font-mono">RACES WON</p>
-                </div>
-                <div className="bg-black/40 rounded-lg p-3 border border-purple-500/20 text-center group hover:border-purple-500/40 transition-colors">
-                  <BrainBattleIcon className="w-6 h-6 text-purple-400/50 mx-auto mb-1" />
-                  <div className="text-xl font-orbitron text-gray-500">--</div>
-                  <p className="text-[10px] text-purple-400/60 mt-1 font-mono">BATTLES WON</p>
-                </div>
-                <div className="bg-black/40 rounded-lg p-3 border border-pink-500/20 text-center group hover:border-pink-500/40 transition-colors">
-                  <BasedHuntIcon className="w-6 h-6 text-pink-400/50 mx-auto mb-1" />
-                  <div className="text-xl font-orbitron text-gray-500">--</div>
-                  <p className="text-[10px] text-pink-400/60 mt-1 font-mono">HUNTS COMPLETE</p>
-                </div>
-                <div className="bg-black/40 rounded-lg p-3 border border-yellow-500/20 text-center group hover:border-yellow-500/40 transition-colors">
-                  <Crown className="w-6 h-6 text-yellow-400/50 mx-auto mb-1" />
-                  <div className="text-xl font-orbitron text-gray-500">--</div>
-                  <p className="text-[10px] text-yellow-400/60 mt-1 font-mono">GLOBAL RANK</p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 rounded-lg p-3 border border-purple-500/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Gem className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs text-gray-300 font-mono">TOTAL $BASED EARNED</span>
-                  </div>
-                  <span className="text-lg font-orbitron text-gray-500">--</span>
-                </div>
-              </div>
-              
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-purple-400/70">
-                <Sparkles className="w-3 h-3" />
-                <span>P2E gaming metrics launching Q1 2025</span>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
+        <GameStatsSection />
 
         <motion.div 
           className="mt-6 text-center text-gray-500 text-xs"
