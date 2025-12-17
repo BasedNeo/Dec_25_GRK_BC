@@ -1,11 +1,17 @@
 import { GameState, Alien, Bullet, Explosion, PowerUp } from './gameEngine';
-import fudImage from '@assets/generated_images/red_fud_text_game_sprite.png';
+import fudImage from '@assets/generated_images/glowing_red_fud_neon_text.png';
+import robotChickenImage from '@assets/generated_images/evil_robot_chicken_game_sprite.png';
 
-// Preload FUD image
+// Preload game images
 let fudImageElement: HTMLImageElement | null = null;
+let robotChickenElement: HTMLImageElement | null = null;
+
 if (typeof window !== 'undefined') {
   fudImageElement = new Image();
   fudImageElement.src = fudImage;
+  
+  robotChickenElement = new Image();
+  robotChickenElement.src = robotChickenImage;
 }
 
 const COLORS = {
@@ -145,43 +151,29 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       break;
       
     case 'bee':
-      // White chicken alien
-      ctx.fillStyle = '#ffffff';
-      // Body - oval
-      ctx.beginPath();
-      ctx.ellipse(0, 2, 10, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Head
-      ctx.beginPath();
-      ctx.arc(0, -10, 7, 0, Math.PI * 2);
-      ctx.fill();
-      // Beak - orange
-      ctx.fillStyle = '#ff8800';
-      ctx.beginPath();
-      ctx.moveTo(0, -8);
-      ctx.lineTo(-4, -5);
-      ctx.lineTo(4, -5);
-      ctx.closePath();
-      ctx.fill();
-      // Red comb on top
-      ctx.fillStyle = '#ff3333';
-      ctx.beginPath();
-      ctx.arc(-3, -16, 3, 0, Math.PI * 2);
-      ctx.arc(0, -17, 3, 0, Math.PI * 2);
-      ctx.arc(3, -16, 3, 0, Math.PI * 2);
-      ctx.fill();
-      // Eyes
-      ctx.fillStyle = '#000';
-      ctx.beginPath();
-      ctx.arc(-3, -11, 1.5, 0, Math.PI * 2);
-      ctx.arc(3, -11, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      // Wings (flapping animation)
-      ctx.fillStyle = '#eeeeee';
-      ctx.beginPath();
-      ctx.ellipse(-10, 2, 5, 7, frame ? 0.4 : -0.2, 0, Math.PI * 2);
-      ctx.ellipse(10, 2, 5, 7, frame ? -0.4 : 0.2, 0, Math.PI * 2);
-      ctx.fill();
+      // Robot Chicken alien - use image
+      if (robotChickenElement && robotChickenElement.complete) {
+        const imgSize = 36;
+        ctx.drawImage(robotChickenElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
+      } else {
+        // Fallback: Draw sinister chicken if image not loaded
+        ctx.fillStyle = '#888888';
+        ctx.beginPath();
+        ctx.ellipse(0, 2, 10, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, -10, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // Red glowing eyes
+        ctx.fillStyle = '#ff0000';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(-3, -11, 2, 0, Math.PI * 2);
+        ctx.arc(3, -11, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
       break;
       
     case 'butterfly':
@@ -219,18 +211,18 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       break;
       
     case 'galaga':
-      // Use FUD image for galaga aliens
+      // Use FUD image for galaga aliens - larger and more visible
       if (fudImageElement && fudImageElement.complete) {
-        const imgSize = 32;
+        const imgSize = 44;
         ctx.drawImage(fudImageElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
       } else {
         // Fallback: Draw FUD text if image not loaded
         ctx.fillStyle = '#ff0000';
-        ctx.font = 'bold 18px Arial';
+        ctx.font = 'bold 22px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.fillText('FUD', 0, 0);
         ctx.shadowBlur = 0;
       }
