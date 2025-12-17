@@ -1,0 +1,389 @@
+=== CRITICAL: API RATE LIMITING + SECURITY HEADERS ===
+
+BACKGROUND: Server has NO rate limiting. API endpoints exposed to DOS attacks. Response logging exposes sensitive data.
+
+═══════════════════════════════════════════════════════════
+PART 1: INSTALL SECURITY DEPENDENCIES
+═══════════════════════════════════════════════════════════
+
+Run in terminal:
+npm install express-rate-limit helmet cors
+
+Expected: Packages install successfully
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE RATE LIMITER MIDDLEWARE
+═══════════════════════════════════════════════════════════
+
+CREATE: server/middleware/rateLimiter.ts
+
+import rateLimit from 'express-rate-limit';
+import type { Request, Response } from 'express';
+
+// General API limiter - protects against brute force
+export const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req: Request) => req.path === '/api/health' || req.path === '/_health',
+  handler: (req: Request, res: Response) => {
+    console.warn(`[RateLimit] IP ${req.ip} exceeded limit on ${req.path}`);
+    res.status(429).json({ 
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(15 * 60 / 60) // minutes
+    });
+  },
+});
+
+// Strict limiter for write operations (POST/PUT/DELETE)
+export const writeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 writes per minute per IP
+  message: { error: 'Too many write requests' },
+  skipSuccessfulRequests: true, // Don't count successful requests
+  handler: (req: Request, res: Response) => {
+    console.warn(`[RateLimit] IP ${req.ip} exceeded write limit on ${req.path}`);
+    res.status(429).json({ 
+      error: 'Too many write operations, please slow down',
+      retryAfter: 60 // seconds
+    });
+  },
+});
+
+// Auth/profile limiter - prevent account enumeration
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 profile operations per 15 min
+  message: { error: 'Too many authentication attempts' },
+  keyGenerator: (req: Request) => {
+    // Rate limit by IP + wallet address combination
+    const wallet = req.body?.walletAddress || req.query?.walletAddress || '';
+    return `${req.ip}-${wallet}`;
+  },
+});
+
+// Game score submission limiter - prevent score spam
+export const gameLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 score submissions per minute
+  message: { error: 'Too many game submissions' },
+  handler: (req: Request, res: Response) => {
+    console.warn(`[RateLimit] IP ${req.ip} game spam on ${req.path}`);
+    res.status(429).json({ 
+      error: 'Please wait before submitting another score',
+      retryAfter: 60
+    });
+  },
+});
+
+═══════════════════════════════════════════════════════════
+PART 3: CREATE SECURITY MIDDLEWARE
+═══════════════════════════════════════════════════════════
+
+CREATE: server/middleware/security.ts
+
+import helmet from 'helmet';
+import cors from 'cors';
+import type { Request, Response, NextFunction } from 'express';
+
+// Helmet configuration - security headers
+export const helmetConfig = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: [
+        "'self'",
+        "https://mainnet.basedaibridge.com",
+        "https://rpc.basedaibridge.com",
+        "https://api.coingecko.com",
+        "https://api.binance.com",
+        "https://*.mypinata.cloud",
+        "wss://relay.walletconnect.com"
+      ],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      workerSrc: ["'self'", "blob:"],
+      manifestSrc: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Required for some wallets
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+});
+
+// CORS configuration
+export const corsConfig = cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5000',
+      'http://localhost:5173',
+      'https://basedguardians.com',
+      'https://www.basedguardians.com'
+    ];
+    
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`[CORS] Blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // Allow all in development
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  maxAge: 86400 // 24 hours
+});
+
+// Request sanitizer - prevent injection attacks
+export function sanitizeRequest(req: Request, res: Response, next: NextFunction) {
+  // Remove null bytes from strings (can bypass security checks)
+  const sanitizeObj = (obj: any) => {
+    if (typeof obj === 'string') {
+      return obj.replace(/\0/g, '');
+    }
+    if (typeof obj === 'object' && obj !== null) {
+      for (const key in obj) {
+        obj[key] = sanitizeObj(obj[key]);
+      }
+    }
+    return obj;
+  };
+  
+  if (req.body) req.body = sanitizeObj(req.body);
+  if (req.query) req.query = sanitizeObj(req.query);
+  if (req.params) req.params = sanitizeObj(req.params);
+  
+  next();
+}
+
+// Secure logging - redact sensitive data
+export function secureLogger(req: Request, res: Response, next: NextFunction) {
+  const start = Date.now();
+  const path = req.path;
+  
+  const originalJson = res.json;
+  res.json = function (body: any) {
+    // Redact sensitive fields before logging
+    const safeBody = redactSensitive(body);
+    
+    const duration = Date.now() - start;
+    if (path.startsWith('/api')) {
+      console.log(`${req.method} ${path} ${res.statusCode} ${duration}ms`);
+      
+      // Only log response body in development
+      if (process.env.NODE_ENV === 'development' && res.statusCode >= 400) {
+        console.log('  Response:', JSON.stringify(safeBody).slice(0, 200));
+      }
+    }
+    
+    return originalJson.call(this, body);
+  };
+  
+  next();
+}
+
+function redactSensitive(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const sensitiveKeys = ['signature', 'privateKey', 'secret', 'password', 'auth', 'p256dh'];
+  const result = Array.isArray(obj) ? [] : {};
+  
+  for (const key in obj) {
+    if (sensitiveKeys.some(s => key.toLowerCase().includes(s))) {
+      (result as any)[key] = '[REDACTED]';
+    } else if (typeof obj[key] === 'object') {
+      (result as any)[key] = redactSensitive(obj[key]);
+    } else {
+      (result as any)[key] = obj[key];
+    }
+  }
+  
+  return result;
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: UPDATE SERVER INDEX
+═══════════════════════════════════════════════════════════
+
+FILE: server/index.ts
+
+FIND (line 1):
+import express, { type Request, Response, NextFunction } from "express";
+
+ADD AFTER:
+import { apiLimiter, writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
+import { helmetConfig, corsConfig, sanitizeRequest, secureLogger } from './middleware/security';
+
+FIND (line 36-60) - the logging middleware:
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      log(logLine);
+    }
+  });
+
+  next();
+});
+
+REPLACE WITH:
+// Security middleware - MUST be first
+app.use(helmetConfig);
+app.use(corsConfig);
+app.use(sanitizeRequest);
+app.use(secureLogger);
+
+// Apply general rate limiter to all API routes
+app.use('/api', apiLimiter);
+
+═══════════════════════════════════════════════════════════
+PART 5: APPLY SPECIFIC RATE LIMITERS TO ROUTES
+═══════════════════════════════════════════════════════════
+
+FILE: server/routes.ts
+
+ADD IMPORT (line 1):
+import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
+
+FIND profile endpoints (around line 227):
+app.post("/api/profile/login", async (req, res) => {
+
+REPLACE WITH:
+app.post("/api/profile/login", authLimiter, async (req, res) => {
+
+FIND (around line 264):
+app.post("/api/profile/name", async (req, res) => {
+
+REPLACE WITH:
+app.post("/api/profile/name", authLimiter, writeLimiter, async (req, res) => {
+
+FIND feedback endpoint (around line 22):
+app.post("/api/feedback", async (req, res) => {
+
+REPLACE WITH:
+app.post("/api/feedback", writeLimiter, async (req, res) => {
+
+FIND game score endpoint (search for "game" and "score"):
+app.post("/api/game/score", async (req, res) => {
+
+REPLACE WITH:
+app.post("/api/game/score", gameLimiter, writeLimiter, async (req, res) => {
+
+SIMILARLY APPLY writeLimiter to ALL:
+- POST /api/stories
+- POST /api/push/subscribe
+- POST /api/proposals
+- POST /api/proposals/:id/vote
+- POST /api/diamond-hands/update
+- DELETE endpoints
+- PUT/PATCH endpoints
+
+═══════════════════════════════════════════════════════════
+PART 6: ADD SECURITY HEADERS TO STATIC FILES
+═══════════════════════════════════════════════════════════
+
+FILE: server/static.ts
+
+FIND the serveStatic function:
+export function serveStatic(app: Express) {
+
+ADD AT TOP OF FUNCTION (before serving files):
+// Security headers for static files
+app.use((req, res, next) => {
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Enable browser XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. Install dependencies:
+   npm install
+
+2. Restart server:
+   npm run dev
+
+3. Test rate limiting in browser console:
+   // Make 110 rapid requests (should hit limit at 100)
+   for (let i = 0; i < 110; i++) {
+     fetch('/api/health').then(r => console.log(i, r.status));
+   }
+   // Last 10 should return 429 (Too Many Requests)
+
+4. Test write limit:
+   // Make 15 rapid POST requests
+   for (let i = 0; i < 15; i++) {
+     fetch('/api/feedback', {
+       method: 'POST',
+       headers: {'Content-Type': 'application/json'},
+       body: JSON.stringify({message: 'test'})
+     }).then(r => console.log(i, r.status));
+   }
+   // Should see 429 after 10 requests
+
+5. Check security headers in browser DevTools:
+   - Open Network tab
+   - Make any request
+   - Check Response Headers for:
+     ✓ X-Content-Type-Options: nosniff
+     ✓ X-Frame-Options: DENY
+     ✓ X-XSS-Protection: 1; mode=block
+     ✓ Strict-Transport-Security (in production)
+     ✓ Content-Security-Policy
+
+6. Check server logs - should NOT show full response bodies in production
+
+CHECKLIST:
+□ express-rate-limit, helmet, cors installed
+□ rateLimiter.ts created
+□ security.ts created
+□ server/index.ts updated
+□ server/routes.ts updated with rate limiters
+□ server/static.ts has security headers
+□ Rate limiting works (429 responses)
+□ Security headers present in responses
+□ Sensitive data NOT logged
+□ CORS blocks unauthorized origins (production only)
