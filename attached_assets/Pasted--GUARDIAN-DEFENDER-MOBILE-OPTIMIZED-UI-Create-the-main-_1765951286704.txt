@@ -1,0 +1,331 @@
+=== GUARDIAN DEFENDER: MOBILE-OPTIMIZED UI ===
+
+Create the main game component with full mobile touch support.
+Responsive canvas, touch controls, and proper mobile UX.
+
+═══════════════════════════════════════════════════════════
+CREATE FILE: /client/src/components/GuardianDefender.tsx
+═══════════════════════════════════════════════════════════
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { Gamepad2, Trophy, Heart, Play, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, Crosshair, ShieldCheck, Loader2 } from 'lucide-react';
+import { useGameAccess } from '@/hooks/useGameAccess';
+import { useGameScores } from '@/hooks/useGameScores';
+import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
+import { createGame, updateGame, applyInput, spawnAliens, getCanvasSize, GameState } from '@/lib/gameEngine';
+import { render } from '@/lib/gameRenderer';
+
+export function GuardianDefender() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef<GameState | null>(null);
+  const inputRef = useRef({ left: false, right: false, up: false, shoot: false });
+  const [phase, setPhase] = useState<'gate' | 'menu' | 'playing' | 'ended'>('gate');
+  const [displayScore, setDisplayScore] = useState(0);
+  const [displayLives, setDisplayLives] = useState(3);
+  const [displayLevel, setDisplayLevel] = useState(1);
+  const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
+
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { checkAccess, startSession, recordPlay, isHolder, isLoading } = useGameAccess();
+  const { submitScore, myStats, leaderboard, RANKS } = useGameScores();
+
+  // Responsive canvas
+  useEffect(() => {
+    const resize = () => setCanvasSize(getCanvasSize());
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+
+  // Check access on mount
+  useEffect(() => {
+    if (!isLoading && isConnected) {
+      const access = checkAccess();
+      if (access.canPlay) setPhase('menu');
+    }
+  }, [isLoading, isConnected, checkAccess]);
+
+  const startGame = useCallback(async () => {
+    const access = checkAccess();
+    if (!access.canPlay) return;
+
+    const started = await startSession();
+    if (!started) return;
+
+    recordPlay();
+    const { width, height } = canvasSize;
+    stateRef.current = createGame(width, height, isHolder);
+    spawnAliens(stateRef.current, width);
+    setPhase('playing');
+  }, [checkAccess, startSession, recordPlay, canvasSize, isHolder]);
+
+  // Game loop
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    let animId: number;
+    const { width, height } = canvasSize;
+
+    const loop = () => {
+      const state = stateRef.current;
+      if (!state) return;
+
+      applyInput(state, inputRef.current, width);
+      updateGame(state, width, height);
+      render(ctx, state, width, height, isHolder);
+
+      setDisplayScore(state.score);
+      setDisplayLives(state.lives);
+      setDisplayLevel(state.level);
+
+      if (state.gameOver || state.mode === 'complete') {
+        submitScore(state.score, state.level);
+        setPhase('ended');
+        return;
+      }
+
+      animId = requestAnimationFrame(loop);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [phase, canvasSize, isHolder, submitScore]);
+
+  // Keyboard input
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = true;
+      if (e.key === 'ArrowRight' || e.key === 'd') inputRef.current.right = true;
+      if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = true;
+      if (e.key === ' ') { inputRef.current.shoot = true; e.preventDefault(); }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd') inputRef.current.right = false;
+      if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = false;
+      if (e.key === ' ') inputRef.current.shoot = false;
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, []);
+
+  // Prevent scroll while playing
+  useEffect(() => {
+    if (phase === 'playing') {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    }
+    return () => { document.body.style.overflow = ''; document.body.style.touchAction = ''; };
+  }, [phase]);
+
+  // Touch handlers
+  const touchStart = (btn: 'left' | 'right' | 'up' | 'shoot') => (e: React.TouchEvent) => {
+    e.preventDefault();
+    inputRef.current[btn] = true;
+  };
+  const touchEnd = (btn: 'left' | 'right' | 'up' | 'shoot') => () => {
+    inputRef.current[btn] = false;
+  };
+
+  const access = checkAccess();
+  const rankInfo = RANKS.find(r => myStats.lifetimeScore >= r.min) || RANKS[0];
+
+  return (
+    <Card className="bg-black/90 border-cyan-500/30 p-4 max-w-md mx-auto">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Gamepad2 className="text-cyan-400" size={20} />
+          <span className="font-orbitron text-white text-sm">GUARDIAN DEFENDER</span>
+        </div>
+        {phase === 'playing' && (
+          <div className="flex items-center gap-3 text-xs font-mono">
+            <span className="text-cyan-400">{displayScore.toLocaleString()}</span>
+            <span className="text-purple-400">LV{displayLevel}</span>
+            <span className="text-red-400 flex">{Array(displayLives).fill(0).map((_, i) => <Heart key={i} size={12} fill="currentColor" />)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* GATE SCREEN */}
+      {phase === 'gate' && (
+        <div className="text-center py-12">
+          {isLoading ? (
+            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
+          ) : !isConnected ? (
+            <>
+              <ShieldCheck className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+              <p className="text-white font-orbitron mb-4">CONNECT WALLET</p>
+              <Button onClick={openConnectModal} className="bg-cyan-500 text-black">CONNECT</Button>
+            </>
+          ) : !isHolder ? (
+            <>
+              <ShieldCheck className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+              <p className="text-white font-orbitron mb-2">GUARDIANS ONLY</p>
+              <p className="text-gray-400 text-sm mb-4">Own 1 Guardian NFT to play</p>
+              <div className="flex gap-2 justify-center">
+                <a href="https://aftermint.trade/mint/based-guardians" target="_blank"><Button className="bg-[#6cff61] text-black">MINT</Button></a>
+                <Button variant="outline" className="border-cyan-500 text-cyan-400">BUY</Button>
+              </div>
+            </>
+          ) : !access.canPlay ? (
+            <>
+              <p className="text-white font-orbitron mb-2">{access.reason}</p>
+              {access.cooldownSeconds > 0 && <p className="text-cyan-400 text-2xl font-mono">{access.cooldownSeconds}s</p>}
+            </>
+          ) : (
+            <Button onClick={() => setPhase('menu')} className="bg-cyan-500 text-black">CONTINUE</Button>
+          )}
+        </div>
+      )}
+
+      {/* MENU SCREEN */}
+      {phase === 'menu' && (
+        <div className="text-center py-8">
+          <p className="text-[#6cff61] text-xs mb-2 flex items-center justify-center gap-1">
+            <ShieldCheck size={12} /> GUARDIAN VERIFIED
+          </p>
+          <p className="text-white font-orbitron text-lg mb-1">READY TO LAUNCH</p>
+          <p className="text-gray-400 text-xs mb-4">{access.playsRemaining} plays remaining today</p>
+          
+          {isHolder && (
+            <div className="bg-[#6cff61]/10 border border-[#6cff61]/30 rounded p-2 mb-4 text-xs text-[#6cff61]">
+              <p className="font-bold">HOLDER PERKS ACTIVE</p>
+              <p>+1 Life • Green Ship • 1.5x Score</p>
+            </div>
+          )}
+
+          <Button onClick={startGame} className="bg-cyan-500 text-black font-bold px-8 py-3 text-lg">
+            <Play size={20} className="mr-2" /> SIGN TO PLAY
+          </Button>
+
+          <p className="text-gray-500 text-[10px] mt-4">Wallet signature required to start</p>
+        </div>
+      )}
+
+      {/* GAME CANVAS */}
+      {(phase === 'playing' || phase === 'ended') && (
+        <>
+          <canvas
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            className="w-full rounded border border-cyan-500/20"
+            style={{ touchAction: 'none' }}
+          />
+
+          {/* MOBILE TOUCH CONTROLS */}
+          <div className="flex justify-between mt-3 md:hidden">
+            <div className="flex gap-2">
+              <Button
+                onTouchStart={touchStart('left')} onTouchEnd={touchEnd('left')}
+                className="w-14 h-14 bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 active:bg-cyan-500/40"
+              ><ChevronLeft size={24} /></Button>
+              <Button
+                onTouchStart={touchStart('right')} onTouchEnd={touchEnd('right')}
+                className="w-14 h-14 bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 active:bg-cyan-500/40"
+              ><ChevronRight size={24} /></Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
+                className="w-14 h-14 bg-purple-500/20 border border-purple-500/50 text-purple-400 active:bg-purple-500/40"
+              ><ChevronUp size={24} /></Button>
+              <Button
+                onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
+                className="w-14 h-14 bg-red-500/20 border border-red-500/50 text-red-400 active:bg-red-500/40"
+              ><Crosshair size={24} /></Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* GAME OVER / COMPLETE */}
+      {phase === 'ended' && (
+        <div className="absolute inset-4 bg-black/95 rounded flex flex-col items-center justify-center text-center p-4">
+          <p className="text-cyan-400 font-mono text-sm mb-2">MISSION {stateRef.current?.mode === 'complete' ? 'COMPLETE' : 'FAILED'}</p>
+          <p className="text-white font-orbitron text-2xl mb-1">{displayScore.toLocaleString()}</p>
+          <p className="text-gray-400 text-xs mb-4">Level {displayLevel} reached</p>
+          
+          <div className="bg-white/5 rounded p-3 mb-4 w-full max-w-xs">
+            <p className="text-xs text-gray-400 mb-1">YOUR RANK</p>
+            <p className="font-orbitron" style={{ color: rankInfo.color }}>{rankInfo.title}</p>
+            <p className="text-xs text-gray-500">Lifetime: {myStats.lifetimeScore.toLocaleString()}</p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={startGame} disabled={!checkAccess().canPlay} className="bg-cyan-500 text-black">
+              <RotateCcw size={16} className="mr-1" /> AGAIN
+            </Button>
+            <Button variant="outline" className="border-purple-500 text-purple-400">
+              <Trophy size={16} className="mr-1" /> RANKS
+            </Button>
+          </div>
+          
+          {!checkAccess().canPlay && (
+            <p className="text-red-400 text-xs mt-2">{checkAccess().reason}</p>
+          )}
+        </div>
+      )}
+
+      {/* CONTROLS HINT (Desktop) */}
+      <p className="text-center text-gray-600 text-[10px] mt-2 hidden md:block">
+        ← → Move • ↑ Thrust • SPACE Shoot
+      </p>
+    </Card>
+  );
+}
+
+export default GuardianDefender;
+
+═══════════════════════════════════════════════════════════
+MOBILE OPTIMIZATION CHECKLIST
+═══════════════════════════════════════════════════════════
+
+[ ] Canvas resizes to fit screen (getCanvasSize)
+[ ] Touch controls are large (56x56px minimum)
+[ ] Scroll disabled during gameplay
+[ ] touchAction: none on canvas
+[ ] Touch buttons have active states
+[ ] Controls positioned for thumbs (bottom corners)
+[ ] Font sizes readable on small screens
+[ ] No hover-only interactions
+
+═══════════════════════════════════════════════════════════
+ADD GAME TO APP NAVIGATION
+═══════════════════════════════════════════════════════════
+
+Add this button to your header or nav:
+
+<Button 
+  onClick={() => setShowGame(true)}
+  className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-orbitron"
+>
+  <Gamepad2 size={16} className="mr-2" /> PLAY
+</Button>
+
+Render game in a modal or dedicated section.
+
+═══════════════════════════════════════════════════════════
+FINAL VERIFICATION
+═══════════════════════════════════════════════════════════
+
+[ ] Gate blocks non-holders
+[ ] Wallet signature required to start
+[ ] Daily limit enforced (10 plays)
+[ ] Cooldown between games (30s)
+[ ] Scores save correctly
+[ ] Leaderboard displays
+[ ] Mobile touch controls work
+[ ] Canvas responsive
+[ ] NFT holder perks apply (+1 life, green ship)
+[ ] Game pauses when tab hidden
