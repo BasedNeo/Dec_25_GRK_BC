@@ -282,12 +282,34 @@ export function Hero() {
             </span>
             {" "}
             <span className="relative inline-block">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400">
+              <span 
+                className="text-transparent bg-clip-text"
+                style={{
+                  backgroundImage: 'linear-gradient(90deg, #22d3ee, #a78bfa, #ec4899, #a78bfa, #22d3ee)',
+                  backgroundSize: '200% 100%',
+                  animation: 'gradientShift 6s ease-in-out infinite',
+                  WebkitBackgroundClip: 'text',
+                }}
+              >
                 GUARDIANS
               </span>
-              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 blur-lg opacity-50">
+              <span 
+                className="absolute inset-0 text-transparent bg-clip-text blur-lg opacity-60"
+                style={{
+                  backgroundImage: 'linear-gradient(90deg, #22d3ee, #a78bfa, #ec4899, #a78bfa, #22d3ee)',
+                  backgroundSize: '200% 100%',
+                  animation: 'gradientShift 6s ease-in-out infinite',
+                  WebkitBackgroundClip: 'text',
+                }}
+              >
                 GUARDIANS
               </span>
+              <style>{`
+                @keyframes gradientShift {
+                  0%, 100% { background-position: 0% 50%; }
+                  50% { background-position: 100% 50%; }
+                }
+              `}</style>
             </span>
           </h1>
           
