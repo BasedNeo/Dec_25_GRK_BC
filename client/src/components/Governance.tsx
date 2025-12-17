@@ -424,8 +424,9 @@ interface OffchainProposalCardProps {
 
 function OffchainProposalCard({ proposal, isExpanded, onToggle, votingPower, isAdmin, onClose }: OffchainProposalCardProps) {
   const { toast } = useToast();
-  const { address } = useGovernance();
-  const { data: votesData, isLoading: loadingVotes } = useProposalVotes(proposal.id, address);
+  const governance = useGovernance();
+  const walletAddress = governance.address;
+  const { data: votesData } = useProposalVotes(proposal.id, walletAddress);
   const { castVote } = useProposalMutations();
 
   const userVote = votesData?.userVote;
@@ -452,7 +453,7 @@ function OffchainProposalCard({ proposal, isExpanded, onToggle, votingPower, isA
   };
 
   const handleVote = (optionKey: 'A' | 'B' | 'C' | 'D') => {
-    if (!address) {
+    if (!walletAddress) {
       toast({ title: 'Connect Wallet', description: 'Please connect your wallet to vote', variant: 'destructive' });
       return;
     }
