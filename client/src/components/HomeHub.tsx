@@ -14,82 +14,84 @@ import {
 import { useAccount } from "wagmi";
 import { ADMIN_WALLETS } from "@/lib/constants";
 import Untitled from "@assets/Untitled.png";
+import { useTranslation } from "react-i18next";
 
 interface HomeHubProps {
   onNavigate: (tab: string) => void;
   onOpenAdmin?: () => void;
 }
 
-const menuItems = [
-  { 
-    id: 'mint', 
-    label: 'MINT - TO LIFT OFF!', 
-    icon: Sparkles, 
-    description: 'Mint your Guardian NFT',
-    color: 'from-cyan-400 to-teal-500',
-    glow: 'cyan'
-  },
-  { 
-    id: 'gallery', 
-    label: 'PORTFOLIO', 
-    icon: Wallet, 
-    description: 'View your NFT collection',
-    color: 'from-emerald-500 to-cyan-500',
-    glow: 'emerald'
-  },
-  { 
-    id: 'escrow', 
-    label: 'MARKET', 
-    icon: Grid3X3, 
-    description: 'Browse & trade on marketplace',
-    color: 'from-violet-500 to-purple-500',
-    glow: 'violet'
-  },
-  { 
-    id: 'universe', 
-    label: 'UNIVERSE', 
-    icon: Globe, 
-    description: 'Explore the Based Guardians lore',
-    color: 'from-blue-500 to-indigo-500',
-    glow: 'blue'
-  },
-  { 
-    id: 'pool', 
-    label: 'POOL', 
-    icon: Droplets, 
-    description: 'Track community emissions',
-    color: 'from-cyan-500 to-blue-500',
-    glow: 'cyan'
-  },
-  { 
-    id: 'stats', 
-    label: 'USER STATS', 
-    icon: Trophy, 
-    description: 'Your Guardian journey',
-    color: 'from-purple-500 to-pink-500',
-    glow: 'purple'
-  },
-  { 
-    id: 'voting', 
-    label: 'VOTING', 
-    icon: Vote, 
-    description: 'Participate in governance',
-    color: 'from-amber-500 to-orange-500',
-    glow: 'amber'
-  },
-  { 
-    id: 'activity', 
-    label: 'ACTIVITY', 
-    icon: Activity, 
-    description: 'Live transaction feed',
-    color: 'from-rose-500 to-pink-500',
-    glow: 'rose'
-  },
-];
-
 export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
+  const { t } = useTranslation();
   const { address } = useAccount();
   const isAdmin = address && ADMIN_WALLETS.some(admin => admin.toLowerCase() === address.toLowerCase());
+
+  const menuItems = [
+    { 
+      id: 'mint', 
+      label: t('hub.mintLabel', 'MINT - TO LIFT OFF!'), 
+      icon: Sparkles, 
+      description: t('hub.mintDesc', 'Mint your Guardian NFT'),
+      color: 'from-cyan-400 to-teal-500',
+      glow: 'cyan'
+    },
+    { 
+      id: 'gallery', 
+      label: t('hub.portfolioLabel', 'PORTFOLIO'), 
+      icon: Wallet, 
+      description: t('hub.portfolioDesc', 'View your NFT collection'),
+      color: 'from-emerald-500 to-cyan-500',
+      glow: 'emerald'
+    },
+    { 
+      id: 'escrow', 
+      label: t('hub.marketLabel', 'MARKET'), 
+      icon: Grid3X3, 
+      description: t('hub.marketDesc', 'Browse & trade on marketplace'),
+      color: 'from-violet-500 to-purple-500',
+      glow: 'violet'
+    },
+    { 
+      id: 'universe', 
+      label: t('hub.universeLabel', 'UNIVERSE'), 
+      icon: Globe, 
+      description: t('hub.universeDesc', 'Explore the Based Guardians lore'),
+      color: 'from-blue-500 to-indigo-500',
+      glow: 'blue'
+    },
+    { 
+      id: 'pool', 
+      label: t('hub.poolLabel', 'POOL'), 
+      icon: Droplets, 
+      description: t('hub.poolDesc', 'Track community emissions'),
+      color: 'from-cyan-500 to-blue-500',
+      glow: 'cyan'
+    },
+    { 
+      id: 'stats', 
+      label: t('hub.statsLabel', 'USER STATS'), 
+      icon: Trophy, 
+      description: t('hub.statsDesc', 'Your Guardian journey'),
+      color: 'from-purple-500 to-pink-500',
+      glow: 'purple'
+    },
+    { 
+      id: 'voting', 
+      label: t('hub.votingLabel', 'VOTING'), 
+      icon: Vote, 
+      description: t('hub.votingDesc', 'Participate in governance'),
+      color: 'from-amber-500 to-orange-500',
+      glow: 'amber'
+    },
+    { 
+      id: 'activity', 
+      label: t('hub.activityLabel', 'ACTIVITY'), 
+      icon: Activity, 
+      description: t('hub.activityDesc', 'Live transaction feed'),
+      color: 'from-rose-500 to-pink-500',
+      glow: 'rose'
+    },
+  ];
 
   return (
     <div className="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">

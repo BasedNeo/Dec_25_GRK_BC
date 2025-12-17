@@ -16,6 +16,7 @@ import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
 import { NotificationSettings } from "./NotificationSettings";
 import Untitled from "@/assets/Untitled.png";
+import { useTranslation } from "react-i18next";
 
 interface NavbarProps {
   activeTab: string;
@@ -24,6 +25,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
+  const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   // const { toast } = useToast(); // Using custom toast
@@ -130,14 +132,14 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
-    { id: 'mint', label: 'MINT' },
-    { id: 'gallery', label: 'PORTFOLIO' },
-    { id: 'escrow', label: 'MARKET' },
-    { id: 'universe', label: 'UNIVERSE' },
-    { id: 'pool', label: 'POOL' },
-    { id: 'stats', label: 'STATS' },
-    { id: 'voting', label: 'VOTING' }, 
-    { id: 'activity', label: 'ACTIVITY' },
+    { id: 'mint', label: t('nav.mint', 'MINT') },
+    { id: 'gallery', label: t('nav.gallery', 'PORTFOLIO') },
+    { id: 'escrow', label: t('nav.escrow', 'MARKET') },
+    { id: 'universe', label: t('nav.universe', 'UNIVERSE') },
+    { id: 'pool', label: t('nav.pool', 'POOL') },
+    { id: 'stats', label: t('nav.stats', 'STATS') },
+    { id: 'voting', label: t('nav.voting', 'VOTING') }, 
+    { id: 'activity', label: t('nav.activity', 'ACTIVITY') },
   ];
 
   return (
