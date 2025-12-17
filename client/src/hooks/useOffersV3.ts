@@ -3,6 +3,7 @@ import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionRe
 import { parseEther, formatEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
+import { SecureStorage } from '@/lib/secureStorage';
 
 const DOMAIN = {
   name: 'BasedGuardiansMarketplace',
@@ -153,22 +154,34 @@ const MARKETPLACE_V3_ABI = [
 
 function getStoredOffers(): OffchainOffer[] {
   try {
-    const stored = localStorage.getItem(OFFERS_STORAGE_KEY);
-    if (!stored) return [];
-    let offers = JSON.parse(stored) as OffchainOffer[];
-    const cleaned = cleanupOffers(offers);
-    if (cleaned.length !== offers.length) saveOffers(cleaned);
-    return cleaned;
-  } catch {
+    const offers = SecureStorage.get<OffchainOffer[]>('offers_v3');
+    if (offers) {
+      const cleaned = cleanupOffers(offers);
+      if (cleaned.length !== offers.length) saveOffers(cleaned);
+      return cleaned;
+    }
+    
+    const oldStored = localStorage.getItem(OFFERS_STORAGE_KEY);
+    if (oldStored) {
+      const oldOffers = JSON.parse(oldStored) as OffchainOffer[];
+      saveOffers(oldOffers);
+      localStorage.removeItem(OFFERS_STORAGE_KEY);
+      return cleanupOffers(oldOffers);
+    }
+    
+    return [];
+  } catch (e) {
+    console.error('[Offers] Storage read error:', e);
     return [];
   }
 }
 
 function saveOffers(offers: OffchainOffer[]) {
-  try {
-    localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(offers));
-  } catch {
-    // Storage error
+  const success = SecureStorage.set('offers_v3', offers);
+  if (!success) {
+    console.error('[Offers] Failed to save - storage full or error');
+    const trimmed = offers.slice(-100);
+    SecureStorage.set('offers_v3', trimmed);
   }
 }
 

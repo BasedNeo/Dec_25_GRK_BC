@@ -28,6 +28,10 @@ function getCurrentStorageSize(): number {
 }
 
 export class SecureStorage {
+  static cleanup() {
+    return this.cleanupOldEntries();
+  }
+  
   private static cleanupOldEntries() {
     const now = Date.now();
     const keysToDelete: string[] = [];
@@ -55,23 +59,30 @@ export class SecureStorage {
       const fullKey = STORAGE_PREFIX + key;
       const jsonData = JSON.stringify(value);
       
-      if (getCurrentStorageSize() + jsonData.length > MAX_STORAGE_SIZE) {
-        console.warn('[SecureStorage] Size limit reached, cleaning up...');
-        this.cleanupOldEntries();
-        
-        if (getCurrentStorageSize() + jsonData.length > MAX_STORAGE_SIZE) {
-          console.error('[SecureStorage] Still over limit after cleanup');
-          return false;
-        }
-      }
+      const existingEntry = localStorage.getItem(fullKey);
+      const existingSize = existingEntry ? existingEntry.length + fullKey.length : 0;
       
       const item: StorageItem<T> = {
         data: value,
         timestamp: Date.now(),
         checksum: generateChecksum(jsonData)
       };
+      const newItemStr = JSON.stringify(item);
+      const newSize = newItemStr.length + fullKey.length;
       
-      localStorage.setItem(fullKey, JSON.stringify(item));
+      const netIncrease = newSize - existingSize;
+      
+      if (getCurrentStorageSize() + netIncrease > MAX_STORAGE_SIZE) {
+        console.warn('[SecureStorage] Size limit reached, cleaning up...');
+        this.cleanupOldEntries();
+        
+        if (getCurrentStorageSize() + netIncrease > MAX_STORAGE_SIZE) {
+          console.error('[SecureStorage] Still over limit after cleanup');
+          return false;
+        }
+      }
+      
+      localStorage.setItem(fullKey, newItemStr);
       return true;
     } catch (e) {
       console.error('[SecureStorage] Set failed:', e);
@@ -138,5 +149,5 @@ export class SecureStorage {
 }
 
 if (typeof window !== 'undefined') {
-  SecureStorage['cleanupOldEntries']();
+  SecureStorage.cleanup();
 }
