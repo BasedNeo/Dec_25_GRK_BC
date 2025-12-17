@@ -36,7 +36,7 @@ export function PriceTicker() {
   return (
     <div 
       id="priceBadge"
-      className="flex flex-col justify-center px-4 py-2.5 rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[200px] md:w-[220px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
+      className="flex flex-col justify-center px-3 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[175px] md:w-[190px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
     >
       <AnimatePresence mode="wait">
         {showBased ? (
@@ -44,11 +44,11 @@ export function PriceTicker() {
             key="based"
             {...elegantTransition}
           >
-            <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-relaxed">
-              <div className="flex items-center gap-1.5">
-                <span className="text-white/50 font-mono tracking-wide">BASED</span>
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-white/50 font-mono">BASED</span>
                 <span className="text-white/30">·</span>
-                <span className="text-white/40 text-[9px]">ETH</span>
+                <span className="text-white/40 text-[8px]">ETH</span>
                 <span className="font-semibold text-white font-mono tracking-tight">
                   {basedPrice === undefined 
                     ? <span className="inline-block w-12 h-3 bg-white/10 rounded animate-pulse" />
@@ -59,16 +59,16 @@ export function PriceTicker() {
                 </span>
               </div>
               {basedPrice && basedPrice.usdPrice > 0 && basedPrice.change24h !== undefined && (
-                <span className={`font-medium font-mono text-[9px] ${basedPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {basedPrice.change24h >= 0 ? '↑' : '↓'} {Math.abs(basedPrice.change24h || 0).toFixed(1)}%
+                <span className={`font-medium font-mono text-[8px] ${basedPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {basedPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(basedPrice.change24h || 0).toFixed(1)}%
                 </span>
               )}
             </div>
             
-            <div className="flex items-center gap-1.5 text-[10px] leading-relaxed mt-1">
-              <span className="text-white/50 font-mono tracking-wide">BASED</span>
+            <div className="flex items-center gap-1 text-[9px] leading-tight mt-0.5">
+              <span className="text-white/50 font-mono">BASED</span>
               <span className="text-white/30">·</span>
-              <span className="text-white/40 text-[9px]">L1</span>
+              <span className="text-white/40 text-[8px]">L1</span>
               <span className="font-semibold text-cyan-400 font-mono tracking-tight">
                 {basedPrice === undefined 
                   ? <span className="inline-block w-16 h-3 bg-cyan-500/10 rounded animate-pulse" />
@@ -84,9 +84,9 @@ export function PriceTicker() {
             key="crypto"
             {...elegantTransition}
           >
-            <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-relaxed">
-              <div className="flex items-center gap-1.5">
-                <span className="text-orange-400/70 font-mono tracking-wide">BTC</span>
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-orange-400/70 font-mono">BTC</span>
                 <span className="font-semibold text-orange-300 font-mono tracking-tight">
                   {cryptoLoading || !btcPrice
                     ? <span className="inline-block w-14 h-3 bg-orange-500/10 rounded animate-pulse" />
@@ -95,15 +95,15 @@ export function PriceTicker() {
                 </span>
               </div>
               {btcPrice && (
-                <span className={`font-medium font-mono text-[9px] ${btcPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {btcPrice.change24h >= 0 ? '↑' : '↓'} {Math.abs(btcPrice.change24h).toFixed(1)}%
+                <span className={`font-medium font-mono text-[8px] ${btcPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {btcPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(btcPrice.change24h).toFixed(1)}%
                 </span>
               )}
             </div>
             
-            <div className="flex items-center justify-between gap-2 text-[10px] leading-relaxed mt-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-purple-400/70 font-mono tracking-wide">ETH</span>
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight mt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-purple-400/70 font-mono">ETH</span>
                 <span className="font-semibold text-purple-300 font-mono tracking-tight">
                   {cryptoLoading || !ethPrice
                     ? <span className="inline-block w-12 h-3 bg-purple-500/10 rounded animate-pulse" />
@@ -113,8 +113,8 @@ export function PriceTicker() {
               </div>
               <div className="flex items-center gap-1">
                 {ethPrice && (
-                  <span className={`font-medium font-mono text-[9px] ${ethPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {ethPrice.change24h >= 0 ? '↑' : '↓'} {Math.abs(ethPrice.change24h).toFixed(1)}%
+                  <span className={`font-medium font-mono text-[8px] ${ethPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {ethPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(ethPrice.change24h).toFixed(1)}%
                   </span>
                 )}
                 {isVerified && (
