@@ -127,7 +127,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
           <motion.img 
             src={Untitled}
             alt="Based Guardians"
-            className="h-24 w-auto mx-auto mb-6 drop-shadow-[0_0_30px_rgba(0,255,255,0.6)]"
+            className="h-28 w-auto mx-auto mb-6 drop-shadow-[0_0_30px_rgba(0,255,255,0.6)]"
             animate={{ 
               y: [0, -8, 0],
               filter: ['drop-shadow(0 0 30px rgba(0,255,255,0.6))', 'drop-shadow(0 0 40px rgba(0,255,255,0.8))', 'drop-shadow(0 0 30px rgba(0,255,255,0.6))']
@@ -182,7 +182,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                   blur-2xl scale-105
                 `} />
                 
-                <div className="relative flex items-center justify-between p-5 rounded-2xl 
+                <div className="relative flex items-center justify-between py-3 px-4 rounded-xl 
                   bg-gradient-to-br from-white/[0.03] to-transparent
                   border border-white/[0.06] backdrop-blur-xl
                   group-hover:border-white/20 group-hover:from-white/[0.06]
