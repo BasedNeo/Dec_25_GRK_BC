@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema } from "@shared/schema";
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
+import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
@@ -19,7 +20,7 @@ export async function registerRoutes(
   });
 
   // Feedback submission endpoint
-  app.post("/api/feedback", async (req, res) => {
+  app.post("/api/feedback", writeLimiter, async (req, res) => {
     try {
       const parsed = insertFeedbackSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -57,7 +58,7 @@ export async function registerRoutes(
   });
 
   // Story submission endpoint
-  app.post("/api/stories", async (req, res) => {
+  app.post("/api/stories", writeLimiter, async (req, res) => {
     try {
       const parsed = insertStorySchema.safeParse(req.body);
       if (!parsed.success) {
@@ -105,7 +106,7 @@ export async function registerRoutes(
     return res.json({ publicKey: VAPID_PUBLIC_KEY });
   });
 
-  app.post("/api/push/subscribe", async (req, res) => {
+  app.post("/api/push/subscribe", writeLimiter, async (req, res) => {
     try {
       const subscribeSchema = z.object({
         walletAddress: z.string().min(1),
@@ -135,7 +136,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/push/unsubscribe", async (req, res) => {
+  app.delete("/api/push/unsubscribe", writeLimiter, async (req, res) => {
     try {
       const { endpoint } = req.body;
       if (!endpoint) {
@@ -170,7 +171,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/push/preferences", async (req, res) => {
+  app.patch("/api/push/preferences", writeLimiter, async (req, res) => {
     try {
       const { endpoint, notifyListings, notifyOffers, notifySales } = req.body;
       if (!endpoint) {
@@ -224,7 +225,7 @@ export async function registerRoutes(
   });
 
   // Guardian Profile endpoints
-  app.post("/api/profile/login", async (req, res) => {
+  app.post("/api/profile/login", authLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),
@@ -261,7 +262,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/profile/name", async (req, res) => {
+  app.post("/api/profile/name", authLimiter, writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),
@@ -326,7 +327,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/diamond-hands/update", async (req, res) => {
+  app.post("/api/diamond-hands/update", writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),
@@ -373,7 +374,7 @@ export async function registerRoutes(
     return ADMIN_WALLETS.includes(wallet.toLowerCase());
   };
 
-  app.post("/api/proposals", async (req, res) => {
+  app.post("/api/proposals", writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         title: z.string().min(5).max(100),
@@ -446,7 +447,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/proposals/:id/status", async (req, res) => {
+  app.patch("/api/proposals/:id/status", writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         status: z.enum(['review', 'active', 'closed']),
@@ -475,7 +476,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/proposals/:id", async (req, res) => {
+  app.delete("/api/proposals/:id", writeLimiter, async (req, res) => {
     try {
       const walletAddress = req.query.wallet as string;
       
@@ -492,7 +493,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/proposals/:id/vote", async (req, res) => {
+  app.post("/api/proposals/:id/vote", writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),
@@ -543,7 +544,7 @@ export async function registerRoutes(
   });
 
   // Race-to-Base Game Score Endpoints
-  app.post("/api/game/score", async (req, res) => {
+  app.post("/api/game/score", gameLimiter, writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),

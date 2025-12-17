@@ -1,0 +1,464 @@
+=== CRITICAL: MEMORY LEAK PREVENTION + CLEANUP ===
+
+BACKGROUND: Found 86 timers (setInterval/setTimeout) and 315 React hooks. Many likely don't clean up properly, causing memory leaks in long-running sessions.
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE TIMER MANAGER
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/timerManager.ts
+
+/**
+ * TimerManager - Centralized timer management with automatic cleanup
+ * Prevents memory leaks from lingering intervals/timeouts
+ */
+
+interface Timer {
+  id: number;
+  type: 'interval' | 'timeout';
+  callback: Function;
+  delay: number;
+  createdAt: number;
+}
+
+class TimerManagerClass {
+  private timers: Map<number, Timer> = new Map();
+  private nextId = 1;
+
+  /**
+   * Create a managed interval (auto-cleanup on page unload)
+   */
+  setInterval(callback: Function, delay: number): number {
+    const id = this.nextId++;
+    const timerId = window.setInterval(callback, delay);
+    
+    this.timers.set(id, {
+      id: timerId,
+      type: 'interval',
+      callback,
+      delay,
+      createdAt: Date.now()
+    });
+    
+    return id;
+  }
+
+  /**
+   * Create a managed timeout (auto-cleanup on page unload)
+   */
+  setTimeout(callback: Function, delay: number): number {
+    const id = this.nextId++;
+    const timerId = window.setTimeout(() => {
+      callback();
+      this.timers.delete(id); // Auto-remove after execution
+    }, delay);
+    
+    this.timers.set(id, {
+      id: timerId,
+      type: 'timeout',
+      callback,
+      delay,
+      createdAt: Date.now()
+    });
+    
+    return id;
+  }
+
+  /**
+   * Clear a specific timer
+   */
+  clear(id: number): void {
+    const timer = this.timers.get(id);
+    if (!timer) return;
+    
+    if (timer.type === 'interval') {
+      window.clearInterval(timer.id);
+    } else {
+      window.clearTimeout(timer.id);
+    }
+    
+    this.timers.delete(id);
+  }
+
+  /**
+   * Clear all timers
+   */
+  clearAll(): void {
+    this.timers.forEach((timer, id) => {
+      if (timer.type === 'interval') {
+        window.clearInterval(timer.id);
+      } else {
+        window.clearTimeout(timer.id);
+      }
+    });
+    this.timers.clear();
+  }
+
+  /**
+   * Get active timer count (for debugging)
+   */
+  getActiveCount(): number {
+    return this.timers.size;
+  }
+
+  /**
+   * Get timer details (for debugging)
+   */
+  getTimers(): Array<{ type: string; delay: number; age: number }> {
+    const now = Date.now();
+    return Array.from(this.timers.values()).map(t => ({
+      type: t.type,
+      delay: t.delay,
+      age: Math.floor((now - t.createdAt) / 1000) // seconds
+    }));
+  }
+}
+
+export const TimerManager = new TimerManagerClass();
+
+// Auto-cleanup on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    TimerManager.clearAll();
+  });
+  
+  // Expose for debugging
+  (window as any).timers = () => {
+    console.log(`Active timers: ${TimerManager.getActiveCount()}`);
+    console.table(TimerManager.getTimers());
+  };
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE useInterval HOOK (SAFE VERSION)
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/hooks/useInterval.ts
+
+import { useEffect, useRef } from 'react';
+import { TimerManager } from '@/lib/timerManager';
+
+/**
+ * Safe interval hook with automatic cleanup
+ * Usage: useInterval(() => { ... }, 1000);
+ */
+export function useInterval(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+  const timerIdRef = useRef<number | null>(null);
+
+  // Remember latest callback
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval
+  useEffect(() => {
+    if (delay === null) return;
+
+    const tick = () => savedCallback.current();
+    
+    timerIdRef.current = TimerManager.setInterval(tick, delay);
+
+    // Cleanup on unmount or delay change
+    return () => {
+      if (timerIdRef.current !== null) {
+        TimerManager.clear(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [delay]);
+}
+
+/**
+ * Safe timeout hook with automatic cleanup
+ */
+export function useTimeout(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+  const timerIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (delay === null) return;
+
+    const tick = () => savedCallback.current();
+    
+    timerIdRef.current = TimerManager.setTimeout(tick, delay);
+
+    return () => {
+      if (timerIdRef.current !== null) {
+        TimerManager.clear(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [delay]);
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: REPLACE DANGEROUS INTERVALS
+═══════════════════════════════════════════════════════════
+
+FIND ALL FILES WITH setInterval/setTimeout PATTERNS:
+
+FILE: client/src/hooks/useOffersV3.ts (line 253-256)
+
+FIND:
+useEffect(() => {
+  const interval = setInterval(loadOffers, 30000);
+  return () => clearInterval(interval);
+}, [loadOffers]);
+
+REPLACE WITH:
+import { useInterval } from '@/hooks/useInterval';
+
+// Remove the useEffect, add:
+useInterval(() => {
+  loadOffers();
+}, 30000); // 30 seconds
+
+FILE: client/src/hooks/usePriceTicker.ts
+
+FIND any setInterval:
+const interval = setInterval(...);
+
+REPLACE WITH:
+import { useInterval } from '@/hooks/useInterval';
+useInterval(() => { /* callback */ }, delay);
+
+FILE: client/src/core/commerce/useMarketplace.ts (line 679)
+
+FIND:
+const interval = setInterval(fetchFloorPrice, 30000);
+return () => clearInterval(interval);
+
+REPLACE WITH:
+import { useInterval } from '@/hooks/useInterval';
+useInterval(() => {
+  fetchFloorPrice();
+}, 30000);
+
+REPEAT FOR ALL FILES:
+- hooks/useActivityFeed.ts
+- hooks/useSubnetEmissions.ts
+- components/PriceTicker.tsx
+- components/PoolTracker.tsx
+- Any other file with setInterval
+
+═══════════════════════════════════════════════════════════
+PART 4: FIX EVENT LISTENER LEAKS
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/hooks/useEventListener.ts
+
+import { useEffect, useRef } from 'react';
+
+export function useEventListener<K extends keyof WindowEventMap>(
+  eventName: K,
+  handler: (event: WindowEventMap[K]) => void,
+  element: Window | HTMLElement = window
+) {
+  const savedHandler = useRef(handler);
+
+  useEffect(() => {
+    savedHandler.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    const isSupported = element && element.addEventListener;
+    if (!isSupported) return;
+
+    const eventListener = (event: Event) => savedHandler.current(event as any);
+    element.addEventListener(eventName, eventListener);
+
+    return () => {
+      element.removeEventListener(eventName, eventListener);
+    };
+  }, [eventName, element]);
+}
+
+USAGE EXAMPLE:
+
+// BEFORE (memory leak):
+useEffect(() => {
+  const handler = (e: KeyboardEvent) => { ... };
+  window.addEventListener('keydown', handler);
+  // ❌ Cleanup often forgotten or wrong
+}, []);
+
+// AFTER (safe):
+useEventListener('keydown', (e) => { ... });
+
+═══════════════════════════════════════════════════════════
+PART 5: AUDIT CRITICAL HOOKS FOR CLEANUP
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/hooks/useGuardianProfile.ts
+
+CHECK: Line 158-167
+useEffect(() => {
+  if (isConnected && address) {
+    login();
+  } else {
+    setProfile(null);
+    setIsNewUser(false);
+    setWelcomeMessage(null);
+    setShowNamePrompt(false);
+  }
+}, [isConnected, address, login]);
+
+ISSUE: 'login' in dependency array but it's a useCallback without dependencies
+FIX: Add address to login's useCallback deps (line 47):
+
+const login = useCallback(async () => {
+  ...
+}, [address, isConnected]); // ✅ Add these
+
+FILE: client/src/pages/GuardianDefender.tsx (game)
+
+FIND: Game loop intervals
+CHECK: Are they cleaned up on unmount?
+
+ADD CLEANUP:
+useEffect(() => {
+  // Game loop setup
+  const gameLoop = setInterval(...);
+  
+  return () => {
+    clearInterval(gameLoop);
+    // Clean up game state
+    setGameState(null);
+    // Cancel any pending operations
+  };
+}, []);
+
+FILE: client/src/lib/gameRenderer.ts
+
+SEARCH FOR: canvas.addEventListener
+CHECK: Are listeners removed?
+
+ENSURE PATTERN:
+canvas.addEventListener('touchstart', handler);
+// Must have matching:
+return () => canvas.removeEventListener('touchstart', handler);
+
+═══════════════════════════════════════════════════════════
+PART 6: CREATE MEMORY LEAK DETECTOR (DEV ONLY)
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/memoryMonitor.ts
+
+class MemoryMonitor {
+  private samples: number[] = [];
+  private maxSamples = 60; // Keep last 60 samples
+  private intervalId: number | null = null;
+
+  start() {
+    if (this.intervalId !== null) return;
+    
+    this.intervalId = window.setInterval(() => {
+      if ('memory' in performance) {
+        const mem = (performance as any).memory;
+        const usedMB = Math.round(mem.usedJSHeapSize / 1048576);
+        this.samples.push(usedMB);
+        
+        if (this.samples.length > this.maxSamples) {
+          this.samples.shift();
+        }
+        
+        // Alert if memory grows >100MB in last 10 samples
+        if (this.samples.length >= 10) {
+          const recent = this.samples.slice(-10);
+          const growth = recent[9] - recent[0];
+          
+          if (growth > 100) {
+            console.warn(`⚠️ Memory leak detected: +${growth}MB in 10s`);
+            console.log('Run window.timers() to check active timers');
+          }
+        }
+      }
+    }, 1000);
+    
+    console.log('🔍 Memory monitor started (dev only)');
+  }
+
+  stop() {
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+
+  getReport() {
+    if (this.samples.length === 0) return 'No samples yet';
+    
+    const current = this.samples[this.samples.length - 1];
+    const avg = Math.round(this.samples.reduce((a, b) => a + b) / this.samples.length);
+    const min = Math.min(...this.samples);
+    const max = Math.max(...this.samples);
+    
+    return {
+      current: `${current}MB`,
+      average: `${avg}MB`,
+      min: `${min}MB`,
+      max: `${max}MB`,
+      samples: this.samples.length
+    };
+  }
+}
+
+export const memoryMonitor = new MemoryMonitor();
+
+// Auto-start in development
+if (import.meta.env.DEV) {
+  memoryMonitor.start();
+  (window as any).memReport = () => {
+    console.table(memoryMonitor.getReport());
+  };
+}
+
+ADD TO: client/src/main.tsx (import at top):
+import './lib/memoryMonitor';
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. Restart dev server
+
+2. Open browser console, run:
+   timers()
+   // Should show active timers table
+
+3. Navigate between pages, run again:
+   timers()
+   // Timer count should stay stable (not grow infinitely)
+
+4. Check memory (Chrome only):
+   memReport()
+   // Should show stable memory usage
+
+5. Leave app open for 5 minutes while using it
+   - Run memReport() again
+   - Memory should NOT grow >50MB
+   - Timer count should be <20
+
+6. Test game (biggest leak risk):
+   - Play game for 2 minutes
+   - Exit to home
+   - Run: timers()
+   - Should be 0 game-related timers
+
+CHECKLIST:
+□ timerManager.ts created
+□ useInterval.ts created
+□ useEventListener.ts created
+□ All setInterval replaced with useInterval
+□ All addEventListener have removeEventListener
+□ memoryMonitor.ts created
+□ timers() command works
+□ memReport() command works (Chrome)
+□ Timer count stays stable
+□ Memory usage stays stable
+□ Game cleanup works

@@ -14,6 +14,13 @@ export function serveStatic(app: Express) {
   const indexPath = path.resolve(distPath, "index.html");
   const indexHtml = fs.readFileSync(indexPath, 'utf-8');
 
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+  });
+
   // Serve static files with caching
   app.use(express.static(distPath, {
     maxAge: '1d',
