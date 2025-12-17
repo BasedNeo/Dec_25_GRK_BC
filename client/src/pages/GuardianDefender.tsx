@@ -29,8 +29,10 @@ export function GuardianDefender() {
 
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { checkAccess, startSession, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
+  const { checkAccess, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
   const { submitScore, myStats, leaderboard } = useGameScoresLocal();
+  
+  const access = checkAccess();
 
   useEffect(() => {
     const resize = () => setCanvasSize(getCanvasSize());
@@ -39,15 +41,7 @@ export function GuardianDefender() {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  useEffect(() => {
-    if (!isLoading) {
-      const access = checkAccess();
-      if (access.canPlay) setPhase('gate');
-    }
-  }, [isLoading, checkAccess]);
-
   const startGame = useCallback(async () => {
-    const access = checkAccess();
     if (!access.canPlay) return;
 
     recordPlay();
@@ -55,7 +49,7 @@ export function GuardianDefender() {
     stateRef.current = createGame(width, height, holderPerks?.extraLife || false);
     spawnAliens(stateRef.current, width);
     setPhase('playing');
-  }, [checkAccess, recordPlay, canvasSize, holderPerks]);
+  }, [access.canPlay, recordPlay, canvasSize, holderPerks]);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -125,7 +119,6 @@ export function GuardianDefender() {
     inputRef.current[btn] = false;
   };
 
-  const access = checkAccess();
   const rankInfo = RANKS.find(r => myStats.lifetimeScore >= r.min) || RANKS[0];
 
   return (
@@ -174,45 +167,23 @@ export function GuardianDefender() {
 
           {phase === 'gate' && (
             <div className="text-center py-10">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-2 border-cyan-500/50 flex items-center justify-center">
-                <GamepadIcon size={40} />
+              <div className="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 border-2 border-cyan-500/40 flex items-center justify-center animate-pulse">
+                <RocketIcon size={48} />
               </div>
-              <p className="text-white font-orbitron text-xl mb-2">GUARDIAN DEFENDER</p>
-              <p className="text-gray-400 text-sm mb-4">Defend the Based Galaxy!</p>
-              
-              {!access.canPlay ? (
-                <>
-                  <p className="text-red-400 text-sm mb-2">{access.reason}</p>
-                  {access.cooldownSeconds > 0 && (
-                    <p className="text-cyan-400 text-3xl font-mono font-bold">{cooldown}s</p>
-                  )}
-                </>
-              ) : (
-                <Button 
-                  onClick={() => setPhase('menu')} 
-                  className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3 rounded-xl"
-                  data-testid="button-play-now"
-                >
-                  <PlayIcon size={20} className="mr-2" /> PLAY NOW
-                </Button>
-              )}
-              
-              <p className="text-gray-600 text-xs mt-4">
-                {access.playsRemaining} plays remaining today
+              <p className="text-white font-orbitron text-2xl mb-3 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                RACE-TO-BASE
               </p>
-              
-              {isConnected && isHolder && (
-                <div className="mt-4 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-lg p-3 text-xs text-[#6cff61] max-w-xs mx-auto">
-                  <p className="font-bold">HOLDER PERKS ACTIVE</p>
-                  <p>+1 Life • 1.5x Score • Green Ship</p>
-                </div>
-              )}
-              
-              {!isConnected && (
-                <p className="text-gray-500 text-[10px] mt-4">
-                  Connect wallet & own a Guardian for bonus perks!
+              <div className="bg-gradient-to-r from-purple-500/10 via-cyan-500/10 to-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6 max-w-xs mx-auto">
+                <p className="text-purple-300 text-sm font-medium mb-2">
+                  Game in Development
                 </p>
-              )}
+                <p className="text-cyan-400 text-lg font-orbitron">
+                  It will be incredible.
+                </p>
+              </div>
+              <p className="text-gray-500 text-xs">
+                Stay tuned for the ultimate space racing experience
+              </p>
             </div>
           )}
 

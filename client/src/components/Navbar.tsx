@@ -140,7 +140,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'stats', label: t('nav.stats', 'Stats') },
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },
-    { id: 'game', label: t('nav.game', 'Game') },
+    { id: 'game', label: t('nav.game', 'Race') },
   ];
 
   return (
