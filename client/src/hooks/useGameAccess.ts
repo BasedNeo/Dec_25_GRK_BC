@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { useIsGuardianHolder } from './useIsGuardianHolder';
 
-const MAX_DAILY_PLAYS = 4;
-const COOLDOWN_SECONDS = 30;
+const MAX_DAILY_PLAYS = 9999; // TESTING: unlimited plays
+const COOLDOWN_SECONDS = 0; // TESTING: no cooldown
 const STORAGE_KEY = 'guardian_game_access';
 
 interface AccessState {
