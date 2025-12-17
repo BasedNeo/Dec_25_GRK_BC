@@ -73,6 +73,11 @@ function StarField() {
 export default function Creators() {
   useEffect(() => {
     window.scrollTo(0, 0);
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes('creators')) {
+      visited.push('creators');
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
   }, []);
 
   return (

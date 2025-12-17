@@ -2,9 +2,18 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 export default function PrivacyPolicy() {
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes('privacy')) {
+      visited.push('privacy');
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-mono selection:bg-primary selection:text-black">

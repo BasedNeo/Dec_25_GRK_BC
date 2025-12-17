@@ -21,6 +21,11 @@ export function DisclaimerModal() {
 
   const handleAccept = () => {
     localStorage.setItem("has-seen-disclaimer", "true");
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes('disclaimer')) {
+      visited.push('disclaimer');
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
     setIsOpen(false);
   };
 

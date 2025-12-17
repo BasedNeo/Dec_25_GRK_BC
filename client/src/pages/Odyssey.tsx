@@ -49,6 +49,11 @@ function StarField() {
 export default function Odyssey() {
   useEffect(() => {
     window.scrollTo(0, 0);
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes('odyssey')) {
+      visited.push('odyssey');
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
   }, []);
 
   return (

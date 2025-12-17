@@ -22,7 +22,10 @@ const NFT_ABI = [
   'function tokenOfOwnerByIndex(address, uint256) view returns (uint256)'
 ];
 
-const PAGES = ['hub', 'universe', 'mint', 'gallery', 'escrow', 'voting', 'pool'];
+const PAGES = [
+  'hub', 'universe', 'mint', 'gallery', 'escrow', 'voting', 'pool', 'stats', 'activity', 'inbox',
+  'terms', 'privacy', 'odyssey', 'creators', 'saga', 'disclaimer'
+];
 
 interface LevelRequirement {
   nfts: number;

@@ -479,6 +479,14 @@ function ChooseYourAdventure() {
 }
 
 export default function Saga() {
+  useEffect(() => {
+    const visited = JSON.parse(localStorage.getItem('pagesVisited') || '[]');
+    if (!visited.includes('saga')) {
+      visited.push('saga');
+      localStorage.setItem('pagesVisited', JSON.stringify(visited));
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 relative overflow-x-hidden">
       <div className="fixed inset-0 z-0">
