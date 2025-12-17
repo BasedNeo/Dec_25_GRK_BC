@@ -8,7 +8,7 @@ interface GuardianProfileContextType {
   isNewUser: boolean;
   getDisplayName: () => string | null;
   setCustomName: (name: string | null) => Promise<{ success: boolean; error?: string }>;
-  checkNameAvailable: (name: string) => Promise<boolean>;
+  checkNameAvailable: (name: string) => Promise<{ available: boolean; error?: string }>;
   walletSuffix: string;
 }
 
@@ -23,7 +23,7 @@ export function useGuardianProfileContext() {
       isNewUser: false,
       getDisplayName: () => null,
       setCustomName: async () => ({ success: false, error: 'Provider not available' }),
-      checkNameAvailable: async () => false,
+      checkNameAvailable: async () => ({ available: false, error: 'Provider not available' }),
       walletSuffix: '',
     };
   }

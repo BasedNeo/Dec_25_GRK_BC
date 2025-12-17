@@ -91,19 +91,24 @@ export function useGuardianProfile() {
     }
   }, [address]);
 
-  const checkNameAvailable = useCallback(async (name: string): Promise<boolean> => {
-    if (!name || name.length < 2) return false;
+  const checkNameAvailable = useCallback(async (name: string): Promise<{ available: boolean; error?: string }> => {
+    if (!name || name.length < 2) {
+      return { available: false, error: 'Name must be at least 2 characters' };
+    }
     
     try {
-      const res = await fetch(`/api/profile/check-name/${encodeURIComponent(name)}?exclude=${address || ''}`);
+      const url = `/api/profile/check-name/${encodeURIComponent(name)}${address ? `?exclude=${address}` : ''}`;
+      const res = await fetch(url);
+      
       if (res.ok) {
         const data = await res.json();
-        return data.available;
+        return { available: data.available };
+      } else {
+        return { available: false, error: 'Could not verify name availability' };
       }
-    } catch {
-      return false;
+    } catch (err) {
+      return { available: false, error: 'Network error checking name' };
     }
-    return false;
   }, [address]);
 
   const dismissNamePrompt = useCallback(() => {

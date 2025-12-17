@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema } from "@shared/schema";
 import { z } from "zod";
+import { containsProfanity } from "./profanityFilter";
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
@@ -272,6 +273,9 @@ export async function registerRoutes(
       }
 
       if (parsed.data.customName) {
+        if (containsProfanity(parsed.data.customName)) {
+          return res.status(400).json({ error: "This name contains inappropriate content" });
+        }
         const isTaken = await storage.isNameTaken(parsed.data.customName, parsed.data.walletAddress);
         if (isTaken) {
           return res.status(409).json({ error: "This name is already taken" });
@@ -294,6 +298,11 @@ export async function registerRoutes(
     try {
       const name = req.params.name;
       const excludeWallet = req.query.exclude as string | undefined;
+      
+      if (containsProfanity(name)) {
+        return res.json({ available: false, error: "This name contains inappropriate content" });
+      }
+      
       const isTaken = await storage.isNameTaken(name, excludeWallet);
       return res.json({ available: !isTaken });
     } catch (error) {

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Edit3, Check, AlertCircle } from 'lucide-react';
+import { X, Sparkles, Edit3, Check, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { containsProfanity, getProfanityError } from '@/lib/profanityFilter';
 
 interface WelcomeBackModalProps {
   message: string;
@@ -73,7 +74,7 @@ export function WelcomeBackModal({ message, displayName, onDismiss }: WelcomeBac
 interface NamePromptModalProps {
   walletSuffix: string;
   onSubmit: (name: string | null) => Promise<{ success: boolean; error?: string }>;
-  onCheckAvailable: (name: string) => Promise<boolean>;
+  onCheckAvailable: (name: string) => Promise<{ available: boolean; error?: string }>;
   onDismiss: () => void;
 }
 
@@ -83,24 +84,54 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
   const [checking, setChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [checkTimeout, setCheckTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  const handleNameChange = async (value: string) => {
+  const handleNameChange = (value: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
     setName(cleaned);
     setError(null);
     setIsAvailable(null);
     
+    if (checkTimeout) {
+      clearTimeout(checkTimeout);
+    }
+    
     if (cleaned.length >= 2) {
+      if (containsProfanity(cleaned)) {
+        setError(getProfanityError());
+        setIsAvailable(false);
+        return;
+      }
+      
       setChecking(true);
-      const available = await onCheckAvailable(cleaned);
-      setIsAvailable(available);
-      setChecking(false);
+      const timeout = setTimeout(async () => {
+        const result = await onCheckAvailable(cleaned);
+        setIsAvailable(result.available);
+        if (!result.available && result.error) {
+          setError(result.error);
+        }
+        setChecking(false);
+      }, 300);
+      setCheckTimeout(timeout);
     }
   };
 
-  const handleSubmit = async () => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && name.length >= 2 && isAvailable && !checking) {
+      e.preventDefault();
+      setShowConfirmation(true);
+    }
+  };
+
+  const handleSubmitClick = () => {
     if (name.length < 2) {
       setError('Name must be at least 2 characters');
+      return;
+    }
+    
+    if (containsProfanity(name)) {
+      setError(getProfanityError());
       return;
     }
     
@@ -109,6 +140,11 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
       return;
     }
     
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmation(false);
     setSubmitting(true);
     const result = await onSubmit(name);
     setSubmitting(false);
@@ -123,6 +159,66 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
   const handleSkip = () => {
     onDismiss();
   };
+
+  if (showConfirmation) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="max-w-md w-full"
+          >
+            <Card className="bg-gradient-to-br from-gray-900 via-gray-900 to-amber-900/20 border-amber-500/30 p-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5" />
+              
+              <div className="relative">
+                <div className="text-center mb-6">
+                  <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+                  <h2 className="text-xl font-orbitron font-bold text-white mb-2">
+                    Confirm Your Guardian Name
+                  </h2>
+                  <div className="text-2xl font-orbitron text-white mb-4">
+                    {name}<span className="text-cyan-400">#{walletSuffix}</span>
+                  </div>
+                  <p className="text-amber-200/80 text-sm leading-relaxed">
+                    This name may be displayed publicly on social media, 
+                    leaderboards, and community communications. 
+                    Please ensure you're comfortable with this name being visible to others.
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowConfirmation(false)}
+                    className="flex-1 border-gray-600 text-gray-400 hover:text-white"
+                    data-testid="button-cancel-confirm"
+                  >
+                    Go Back
+                  </Button>
+                  <Button
+                    onClick={handleConfirmSubmit}
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-orbitron"
+                    data-testid="button-confirm-name"
+                  >
+                    {submitting ? 'Saving...' : 'Confirm Name'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -148,7 +244,6 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
                   Choose Your Guardian Name
                 </h2>
                 <p className="text-gray-400 text-sm">
-                  This name may appear on social media for leaderboard announcements. 
                   Your wallet suffix <span className="text-cyan-400 font-mono">#{walletSuffix}</span> will be added to make it unique.
                 </p>
               </div>
@@ -158,6 +253,7 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
                   <Input
                     value={name}
                     onChange={(e) => handleNameChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Enter name (2-16 characters)"
                     className="bg-gray-800/50 border-gray-700 text-white pr-10"
                     maxLength={16}
@@ -176,7 +272,7 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
                   )}
                 </div>
                 
-                {name.length >= 2 && (
+                {name.length >= 2 && isAvailable && (
                   <div className="text-center">
                     <span className="text-sm text-gray-400">Preview: </span>
                     <span className="text-lg font-orbitron text-white">
@@ -203,8 +299,8 @@ export function NamePromptModal({ walletSuffix, onSubmit, onCheckAvailable, onDi
                     Skip for Now
                   </Button>
                   <Button
-                    onClick={handleSubmit}
-                    disabled={name.length < 2 || !isAvailable || submitting}
+                    onClick={handleSubmitClick}
+                    disabled={name.length < 2 || !isAvailable || submitting || checking}
                     className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-orbitron disabled:opacity-50"
                     data-testid="button-save-name"
                   >
