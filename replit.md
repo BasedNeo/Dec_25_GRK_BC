@@ -138,3 +138,5 @@ client/src/lib/constants.ts
 - Added first-time visitor name prompt modal
 - Database: Added `guardian_profiles` table for username and login tracking
 - Minting gas limit: 8,000,000, gas price: 10 gwei
+- Added Uniswap Wallet support to RainbowKit wallet modal (in Popular section)
+- NFT cards in portfolio now display offer details with Accept/Decline buttons directly visible
