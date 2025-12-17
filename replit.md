@@ -20,6 +20,8 @@ Key features include:
 
 Preferred communication style: Simple, everyday language.
 
+**Default Landing Page**: Command Center (Home.tsx at route "/") - ALWAYS use this as the default landing page. If any issues occur with routing or the app, ensure users land on the Command Center page.
+
 ### LOCKED SYSTEMS - FINANCIAL GRADE (Do NOT modify without explicit user request)
 
 ⚠️ **CRITICAL**: This app functions as a financial tool. All calculation, data gathering, and reporting systems are LOCKED. Do not modify any of these without explicit user request.
