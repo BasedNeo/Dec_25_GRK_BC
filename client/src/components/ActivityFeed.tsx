@@ -1,6 +1,9 @@
 /**
  * ActivityFeed Component
  * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED CALCULATIONS" section for details
+ * 
  * Displays real-time activity from the blockchain:
  * - Mints, Sales, Listings, Transfers
  * - Auto-refreshes every 30 seconds

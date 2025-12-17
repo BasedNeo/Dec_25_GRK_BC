@@ -24,11 +24,14 @@ Preferred communication style: Simple, everyday language.
 The following calculations and formulas are LOCKED and should NOT be changed:
 - **PoolTracker.tsx**: Treasury calculations (mint revenue, royalty revenue, emissions)
 - **ValueEstimation.tsx**: Backed value per NFT, community treasury display
-- **useActivityFeed.ts**: Total volume calculation with baseline (CUMULATIVE_SALES_BASELINE)
+- **useActivityFeed.ts**: Total volume calculation, block range (10000), event fetching logic
+- **ActivityFeed.tsx**: Stats display, activity parsing, filter logic
 - **constants.ts**: MINT_SPLIT, ROYALTY_SPLIT, CUMULATIVE_SALES_BASELINE values
 - Formula: mintRevenue = minted × 69,420 × 51%
 - Formula: royaltyRevenue = salesVolume × 2%
 - Formula: backedValue = totalTreasury ÷ mintedNFTs
+- Block range: 10,000 blocks (~5.5 hours) for activity feed
+- Event types: Transfer (mints), Listed, Sold from NFT and Marketplace contracts
 
 ## System Architecture
 

@@ -1,11 +1,20 @@
 /**
  * useActivityFeed Hook - PERFORMANCE OPTIMIZED
  * 
+ * ⚠️ LOCKED - Do NOT modify without explicit user request
+ * See replit.md "LOCKED CALCULATIONS" section for details
+ * 
  * Fetches and displays real-time activity from the NFT and Marketplace contracts:
  * - Mints (Transfer from 0x0)
  * - Marketplace Listings
  * - Sales
  * - Transfers
+ * 
+ * LOCKED SETTINGS:
+ * - Block range: 10,000 blocks (~5.5 hours)
+ * - Contracts: NFT_CONTRACT, MARKETPLACE_CONTRACT
+ * - Events: Transfer, Listed, Sold
+ * - Baseline: CUMULATIVE_SALES_BASELINE for historical volume
  * 
  * OPTIMIZATION: Block timestamp caching to reduce RPC calls
  * FIXED: Now fetches REAL totalMinted from contract state (not just events)
