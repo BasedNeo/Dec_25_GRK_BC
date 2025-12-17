@@ -210,12 +210,46 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Premium Parallax Cyberpunk Space Background */}
-      <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/50 via-[#0a0a0a] to-black"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,255,255,0.08)_0%,transparent_40%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.06)_0%,transparent_40%)]"></div>
+      {/* Premium Cyberpunk Background with Animated Elements */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-slate-950 to-black"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,255,255,0.15),transparent)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,255,255,0.08)_0%,transparent_35%)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.08)_0%,transparent_35%)]"></div>
+          
+          {/* Animated Grid Lines */}
+          <div className="absolute inset-0 opacity-[0.02]" style={{
+            backgroundImage: `linear-gradient(rgba(0,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.3) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px'
+          }}></div>
+          
+          {/* Floating Orbs */}
+          <motion.div 
+            className="absolute w-[300px] h-[300px] rounded-full bg-cyan-500/5 blur-3xl"
+            animate={{ 
+              x: [0, 50, 0],
+              y: [0, -30, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+            style={{ top: '10%', left: '20%' }}
+          />
+          <motion.div 
+            className="absolute w-[400px] h-[400px] rounded-full bg-purple-500/5 blur-3xl"
+            animate={{ 
+              x: [0, -40, 0],
+              y: [0, 40, 0],
+              scale: [1, 1.15, 1]
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            style={{ bottom: '10%', right: '15%' }}
+          />
+          
+          {/* Scan Lines Effect */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.015]" style={{
+            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.1) 2px, rgba(0,255,255,0.1) 4px)'
+          }}></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
@@ -227,38 +261,81 @@ export function Hero() {
           transition={{ duration: 0.6 }}
           className="flex flex-col items-center lg:items-start text-center lg:text-left order-2 lg:order-1"
         >
-          <Badge variant="outline" className="mb-3 sm:mb-4 border-primary/50 text-primary font-mono tracking-widest bg-primary/5 text-[10px] sm:text-xs">
-            SERIES 01: GENESIS
-          </Badge>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Badge variant="outline" className="mb-3 sm:mb-4 border-cyan-500/50 text-cyan-400 font-mono tracking-[0.2em] bg-cyan-500/10 text-[10px] sm:text-xs backdrop-blur-sm shadow-[0_0_20px_rgba(0,255,255,0.15)]">
+              SERIES 01: GENESIS
+            </Badge>
+          </motion.div>
           
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 sm:mb-6 leading-tight text-white text-center lg:text-left w-full">
-            BASED GUARDIANS
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-2 sm:mb-3 leading-tight text-center lg:text-left w-full">
+            <span className="relative inline-block">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-white animate-[shimmer_3s_ease-in-out_infinite]">
+                BASED
+              </span>
+              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400/20 via-purple-400/20 to-cyan-400/20 blur-xl">
+                BASED
+              </span>
+            </span>
+            {" "}
+            <span className="relative inline-block">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400">
+                GUARDIANS
+              </span>
+              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 blur-lg opacity-50">
+                GUARDIANS
+              </span>
+            </span>
           </h1>
           
-          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mb-6 sm:mb-8 font-rajdhani leading-relaxed max-w-lg">
-            Step into the Based Universe where courage, creativity, and community collide. 3,732 unique NFTs staked to BasedAI Brain for $BASED emissions. Legendary rarities unlock higher yields. All holders gain Race-to-Base privileges. 
+          <p className="text-xs sm:text-sm text-cyan-400/60 font-orbitron tracking-[0.3em] mb-4 sm:mb-6 text-center lg:text-left">
+            DEFENDERS OF THE BASED UNIVERSE
+          </p>
+          
+          <p className="text-sm sm:text-base lg:text-lg text-gray-400 mb-6 sm:mb-8 font-rajdhani leading-relaxed max-w-lg text-center lg:text-left">
+            3,732 unique NFTs staked to BasedAI Brain for $BASED emissions. Legendary rarities unlock higher yields. All holders gain Race-to-Base privileges. 
           </p>
 
           <MintBalancePanel onMaxAffordableChange={setMaxAffordable} />
 
-          <div className="bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-white/10 p-4 sm:p-6 rounded-2xl max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full">
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <span className="text-xs sm:text-sm text-muted-foreground font-mono uppercase tracking-wider">Supply</span>
-              <span className="text-lg sm:text-xl font-orbitron text-primary">
-                  <motion.span>{rounded}</motion.span> <span className="text-white/40">/</span> <span className="text-white/60">{TOTAL_SUPPLY}</span>
+          <div className="relative bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-white/[0.08] p-4 sm:p-6 rounded-2xl max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] w-full overflow-hidden">
+            {/* Card Glow Effect */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            {/* Card Header */}
+            <div className="flex justify-between items-center mb-4 sm:mb-6 relative">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(0,255,255,0.6)]"></div>
+                <span className="text-xs sm:text-sm text-gray-400 font-mono uppercase tracking-wider">LIVE SUPPLY</span>
+              </div>
+              <span className="text-lg sm:text-xl font-orbitron">
+                  <motion.span className="text-cyan-400">{rounded}</motion.span>
+                  <span className="text-white/30 mx-1">/</span>
+                  <span className="text-white/50">{TOTAL_SUPPLY}</span>
               </span>
             </div>
             
-            {/* Progress Bar */}
-            <div className="w-full h-2 sm:h-2.5 bg-black/60 rounded-full overflow-hidden mb-6 sm:mb-8 ring-1 ring-white/5">
+            {/* Premium Progress Bar */}
+            <div className="relative w-full h-3 sm:h-4 bg-black/70 rounded-full overflow-hidden mb-6 sm:mb-8 ring-1 ring-white/10">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${(mintedData.totalMinted / TOTAL_SUPPLY) * 100}%` }}
                 transition={{ duration: 2, ease: "easeOut" }}
-                className="h-full bg-gradient-to-r from-primary via-cyan-400 to-accent relative"
+                className="h-full bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 relative"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/30" />
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", repeatDelay: 3 }}
+                />
               </motion.div>
+              {/* Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-full blur-sm"></div>
             </div>
 
             {/* Rarity Chart (New Component) */}
@@ -285,32 +362,47 @@ export function Hero() {
                 />
             </ErrorBoundary>
 
-            <div className="flex justify-between items-center mb-6 sm:mb-8 pt-4 sm:pt-6">
-              <div className="flex items-center space-x-2 sm:space-x-3 bg-black/60 p-1.5 sm:p-2 rounded-xl border border-white/10">
-                <button onClick={decrement} className="p-2 sm:p-2.5 hover:text-primary hover:bg-white/5 rounded-lg transition-all active:scale-95" data-testid="button-decrement"><Minus size={16} /></button>
-                <span className="font-orbitron w-8 sm:w-10 text-center text-lg sm:text-xl" data-testid="text-mint-quantity">{mintQuantity}</span>
-                <button onClick={increment} className="p-2 sm:p-2.5 hover:text-primary hover:bg-white/5 rounded-lg transition-all active:scale-95" data-testid="button-increment"><Plus size={16} /></button>
+            <div className="flex justify-between items-center mb-6 sm:mb-8 pt-4 sm:pt-6 relative">
+              <div className="flex items-center space-x-2 sm:space-x-3 bg-black/80 p-1.5 sm:p-2 rounded-xl border border-cyan-500/20 shadow-[0_0_15px_rgba(0,255,255,0.05)]">
+                <button onClick={decrement} className="p-2 sm:p-2.5 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all active:scale-95 border border-transparent hover:border-cyan-500/30" data-testid="button-decrement"><Minus size={16} /></button>
+                <span className="font-orbitron w-8 sm:w-10 text-center text-lg sm:text-xl text-cyan-400" data-testid="text-mint-quantity">{mintQuantity}</span>
+                <button onClick={increment} className="p-2 sm:p-2.5 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all active:scale-95 border border-transparent hover:border-cyan-500/30" data-testid="button-increment"><Plus size={16} /></button>
               </div>
               <div className="text-right">
-                <div className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 uppercase tracking-wider">Total</div>
-                <div className="text-lg sm:text-xl font-orbitron text-white" data-testid="text-total-price">{(MINT_PRICE * mintQuantity).toLocaleString()} <span className="text-primary text-xs sm:text-sm">$BASED</span></div>
+                <div className="text-[10px] sm:text-xs text-gray-500 mb-1 uppercase tracking-wider font-mono">Total Cost</div>
+                <div className="text-lg sm:text-xl font-orbitron" data-testid="text-total-price">
+                  <span className="text-white">{(MINT_PRICE * mintQuantity).toLocaleString()}</span>
+                  <span className="text-cyan-400 text-xs sm:text-sm ml-1">$BASED</span>
+                </div>
               </div>
             </div>
 
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="relative w-full mb-3 sm:mb-4"
+            >
             <Button 
               id="hero-mint-section"
               onClick={handleMint}
               disabled={isPaused || isMinting || (isConnected && !canAfford(mintQuantity))}
-              className={`w-full py-5 sm:py-6 text-sm sm:text-lg font-orbitron tracking-wider sm:tracking-widest disabled:opacity-50 disabled:cursor-not-allowed mb-3 sm:mb-4 rounded-xl transition-all duration-300 active:scale-[0.98]
+              className={`relative w-full py-5 sm:py-6 text-sm sm:text-lg font-orbitron tracking-wider sm:tracking-widest disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-300 overflow-hidden
                 ${!isConnected 
-                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-400 text-black hover:from-cyan-400 hover:to-cyan-300 shadow-[0_0_30px_rgba(0,255,255,0.4)]'
+                  ? 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500 text-black hover:shadow-[0_0_40px_rgba(0,255,255,0.5)]'
                   : mintButtonColor === 'purple' 
-                    ? 'bg-gradient-to-r from-[#bf00ff] to-purple-500 text-white hover:from-purple-500 hover:to-[#bf00ff] shadow-[0_0_25px_rgba(191,0,255,0.4)]' 
-                    : 'bg-gradient-to-r from-primary to-cyan-400 text-black hover:from-cyan-400 hover:to-primary shadow-[0_0_25px_rgba(0,255,255,0.4)]'
+                    ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 text-white hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]' 
+                    : 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500 text-black hover:shadow-[0_0_40px_rgba(0,255,255,0.5)]'
                 }
+                shadow-[0_0_30px_rgba(0,255,255,0.3)]
               `}
               data-testid="button-mint"
             >
+              {/* Shimmer Effect */}
+              <motion.div 
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+                animate={{ x: ['-200%', '200%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+              />
               {isPaused ? (
                 <span className="flex items-center text-red-500">
                   <Zap className="mr-2 h-4 w-4" /> PAUSED
@@ -341,6 +433,7 @@ export function Hero() {
                 </span>
               )}
             </Button>
+            </motion.div>
             
             {/* Transaction Status */}
             {isMinting && status && status !== 'idle' && (
@@ -423,12 +516,41 @@ export function Hero() {
           className="relative flex justify-center order-1 lg:order-2 mb-6 lg:mb-0"
         >
           <div className="relative aspect-square w-full max-w-[280px] sm:max-w-sm lg:max-w-md">
-            {/* Decorative Rings */}
-            <div className="absolute inset-0 border border-primary/15 rounded-full animate-[spin_12s_linear_infinite]" />
-            <div className="absolute inset-3 sm:inset-4 border border-accent/15 rounded-full animate-[spin_18s_linear_infinite_reverse]" />
+            {/* Premium Animated Rings */}
+            <motion.div 
+              className="absolute inset-0 rounded-full"
+              style={{ 
+                border: '1px solid rgba(0,255,255,0.2)',
+                boxShadow: '0 0 20px rgba(0,255,255,0.1), inset 0 0 20px rgba(0,255,255,0.05)'
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div 
+              className="absolute inset-3 sm:inset-4 rounded-full"
+              style={{ 
+                border: '1px solid rgba(139,92,246,0.2)',
+                boxShadow: '0 0 15px rgba(139,92,246,0.1)'
+              }}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div 
+              className="absolute inset-6 sm:inset-7 rounded-full border border-dashed border-cyan-500/10"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+            />
+            
+            {/* Corner Accents */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-8">
+              <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+            </div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-8">
+              <div className="absolute bottom-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+            </div>
             
             {/* Main Image Card */}
-            <Card className="absolute inset-6 sm:inset-8 bg-black border-primary/20 overflow-hidden shadow-[0_0_40px_rgba(0,255,255,0.12)] group rounded-2xl">
+            <Card className="absolute inset-8 sm:inset-10 bg-black/90 border-cyan-500/20 overflow-hidden shadow-[0_0_60px_rgba(0,255,255,0.15),0_0_100px_rgba(139,92,246,0.1)] group rounded-2xl">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 z-10" />
               
               {heroGuardian ? (
