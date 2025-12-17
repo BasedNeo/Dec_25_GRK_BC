@@ -1,0 +1,611 @@
+=== COMPLETE i18n TRANSLATION - ALL APP COPY ===
+
+The language selector works but only translates the menu.
+We need to translate ALL text throughout the app.
+
+This requires:
+1. Expanding translation files with all app text
+2. Updating components to use useTranslation() hook
+
+═══════════════════════════════════════════════════════════
+PART 1: EXPAND ENGLISH TRANSLATION FILE (BASE)
+═══════════════════════════════════════════════════════════
+
+File: /client/src/locales/en.json
+
+REPLACE the entire file with this comprehensive version:
+
+{
+  "nav": {
+    "hub": "Hub",
+    "universe": "Universe",
+    "mint": "Mint",
+    "gallery": "Portfolio",
+    "escrow": "Market",
+    "voting": "Voting",
+    "pool": "Pool",
+    "stats": "Stats",
+    "admin": "Admin"
+  },
+  "common": {
+    "connectWallet": "Connect Wallet",
+    "disconnect": "Disconnect",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close",
+    "viewMore": "View More",
+    "learnMore": "Learn More",
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "approve": "Approve",
+    "approved": "Approved",
+    "pending": "Pending",
+    "failed": "Failed",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "total": "Total",
+    "balance": "Balance",
+    "price": "Price",
+    "amount": "Amount",
+    "available": "Available",
+    "owned": "Owned",
+    "listed": "Listed",
+    "unlisted": "Unlisted",
+    "minted": "Minted",
+    "unminted": "Not Minted",
+    "soldOut": "Sold Out",
+    "comingSoon": "Coming Soon",
+    "days": "days",
+    "hours": "hours",
+    "minutes": "minutes",
+    "seconds": "seconds"
+  },
+  "wallet": {
+    "connect": "Connect Wallet",
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnect": "Disconnect",
+    "wrongNetwork": "Wrong Network",
+    "switchNetwork": "Switch to BasedAI",
+    "balance": "Balance",
+    "address": "Address",
+    "copy": "Copy Address",
+    "copied": "Copied!",
+    "viewExplorer": "View on Explorer"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Protect the Galaxy",
+    "welcome": "Welcome to the Based Guardians Command Center",
+    "heroTitle": "Join the Based Revolution",
+    "heroSubtitle": "Mint your Guardian and become part of the community",
+    "mintButton": "Mint Now",
+    "viewCollection": "View Collection",
+    "stats": {
+      "totalMinted": "Total Minted",
+      "floorPrice": "Floor Price",
+      "totalVolume": "Total Volume",
+      "holders": "Holders"
+    }
+  },
+  "mint": {
+    "title": "Mint Your Guardian",
+    "subtitle": "Join the Based Guardians community",
+    "price": "Price",
+    "perNft": "per NFT",
+    "quantity": "Quantity",
+    "total": "Total",
+    "mintNow": "Mint Now",
+    "minting": "Minting...",
+    "mintSuccess": "Mint Successful!",
+    "mintFailed": "Mint Failed",
+    "soldOut": "Sold Out",
+    "remaining": "Remaining",
+    "maxPerWallet": "Max per wallet",
+    "youCanMint": "You can mint",
+    "publicMint": "Public Mint",
+    "mintOpen": "Mint is Open",
+    "mintClosed": "Mint is Closed",
+    "insufficientFunds": "Insufficient funds",
+    "checkWallet": "Check your wallet",
+    "transactionPending": "Transaction pending...",
+    "confirmInWallet": "Confirm in wallet",
+    "viewTransaction": "View Transaction",
+    "mintAnother": "Mint Another",
+    "recentMints": "Recent Mints",
+    "yourMints": "Your Mints"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "subtitle": "Buy and sell Based Guardians",
+    "collection": "Collection",
+    "portfolio": "My Portfolio",
+    "offers": "My Offers",
+    "activity": "Activity",
+    "listed": "Listed",
+    "unlisted": "Unlisted",
+    "forSale": "For Sale",
+    "notForSale": "Not For Sale",
+    "listForSale": "List for Sale",
+    "removeList": "Remove Listing",
+    "buyNow": "Buy Now",
+    "makeOffer": "Make Offer",
+    "cancelOffer": "Cancel Offer",
+    "acceptOffer": "Accept Offer",
+    "enterPrice": "Enter price",
+    "listingPrice": "Listing Price",
+    "yourPrice": "Your Price",
+    "floorPrice": "Floor Price",
+    "lastSale": "Last Sale",
+    "owner": "Owner",
+    "seller": "Seller",
+    "buyer": "Buyer",
+    "you": "You",
+    "approveMarketplace": "Approve Marketplace",
+    "approving": "Approving...",
+    "listing": "Listing...",
+    "buying": "Buying...",
+    "transactionSuccess": "Transaction Successful!",
+    "transactionFailed": "Transaction Failed",
+    "nftStaysInWallet": "NFT stays in your wallet until sold",
+    "sortBy": {
+      "priceLowHigh": "Price: Low to High",
+      "priceHighLow": "Price: High to Low",
+      "recent": "Recently Listed",
+      "tokenId": "Token ID"
+    },
+    "filters": {
+      "all": "All",
+      "listed": "Listed Only",
+      "unlisted": "Unlisted Only",
+      "guardians": "Guardians",
+      "frogs": "Frogs",
+      "creatures": "Creatures"
+    },
+    "offer": {
+      "title": "Make an Offer",
+      "amount": "Offer Amount",
+      "duration": "Duration",
+      "message": "Message to Seller (optional)",
+      "submit": "Submit Offer",
+      "submitting": "Submitting...",
+      "success": "Offer Submitted!",
+      "fundsStay": "Funds stay in your wallet until accepted",
+      "expiration": "Expires in",
+      "expired": "Expired",
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "cancelled": "Cancelled",
+      "noOffers": "No offers yet",
+      "yourOffers": "Your Offers",
+      "receivedOffers": "Received Offers"
+    }
+  },
+  "gallery": {
+    "title": "NFT Gallery",
+    "subtitle": "Browse the entire collection",
+    "allNfts": "All NFTs",
+    "myNfts": "My NFTs",
+    "guardians": "Guardians",
+    "frogs": "Frogs",
+    "creatures": "Creatures",
+    "searchPlaceholder": "Search by ID or name...",
+    "noResults": "No NFTs found",
+    "loadMore": "Load More",
+    "rarity": "Rarity",
+    "traits": "Traits",
+    "rank": "Rank",
+    "viewDetails": "View Details"
+  },
+  "voting": {
+    "title": "DAO Voting",
+    "subtitle": "Shape the future of Based Guardians",
+    "activeProposals": "Active Proposals",
+    "pastProposals": "Past Proposals",
+    "createProposal": "Create Proposal",
+    "vote": "Vote",
+    "voteFor": "Vote For",
+    "voteAgainst": "Vote Against",
+    "abstain": "Abstain",
+    "voting": "Voting...",
+    "voted": "Voted",
+    "alreadyVoted": "Already Voted",
+    "votingPower": "Voting Power",
+    "quorum": "Quorum",
+    "timeLeft": "Time Left",
+    "ended": "Ended",
+    "passed": "Passed",
+    "failed": "Failed",
+    "pending": "Pending",
+    "votes": "Votes",
+    "forVotes": "For",
+    "againstVotes": "Against",
+    "proposalTitle": "Proposal Title",
+    "proposalDescription": "Description",
+    "mustOwnNft": "Must own a Guardian NFT to vote",
+    "noActiveProposals": "No active proposals"
+  },
+  "pool": {
+    "title": "Community Pool",
+    "subtitle": "Treasury backed by emissions",
+    "treasuryBalance": "Treasury Balance",
+    "totalValue": "Total Value",
+    "backedValue": "Backed Value per NFT",
+    "emissions": {
+      "title": "Subnet Emissions",
+      "daily": "Daily Emissions",
+      "annual": "Annual Output",
+      "communityShare": "Community Share (10%)",
+      "fromMints": "From Mints",
+      "fromRoyalties": "From Royalties",
+      "fromEmissions": "From Emissions",
+      "toDate": "To Date"
+    },
+    "halving": {
+      "title": "Halving Countdown",
+      "nextHalving": "Next Halving",
+      "blocksRemaining": "Blocks Remaining",
+      "daysRemaining": "Days Remaining"
+    },
+    "staking": {
+      "title": "Staking",
+      "comingSoon": "Staking coming soon",
+      "stake": "Stake",
+      "unstake": "Unstake",
+      "rewards": "Rewards",
+      "apy": "APY"
+    }
+  },
+  "stats": {
+    "title": "Your Guardian Journey",
+    "subtitle": "Your Role in the Saga",
+    "level": "Level",
+    "currentRank": "Current Rank",
+    "nextRank": "Next Rank",
+    "progress": "Progress",
+    "nftsOwned": "NFTs Owned",
+    "votesCast": "Votes Cast",
+    "daysAsGuardian": "Days as Guardian",
+    "loginStreak": "Login Streak",
+    "pagesVisited": "Pages Visited",
+    "badges": "Badges Earned",
+    "diamondHands": {
+      "title": "Diamond Hands Status",
+      "daysHolding": "Days Holding",
+      "retentionRate": "Retention Rate",
+      "currentHolding": "Currently Holding",
+      "totalAcquired": "Total Acquired",
+      "sold": "Sold/Transferred"
+    },
+    "name": {
+      "title": "Guardian Name",
+      "setName": "Set Name",
+      "changeName": "Change Name",
+      "noName": "No custom name set",
+      "enterName": "Enter your name",
+      "available": "Available",
+      "taken": "Already taken",
+      "checking": "Checking...",
+      "saved": "Name saved!",
+      "preview": "Preview"
+    },
+    "levels": {
+      "greenhorn": "Greenhorn Guardian",
+      "cadet": "Cadet Guardian",
+      "worker": "Working Class Guardian",
+      "officer": "Guardian Officer",
+      "lieutenant": "Guardian Lieutenant",
+      "squadLeader": "Guardian Squad Leader",
+      "captain": "Guardian Captain",
+      "commander": "Guardian Commander"
+    }
+  },
+  "universe": {
+    "title": "The Based Universe",
+    "subtitle": "Explore the lore and submit your ideas",
+    "chapters": "Chapters",
+    "submitStory": "Submit Your Story",
+    "storyTitle": "Story Title",
+    "storyContent": "Your Story",
+    "wordLimit": "Max 500 words",
+    "submitSuccess": "Story submitted!",
+    "yourName": "Your Name (optional)",
+    "readMore": "Read More"
+  },
+  "game": {
+    "title": "Guardian Defender",
+    "subtitle": "Defend the Based Galaxy!",
+    "playNow": "Play Now",
+    "playsRemaining": "plays remaining today",
+    "dailyLimit": "Daily limit reached",
+    "resetsAt": "Resets at midnight",
+    "cooldown": "Wait",
+    "score": "Score",
+    "level": "Level",
+    "lives": "Lives",
+    "gameOver": "Game Over",
+    "missionComplete": "Mission Complete",
+    "playAgain": "Play Again",
+    "leaderboard": "Leaderboard",
+    "yourRank": "Your Rank",
+    "controls": {
+      "title": "Controls",
+      "move": "Move",
+      "thrust": "Thrust",
+      "shoot": "Shoot",
+      "drag": "Drag to move"
+    },
+    "holderPerks": {
+      "title": "Holder Perks Active",
+      "extraLife": "+1 Life",
+      "scoreMultiplier": "1.5x Score",
+      "specialShip": "Special Ship"
+    }
+  },
+  "activity": {
+    "title": "Activity Feed",
+    "subtitle": "Recent on-chain activity",
+    "mints": "Mints",
+    "sales": "Sales",
+    "listings": "Listings",
+    "offers": "Offers",
+    "transfers": "Transfers",
+    "noActivity": "No recent activity",
+    "viewAll": "View All",
+    "mintedBy": "minted by",
+    "listedBy": "listed by",
+    "soldTo": "sold to",
+    "for": "for"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "systemHealth": "System Health",
+    "quickActions": "Quick Actions",
+    "clearCache": "Clear Cache",
+    "refreshData": "Refresh Data",
+    "exportDiagnostics": "Export Diagnostics",
+    "contractState": "Contract State",
+    "recentTransactions": "Recent Transactions"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "networkError": "Network error - please try again",
+    "transactionFailed": "Transaction failed",
+    "userRejected": "Transaction cancelled",
+    "insufficientFunds": "Insufficient funds",
+    "notOwner": "You don't own this NFT",
+    "alreadyListed": "Already listed for sale",
+    "notListed": "Not listed for sale",
+    "priceMismatch": "Price has changed",
+    "contractPaused": "Contract is paused",
+    "mintClosed": "Minting is closed",
+    "maxMintReached": "Max mint limit reached",
+    "invalidInput": "Invalid input",
+    "walletNotConnected": "Please connect your wallet",
+    "wrongNetwork": "Please switch to BasedAI network"
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "contact": "Contact",
+    "community": "Community"
+  },
+  "language": {
+    "select": "Select Language"
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: HOW TO USE TRANSLATIONS IN COMPONENTS
+═══════════════════════════════════════════════════════════
+
+Every component with text needs to use the useTranslation hook.
+
+PATTERN:
+
+import { useTranslation } from 'react-i18next';
+
+function MyComponent() {
+  const { t } = useTranslation();
+  
+  return (
+    <div>
+      <h1>{t('marketplace.title')}</h1>
+      <p>{t('marketplace.subtitle')}</p>
+      <button>{t('common.submit')}</button>
+    </div>
+  );
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE KEY COMPONENTS
+═══════════════════════════════════════════════════════════
+
+Update these components to use translations:
+
+--- 3A: EscrowMarketplace.tsx ---
+
+At the top:
+import { useTranslation } from 'react-i18next';
+
+Inside the component:
+const { t } = useTranslation();
+
+Replace hardcoded text:
+- "Marketplace" → {t('marketplace.title')}
+- "Collection" → {t('marketplace.collection')}
+- "My Portfolio" → {t('marketplace.portfolio')}
+- "My Offers" → {t('marketplace.offers')}
+- "Buy Now" → {t('marketplace.buyNow')}
+- "Make Offer" → {t('marketplace.makeOffer')}
+- "List for Sale" → {t('marketplace.listForSale')}
+- "Listed" → {t('common.listed')}
+- "Unlisted" → {t('common.unlisted')}
+- "Price" → {t('common.price')}
+- "Owner" → {t('marketplace.owner')}
+- "Approve Marketplace" → {t('marketplace.approveMarketplace')}
+- "Search..." → {t('gallery.searchPlaceholder')}
+
+--- 3B: Hero.tsx ---
+
+const { t } = useTranslation();
+
+- "Mint Now" → {t('mint.mintNow')}
+- "Minting..." → {t('mint.minting')}
+- "Sold Out" → {t('common.soldOut')}
+- "Connect Wallet" → {t('wallet.connect')}
+- "Price" → {t('mint.price')}
+
+--- 3C: UserStats.tsx ---
+
+const { t } = useTranslation();
+
+- "Your Guardian Journey" → {t('stats.title')}
+- "Level" → {t('stats.level')}
+- "NFTs Owned" → {t('stats.nftsOwned')}
+- "Votes Cast" → {t('stats.votesCast')}
+- "Days as Guardian" → {t('stats.daysAsGuardian')}
+- "Login Streak" → {t('stats.loginStreak')}
+- "Set Name" → {t('stats.name.setName')}
+- "Guardian Name" → {t('stats.name.title')}
+- "Diamond Hands Status" → {t('stats.diamondHands.title')}
+
+--- 3D: PoolTracker.tsx ---
+
+const { t } = useTranslation();
+
+- "Community Pool" → {t('pool.title')}
+- "Daily Emissions" → {t('pool.emissions.daily')}
+- "From Emissions" → {t('pool.emissions.fromEmissions')}
+- "Halving Countdown" → {t('pool.halving.title')}
+
+--- 3E: VotingDAO.tsx / Governance.tsx ---
+
+const { t } = useTranslation();
+
+- "DAO Voting" → {t('voting.title')}
+- "Active Proposals" → {t('voting.activeProposals')}
+- "Vote" → {t('voting.vote')}
+- "Vote For" → {t('voting.voteFor')}
+- "Vote Against" → {t('voting.voteAgainst')}
+
+--- 3F: ActivityFeed.tsx ---
+
+const { t } = useTranslation();
+
+- "Activity Feed" → {t('activity.title')}
+- "Mints" → {t('activity.mints')}
+- "Sales" → {t('activity.sales')}
+
+--- 3G: GuardianDefender.tsx (Game) ---
+
+const { t } = useTranslation();
+
+- "Guardian Defender" → {t('game.title')}
+- "Play Now" → {t('game.playNow')}
+- "plays remaining today" → {t('game.playsRemaining')}
+- "Game Over" → {t('game.gameOver')}
+- "Score" → {t('game.score')}
+
+--- 3H: Error messages (ErrorBoundary, errorParser) ---
+
+const { t } = useTranslation();
+
+- "Something went wrong" → {t('errors.generic')}
+- "Transaction failed" → {t('errors.transactionFailed')}
+- "Network error" → {t('errors.networkError')}
+
+═══════════════════════════════════════════════════════════
+PART 4: COPY OTHER LANGUAGE FILES
+═══════════════════════════════════════════════════════════
+
+After updating en.json, copy the structure to all other language files
+and translate each key:
+
+/client/src/locales/es.json - Spanish
+/client/src/locales/zh.json - Chinese
+/client/src/locales/ja.json - Japanese
+/client/src/locales/ko.json - Korean
+/client/src/locales/de.json - German
+/client/src/locales/fr.json - French
+/client/src/locales/pt.json - Portuguese
+/client/src/locales/ru.json - Russian
+/client/src/locales/ar.json - Arabic
+
+For each file:
+1. Copy the en.json structure
+2. Translate each value to the target language
+3. Keep the keys the same (only translate values)
+
+Example for es.json (Spanish):
+{
+  "nav": {
+    "hub": "Centro",
+    "universe": "Universo",
+    "mint": "Acuñar",
+    "gallery": "Portafolio",
+    "escrow": "Mercado",
+    "voting": "Votación",
+    "pool": "Piscina",
+    "stats": "Estadísticas"
+  },
+  "common": {
+    "connectWallet": "Conectar Billetera",
+    "loading": "Cargando...",
+    ...
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 5: HELPER SCRIPT TO FIND HARDCODED TEXT
+═══════════════════════════════════════════════════════════
+
+Run this command to find components with hardcoded English text:
+
+grep -r "\"[A-Z][a-z]" --include="*.tsx" client/src/components/ | grep -v "import\|//\|className\|data-\|aria-"
+
+This helps identify where translations are still needed.
+
+═══════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════
+
+[ ] en.json has all keys
+[ ] All major components use useTranslation()
+[ ] Language selector changes all visible text
+[ ] Buttons and labels translate
+[ ] Error messages translate
+[ ] Page titles translate
+[ ] Form placeholders translate
+[ ] At least 2-3 other languages fully translated (es, zh)
+[ ] No hardcoded English text in components
+
+═══════════════════════════════════════════════════════════
+PRIORITY ORDER
+═══════════════════════════════════════════════════════════
+
+1. Update en.json with complete keys (done above)
+2. Update EscrowMarketplace.tsx (most used)
+3. Update Hero.tsx and mint components
+4. Update UserStats.tsx
+5. Update PoolTracker.tsx
+6. Update Voting/Governance
+7. Update Game component
+8. Translate es.json (Spanish - 2nd most common)
+9. Translate zh.json (Chinese - 3rd most common)
+10. Other languages as needed
