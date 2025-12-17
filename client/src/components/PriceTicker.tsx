@@ -46,7 +46,7 @@ export function PriceTicker() {
           >
             <div className="flex items-center justify-between gap-2 md:gap-3 text-[10px] leading-relaxed">
               <div className="flex items-center gap-1.5">
-                <span className="text-white/50 font-mono tracking-wide">$BASED</span>
+                <span className="text-white/50 font-mono tracking-wide">BASED</span>
                 <span className="text-white/30">·</span>
                 <span className="text-white/40 text-[9px]">ETH</span>
                 <span className="font-semibold text-white font-mono tracking-tight">
@@ -66,7 +66,7 @@ export function PriceTicker() {
             </div>
             
             <div className="flex items-center gap-1.5 text-[10px] leading-relaxed mt-1">
-              <span className="text-white/50 font-mono tracking-wide">$BASED</span>
+              <span className="text-white/50 font-mono tracking-wide">BASED</span>
               <span className="text-white/30">·</span>
               <span className="text-white/40 text-[9px]">L1</span>
               <span className="font-semibold text-cyan-400 font-mono tracking-tight">
