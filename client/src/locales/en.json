@@ -8,7 +8,8 @@
     "voting": "Voting",
     "pool": "Pool",
     "stats": "Stats",
-    "activity": "Activity"
+    "activity": "Activity",
+    "game": "Game"
   },
   "common": {
     "connectWallet": "Connect Wallet",
@@ -43,7 +44,9 @@
     "votingLabel": "Voting",
     "votingDesc": "Participate in governance",
     "activityLabel": "Activity",
-    "activityDesc": "Live transaction feed"
+    "activityDesc": "Live transaction feed",
+    "gameLabel": "Guardian Defender",
+    "gameDesc": "The Based Odyssey arcade"
   },
   "mint": {
     "title": "Mint Your Guardian",

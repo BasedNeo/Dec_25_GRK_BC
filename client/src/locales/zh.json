@@ -8,7 +8,8 @@
     "voting": "投票",
     "pool": "资金池",
     "stats": "统计",
-    "activity": "动态"
+    "activity": "动态",
+    "game": "游戏"
   },
   "common": {
     "connectWallet": "连接钱包",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "守护银河",
     "welcome": "欢迎来到Based Guardians指挥中心"
+  },
+  "hub": {
+    "mintLabel": "铸造 - 启航!",
+    "mintDesc": "铸造你的守护者NFT",
+    "portfolioLabel": "作品集",
+    "portfolioDesc": "查看你的NFT收藏",
+    "marketLabel": "市场",
+    "marketDesc": "浏览和交易市场",
+    "universeLabel": "宇宙",
+    "universeDesc": "探索Based Guardians的故事",
+    "poolLabel": "资金池",
+    "poolDesc": "追踪社区排放",
+    "statsLabel": "统计",
+    "statsDesc": "你的守护者之旅",
+    "votingLabel": "投票",
+    "votingDesc": "参与治理",
+    "activityLabel": "动态",
+    "activityDesc": "实时交易动态",
+    "gameLabel": "守护者防御",
+    "gameDesc": "Based Odyssey街机游戏"
   },
   "mint": {
     "title": "铸造你的守护者",

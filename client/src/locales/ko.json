@@ -8,7 +8,8 @@
     "voting": "투표",
     "pool": "풀",
     "stats": "통계",
-    "activity": "활동"
+    "activity": "활동",
+    "game": "게임"
   },
   "common": {
     "connectWallet": "지갑 연결",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "은하를 지켜라",
     "welcome": "Based Guardians 커맨드 센터에 오신 것을 환영합니다"
+  },
+  "hub": {
+    "mintLabel": "민트 - 발사!",
+    "mintDesc": "가디언 NFT 민트하기",
+    "portfolioLabel": "포트폴리오",
+    "portfolioDesc": "NFT 컬렉션 보기",
+    "marketLabel": "마켓",
+    "marketDesc": "마켓플레이스 탐색 및 거래",
+    "universeLabel": "유니버스",
+    "universeDesc": "Based Guardians 스토리 탐험",
+    "poolLabel": "풀",
+    "poolDesc": "커뮤니티 배출 추적",
+    "statsLabel": "통계",
+    "statsDesc": "당신의 가디언 여정",
+    "votingLabel": "투표",
+    "votingDesc": "거버넌스 참여",
+    "activityLabel": "활동",
+    "activityDesc": "실시간 거래 피드",
+    "gameLabel": "가디언 디펜더",
+    "gameDesc": "Based Odyssey 아케이드"
   },
   "mint": {
     "title": "가디언 민트",

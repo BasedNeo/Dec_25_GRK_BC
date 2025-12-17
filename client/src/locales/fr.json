@@ -8,7 +8,8 @@
     "voting": "Vote",
     "pool": "Pool",
     "stats": "Stats",
-    "activity": "Activité"
+    "activity": "Activité",
+    "game": "Jeu"
   },
   "common": {
     "connectWallet": "Connecter Portefeuille",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "Protégez la Galaxie",
     "welcome": "Bienvenue au Centre de Commande Based Guardians"
+  },
+  "hub": {
+    "mintLabel": "Créer - Décollage!",
+    "mintDesc": "Créez votre NFT Guardian",
+    "portfolioLabel": "Portfolio",
+    "portfolioDesc": "Voir votre collection NFT",
+    "marketLabel": "Marché",
+    "marketDesc": "Parcourir et échanger sur le marché",
+    "universeLabel": "Univers",
+    "universeDesc": "Explorer l'histoire de Based Guardians",
+    "poolLabel": "Pool",
+    "poolDesc": "Suivre les émissions communautaires",
+    "statsLabel": "Stats",
+    "statsDesc": "Votre voyage de Guardian",
+    "votingLabel": "Vote",
+    "votingDesc": "Participer à la gouvernance",
+    "activityLabel": "Activité",
+    "activityDesc": "Fil de transactions en direct",
+    "gameLabel": "Défenseur Guardian",
+    "gameDesc": "Arcade Based Odyssey"
   },
   "mint": {
     "title": "Créez Votre Guardian",

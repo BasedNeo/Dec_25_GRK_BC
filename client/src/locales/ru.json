@@ -8,7 +8,8 @@
     "voting": "Голосование",
     "pool": "Пул",
     "stats": "Статистика",
-    "activity": "Активность"
+    "activity": "Активность",
+    "game": "Игра"
   },
   "common": {
     "connectWallet": "Подключить кошелек",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "Защити Галактику",
     "welcome": "Добро пожаловать в Командный центр Based Guardians"
+  },
+  "hub": {
+    "mintLabel": "Минт - Взлет!",
+    "mintDesc": "Создай свой Guardian NFT",
+    "portfolioLabel": "Портфолио",
+    "portfolioDesc": "Просмотр коллекции NFT",
+    "marketLabel": "Рынок",
+    "marketDesc": "Просмотр и торговля на маркетплейсе",
+    "universeLabel": "Вселенная",
+    "universeDesc": "Исследуй историю Based Guardians",
+    "poolLabel": "Пул",
+    "poolDesc": "Отслеживание эмиссий сообщества",
+    "statsLabel": "Статистика",
+    "statsDesc": "Твое путешествие Стража",
+    "votingLabel": "Голосование",
+    "votingDesc": "Участие в управлении",
+    "activityLabel": "Активность",
+    "activityDesc": "Лента транзакций в реальном времени",
+    "gameLabel": "Защитник Страж",
+    "gameDesc": "Аркада Based Odyssey"
   },
   "mint": {
     "title": "Создайте своего Стража",

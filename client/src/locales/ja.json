@@ -8,7 +8,8 @@
     "voting": "投票",
     "pool": "プール",
     "stats": "統計",
-    "activity": "アクティビティ"
+    "activity": "アクティビティ",
+    "game": "ゲーム"
   },
   "common": {
     "connectWallet": "ウォレット接続",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "銀河を守れ",
     "welcome": "Based Guardiansコマンドセンターへようこそ"
+  },
+  "hub": {
+    "mintLabel": "ミント - 発進!",
+    "mintDesc": "ガーディアンNFTをミント",
+    "portfolioLabel": "ポートフォリオ",
+    "portfolioDesc": "NFTコレクションを見る",
+    "marketLabel": "マーケット",
+    "marketDesc": "マーケットで閲覧・取引",
+    "universeLabel": "ユニバース",
+    "universeDesc": "Based Guardiansの物語を探索",
+    "poolLabel": "プール",
+    "poolDesc": "コミュニティ排出量を追跡",
+    "statsLabel": "統計",
+    "statsDesc": "あなたのガーディアンの旅",
+    "votingLabel": "投票",
+    "votingDesc": "ガバナンスに参加",
+    "activityLabel": "アクティビティ",
+    "activityDesc": "リアルタイム取引フィード",
+    "gameLabel": "ガーディアンディフェンダー",
+    "gameDesc": "Based Odysseyアーケード"
   },
   "mint": {
     "title": "ガーディアンをミント",

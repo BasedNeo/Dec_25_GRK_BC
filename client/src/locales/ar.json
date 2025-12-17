@@ -8,7 +8,8 @@
     "voting": "التصويت",
     "pool": "المجمع",
     "stats": "الإحصائيات",
-    "activity": "النشاط"
+    "activity": "النشاط",
+    "game": "لعبة"
   },
   "common": {
     "connectWallet": "ربط المحفظة",
@@ -26,6 +27,26 @@
     "title": "Based Guardians",
     "subtitle": "احمِ المجرة",
     "welcome": "مرحباً بك في مركز قيادة Based Guardians"
+  },
+  "hub": {
+    "mintLabel": "سك - انطلق!",
+    "mintDesc": "اسك NFT الحارس الخاص بك",
+    "portfolioLabel": "المحفظة",
+    "portfolioDesc": "عرض مجموعة NFT الخاصة بك",
+    "marketLabel": "السوق",
+    "marketDesc": "تصفح وتداول في السوق",
+    "universeLabel": "الكون",
+    "universeDesc": "استكشف قصة Based Guardians",
+    "poolLabel": "المجمع",
+    "poolDesc": "تتبع انبعاثات المجتمع",
+    "statsLabel": "الإحصائيات",
+    "statsDesc": "رحلتك كحارس",
+    "votingLabel": "التصويت",
+    "votingDesc": "المشاركة في الحوكمة",
+    "activityLabel": "النشاط",
+    "activityDesc": "بث المعاملات مباشرة",
+    "gameLabel": "المدافع الحارس",
+    "gameDesc": "لعبة Based Odyssey"
   },
   "mint": {
     "title": "اسك حارسك",
