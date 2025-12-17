@@ -1,35 +1,53 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 /**
  * Button lock - prevents double-click transactions
+ * Uses refs for synchronous locking (state updates are async and can miss rapid clicks)
  */
 export function useButtonLock(cooldownMs = 2000) {
   const [isLocked, setIsLocked] = useState(false);
-  const [lastClick, setLastClick] = useState(0);
+  const lockedRef = useRef(false);
+  const lastClickRef = useRef(0);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const withLock = useCallback(
     async <T,>(fn: () => Promise<T>): Promise<T | null> => {
       const now = Date.now();
       
-      if (now - lastClick < cooldownMs) {
+      if (now - lastClickRef.current < cooldownMs) {
         return null;
       }
 
-      if (isLocked) {
+      if (lockedRef.current) {
         return null;
       }
 
+      lockedRef.current = true;
+      lastClickRef.current = now;
       setIsLocked(true);
-      setLastClick(now);
 
       try {
         const result = await fn();
         return result;
       } finally {
-        setTimeout(() => setIsLocked(false), cooldownMs);
+        if (timeoutRef.current) {
+          window.clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = window.setTimeout(() => {
+          lockedRef.current = false;
+          setIsLocked(false);
+        }, cooldownMs);
       }
     },
-    [isLocked, lastClick, cooldownMs]
+    [cooldownMs]
   );
 
   return { isLocked, withLock };

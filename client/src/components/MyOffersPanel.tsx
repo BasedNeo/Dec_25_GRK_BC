@@ -12,6 +12,7 @@ import {
 import { useMyOffers, MyOffer } from '@/hooks/useMyOffers';
 import { useOffersV3 } from '@/hooks/useOffersV3';
 import { useToast } from '@/hooks/use-toast';
+import { useButtonLock } from '@/hooks/useButtonLock';
 import { NFTImage } from './NFTImage';
 import { formatDistanceToNow } from 'date-fns';
 import { BLOCK_EXPLORER, NFT_CONTRACT } from '@/lib/constants';
@@ -110,57 +111,62 @@ export function MyOffersPanel() {
   const [editingOffer, setEditingOffer] = useState<MyOffer | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  const { isLocked, withLock } = useButtonLock(3000);
 
   const handleCancel = async (offer: MyOffer) => {
-    setCancellingId(offer.tokenId);
-    try {
-      await cancelOffer(offer.tokenId, offer.isV3 || false, offer.v3Offer?.id);
-      toast({
-        title: "Offer Cancelled",
-        description: `Your offer on ${offer.nftName} has been removed.`,
-        className: "bg-black border-green-500 text-green-400"
-      });
-    } catch (err: unknown) {
-      const error = err as Error;
-      toast({
-        title: "Cancel Failed",
-        description: error.message || "Could not cancel offer",
-        variant: "destructive"
-      });
-    } finally {
-      setCancellingId(null);
-    }
+    await withLock(async () => {
+      setCancellingId(offer.tokenId);
+      try {
+        await cancelOffer(offer.tokenId, offer.isV3 || false, offer.v3Offer?.id);
+        toast({
+          title: "Offer Cancelled",
+          description: `Your offer on ${offer.nftName} has been removed.`,
+          className: "bg-black border-green-500 text-green-400"
+        });
+      } catch (err: unknown) {
+        const error = err as Error;
+        toast({
+          title: "Cancel Failed",
+          description: error.message || "Could not cancel offer",
+          variant: "destructive"
+        });
+      } finally {
+        setCancellingId(null);
+      }
+    });
   };
 
   const handleEdit = async (newAmount: number) => {
     if (!editingOffer) return;
     
-    setIsEditSubmitting(true);
-    try {
-      if (editingOffer.isV3 && editingOffer.v3Offer) {
-        await offersV3.cancelOffer(editingOffer.v3Offer.id);
-        await offersV3.makeOffer(editingOffer.tokenId, newAmount, 7);
-      } else {
-        await cancelOffer(editingOffer.tokenId, false);
+    await withLock(async () => {
+      setIsEditSubmitting(true);
+      try {
+        if (editingOffer.isV3 && editingOffer.v3Offer) {
+          await offersV3.cancelOffer(editingOffer.v3Offer.id);
+          await offersV3.makeOffer(editingOffer.tokenId, newAmount, 7);
+        } else {
+          await cancelOffer(editingOffer.tokenId, false);
+        }
+        
+        toast({
+          title: "Offer Updated",
+          description: `New offer of ${newAmount.toLocaleString()} $BASED submitted.`,
+          className: "bg-black border-green-500 text-green-400"
+        });
+        setEditingOffer(null);
+        refresh();
+      } catch (err: unknown) {
+        const error = err as Error;
+        toast({
+          title: "Update Failed",
+          description: error.message || "Could not update offer",
+          variant: "destructive"
+        });
+      } finally {
+        setIsEditSubmitting(false);
       }
-      
-      toast({
-        title: "Offer Updated",
-        description: `New offer of ${newAmount.toLocaleString()} $BASED submitted.`,
-        className: "bg-black border-green-500 text-green-400"
-      });
-      setEditingOffer(null);
-      refresh();
-    } catch (err: unknown) {
-      const error = err as Error;
-      toast({
-        title: "Update Failed",
-        description: error.message || "Could not update offer",
-        variant: "destructive"
-      });
-    } finally {
-      setIsEditSubmitting(false);
-    }
+    });
   };
 
   const filteredOffers = filter === 'all' 
@@ -358,7 +364,7 @@ export function MyOffersPanel() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleCancel(offer)}
-                            disabled={cancellingId === offer.tokenId}
+                            disabled={cancellingId === offer.tokenId || isLocked}
                             className="flex-1 sm:flex-none border-red-500/30 text-red-400 hover:bg-red-500/10"
                             data-testid={`button-cancel-offer-${offer.tokenId}`}
                           >
