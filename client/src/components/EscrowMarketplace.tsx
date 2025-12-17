@@ -259,7 +259,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("listed-price-asc"); // Default: Listed NFTs first
   const [showFilters, setShowFilters] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(false); // Default to Live Mode to show ALL minted NFTs from blockchain
+  const [useCsvData, setUseCsvData] = useState(true); // Default to CSV Mode to show ALL 3,732 NFTs with minted first
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
   
   // Commercial Search: Attribute Filters
