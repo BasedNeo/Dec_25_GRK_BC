@@ -490,33 +490,33 @@ export function Hero() {
 
       </div>
 
-      {/* See Your Stats CTA */}
+      {/* See Your Stats CTA - Mobile Optimized */}
       <motion.div 
-        className="mt-8 sm:mt-12 lg:mt-16 mb-6 sm:mb-8 flex justify-center px-4"
+        className="mt-6 sm:mt-12 lg:mt-16 mb-6 sm:mb-8 flex justify-center px-4 w-full"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.4 }}
       >
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'stats' }))}
-          className="group relative overflow-hidden px-5 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-900/20 via-cyan-900/20 to-purple-900/20 border border-white/10 hover:border-cyan-500/40 transition-all duration-300 active:scale-[0.98]"
+          className="group relative overflow-hidden w-full max-w-sm sm:w-auto px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-900/20 via-cyan-900/20 to-purple-900/20 border border-white/10 hover:border-cyan-500/40 transition-all duration-300 active:scale-[0.98]"
           data-testid="button-see-stats"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
-          <div className="relative flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+          <div className="relative flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+              <TrendingUp className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
             </div>
-            <div className="text-left">
-              <div className="text-xs sm:text-sm font-orbitron tracking-wide sm:tracking-wider text-white group-hover:text-cyan-300 transition-colors">
+            <div className="text-left flex-1 min-w-0">
+              <div className="text-sm font-orbitron tracking-wide text-white group-hover:text-cyan-300 transition-colors">
                 SEE YOUR STATS
               </div>
-              <div className="text-[9px] sm:text-[10px] text-white/40 font-mono tracking-wide">
+              <div className="text-[10px] text-white/40 font-mono">
                 Track your journey
               </div>
             </div>
-            <div className="ml-1 sm:ml-2 text-white/30 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all duration-200">
+            <div className="text-white/30 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all duration-200 flex-shrink-0">
               →
             </div>
           </div>
