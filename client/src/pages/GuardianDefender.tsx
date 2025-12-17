@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Play, Pause, RotateCcw, Trophy, Volume2, VolumeX, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Play, Pause, RotateCcw, Trophy, Volume2, VolumeX, Gamepad2, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAccount } from "wagmi";
+import { useSubmitGameScore, usePlayerGameStats } from "@/hooks/useGameScores";
+import { RaceToBaseLeaderboard } from "@/components/RaceToBaseLeaderboard";
 import rocketImage from "@/assets/rocket-game.png";
 
 interface Vector2 {
@@ -966,13 +969,26 @@ export default function GuardianDefender() {
     renderLoop();
   }, [gameState, scale]);
   
+  const { address, isConnected } = useAccount();
+  const submitScore = useSubmitGameScore();
+  const { data: playerStats } = usePlayerGameStats();
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const scoreSubmittedRef = useRef(false);
+  
   useEffect(() => {
     if (gameState.phase === 'revelation') {
       const newLifetime = lifetimeScore + gameState.score;
       setLifetimeScore(newLifetime);
       localStorage.setItem('guardian_lifetime_score', newLifetime.toString());
+      
+      if (isConnected && address && !scoreSubmittedRef.current && gameState.score > 0) {
+        scoreSubmittedRef.current = true;
+        submitScore.mutate({ score: gameState.score, level: gameState.level });
+      }
+    } else if (gameState.phase === 'menu') {
+      scoreSubmittedRef.current = false;
     }
-  }, [gameState.phase]);
+  }, [gameState.phase, gameState.score, gameState.level, isConnected, address, submitScore]);
   
   const rank = useMemo(() => getRank(lifetimeScore + (gameState.phase === 'revelation' ? gameState.score : 0)), [lifetimeScore, gameState.phase, gameState.score]);
   
@@ -988,6 +1004,16 @@ export default function GuardianDefender() {
           </Link>
           
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowLeaderboard(!showLeaderboard)}
+              className={`${showLeaderboard ? 'text-cyan-400' : 'text-white/60'} hover:text-cyan-400`}
+              data-testid="button-toggle-leaderboard"
+              title="Leaderboard"
+            >
+              <Users className="w-4 h-4" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -1234,6 +1260,22 @@ export default function GuardianDefender() {
           <p>Desktop: Arrow Keys to move, Space to shoot/thrust, P to pause</p>
           <p className="md:hidden mt-1">Mobile: Use buttons below the game</p>
         </div>
+        
+        {showLeaderboard && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6"
+          >
+            <RaceToBaseLeaderboard />
+          </motion.div>
+        )}
+        
+        {!isConnected && gameState.phase === 'menu' && (
+          <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg text-center">
+            <p className="text-sm text-purple-300">Connect your wallet to save your scores to the leaderboard!</p>
+          </div>
+        )}
       </div>
     </div>
   );
