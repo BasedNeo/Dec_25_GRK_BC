@@ -372,6 +372,40 @@ replit-error-modal {
   display: none !important;
 }
 
+/* ========================================
+   RAINBOWKIT MODAL Z-INDEX FIX
+   Ensure wallet modals appear above ALL app modals
+   ======================================== */
+[data-rk] [data-radix-popper-content-wrapper],
+[data-rk] [role="dialog"],
+[data-rk-modal-root],
+div[data-rk] {
+  z-index: 99999 !important;
+}
+
+/* RainbowKit overlay must be clickable and above other overlays */
+[data-rk-modal-wrapper] {
+  z-index: 99998 !important;
+  position: fixed !important;
+}
+
+/* RainbowKit backdrop overlay */
+[data-rk-modal-backdrop],
+[data-rk] > div:first-child:not([role]) {
+  z-index: 99997 !important;
+}
+
+/* Ensure close/disconnect buttons in account modal are clickable */
+[data-rk] button[aria-label*="Close"],
+[data-rk] button[aria-label*="Disconnect"],
+[data-rk] [data-testid*="disconnect"],
+[data-rk] button:contains("Disconnect") {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 99999 !important;
+  position: relative !important;
+}
+
 /* RainbowKit Modal Fix - Ensure wallet buttons are clickable */
 [data-rk] button,
 [data-rk] a,
