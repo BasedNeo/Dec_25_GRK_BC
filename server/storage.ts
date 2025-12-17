@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type ProposalVote, type InsertProposalVote, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, desc, sql, count } from "drizzle-orm";
+import { eq, and, desc, sql, count, ne } from "drizzle-orm";
 
 const MAX_MESSAGES_PER_INBOX = 100;
 const MAX_EMAILS = 4000;
@@ -243,6 +243,115 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${diamondHandsStats.currentHolding} > 0`)
       .orderBy(desc(diamondHandsStats.level), desc(diamondHandsStats.daysHolding), desc(diamondHandsStats.retentionRate))
       .limit(limit);
+  }
+
+  async createProposal(data: InsertProposal): Promise<Proposal> {
+    const [result] = await db.insert(proposals).values(data).returning();
+    return result;
+  }
+
+  async getProposal(id: string): Promise<Proposal | undefined> {
+    const [result] = await db.select().from(proposals).where(eq(proposals.id, id));
+    return result;
+  }
+
+  async getAllProposals(): Promise<Proposal[]> {
+    return db.select().from(proposals).orderBy(desc(proposals.createdAt));
+  }
+
+  async getProposalsByStatus(status: string): Promise<Proposal[]> {
+    return db.select().from(proposals)
+      .where(eq(proposals.status, status))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async getActiveProposals(): Promise<Proposal[]> {
+    return db.select().from(proposals)
+      .where(eq(proposals.status, 'active'))
+      .orderBy(desc(proposals.publishedAt));
+  }
+
+  async getReviewProposals(): Promise<Proposal[]> {
+    return db.select().from(proposals)
+      .where(eq(proposals.status, 'review'))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async updateProposalStatus(id: string, status: string): Promise<Proposal | undefined> {
+    const updates: any = { status };
+    if (status === 'active') {
+      updates.publishedAt = new Date();
+    }
+    const [result] = await db.update(proposals)
+      .set(updates)
+      .where(eq(proposals.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteProposal(id: string): Promise<boolean> {
+    await db.delete(proposalVotes).where(eq(proposalVotes.proposalId, id));
+    const result = await db.delete(proposals).where(eq(proposals.id, id));
+    return true;
+  }
+
+  async castProposalVote(data: InsertProposalVote): Promise<ProposalVote> {
+    const existing = await db.select().from(proposalVotes)
+      .where(and(
+        eq(proposalVotes.proposalId, data.proposalId),
+        eq(proposalVotes.walletAddress, data.walletAddress.toLowerCase())
+      ));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(proposalVotes)
+        .set({ selectedOption: data.selectedOption, votingPower: data.votingPower })
+        .where(eq(proposalVotes.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    
+    const [result] = await db.insert(proposalVotes).values({
+      ...data,
+      walletAddress: data.walletAddress.toLowerCase()
+    }).returning();
+    return result;
+  }
+
+  async getProposalVotes(proposalId: string): Promise<ProposalVote[]> {
+    return db.select().from(proposalVotes)
+      .where(eq(proposalVotes.proposalId, proposalId));
+  }
+
+  async getUserVote(proposalId: string, walletAddress: string): Promise<ProposalVote | undefined> {
+    const [result] = await db.select().from(proposalVotes)
+      .where(and(
+        eq(proposalVotes.proposalId, proposalId),
+        eq(proposalVotes.walletAddress, walletAddress.toLowerCase())
+      ));
+    return result;
+  }
+
+  async getVoteTallies(proposalId: string): Promise<{ option: string; votes: number; power: number }[]> {
+    const votes = await this.getProposalVotes(proposalId);
+    const tallies: Record<string, { votes: number; power: number }> = {
+      A: { votes: 0, power: 0 },
+      B: { votes: 0, power: 0 },
+      C: { votes: 0, power: 0 },
+      D: { votes: 0, power: 0 },
+    };
+    
+    for (const vote of votes) {
+      if (tallies[vote.selectedOption]) {
+        tallies[vote.selectedOption].votes++;
+        tallies[vote.selectedOption].power += vote.votingPower;
+      }
+    }
+    
+    return Object.entries(tallies).map(([option, data]) => ({
+      option,
+      votes: data.votes,
+      power: data.power,
+    }));
   }
 }
 

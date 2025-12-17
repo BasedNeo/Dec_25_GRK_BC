@@ -126,3 +126,45 @@ export const insertDiamondHandsStatsSchema = createInsertSchema(diamondHandsStat
 
 export type InsertDiamondHandsStats = z.infer<typeof insertDiamondHandsStatsSchema>;
 export type DiamondHandsStats = typeof diamondHandsStats.$inferSelect;
+
+export const proposals = pgTable("proposals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull().default("Community"),
+  optionA: text("option_a").notNull(),
+  optionB: text("option_b").notNull(),
+  optionC: text("option_c"),
+  optionD: text("option_d"),
+  status: varchar("status", { length: 20 }).notNull().default("review"),
+  createdBy: text("created_by").notNull(),
+  expirationDays: integer("expiration_days").default(7).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  publishedAt: timestamp("published_at"),
+});
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  publishedAt: true,
+});
+
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;
+
+export const proposalVotes = pgTable("proposal_votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id").notNull(),
+  walletAddress: text("wallet_address").notNull(),
+  selectedOption: varchar("selected_option", { length: 1 }).notNull(),
+  votingPower: integer("voting_power").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertProposalVoteSchema = createInsertSchema(proposalVotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProposalVote = z.infer<typeof insertProposalVoteSchema>;
+export type ProposalVote = typeof proposalVotes.$inferSelect;
