@@ -442,7 +442,69 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               
               <div className="w-full flex justify-center gap-4 pt-6 border-t border-white/5 mt-4">
                 <NotificationSettings />
-                <ConnectButton />
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus ||
+                        authenticationStatus === 'authenticated');
+
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          'style': {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <Button 
+                                onClick={openConnectModal} 
+                                className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
+                                data-testid="button-mobile-connect-wallet"
+                              >
+                                CONNECT WALLET
+                              </Button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <Button onClick={openChainModal} className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-wider rounded-xl px-6 py-3">
+                                Wrong network
+                              </Button>
+                            );
+                          }
+
+                          return (
+                            <Button 
+                              onClick={openAccountModal} 
+                              className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:border-cyan-400/60 hover:shadow-[0_0_20px_rgba(0,255,255,0.2)] font-orbitron text-sm tracking-[0.1em] px-6 py-3 rounded-xl transition-all duration-300"
+                            >
+                              {account.displayName}
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
               </div>
             </div>
           </motion.div>

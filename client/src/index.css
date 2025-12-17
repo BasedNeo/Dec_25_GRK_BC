@@ -382,6 +382,60 @@ div[class*="iekbcc"] a {
   pointer-events: auto;
 }
 
+/* RainbowKit Modal - Mobile Optimizations */
+@media (max-width: 768px) {
+  /* Ensure modal is full width on mobile */
+  [data-rk] [role="dialog"] {
+    max-width: 100vw !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+  
+  /* Make wallet list scrollable and show all options */
+  [data-rk] [role="dialog"] > div {
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Ensure wallet icons are visible and properly sized */
+  [data-rk] img[alt*="wallet" i],
+  [data-rk] img[alt*="Wallet" i],
+  [data-rk] [class*="wallet"] img {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    object-fit: contain !important;
+  }
+  
+  /* Wallet list items - ensure touch targets are adequate */
+  [data-rk] [role="listbox"] button,
+  [data-rk] [role="list"] button,
+  [data-rk] button[data-testid*="wallet"] {
+    min-height: 56px !important;
+    padding: 12px 16px !important;
+  }
+  
+  /* Show "More wallets" section fully */
+  [data-rk] [class*="More"] {
+    display: block !important;
+    visibility: visible !important;
+  }
+}
+
+/* Ensure all wallet group sections are visible */
+[data-rk] [class*="group"],
+[data-rk] [class*="Group"] {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Wallet icon polish - ensure consistent sizing */
+[data-rk] img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
 /* Force Buy Button Visibility and Styling */
 /* ========================================
    BUY BUTTON - SINGLE SOURCE OF TRUTH
