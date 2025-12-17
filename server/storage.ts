@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type ProposalVote, type InsertProposalVote, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type ProposalVote, type InsertProposalVote, type GameScore, type InsertGameScore, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne } from "drizzle-orm";
@@ -352,6 +352,74 @@ export class DatabaseStorage implements IStorage {
       votes: data.votes,
       power: data.power,
     }));
+  }
+
+  async submitGameScore(walletAddress: string, score: number, level: number, customName?: string): Promise<GameScore> {
+    const addr = walletAddress.toLowerCase();
+    const existing = await db.select().from(gameScores).where(eq(gameScores.walletAddress, addr));
+    
+    const ranks = [
+      { threshold: 0, title: 'Cadet' },
+      { threshold: 1000, title: 'Pilot' },
+      { threshold: 5000, title: 'Void Walker' },
+      { threshold: 15000, title: 'Star Commander' },
+      { threshold: 50000, title: 'Fleet Admiral' },
+      { threshold: 100000, title: 'Based Eternal' },
+    ];
+    
+    const getRank = (totalScore: number): string => {
+      for (let i = ranks.length - 1; i >= 0; i--) {
+        if (totalScore >= ranks[i].threshold) return ranks[i].title;
+      }
+      return 'Cadet';
+    };
+    
+    if (existing.length > 0) {
+      const current = existing[0];
+      const newLifetime = current.lifetimeScore + score;
+      const newHighScore = Math.max(current.highScore, score);
+      const newRank = getRank(newLifetime);
+      
+      const [updated] = await db.update(gameScores)
+        .set({
+          score,
+          level,
+          lifetimeScore: newLifetime,
+          gamesPlayed: current.gamesPlayed + 1,
+          highScore: newHighScore,
+          rank: newRank,
+          customName: customName || current.customName,
+          updatedAt: new Date(),
+        })
+        .where(eq(gameScores.walletAddress, addr))
+        .returning();
+      return updated;
+    }
+    
+    const newRank = getRank(score);
+    const [created] = await db.insert(gameScores).values({
+      walletAddress: addr,
+      score,
+      level,
+      lifetimeScore: score,
+      gamesPlayed: 1,
+      highScore: score,
+      rank: newRank,
+      customName,
+    }).returning();
+    return created;
+  }
+
+  async getGameLeaderboard(limit: number = 20): Promise<GameScore[]> {
+    return db.select().from(gameScores)
+      .orderBy(desc(gameScores.lifetimeScore))
+      .limit(limit);
+  }
+
+  async getPlayerGameStats(walletAddress: string): Promise<GameScore | undefined> {
+    const [result] = await db.select().from(gameScores)
+      .where(eq(gameScores.walletAddress, walletAddress.toLowerCase()));
+    return result;
   }
 }
 
