@@ -118,9 +118,17 @@ Protected folder structure to isolate core commerce and game code:
 
 ### Security Considerations
 - Input sanitization for all external data (XSS protection)
-- Content Security Policy headers
+- Content Security Policy headers via helmet middleware
 - Wallet address validation
 - Admin wallet gating for privileged operations (0xAe543104fDBe456478E19894f7F0e01f0971c9B4)
+- Rate limiting on all API endpoints:
+  - API limiter: 100 req/15min for general endpoints
+  - Write limiter: 10 req/min for POST/PATCH/DELETE operations
+  - Auth limiter: 20 req/15min (wallet+IP based)
+  - Game limiter: 5 req/min for score submissions
+- Security headers via helmet: CSP, HSTS (1 year), X-Frame-Options, X-Content-Type-Options
+- CORS configuration with origin validation
+- Sensitive data redaction in logs
 
 ## External Dependencies
 
