@@ -158,32 +158,47 @@ export function Footer() {
               <h4 className="text-lg font-orbitron text-white">Suggestions?</h4>
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form 
+              onSubmit={handleSubmit} 
+              className="space-y-4"
+              action="#"
+              method="POST"
+            >
               <Textarea 
                 placeholder="Share your thoughts with us... (max 500 words)" 
-                className="bg-black/50 border-white/10 text-white min-h-[80px] focus:border-primary/50"
+                className="bg-black/50 border-white/10 text-white min-h-[80px] focus:border-primary/50 text-base"
                 value={feedback}
                 onChange={(e) => {
                   const words = e.target.value.trim().split(/\s+/).filter(w => w.length > 0);
                   if (words.length <= 500) setFeedback(e.target.value);
                 }}
                 required
+                autoComplete="off"
+                autoCorrect="on"
+                spellCheck="true"
               />
               <p className="text-xs text-muted-foreground text-right">
                 {feedback.trim().split(/\s+/).filter(w => w.length > 0).length}/500 words
               </p>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Input 
                   type="email" 
                   placeholder="Email (optional)" 
-                  className="bg-black/50 border-white/10 text-white focus:border-primary/50"
+                  className="bg-black/50 border-white/10 text-white focus:border-primary/50 text-base flex-1"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                 />
                 <Button 
                   type="submit" 
                   disabled={isSubmitting || !feedback.trim()}
-                  className="bg-primary hover:bg-primary/90 font-orbitron min-w-[120px] text-[#34c4c9]"
+                  className="bg-primary hover:bg-primary/90 font-orbitron min-w-[120px] text-[#34c4c9] h-12 sm:h-10 touch-manipulation"
+                  onClick={(e) => {
+                    if (!feedback.trim()) {
+                      e.preventDefault();
+                      return;
+                    }
+                  }}
                 >
                   {isSubmitting ? "SENDING..." : (
                     <>SEND <Send size={14} className="ml-2" /></>
