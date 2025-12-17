@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT, GAS_SETTINGS } from '@/lib/constants';
 import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
+import { SafeTransaction } from '@/lib/safeTransaction';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -449,7 +450,47 @@ export function useMarketplace() {
   }, [checkNetwork, toast, writeContract]);
 
   const buyNFT = useCallback(async (tokenId: number, priceWei: bigint) => {
-    if (!checkNetwork()) return;
+    if (!checkNetwork() || !address) return;
+
+    try {
+      toast({
+        title: "Preparing Transaction",
+        description: "Verifying balance and estimating gas...",
+        className: "bg-black border-cyan-500 text-cyan-500",
+      });
+
+      const { ethers } = await import('ethers');
+      const iface = new ethers.Interface([
+        'function buyNFT(uint256 tokenId) external payable'
+      ]);
+      const calldata = iface.encodeFunctionData('buyNFT', [BigInt(tokenId)]);
+
+      const estimatedGas = await SafeTransaction.estimateGas({
+        from: address,
+        to: MARKETPLACE_CONTRACT,
+        value: priceWei,
+        data: calldata,
+      });
+
+      const hasBalance = await SafeTransaction.verifyBalanceWithGas(address, priceWei, estimatedGas);
+      if (!hasBalance) {
+        toast({ 
+          title: "Insufficient Balance", 
+          description: "You don't have enough $BASED for this purchase (including gas)", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : "Transaction would likely fail. Please try again.";
+      toast({
+        title: "Pre-flight Check Failed",
+        description: errorMsg,
+        variant: "destructive"
+      });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'buy' }));
     const priceFormatted = formatEther(priceWei);
@@ -470,7 +511,7 @@ export function useMarketplace() {
       chainId: CHAIN_ID,
       gas: GAS_SETTINGS.BUY,
     });
-  }, [checkNetwork, toast, writeContract]);
+  }, [address, checkNetwork, toast, writeContract]);
 
   const makeOffer = useCallback(async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
     if (!checkNetwork()) return;

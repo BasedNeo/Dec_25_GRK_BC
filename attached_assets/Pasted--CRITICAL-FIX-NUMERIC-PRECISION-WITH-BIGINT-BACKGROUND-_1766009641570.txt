@@ -1,0 +1,339 @@
+=== CRITICAL: FIX NUMERIC PRECISION WITH BIGINT ===
+
+BACKGROUND: Using parseFloat/parseInt for financial calculations causes precision loss and potential exploits. Must use BigInt for ALL token amounts.
+
+═══════════════════════════════════════════════════════════
+PART 1: SAFE MATH LIBRARY
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/safeMath.ts
+
+/**
+ * SafeMath - Precision-safe financial calculations
+ * ALL token amounts MUST use BigInt
+ * NEVER use JavaScript numbers for token amounts
+ */
+
+const DECIMALS = 18;
+const ONE_TOKEN = BigInt(10 ** DECIMALS);
+
+export class SafeMath {
+  /**
+   * Convert human-readable token amount to Wei (BigInt)
+   * Example: toWei("69420") => 69420000000000000000000n
+   */
+  static toWei(amount: string | number): bigint {
+    try {
+      const amountStr = typeof amount === 'number' ? amount.toFixed(DECIMALS) : amount;
+      const [whole, decimal = '0'] = amountStr.split('.');
+      
+      // Pad or truncate decimal to 18 digits
+      const paddedDecimal = decimal.padEnd(DECIMALS, '0').slice(0, DECIMALS);
+      
+      return BigInt(whole) * ONE_TOKEN + BigInt(paddedDecimal);
+    } catch (error) {
+      console.error('[SafeMath] toWei failed:', error);
+      throw new Error(`Invalid amount: ${amount}`);
+    }
+  }
+
+  /**
+   * Convert Wei (BigInt) to human-readable token amount
+   * Example: fromWei(69420000000000000000000n) => "69420.0"
+   */
+  static fromWei(wei: bigint, decimals = 2): string {
+    const whole = wei / ONE_TOKEN;
+    const remainder = wei % ONE_TOKEN;
+    
+    if (decimals === 0) {
+      return whole.toString();
+    }
+    
+    const decimalStr = remainder.toString().padStart(DECIMALS, '0').slice(0, decimals);
+    return `${whole}.${decimalStr}`;
+  }
+
+  /**
+   * Format for display with commas
+   * Example: format(69420000000000000000000n) => "69,420.00"
+   */
+  static format(wei: bigint, decimals = 2): string {
+    const str = this.fromWei(wei, decimals);
+    const [whole, decimal] = str.split('.');
+    const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decimal ? `${withCommas}.${decimal}` : withCommas;
+  }
+
+  /**
+   * Safely multiply token amount by percentage
+   * Example: mulPercent(100000n, 51) => 51000n
+   */
+  static mulPercent(amount: bigint, percent: number): bigint {
+    if (percent < 0 || percent > 100) {
+      throw new Error('Percent must be between 0 and 100');
+    }
+    return (amount * BigInt(Math.round(percent * 100))) / BigInt(10000);
+  }
+
+  /**
+   * Add two amounts safely
+   */
+  static add(a: bigint, b: bigint): bigint {
+    return a + b;
+  }
+
+  /**
+   * Subtract safely (throws if result would be negative)
+   */
+  static sub(a: bigint, b: bigint): bigint {
+    if (b > a) {
+      throw new Error('Subtraction would result in negative value');
+    }
+    return a - b;
+  }
+
+  /**
+   * Multiply two amounts (both in Wei, result in Wei)
+   */
+  static mul(a: bigint, b: bigint): bigint {
+    return (a * b) / ONE_TOKEN;
+  }
+
+  /**
+   * Divide safely (returns 0 if divisor is 0)
+   */
+  static div(a: bigint, b: bigint): bigint {
+    if (b === BigInt(0)) return BigInt(0);
+    return (a * ONE_TOKEN) / b;
+  }
+
+  /**
+   * Compare amounts
+   */
+  static gte(a: bigint, b: bigint): boolean {
+    return a >= b;
+  }
+
+  static lte(a: bigint, b: bigint): boolean {
+    return a <= b;
+  }
+
+  static eq(a: bigint, b: bigint): boolean {
+    return a === b;
+  }
+
+  /**
+   * Parse user input safely (handles commas, spaces)
+   */
+  static parseInput(input: string): bigint | null {
+    try {
+      const cleaned = input.replace(/[,\s]/g, '');
+      if (!/^\d+\.?\d*$/.test(cleaned)) return null;
+      return this.toWei(cleaned);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Validate amount is within safe range
+   */
+  static validate(wei: bigint): { valid: boolean; error?: string } {
+    if (wei < BigInt(0)) {
+      return { valid: false, error: 'Amount cannot be negative' };
+    }
+    
+    // Max: 1 billion tokens (prevent overflow attacks)
+    const MAX_AMOUNT = BigInt(10 ** 9) * ONE_TOKEN;
+    if (wei > MAX_AMOUNT) {
+      return { valid: false, error: 'Amount exceeds maximum (1B tokens)' };
+    }
+    
+    return { valid: true };
+  }
+}
+
+// Prevent BigInt serialization errors
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
+═══════════════════════════════════════════════════════════
+PART 2: UPDATE LOCKED FINANCIAL CALCULATIONS
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/lib/mockData.ts
+
+⚠️ CRITICAL: These are LOCKED functions. Update very carefully!
+
+FIND calculateBackedValue function (around line 140):
+export function calculateBackedValue(...
+
+REPLACE WITH:
+import { SafeMath } from './safeMath';
+
+export function calculateBackedValue(
+  totalTreasuryWei: bigint,
+  totalMinted: number
+): string {
+  if (totalMinted === 0) return '0';
+  
+  const backedPerNFT = totalTreasuryWei / BigInt(totalMinted);
+  return SafeMath.format(backedPerNFT, 0);
+}
+
+FIND calculateMintRevenue (if exists):
+REPLACE WITH:
+export function calculateMintRevenue(totalMinted: number): bigint {
+  const MINT_PRICE_WEI = SafeMath.toWei('69420');
+  const mintedBig = BigInt(totalMinted);
+  
+  // 51% to treasury
+  const totalRevenue = MINT_PRICE_WEI * mintedBig;
+  return SafeMath.mulPercent(totalRevenue, 51);
+}
+
+FIND calculateRoyaltyRevenue (if exists):
+REPLACE WITH:
+export function calculateRoyaltyRevenue(salesVolumeWei: bigint): bigint {
+  // 2% of sales volume to treasury
+  return SafeMath.mulPercent(salesVolumeWei, 2);
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE MINTING HOOK
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/core/commerce/useMint.ts
+
+ADD IMPORT (line 1):
+import { SafeMath } from '@/lib/safeMath';
+
+FIND canAfford function (line 55):
+const canAfford = (qty: number) => {
+  if (!balanceData) return false;
+  const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+  return balanceData.value >= cost;
+};
+
+REPLACE WITH:
+const canAfford = (qty: number) => {
+  if (!balanceData) return false;
+  try {
+    const cost = SafeMath.toWei(mintPrice.toString()) * BigInt(qty);
+    return SafeMath.gte(balanceData.value, cost);
+  } catch {
+    return false;
+  }
+};
+
+FIND maxAffordable function (line 61):
+const maxAffordable = () => {
+  if (!balanceData) return 0;
+  const bal = Number(formatEther(balanceData.value));
+  return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+};
+
+REPLACE WITH:
+const maxAffordable = () => {
+  if (!balanceData) return 0;
+  try {
+    const mintPriceWei = SafeMath.toWei(mintPrice.toString());
+    const maxQty = Number(balanceData.value / mintPriceWei);
+    return Math.min(Math.floor(maxQty), remainingSupply, 10);
+  } catch {
+    return 0;
+  }
+};
+
+FIND mint function (line 119), FIND line 142:
+const totalPrice = MINT_PRICE * quantity;
+const valueInWei = parseEther(totalPrice.toString());
+
+REPLACE WITH:
+const totalPrice = MINT_PRICE * quantity;
+const valueInWei = SafeMath.toWei(totalPrice.toString());
+
+// Validate amount before proceeding
+const validation = SafeMath.validate(valueInWei);
+if (!validation.valid) {
+  setError(validation.error || 'Invalid amount');
+  setIsLoading(false);
+  return;
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: UPDATE MARKETPLACE CALCULATIONS
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/core/commerce/useMarketplace.ts
+
+ADD IMPORT:
+import { SafeMath } from '@/lib/safeMath';
+
+FIND listNFT function (line 341), FIND line 417:
+const priceWei = parseEther(String(priceInBased));
+
+REPLACE WITH:
+const priceWei = SafeMath.toWei(priceInBased.toString());
+
+const validation = SafeMath.validate(priceWei);
+if (!validation.valid) {
+  toast({ 
+    title: "Invalid Price", 
+    description: validation.error || "Price validation failed", 
+    variant: "destructive" 
+  });
+  return;
+}
+
+SIMILARLY UPDATE:
+- makeOffer function (line 475)
+- Any other parseEther() calls
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+CREATE TEST: script/test-safemath.ts
+
+import { SafeMath } from '../client/src/lib/safeMath';
+
+console.log('Testing SafeMath...\n');
+
+// Test 1: toWei/fromWei
+const amount = SafeMath.toWei('69420');
+console.log(`toWei('69420') = ${amount}`);
+console.log(`fromWei(${amount}) = ${SafeMath.fromWei(amount)}`);
+console.assert(SafeMath.fromWei(amount, 0) === '69420', 'Test 1 failed');
+
+// Test 2: Percentage calculations
+const treasury = SafeMath.toWei('100000');
+const share51 = SafeMath.mulPercent(treasury, 51);
+console.log(`51% of 100k = ${SafeMath.format(share51)}`);
+console.assert(SafeMath.fromWei(share51, 0) === '51000', 'Test 2 failed');
+
+// Test 3: Format with commas
+console.log(`format(1000000) = ${SafeMath.format(SafeMath.toWei('1000000'))}`);
+
+// Test 4: Parse user input
+const parsed = SafeMath.parseInput('1,234.56');
+console.log(`parseInput('1,234.56') = ${parsed}`);
+
+// Test 5: Validate
+const valid = SafeMath.validate(SafeMath.toWei('500000'));
+console.log(`validate(500000) = ${valid.valid ? 'PASS' : 'FAIL'}`);
+
+console.log('\n✅ All SafeMath tests passed!');
+
+RUN: tsx script/test-safemath.ts
+
+CHECKLIST:
+□ SafeMath.ts created
+□ test-safemath.ts passes
+□ mockData.ts updated (LOCKED file - be careful!)
+□ useMint.ts uses SafeMath
+□ useMarketplace.ts uses SafeMath
+□ useOffersV3.ts uses SafeMath
+□ No parseFloat/parseInt in financial code
+□ All tests pass
