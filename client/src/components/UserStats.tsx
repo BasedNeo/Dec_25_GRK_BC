@@ -5,7 +5,7 @@ import {
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
   Sparkles, Users, Flame, Calendar, TrendingUp,
-  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2
+  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2, Trophy
 } from 'lucide-react';
 import { useGuardianProfileContext } from './GuardianProfileProvider';
 import { Input } from '@/components/ui/input';
@@ -16,8 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { ethers } from 'ethers';
 import { RPC_URL, NFT_CONTRACT } from '@/lib/constants';
 import confetti from 'canvas-confetti';
-import { usePlayerGameStats } from '@/hooks/useGameScores';
-import { RaceToBaseLeaderboard } from '@/components/RaceToBaseLeaderboard';
+import { useGameScoresLocal, RANKS as GAME_RANKS_DATA } from '@/hooks/useGameScoresLocal';
 import { Link } from 'wouter';
 
 const NFT_ABI = [
@@ -182,7 +181,7 @@ function BasedHuntIcon({ className }: { className?: string }) {
   );
 }
 
-const GAME_RANKS: Record<string, { color: string; bg: string }> = {
+const GAME_RANKS_STYLE: Record<string, { color: string; bg: string }> = {
   'Cadet': { color: 'text-gray-400', bg: 'bg-gray-500/20' },
   'Pilot': { color: 'text-green-400', bg: 'bg-green-500/20' },
   'Void Walker': { color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
@@ -192,10 +191,9 @@ const GAME_RANKS: Record<string, { color: string; bg: string }> = {
 };
 
 function GameStatsSection() {
-  const { data: playerStats } = usePlayerGameStats();
-  const hasGameData = playerStats?.exists && playerStats.stats;
-  const stats = playerStats?.stats;
-  const rankStyle = stats ? GAME_RANKS[stats.rank] || GAME_RANKS['Cadet'] : GAME_RANKS['Cadet'];
+  const { myStats, leaderboard } = useGameScoresLocal();
+  const hasGameData = myStats.gamesPlayed > 0;
+  const rankStyle = GAME_RANKS_STYLE[myStats.rank] || GAME_RANKS_STYLE['Cadet'];
 
   return (
     <>
@@ -229,19 +227,19 @@ function GameStatsSection() {
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                   <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/20 text-center">
-                    <div className="text-2xl font-orbitron text-cyan-400">{stats!.lifetimeScore.toLocaleString()}</div>
+                    <div className="text-2xl font-orbitron text-cyan-400">{myStats.lifetimeScore.toLocaleString()}</div>
                     <p className="text-[10px] text-cyan-400/60 mt-1 font-mono">LIFETIME SCORE</p>
                   </div>
                   <div className="bg-black/40 rounded-lg p-3 border border-yellow-500/20 text-center">
-                    <div className="text-2xl font-orbitron text-yellow-400">{stats!.highScore.toLocaleString()}</div>
+                    <div className="text-2xl font-orbitron text-yellow-400">{myStats.bestScore.toLocaleString()}</div>
                     <p className="text-[10px] text-yellow-400/60 mt-1 font-mono">HIGH SCORE</p>
                   </div>
                   <div className="bg-black/40 rounded-lg p-3 border border-purple-500/20 text-center">
-                    <div className="text-2xl font-orbitron text-purple-400">{stats!.gamesPlayed}</div>
+                    <div className="text-2xl font-orbitron text-purple-400">{myStats.gamesPlayed}</div>
                     <p className="text-[10px] text-purple-400/60 mt-1 font-mono">GAMES PLAYED</p>
                   </div>
                   <div className="bg-black/40 rounded-lg p-3 border border-green-500/20 text-center">
-                    <div className={`text-lg font-orbitron ${rankStyle.color}`}>{stats!.rank}</div>
+                    <div className={`text-lg font-orbitron ${rankStyle.color}`}>{myStats.rank}</div>
                     <p className="text-[10px] text-green-400/60 mt-1 font-mono">PILOT RANK</p>
                   </div>
                 </div>
@@ -268,14 +266,36 @@ function GameStatsSection() {
         </Card>
       </motion.div>
       
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.1 }}
-        className="mt-6"
-      >
-        <RaceToBaseLeaderboard />
-      </motion.div>
+      {leaderboard.length > 0 && (
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 1.1 }}
+          className="mt-6"
+        >
+          <Card className="bg-black/60 border-purple-500/30 p-4 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="text-yellow-400" size={16} />
+              <span className="font-orbitron text-white text-sm">GAME LEADERBOARD</span>
+            </div>
+            <div className="space-y-1">
+              {leaderboard.slice(0, 5).map((entry, i) => (
+                <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 text-center ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-500'}`}>
+                      {i + 1}
+                    </span>
+                    <span className="text-gray-400 font-mono">
+                      {entry.wallet.slice(0, 6)}...{entry.wallet.slice(-4)}
+                    </span>
+                  </div>
+                  <span className="text-cyan-400 font-mono">{entry.score.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+      )}
     </>
   );
 }
