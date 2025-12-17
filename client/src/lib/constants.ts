@@ -84,6 +84,7 @@ export const GAS_SETTINGS = {
 };
 
 // === CUMULATIVE SALES BASELINE ===
+// ⚠️ LOCKED - Do NOT modify without explicit user request
 // Historical cumulative sales volume up to a certain date
 // This is added to recent on-chain activity for accurate royalty calculations
 // Last updated: December 17, 2024

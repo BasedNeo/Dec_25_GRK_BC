@@ -243,11 +243,13 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, fetchActivities]);
 
-  // Stats combining CONTRACT state + EVENT counts + BASELINE
+  // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
+  // See replit.md "LOCKED CALCULATIONS" section for details
   const recentVolume = activities
     .filter(a => a.type === 'sale' && a.price)
     .reduce((sum, a) => sum + Number(a.price || 0), 0);
     
+  // LOCKED: totalVolume = CUMULATIVE_SALES_BASELINE.volume + recentVolume
   const stats = {
     // CUMULATIVE from CONTRACT (real total)
     totalMinted: contractStats.totalMinted,

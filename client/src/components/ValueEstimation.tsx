@@ -53,12 +53,15 @@ export function ValueEstimation() {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate treasury (same formula as Pool page)
+  // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
+  // See replit.md "LOCKED CALCULATIONS" section for details
   const treasuryData = useMemo(() => {
     const minted = mintedCount ?? 0;
     const sales = salesVolume ?? 0;
     
+    // LOCKED: mintRevenue = minted × 69,420 × 51%
     const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    // LOCKED: royaltyRevenue = salesVolume × 2%
     const royaltyRevenue = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
     const passiveEmissions = subnetEmissions.communityShare;
     

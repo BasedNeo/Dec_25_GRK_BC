@@ -20,6 +20,16 @@ Key features include:
 
 Preferred communication style: Simple, everyday language.
 
+### LOCKED CALCULATIONS (Do NOT modify without explicit user request)
+The following calculations and formulas are LOCKED and should NOT be changed:
+- **PoolTracker.tsx**: Treasury calculations (mint revenue, royalty revenue, emissions)
+- **ValueEstimation.tsx**: Backed value per NFT, community treasury display
+- **useActivityFeed.ts**: Total volume calculation with baseline (CUMULATIVE_SALES_BASELINE)
+- **constants.ts**: MINT_SPLIT, ROYALTY_SPLIT, CUMULATIVE_SALES_BASELINE values
+- Formula: mintRevenue = minted × 69,420 × 51%
+- Formula: royaltyRevenue = salesVolume × 2%
+- Formula: backedValue = totalTreasury ÷ mintedNFTs
+
 ## System Architecture
 
 ### Frontend Architecture
