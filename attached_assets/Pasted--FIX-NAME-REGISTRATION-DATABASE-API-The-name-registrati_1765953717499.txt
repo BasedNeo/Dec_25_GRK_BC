@@ -1,0 +1,278 @@
+=== FIX NAME REGISTRATION - DATABASE & API ===
+
+The name registration shows "Could not verify name availability" because the 
+database table doesn't exist or there's a connection error.
+
+═══════════════════════════════════════════════════════════
+STEP 1: VERIFY DATABASE CONNECTION & CREATE TABLES
+═══════════════════════════════════════════════════════════
+
+The app uses Drizzle ORM with PostgreSQL. The guardian_profiles table needs to exist.
+
+OPTION A: If using Replit's built-in PostgreSQL:
+
+1. Make sure DATABASE_URL is set in Secrets/Environment Variables
+2. Run the migration to create tables:
+
+In package.json, add this script if not exists:
+"scripts": {
+  "db:push": "drizzle-kit push:pg"
+}
+
+Then run:
+npm run db:push
+
+OPTION B: Create the table manually via SQL:
+
+Run this SQL in your database:
+
+CREATE TABLE IF NOT EXISTS guardian_profiles (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_address TEXT NOT NULL UNIQUE,
+  custom_name VARCHAR(20),
+  last_login TIMESTAMP DEFAULT NOW() NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS diamond_hands_stats (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_address TEXT NOT NULL UNIQUE,
+  custom_name VARCHAR(20),
+  days_holding INTEGER DEFAULT 0 NOT NULL,
+  retention_rate INTEGER DEFAULT 0 NOT NULL,
+  current_holding INTEGER DEFAULT 0 NOT NULL,
+  total_acquired INTEGER DEFAULT 0 NOT NULL,
+  total_sold INTEGER DEFAULT 0 NOT NULL,
+  level INTEGER DEFAULT 0 NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+═══════════════════════════════════════════════════════════
+STEP 2: ADD BETTER ERROR HANDLING TO API
+═══════════════════════════════════════════════════════════
+
+File: /server/routes.ts
+
+UPDATE the check-name endpoint (around line 297) to have better error logging:
+
+FIND:
+app.get("/api/profile/check-name/:name", async (req, res) => {
+  try {
+    const name = req.params.name;
+    const excludeWallet = req.query.exclude as string | undefined;
+    
+    if (containsProfanity(name)) {
+      return res.json({ available: false, error: "This name contains inappropriate content" });
+    }
+    
+    const isTaken = await storage.isNameTaken(name, excludeWallet);
+    return res.json({ available: !isTaken });
+  } catch (error) {
+    console.error("[Profile] Error checking name:", error);
+    return res.status(500).json({ error: "Failed to check name" });
+  }
+});
+
+REPLACE WITH:
+app.get("/api/profile/check-name/:name", async (req, res) => {
+  try {
+    const name = req.params.name;
+    const excludeWallet = req.query.exclude as string | undefined;
+    
+    console.log(`[Profile] Checking name availability: "${name}"`);
+    
+    if (!name || name.length < 2) {
+      return res.json({ available: false, error: "Name must be at least 2 characters" });
+    }
+    
+    if (name.length > 16) {
+      return res.json({ available: false, error: "Name must be 16 characters or less" });
+    }
+    
+    // Check for valid characters (alphanumeric, underscore, hyphen)
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.json({ available: false, error: "Name can only contain letters, numbers, underscore, and hyphen" });
+    }
+    
+    if (containsProfanity(name)) {
+      return res.json({ available: false, error: "This name contains inappropriate content" });
+    }
+    
+    const isTaken = await storage.isNameTaken(name, excludeWallet);
+    console.log(`[Profile] Name "${name}" available: ${!isTaken}`);
+    return res.json({ available: !isTaken });
+  } catch (error) {
+    console.error("[Profile] Error checking name:", error);
+    // Return available: false with error instead of 500 to prevent UI error
+    return res.json({ available: false, error: "Database temporarily unavailable" });
+  }
+});
+
+═══════════════════════════════════════════════════════════
+STEP 3: ADD FALLBACK TO FRONTEND HOOK
+═══════════════════════════════════════════════════════════
+
+File: /client/src/hooks/useGuardianProfile.ts
+
+UPDATE the checkNameAvailable function (around line 94) to handle errors better:
+
+FIND:
+const checkNameAvailable = useCallback(async (name: string): Promise<{ available: boolean; error?: string }> => {
+  if (!name || name.length < 2) {
+    return { available: false, error: 'Name must be at least 2 characters' };
+  }
+  
+  try {
+    const url = `/api/profile/check-name/${encodeURIComponent(name)}${address ? `?exclude=${address}` : ''}`;
+    const res = await fetch(url);
+    
+    if (res.ok) {
+      const data = await res.json();
+      return { available: data.available };
+    } else {
+      return { available: false, error: 'Could not verify name availability' };
+    }
+  } catch (err) {
+    return { available: false, error: 'Network error checking name' };
+  }
+}, [address]);
+
+REPLACE WITH:
+const checkNameAvailable = useCallback(async (name: string): Promise<{ available: boolean; error?: string }> => {
+  // Client-side validation first
+  if (!name || name.length < 2) {
+    return { available: false, error: 'Name must be at least 2 characters' };
+  }
+  
+  if (name.length > 16) {
+    return { available: false, error: 'Name must be 16 characters or less' };
+  }
+  
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    return { available: false, error: 'Only letters, numbers, underscore, hyphen allowed' };
+  }
+  
+  try {
+    const url = `/api/profile/check-name/${encodeURIComponent(name)}${address ? `?exclude=${address}` : ''}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    // Parse response even if not OK - server may return available:false with error
+    const data = await res.json().catch(() => null);
+    
+    if (data) {
+      if (data.error) {
+        return { available: false, error: data.error };
+      }
+      return { available: data.available ?? false };
+    }
+    
+    // If response couldn't be parsed, allow optimistically but warn
+    console.warn('[Profile] Could not parse name check response');
+    return { available: true, error: undefined }; // Allow to proceed, server will validate on save
+  } catch (err) {
+    console.error('[Profile] Network error checking name:', err);
+    // On network error, allow optimistically - server will validate on save
+    return { available: true, error: 'Could not verify (will check on save)' };
+  }
+}, [address]);
+
+═══════════════════════════════════════════════════════════
+STEP 4: ADD DATABASE HEALTH CHECK TO SERVER
+═══════════════════════════════════════════════════════════
+
+File: /server/routes.ts
+
+ADD this endpoint after the existing /api/health endpoint (around line 19):
+
+// Database health check
+app.get("/api/health/db", async (_req, res) => {
+  try {
+    // Try a simple query
+    const result = await storage.getEmailCount();
+    res.status(200).json({ 
+      status: "ok", 
+      database: "connected",
+      tables: {
+        emails: true,
+      },
+      timestamp: Date.now() 
+    });
+  } catch (error: any) {
+    console.error("[Health] Database check failed:", error.message);
+    res.status(500).json({ 
+      status: "error", 
+      database: "disconnected",
+      error: error.message,
+      timestamp: Date.now() 
+    });
+  }
+});
+
+═══════════════════════════════════════════════════════════
+STEP 5: ENSURE DRIZZLE CONFIG EXISTS
+═══════════════════════════════════════════════════════════
+
+File: /drizzle.config.ts (should already exist, but verify)
+
+import type { Config } from "drizzle-kit";
+
+export default {
+  schema: "./shared/schema.ts",
+  out: "./drizzle",
+  driver: "pg",
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL!,
+  },
+} satisfies Config;
+
+═══════════════════════════════════════════════════════════
+STEP 6: ADD DB PUSH SCRIPT TO PACKAGE.JSON
+═══════════════════════════════════════════════════════════
+
+File: /package.json
+
+In the "scripts" section, add:
+
+"db:push": "drizzle-kit push:pg",
+"db:studio": "drizzle-kit studio"
+
+═══════════════════════════════════════════════════════════
+VERIFICATION STEPS
+═══════════════════════════════════════════════════════════
+
+After applying these changes:
+
+1. Run: npm run db:push
+   This will create the tables if they don't exist
+
+2. Check the server logs for any database errors
+
+3. Test the health endpoint: 
+   Visit /api/health/db in browser - should show "connected"
+
+4. Test name registration:
+   - Connect wallet
+   - Go to User Stats
+   - Click "Set Name"
+   - Enter a name (2-16 chars, alphanumeric)
+   - Should show green checkmark if available
+   - Click Save
+
+═══════════════════════════════════════════════════════════
+COMMON ISSUES
+═══════════════════════════════════════════════════════════
+
+1. "DATABASE_URL environment variable is not set"
+   → Add DATABASE_URL to Replit Secrets
+
+2. "relation 'guardian_profiles' does not exist"
+   → Run npm run db:push to create tables
+
+3. "connection refused"
+   → Database server not running or wrong URL
+
+4. Name shows as taken when it shouldn't be
+   → May be case sensitivity issue - names are stored as-is

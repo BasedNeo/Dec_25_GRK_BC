@@ -28,15 +28,22 @@ export function Footer() {
 
     setIsSubmitting(true);
     
-    const safeFeedback = sanitize(trimmedFeedback);
-    const safeEmail = sanitize(email.trim());
+    let safeFeedback = trimmedFeedback;
+    let safeEmail = email.trim();
+    
+    try {
+      safeFeedback = sanitize(trimmedFeedback);
+      safeEmail = sanitize(email.trim());
+    } catch {
+      // Fallback if sanitize fails
+    }
 
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
     const trySubmit = async (attempt: number): Promise<boolean> => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
         
         const response = await fetch('/api/feedback', {
           method: 'POST',
@@ -50,6 +57,7 @@ export function Footer() {
             walletAddress: null,
           }),
           signal: controller.signal,
+          keepalive: true,
         });
         
         clearTimeout(timeoutId);
@@ -73,7 +81,7 @@ export function Footer() {
           return true;
         }
       } catch (error: unknown) {
-        const err = error as { name?: string };
+        const err = error as { name?: string; message?: string };
         if (err?.name === 'AbortError') {
           if (attempt < 2) {
             await new Promise(r => setTimeout(r, 1000));
@@ -92,7 +100,7 @@ export function Footer() {
         }
         toast({
           title: "Connection Issue",
-          description: "Could not reach the server. Please try again in a moment.",
+          description: err?.message || "Could not reach the server. Please try again in a moment.",
           variant: "destructive",
         });
         return true;
