@@ -318,91 +318,91 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                 return;
             }
 
-            // 2. Fetch NFTs (0 to totalMinted - 1)
-            const fetchedNFTs: MarketItem[] = [];
+            // 2. Fetch NFTs (0 to totalMinted - 1) - PARALLEL for speed and reliability
             const PRE_REVEAL_URI = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.json";
             
-
-            for (let i = 0; i < totalMinted; i++) {
-                try {
-                    const tokenIdBig = await contract.tokenByIndex(i);
-                    const tokenId = Number(tokenIdBig);
-                    
-                    const owner = await contract.ownerOf(tokenId);
-                    
-                    // Try to fetch tokenURI, fallback to pre-reveal if needed
-                    let tokenUri = "";
+            // Create parallel fetch promises for ALL minted NFTs
+            const nftPromises = Array.from({ length: totalMinted }, (_, i) => 
+                (async (index: number): Promise<MarketItem | null> => {
                     try {
-                        tokenUri = await contract.tokenURI(tokenId);
-                    } catch (e) {
-                        tokenUri = PRE_REVEAL_URI;
-                    }
-
-                    // Metadata Fetching
-                    let metadata = { name: `Guardian #${tokenId}`, image: '', attributes: [] };
-                    
-                    // If URI is from IPFS, convert to gateway
-                    let metadataUrl = tokenUri;
-                    if (tokenUri.startsWith('ipfs://')) {
-                        metadataUrl = tokenUri.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                    } else if (tokenUri === "") {
-                        // Fallback
-                        metadataUrl = PRE_REVEAL_URI;
-                    }
-
-                    // Special handling for pre-reveal check
-                    // If the contract returns the pre-reveal URI (or similar), we treat it as pre-reveal
-                    const isPreReveal = metadataUrl.includes("bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4");
-
-                    try {
-                        const res = await fetch(metadataUrl);
-                        if (res.ok) {
-                            metadata = await res.json();
-                        }
-                    } catch (e) {
-                        // If fetch fails, populate with basic info so it still shows up
-                        metadata = { 
+                        const tokenIdBig = await contract.tokenByIndex(index);
+                        const tokenId = Number(tokenIdBig);
+                        
+                        // Parallel fetch owner and URI
+                        const [owner, tokenUri] = await Promise.all([
+                            contract.ownerOf(tokenId).catch(() => '0x0'),
+                            contract.tokenURI(tokenId).catch(() => PRE_REVEAL_URI)
+                        ]);
+                        
+                        // Metadata Fetching
+                        let metadata: { name: string; image: string; attributes: any[] } = { 
                             name: `Guardian #${tokenId}`, 
-                            image: "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png", // Assuming image matches pre-reveal pattern 
+                            image: '', 
                             attributes: [] 
                         };
-                    }
+                        
+                        // If URI is from IPFS, convert to gateway
+                        let metadataUrl = tokenUri || PRE_REVEAL_URI;
+                        if (metadataUrl.startsWith('ipfs://')) {
+                            metadataUrl = metadataUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                        }
 
-                    // Fix Image URL
-                    let imageUrl = metadata.image || '';
-                    if (imageUrl.startsWith('ipfs://')) {
-                        imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                    }
-                    
-                    // If pre-reveal, ensure image is valid
-                    if (isPreReveal && !imageUrl) {
-                        imageUrl = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png"; // Fallback placeholder
-                    }
+                        // Special handling for pre-reveal check
+                        const isPreReveal = metadataUrl.includes("bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4");
 
-                    // Rarity Badge Logic
-                    // @ts-ignore
-                    let rarity = metadata.attributes?.find(a => a.trait_type === 'Rarity')?.value || 'Common';
-                    if (isPreReveal) {
-                        rarity = "Pre-Reveal";
+                        try {
+                            const res = await fetch(metadataUrl, { signal: AbortSignal.timeout(5000) });
+                            if (res.ok) {
+                                metadata = await res.json();
+                            }
+                        } catch {
+                            // If fetch fails, populate with basic info so it still shows up
+                            metadata = { 
+                                name: `Guardian #${tokenId}`, 
+                                image: "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png",
+                                attributes: [] 
+                            };
+                        }
+
+                        // Fix Image URL
+                        let imageUrl = metadata.image || '';
+                        if (imageUrl.startsWith('ipfs://')) {
+                            imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                        }
+                        
+                        // If pre-reveal, ensure image is valid
+                        if (isPreReveal && !imageUrl) {
+                            imageUrl = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.png";
+                        }
+
+                        // Rarity Badge Logic
+                        let rarity = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value || 'Common';
+                        if (isPreReveal) {
+                            rarity = "Pre-Reveal";
+                        }
+
+                        return {
+                            id: tokenId,
+                            name: metadata.name || `Guardian #${tokenId}`,
+                            image: imageUrl,
+                            traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || [],
+                            rarity: rarity,
+                            owner: owner,
+                            isListed: true,
+                            price: 0,
+                            currency: '$BASED'
+                        };
+
+                    } catch {
+                        // Return null for failed tokens - they'll be filtered out
+                        return null;
                     }
+                })(i)
+            );
 
-                    fetchedNFTs.push({
-                        id: tokenId,
-                        name: metadata.name || `Guardian #${tokenId}`,
-                        image: imageUrl,
-                        // @ts-ignore
-                        traits: metadata.attributes?.map(a => ({ type: a.trait_type, value: a.value })) || [],
-                        rarity: rarity,
-                        owner: owner,
-                        isListed: true, // Assume listed for display
-                        price: 0,
-                        currency: '$BASED'
-                    });
-
-                } catch (err) {
-                    // Skip failed tokens silently
-                }
-            }
+            // Wait for all parallel fetches
+            const results = await Promise.all(nftPromises);
+            const fetchedNFTs = results.filter((nft): nft is MarketItem => nft !== null);
 
             setDirectNFTs(fetchedNFTs);
 
