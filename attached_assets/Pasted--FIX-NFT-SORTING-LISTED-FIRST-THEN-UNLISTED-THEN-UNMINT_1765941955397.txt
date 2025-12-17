@@ -1,0 +1,120 @@
+=== FIX NFT SORTING - LISTED FIRST, THEN UNLISTED, THEN UNMINTED ===
+
+The marketplace collection needs to sort NFTs in this EXACT order:
+
+PRIORITY ORDER:
+1. LISTED NFTs (minted + for sale) - sorted by PRICE lowest to highest
+2. UNLISTED NFTs (minted but NOT for sale) - sorted by Token ID lowest to highest  
+3. UNMINTED NFTs (from CSV, not minted yet) - sorted by Token ID lowest to highest
+
+VISUAL DISPLAY:
+- LISTED: Shows listed price (e.g., "72,333 $BASED")
+- UNLISTED: Shows "Unlisted" or "--" where price would be
+- UNMINTED: Shows "MINT AVAILABLE" badge with 69,420 $BASED mint price
+
+FILE: /client/src/components/EscrowMarketplace.tsx
+
+STEP 1: Find the filteredItems useMemo (around line 559-615).
+Replace the sorting logic inside with this COMPLETE sorting algorithm:
+
+FIND the block containing:
+    // Default sort: Listed NFTs first, sorted by price (lowest to highest)
+    if (sortBy === 'listed-price-asc') {
+         items.sort((a, b) => {
+
+REPLACE the entire sorting block (lines ~582-613) with:
+
+    // COMMERCIAL SORT: Listed (price asc) → Unlisted (ID asc) → Unminted (ID asc)
+    if (sortBy === 'listed-price-asc') {
+         items.sort((a, b) => {
+             // STEP 1: Categorize each item
+             // Category 0 = LISTED (minted + for sale) - highest priority
+             // Category 1 = UNLISTED (minted but NOT for sale)
+             // Category 2 = UNMINTED (not minted yet) - lowest priority
+             const getCat = (x: typeof a) => {
+                 if (x.isMinted && x.isListed) return 0;  // Listed
+                 if (x.isMinted && !x.isListed) return 1; // Unlisted (minted, not for sale)
+                 return 2; // Unminted
+             };
+             
+             const catA = getCat(a);
+             const catB = getCat(b);
+             
+             // STEP 2: Sort by category first (lower category = higher priority)
+             if (catA !== catB) return catA - catB;
+             
+             // STEP 3: Within same category, apply appropriate sort
+             if (catA === 0) {
+                 // LISTED: Sort by price LOW to HIGH
+                 const priceA = a.price ?? Infinity;
+                 const priceB = b.price ?? Infinity;
+                 if (priceA !== priceB) return priceA - priceB;
+                 // If same price, sort by token ID
+                 return a.id - b.id;
+             } else {
+                 // UNLISTED or UNMINTED: Sort by token ID LOW to HIGH
+                 return a.id - b.id;
+             }
+         });
+    }
+
+STEP 2: Also update the allItems useMemo sort (around lines 505-520) to match.
+Find this block:
+     // Re-sort to ensure listed items appear first, sorted by price ascending
+     if (sortBy === 'listed-price-asc') {
+       items = items.sort((a, b) => {
+
+And replace with the SAME sorting algorithm from Step 1.
+
+STEP 3: Ensure isMinted is correctly set in the allItems transformation (lines 471-502).
+The logic should be:
+- isMinted = true if tokenId exists in mintedTokenIds set
+- isListed = true if isMinted AND tokenId exists in listedTokenIds set
+- price = undefined (or null) for minted but unlisted items
+- price = contract listing price for listed items
+- price = 69420 (mint price) for unminted items
+
+Verify this code exists around lines 474-491:
+        const tokenId = item.id;
+        const isMinted = mintedTokenIds.has(tokenId);
+        const isListed = isMinted && listedTokenIds.has(tokenId);
+        
+        let price: number | undefined;
+        if (!isMinted) {
+           price = MINT_PRICE;
+        } else if (isListed) {
+           price = listingPrices.get(tokenId);
+        } else {
+           price = undefined; // Minted but not listed - shows "Unlisted"
+        }
+
+STEP 4: In the MarketCard component (around lines 1473-1496), verify the price display logic:
+
+LISTED items should show:
+    <span className="text-[10px] text-muted-foreground uppercase">Listed Price</span>
+    <span className="text-lg font-bold text-primary font-mono">{price.toLocaleString()} $BASED</span>
+
+UNLISTED items (minted but not for sale) should show:
+    <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
+    <span className="text-sm font-bold text-white font-mono">Unlisted</span>
+
+UNMINTED items should show:
+    <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
+    <span className="text-lg font-bold text-[#6cff61] font-mono">69,420 $BASED</span>
+
+The existing code at lines 1475-1496 handles this, but change line 1494 from:
+    <span className="text-sm font-bold text-white font-mono">--</span>
+TO:
+    <span className="text-sm font-bold text-gray-400 font-mono italic">Unlisted</span>
+
+VERIFICATION:
+After these changes, when "For Sale" sort is selected:
+1. First items shown = LISTED NFTs (lowest price first)
+2. Next = MINTED but UNLISTED NFTs (showing "Unlisted", sorted by token ID)
+3. Last = UNMINTED NFTs (showing mint price badge, sorted by token ID)
+
+Test by:
+1. Checking that listed NFTs appear before unlisted ones
+2. Checking that unlisted NFTs appear before unminted ones
+3. Checking that listed NFTs are sorted by price (cheapest first)
+4. Checking that unlisted/unminted are sorted by token ID (lowest first)

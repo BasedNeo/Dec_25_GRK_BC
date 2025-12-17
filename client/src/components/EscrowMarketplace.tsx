@@ -595,72 +595,65 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // The hook knows about `sortBy`, but `price` is added HERE.
     // So we should sort by price here if needed.
     
-    // Sort helper: Always put minted NFTs first, then unminted
-    const mintedFirstSort = (a: any, b: any) => {
-        const aMinted = a.isMinted ? 1 : 0;
-        const bMinted = b.isMinted ? 1 : 0;
-        return bMinted - aMinted;
+    // COMMERCIAL SORT: Listed (price asc) → Unlisted (ID asc) → Unminted (ID asc)
+    // Category helper function
+    const getCat = (x: any) => {
+        if (x.isMinted && x.isListed) return 0;  // Listed - highest priority
+        if (x.isMinted && !x.isListed) return 1; // Unlisted (minted, not for sale)
+        return 2; // Unminted - lowest priority
     };
     
-    // Default sort: Listed NFTs first, sorted by price (lowest to highest)
-    // CRITICAL: Minted NFTs ALWAYS show before unminted NFTs
     if (sortBy === 'listed-price-asc') {
          items.sort((a, b) => {
-             // Priority 1: Minted NFTs ALWAYS come first
-             const aMinted = a.isMinted ? 1 : 0;
-             const bMinted = b.isMinted ? 1 : 0;
-             if (aMinted !== bMinted) return bMinted - aMinted;
+             const catA = getCat(a);
+             const catB = getCat(b);
              
-             // Priority 2: Listed items come before unlisted (within minted)
-             const aListed = a.isListed ? 1 : 0;
-             const bListed = b.isListed ? 1 : 0;
-             if (aListed !== bListed) return bListed - aListed;
+             // Sort by category first (lower category = higher priority)
+             if (catA !== catB) return catA - catB;
              
-             // Among listed items, sort by price ascending (lowest first)
-             if (a.isListed && b.isListed) {
-                 const priceA = a.price || Infinity;
-                 const priceB = b.price || Infinity;
-                 return priceA - priceB;
+             // Within same category, apply appropriate sort
+             if (catA === 0) {
+                 // LISTED: Sort by price LOW to HIGH
+                 const priceA = a.price ?? Infinity;
+                 const priceB = b.price ?? Infinity;
+                 if (priceA !== priceB) return priceA - priceB;
+                 return a.id - b.id;
+             } else {
+                 // UNLISTED or UNMINTED: Sort by token ID LOW to HIGH
+                 return a.id - b.id;
              }
-             
-             // Otherwise by ID
-             return a.id - b.id;
          });
     } else if (sortBy === 'listed-price-desc') {
-         // Highest price first - minted NFTs still always first
          items.sort((a, b) => {
-             // Priority 1: Minted NFTs ALWAYS come first
-             const aMinted = a.isMinted ? 1 : 0;
-             const bMinted = b.isMinted ? 1 : 0;
-             if (aMinted !== bMinted) return bMinted - aMinted;
+             const catA = getCat(a);
+             const catB = getCat(b);
              
-             // Priority 2: Listed items come before unlisted (within minted)
-             const aListed = a.isListed ? 1 : 0;
-             const bListed = b.isListed ? 1 : 0;
-             if (aListed !== bListed) return bListed - aListed;
+             // Sort by category first
+             if (catA !== catB) return catA - catB;
              
-             // Among listed items, sort by price descending (highest first)
-             if (a.isListed && b.isListed) {
-                 const priceA = a.price || 0;
-                 const priceB = b.price || 0;
-                 return priceB - priceA;
+             // Within same category
+             if (catA === 0) {
+                 // LISTED: Sort by price HIGH to LOW
+                 const priceA = a.price ?? 0;
+                 const priceB = b.price ?? 0;
+                 if (priceA !== priceB) return priceB - priceA;
+                 return b.id - a.id;
+             } else {
+                 // UNLISTED or UNMINTED: Sort by token ID HIGH to LOW
+                 return b.id - a.id;
              }
-             
-             // Otherwise by ID descending
-             return b.id - a.id;
          });
     } else if (sortBy === 'price-asc' || sortBy === 'price-desc' || sortBy === 'floor-price') {
          items.sort((a, b) => {
-             // Minted first
-             const aMinted = a.isMinted ? 1 : 0;
-             const bMinted = b.isMinted ? 1 : 0;
-             if (aMinted !== bMinted) return bMinted - aMinted;
+             const catA = getCat(a);
+             const catB = getCat(b);
+             if (catA !== catB) return catA - catB;
              
              const priceA = a.price || 0;
              const priceB = b.price || 0;
              if (sortBy === 'price-asc' || sortBy === 'floor-price') return priceA - priceB;
              if (sortBy === 'price-desc') return priceB - priceA;
-             return 0;
+             return a.id - b.id;
          });
     }
 
@@ -1542,8 +1535,8 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center">
-                            <span className="text-[10px] text-muted-foreground uppercase italic">Unlisted</span>
-                            <span className="text-sm font-bold text-white font-mono">--</span>
+                            <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
+                            <span className="text-sm font-bold text-gray-400 font-mono italic">Unlisted</span>
                         </div>
                     )}
                     
