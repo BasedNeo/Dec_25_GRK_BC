@@ -1,0 +1,151 @@
+=== ADD SOCIAL DISCLAIMER TO CUSTOM NAME ===
+
+When a user saves their custom name, show a popup informing them
+that this name may be used in social communications and leaderboards.
+
+═══════════════════════════════════════════════════════════
+FILE: /client/src/components/UserStats.tsx
+═══════════════════════════════════════════════════════════
+
+FIND the imports section (around line 1-18) and ADD:
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+---
+
+FIND the state declarations (around line 191-205) and ADD:
+
+const [showSocialDisclaimer, setShowSocialDisclaimer] = useState(false);
+const [pendingName, setPendingName] = useState<string | null>(null);
+
+---
+
+FIND the handleSaveName function (around line 473-494) and REPLACE WITH:
+
+const handleSaveName = async () => {
+  if (nameInput.length < 2) {
+    setNameError('Name must be at least 2 characters');
+    return;
+  }
+  if (!nameAvailable) {
+    setNameError('This name is already taken');
+    return;
+  }
+  
+  // Check if this is the first time setting a name
+  const isFirstTime = !profile?.customName;
+  
+  if (isFirstTime) {
+    // Show disclaimer for first-time users
+    setPendingName(nameInput);
+    setShowSocialDisclaimer(true);
+  } else {
+    // Just save directly if they're changing an existing name
+    await saveNameDirectly(nameInput);
+  }
+};
+
+const saveNameDirectly = async (name: string) => {
+  setSavingName(true);
+  const result = await setCustomName(name);
+  setSavingName(false);
+  
+  if (result.success) {
+    setEditingName(false);
+    setNameInput('');
+    setNameError(null);
+    
+    // Success toast
+    const { toast } = await import('@/hooks/use-toast');
+    toast({
+      title: "Name Saved!",
+      description: `Your Guardian name is now ${name}#${walletSuffix}`,
+      duration: 3000,
+    });
+  } else {
+    setNameError(result.error || 'Failed to save name');
+  }
+};
+
+const handleDisclaimerAccept = async () => {
+  setShowSocialDisclaimer(false);
+  if (pendingName) {
+    await saveNameDirectly(pendingName);
+    setPendingName(null);
+  }
+};
+
+const handleDisclaimerCancel = () => {
+  setShowSocialDisclaimer(false);
+  setPendingName(null);
+};
+
+---
+
+FIND the component's return statement, and ADD this AlertDialog
+BEFORE the closing </section> tag (around line 1278):
+
+{/* Social Communications Disclaimer */}
+<AlertDialog open={showSocialDisclaimer} onOpenChange={setShowSocialDisclaimer}>
+  <AlertDialogContent className="bg-black/95 border-cyan-500/50 backdrop-blur-md max-w-md">
+    <AlertDialogHeader>
+      <AlertDialogTitle className="text-xl font-orbitron text-cyan-400 flex items-center gap-2">
+        <Edit3 className="w-5 h-5" />
+        Public Guardian Name
+      </AlertDialogTitle>
+      <AlertDialogDescription className="text-gray-300 space-y-3 pt-2">
+        <p>
+          Your Guardian name <span className="text-white font-bold">{pendingName}#{walletSuffix}</span> will be visible in:
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
+          <li>Leaderboards & Rankings</li>
+          <li>Social media posts & announcements</li>
+          <li>Community communications</li>
+          <li>Public activity feeds</li>
+        </ul>
+        <p className="text-cyan-400 text-sm bg-cyan-500/10 border border-cyan-500/30 rounded p-2">
+          ℹ️ Choose a name you're comfortable sharing publicly
+        </p>
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter className="gap-2">
+      <AlertDialogCancel 
+        onClick={handleDisclaimerCancel}
+        className="bg-transparent border-gray-600 text-gray-400 hover:bg-gray-800"
+      >
+        Cancel
+      </AlertDialogCancel>
+      <AlertDialogAction 
+        onClick={handleDisclaimerAccept}
+        className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90"
+      >
+        I Understand, Save Name
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+After making these changes:
+1. Go to Stats page
+2. Click "Set Name" (first time)
+3. Enter a name and click Save
+4. Should see popup with disclaimer
+5. Click "I Understand, Save Name"
+6. Name should save successfully
+
+If changing an existing name:
+- Should NOT show disclaimer (only for first-time)
+- Should save directly
