@@ -115,10 +115,10 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await provider.getBlockNumber();
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Look back ~40000 blocks to capture sales from the last ~22 hours
-      // BasedAI ~2 sec blocks, so 40000 blocks ≈ 22 hours of history
+      // Look back ~500000 blocks to capture all historical activity
+      // BasedAI ~2 sec blocks, so 500000 blocks ≈ 11.5 days of history
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const fromBlock = Math.max(0, currentBlock - 40000);
+      const fromBlock = Math.max(0, currentBlock - 500000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
@@ -134,11 +134,13 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
         listedEvents,
         soldEvents
       ] = await Promise.all([
-        nftContract.totalMinted().catch(() => 0),
-        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch(() => []),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch(() => []),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch(() => [])
+        nftContract.totalMinted().catch((e: Error) => { console.warn('totalMinted failed:', e.message); return 0; }),
+        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Transfer events failed:', e.message); return []; }),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Listed events failed:', e.message); return []; }),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch((e: Error) => { console.warn('Sold events failed:', e.message); return []; })
       ]);
+      
+      console.log(`Activity Feed: Block ${fromBlock}-${currentBlock}, Transfers: ${transferEvents.length}, Listed: ${listedEvents.length}, Sold: ${soldEvents.length}`);
       
       setContractStats({
         totalMinted: Number(totalMinted),
