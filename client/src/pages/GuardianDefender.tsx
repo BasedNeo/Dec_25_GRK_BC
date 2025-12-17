@@ -15,17 +15,26 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Home } from 'lucide-react';
 import { useLocation } from 'wouter';
+import rocketShip from '@assets/Untitled.png';
 
 export function GuardianDefender() {
   const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<GameState | null>(null);
   const inputRef = useRef({ left: false, right: false, up: false, down: false, shoot: false });
+  const shipImageRef = useRef<HTMLImageElement | null>(null);
   const [phase, setPhase] = useState<'gate' | 'menu' | 'playing' | 'ended'>('gate');
   const [displayScore, setDisplayScore] = useState(0);
   const [displayLives, setDisplayLives] = useState(3);
   const [displayLevel, setDisplayLevel] = useState(1);
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
+
+  // Load ship image
+  useEffect(() => {
+    const img = new Image();
+    img.src = rocketShip;
+    shipImageRef.current = img;
+  }, []);
 
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -69,7 +78,7 @@ export function GuardianDefender() {
         applyInput(state, inputRef.current, width);
         updateGame(state, width, height);
       }
-      render(ctx, state, width, height, isHolder);
+      render(ctx, state, width, height, isHolder, shipImageRef.current || undefined);
 
       setDisplayScore(state.score);
       setDisplayLives(state.player.lives);
