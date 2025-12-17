@@ -10,8 +10,10 @@ import {
   ChevronRight,
   Shield,
   Trophy,
+  Rocket,
 } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useLocation } from "wouter";
 import { ADMIN_WALLETS } from "@/lib/constants";
 import Untitled from "@assets/Untitled.png";
 import { useTranslation } from "react-i18next";
@@ -23,6 +25,7 @@ interface HomeHubProps {
 
 export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const { address } = useAccount();
   const isAdmin = address && ADMIN_WALLETS.some(admin => admin.toLowerCase() === address.toLowerCase());
 
@@ -74,6 +77,16 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       description: t('hub.statsDesc', 'Your Guardian journey'),
       color: 'from-purple-500 to-pink-500',
       glow: 'purple'
+    },
+    { 
+      id: 'game', 
+      label: t('hub.gameLabel', 'Guardian Defender'), 
+      icon: Rocket, 
+      description: t('hub.gameDesc', 'The Based Odyssey arcade'),
+      color: 'from-orange-500 to-red-500',
+      glow: 'orange',
+      isRoute: true,
+      route: '/game'
     },
     { 
       id: 'voting', 
@@ -154,7 +167,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
             return (
               <motion.button
                 key={item.id}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => item.isRoute ? setLocation(item.route!) : onNavigate(item.id)}
                 className="w-full group relative"
                 initial={{ x: -60, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
