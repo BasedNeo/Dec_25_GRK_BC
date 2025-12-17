@@ -1,14 +1,22 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { Rocket } from 'lucide-react';
+import React, { Component, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home, Bug, Rocket } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  isolate?: boolean;
+  resetKeys?: unknown[];
+  feature?: string;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+  errorId: string | null;
 }
 
 const WALLET_ERROR_PATTERNS = [
@@ -38,7 +46,7 @@ const WALLET_ERROR_PATTERNS = [
   'coinbase',
 ];
 
-function isWalletError(error: Error | undefined): boolean {
+function isWalletError(error: Error | null): boolean {
   if (!error) return false;
   
   const errorMessage = (error.message || '').toLowerCase();
@@ -52,34 +60,149 @@ function isWalletError(error: Error | undefined): boolean {
   );
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: null
+    };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     if (isWalletError(error)) {
-      console.log('[ErrorBoundary] Ignoring wallet-related error:', error.message);
       return { hasError: false };
     }
-    return { hasError: true, error };
+    return {
+      hasError: true,
+      error,
+      errorId: `err_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+    };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     if (isWalletError(error)) {
       this.setState({ hasError: false });
       return;
     }
-    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+
+    const { onError, feature } = this.props;
+    const { errorId } = this.state;
+
+    console.error(`[ErrorBoundary${feature ? ` - ${feature}` : ''}]`, {
+      errorId,
+      error,
+      errorInfo,
+      timestamp: new Date().toISOString()
+    });
+
+    this.setState({ errorInfo });
+
+    if (onError) {
+      onError(error, errorInfo);
+    }
+
+    if (import.meta.env.PROD) {
+      this.reportError(error, errorInfo, errorId || '');
+    }
   }
 
+  componentDidUpdate(prevProps: Props) {
+    const { resetKeys } = this.props;
+    const { hasError } = this.state;
+
+    if (hasError && resetKeys && prevProps.resetKeys) {
+      if (resetKeys.some((key, i) => key !== prevProps.resetKeys![i])) {
+        this.resetError();
+      }
+    }
+  }
+
+  reportError(error: Error, errorInfo: React.ErrorInfo, errorId: string) {
+    try {
+      const errorLog = {
+        id: errorId,
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        timestamp: Date.now(),
+        feature: this.props.feature,
+        userAgent: navigator.userAgent,
+        url: window.location.href
+      };
+
+      const logs = JSON.parse(localStorage.getItem('error_logs') || '[]');
+      logs.push(errorLog);
+      
+      if (logs.length > 20) logs.shift();
+      
+      localStorage.setItem('error_logs', JSON.stringify(logs));
+    } catch (e) {
+      console.error('Failed to log error:', e);
+    }
+  }
+
+  resetError = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: null
+    });
+  };
+
+  copyErrorDetails = () => {
+    const { error, errorInfo, errorId } = this.state;
+    const details = `
+Error ID: ${errorId}
+Feature: ${this.props.feature || 'Unknown'}
+Message: ${error?.message}
+Stack: ${error?.stack}
+Component Stack: ${errorInfo?.componentStack}
+URL: ${window.location.href}
+Time: ${new Date().toISOString()}
+    `.trim();
+
+    navigator.clipboard.writeText(details);
+  };
+
   render() {
-    if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.08)_0%,transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(191,0,255,0.06)_0%,transparent_40%)]" />
+    const { hasError, error, errorId } = this.state;
+    const { children, fallback, isolate, feature } = this.props;
+
+    if (hasError) {
+      if (fallback) {
+        return fallback;
+      }
+
+      if (isolate) {
+        return (
+          <div className="p-4 border border-red-500/30 bg-red-500/10 rounded-lg">
+            <div className="flex items-center gap-2 text-red-400 mb-2">
+              <AlertTriangle size={16} />
+              <span className="text-sm font-mono">
+                {feature ? `${feature} Error` : 'Component Error'}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={this.resetError}
+              className="text-xs"
+              data-testid="button-retry-isolated"
+            >
+              <RefreshCw size={12} className="mr-1" />
+              Retry
+            </Button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.1)_0%,transparent_50%)]" />
           
           <div className="absolute inset-0 overflow-hidden">
             {[...Array(50)].map((_, i) => (
@@ -97,65 +220,82 @@ export class ErrorBoundary extends Component<Props, State> {
             ))}
           </div>
           
-          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
-          
-          <div className="text-center p-8 relative z-10 max-w-lg">
-            <div className="mb-8">
-              <div className="text-7xl mb-4">
-                <span className="inline-block animate-bounce">🛸</span>
+          <Card className="relative z-10 max-w-2xl w-full bg-black/95 border-red-500/30 backdrop-blur-xl p-8">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
               </div>
-              <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
-                // transmission interrupted
-              </div>
-            </div>
-            
-            <h1 className="text-3xl md:text-4xl font-orbitron font-bold mb-6 text-white leading-tight">
-              A Small Glitch in the{' '}
-              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-pulse">
-                Galaxy
-              </span>
-            </h1>
-            
-            <p className="text-gray-300 mb-2 text-base">
-              Even the best starships hit turbulence sometimes.
-            </p>
-            <p className="text-gray-500 mb-8 text-sm">
-              Your assets are safe. Let's get you back on course.
-            </p>
-            
-            <button 
-              onClick={() => window.location.reload()}
-              className="group px-8 py-4 bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black rounded-xl font-orbitron font-bold text-base hover:shadow-[0_0_40px_rgba(0,255,255,0.5)] transition-all duration-300 flex items-center justify-center gap-3 mx-auto transform hover:scale-105"
-              data-testid="button-error-reload"
-            >
-              <Rocket className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              LAUNCH AGAIN
-            </button>
-            
-            <button 
-              onClick={() => window.location.href = '/'}
-              className="mt-4 px-6 py-2 text-cyan-400/70 hover:text-cyan-400 font-mono text-xs transition-colors"
-              data-testid="button-error-home"
-            >
-              or return to Command Center →
-            </button>
-            
-            <div className="mt-12 p-4 bg-white/5 border border-cyan-500/20 rounded-lg backdrop-blur-sm">
-              <p className="text-cyan-400/50 text-[10px] font-mono mb-1">// Debug transmission:</p>
-              <p className="text-cyan-400/60 font-mono text-[10px] break-all">
-                {this.state.error?.message || 'Unknown cosmic disturbance'}
+              
+              <h1 className="text-2xl font-orbitron font-bold text-white mb-2">
+                Houston, We Have a Problem
+              </h1>
+              
+              <p className="text-gray-400">
+                Something went wrong while loading this component.
+                {feature && ` (Feature: ${feature})`}
               </p>
             </div>
-            
-            <p className="text-gray-600/50 text-[10px] mt-8 font-orbitron tracking-widest">
-              BASED GUARDIANS • PROTECTING THE GALAXY
+
+            <div className="bg-black/50 border border-red-500/20 rounded-lg p-4 mb-6">
+              <div className="text-xs font-mono text-red-300 mb-2">
+                Error ID: {errorId}
+              </div>
+              <div className="text-sm text-gray-300 mb-2 font-mono">
+                {error?.message || 'Unknown error'}
+              </div>
+              {import.meta.env.DEV && (
+                <details className="text-xs text-gray-500 mt-2">
+                  <summary className="cursor-pointer hover:text-gray-400">
+                    Stack Trace (Dev Only)
+                  </summary>
+                  <pre className="mt-2 p-2 bg-black/50 rounded overflow-x-auto text-[10px]">
+                    {error?.stack}
+                  </pre>
+                </details>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={this.resetError}
+                className="flex-1 bg-cyan-500 text-black hover:bg-cyan-400"
+                data-testid="button-error-retry"
+              >
+                <RefreshCw className="mr-2" size={16} />
+                Try Again
+              </Button>
+              
+              <Button
+                onClick={() => window.location.href = '/'}
+                variant="outline"
+                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                data-testid="button-error-home"
+              >
+                <Home className="mr-2" size={16} />
+                Go Home
+              </Button>
+              
+              <Button
+                onClick={this.copyErrorDetails}
+                variant="outline"
+                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                data-testid="button-error-copy"
+              >
+                <Bug className="mr-2" size={16} />
+                Copy Error
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-gray-500 mt-6">
+              If this problem persists, please contact support with Error ID: {errorId}
             </p>
-          </div>
+          </Card>
         </div>
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }
+
+export { ErrorBoundary };

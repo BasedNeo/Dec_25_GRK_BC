@@ -17,6 +17,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { AdminInbox } from "@/components/AdminInbox";
 import { UserStats } from "@/components/UserStats";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -107,7 +108,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <NFTGallery filterByOwner={true} title="YOUR BATTALION" />
+              <ErrorBoundary feature="Portfolio" isolate={true}>
+                <NFTGallery filterByOwner={true} title="YOUR BATTALION" />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -120,10 +123,12 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <EscrowMarketplace 
-                onNavigateToMint={() => setActiveTab("mint")} 
-                onNavigateToPortfolio={() => setActiveTab("gallery")}
-              />
+              <ErrorBoundary feature="Marketplace" isolate={true}>
+                <EscrowMarketplace 
+                  onNavigateToMint={() => setActiveTab("mint")} 
+                  onNavigateToPortfolio={() => setActiveTab("gallery")}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -136,7 +141,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <Governance />
+              <ErrorBoundary feature="Governance" isolate={true}>
+                <Governance />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -149,7 +156,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <PoolTracker />
+              <ErrorBoundary feature="Treasury" isolate={true}>
+                <PoolTracker />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -162,7 +171,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <UserStats />
+              <ErrorBoundary feature="Stats" isolate={true}>
+                <UserStats />
+              </ErrorBoundary>
             </motion.div>
           )}
 

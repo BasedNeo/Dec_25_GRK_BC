@@ -4,10 +4,12 @@ import { ethers } from 'ethers';
 import { 
   X, Shield, RefreshCw, Trash2, Database, Activity, 
   Zap, AlertTriangle, Eye, EyeOff, Server,
-  Download, Wrench, Inbox, Mail
+  Download, Wrench, Inbox, Mail, Bug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
+import { errorReporter } from '@/lib/errorReporter';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -36,6 +38,16 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [showLogs, setShowLogs] = useState(false);
   const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
   const [emailCount, setEmailCount] = useState<number>(0);
+  const [errorLogs, setErrorLogs] = useState(errorReporter.getLogs());
+  
+  useEffect(() => {
+    if (isOpen) {
+      const interval = setInterval(() => {
+        setErrorLogs(errorReporter.getLogs());
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen]);
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -607,6 +619,63 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               <span className="text-white font-mono">{cacheStats.size} KB ({cacheStats.entries} entries)</span>
             </div>
           </div>
+          
+          <Card className="mb-6 p-4 bg-black/40 border-red-500/30">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-red-400 flex items-center gap-2">
+                <Bug size={14} />
+                Recent Errors ({errorLogs.length})
+              </h3>
+              {errorLogs.length > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => { errorReporter.clearLogs(); setErrorLogs([]); }}
+                  className="text-xs text-gray-400 h-6"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            
+            {errorLogs.length === 0 ? (
+              <p className="text-gray-500 text-xs">No errors logged</p>
+            ) : (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {errorLogs.slice(-5).reverse().map((log, idx) => (
+                  <div key={log.id || idx} className="p-2 bg-red-500/10 border border-red-500/20 rounded text-[10px]">
+                    <div className="flex items-start justify-between mb-1">
+                      <span className="font-mono text-red-400">{log.feature || 'Unknown'}</span>
+                      <span className="text-gray-500">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-gray-300 truncate">{log.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {errorLogs.length > 0 && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full mt-3 text-xs h-7 border-gray-600"
+                onClick={() => {
+                  const data = errorReporter.exportLogs();
+                  const blob = new Blob([data], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `error-logs-${Date.now()}.json`;
+                  a.click();
+                }}
+              >
+                <Download size={12} className="mr-1" />
+                Export All Logs
+              </Button>
+            )}
+          </Card>
           
           {showLogs && (
             <div className="mb-6">
