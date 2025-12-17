@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, ChevronUp } from 'lucide-react';
 import { languages } from '@/lib/i18n';
 
+const LANGUAGE_CHOSEN_KEY = 'bguard_language_chosen';
+
 export function LanguageSelector() {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [hasChosenLanguage, setHasChosenLanguage] = useState(false);
+
+  useEffect(() => {
+    const chosen = localStorage.getItem(LANGUAGE_CHOSEN_KEY);
+    setHasChosenLanguage(chosen === 'true');
+  }, []);
 
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0];
 
   const handleLanguageChange = (code: string) => {
     i18n.changeLanguage(code);
+    localStorage.setItem('i18nextLng', code);
+    localStorage.setItem(LANGUAGE_CHOSEN_KEY, 'true');
+    setHasChosenLanguage(true);
     setIsOpen(false);
   };
 
@@ -55,21 +66,28 @@ export function LanguageSelector() {
 
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2.5 bg-gray-900/90 backdrop-blur-md border border-gray-700/50 rounded-full shadow-lg hover:border-cyan-500/50 hover:shadow-cyan-500/20 transition-all group"
+        className={`flex items-center gap-2 ${
+          hasChosenLanguage ? 'p-2.5' : 'px-4 py-2.5'
+        } bg-gray-900/90 backdrop-blur-md border border-gray-700/50 rounded-full shadow-lg hover:border-cyan-500/50 hover:shadow-cyan-500/20 transition-all group`}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         data-testid="button-language-toggle"
+        title={hasChosenLanguage ? `${currentLang.name} - Click to change` : 'Select language'}
       >
         <Globe className="w-4 h-4 text-cyan-400" />
-        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
-          {currentLang.flag} {currentLang.name}
-        </span>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronUp className="w-4 h-4 text-gray-500" />
-        </motion.div>
+        {!hasChosenLanguage && (
+          <>
+            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+              {currentLang.flag} {currentLang.name}
+            </span>
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            </motion.div>
+          </>
+        )}
       </motion.button>
     </div>
   );
