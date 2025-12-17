@@ -166,10 +166,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     <ShieldAlert className="w-3 h-3 mr-1" /> SYSTEM PAUSED
                 </Badge>
             )}
-            <Badge variant="outline" className="hidden md:flex border-red-500/50 text-red-500 text-[10px] tracking-widest font-mono ml-[-10px] mt-[-20px] rotate-12 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
-                BETA
-            </Badge>
-          </div>
+                      </div>
 
           {/* Desktop Navigation */}
           <div className="flex items-center gap-2 ml-auto md:ml-4 mr-2 md:mr-0 price-feed-container flex-shrink-0">
