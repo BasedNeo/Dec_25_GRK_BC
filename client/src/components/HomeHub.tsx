@@ -29,7 +29,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
   const menuItems = [
     { 
       id: 'mint', 
-      label: t('hub.mintLabel', 'MINT - TO LIFT OFF!'), 
+      label: t('hub.mintLabel', 'Mint - Lift Off!'), 
       icon: Sparkles, 
       description: t('hub.mintDesc', 'Mint your Guardian NFT'),
       color: 'from-cyan-400 to-teal-500',
@@ -37,7 +37,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'gallery', 
-      label: t('hub.portfolioLabel', 'PORTFOLIO'), 
+      label: t('hub.portfolioLabel', 'Portfolio'), 
       icon: Wallet, 
       description: t('hub.portfolioDesc', 'View your NFT collection'),
       color: 'from-emerald-500 to-cyan-500',
@@ -45,7 +45,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'escrow', 
-      label: t('hub.marketLabel', 'MARKET'), 
+      label: t('hub.marketLabel', 'Market'), 
       icon: Grid3X3, 
       description: t('hub.marketDesc', 'Browse & trade on marketplace'),
       color: 'from-violet-500 to-purple-500',
@@ -53,7 +53,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'universe', 
-      label: t('hub.universeLabel', 'UNIVERSE'), 
+      label: t('hub.universeLabel', 'Universe'), 
       icon: Globe, 
       description: t('hub.universeDesc', 'Explore the Based Guardians lore'),
       color: 'from-blue-500 to-indigo-500',
@@ -61,7 +61,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'pool', 
-      label: t('hub.poolLabel', 'POOL'), 
+      label: t('hub.poolLabel', 'Pool'), 
       icon: Droplets, 
       description: t('hub.poolDesc', 'Track community emissions'),
       color: 'from-cyan-500 to-blue-500',
@@ -69,7 +69,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'stats', 
-      label: t('hub.statsLabel', 'USER STATS'), 
+      label: t('hub.statsLabel', 'User Stats'), 
       icon: Trophy, 
       description: t('hub.statsDesc', 'Your Guardian journey'),
       color: 'from-purple-500 to-pink-500',
@@ -77,7 +77,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'voting', 
-      label: t('hub.votingLabel', 'VOTING'), 
+      label: t('hub.votingLabel', 'Voting'), 
       icon: Vote, 
       description: t('hub.votingDesc', 'Participate in governance'),
       color: 'from-amber-500 to-orange-500',
@@ -85,7 +85,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'activity', 
-      label: t('hub.activityLabel', 'ACTIVITY'), 
+      label: t('hub.activityLabel', 'Activity'), 
       icon: Activity, 
       description: t('hub.activityDesc', 'Live transaction feed'),
       color: 'from-rose-500 to-pink-500',

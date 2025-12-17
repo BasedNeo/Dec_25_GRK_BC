@@ -7,7 +7,8 @@
     "escrow": "Market",
     "voting": "Voting",
     "pool": "Pool",
-    "stats": "Stats"
+    "stats": "Stats",
+    "activity": "Activity"
   },
   "common": {
     "connectWallet": "Connect Wallet",
@@ -25,6 +26,24 @@
     "title": "Based Guardians",
     "subtitle": "Protect the Galaxy",
     "welcome": "Welcome to the Based Guardians Command Center"
+  },
+  "hub": {
+    "mintLabel": "Mint - Lift Off!",
+    "mintDesc": "Mint your Guardian NFT",
+    "portfolioLabel": "Portfolio",
+    "portfolioDesc": "View your NFT collection",
+    "marketLabel": "Market",
+    "marketDesc": "Browse & trade on marketplace",
+    "universeLabel": "Universe",
+    "universeDesc": "Explore the Based Guardians lore",
+    "poolLabel": "Pool",
+    "poolDesc": "Track community emissions",
+    "statsLabel": "User Stats",
+    "statsDesc": "Your Guardian journey",
+    "votingLabel": "Voting",
+    "votingDesc": "Participate in governance",
+    "activityLabel": "Activity",
+    "activityDesc": "Live transaction feed"
   },
   "mint": {
     "title": "Mint Your Guardian",

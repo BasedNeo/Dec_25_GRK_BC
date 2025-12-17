@@ -7,7 +7,8 @@
     "escrow": "Markt",
     "voting": "Abstimmung",
     "pool": "Pool",
-    "stats": "Statistik"
+    "stats": "Statistik",
+    "activity": "Aktivität"
   },
   "common": {
     "connectWallet": "Wallet verbinden",

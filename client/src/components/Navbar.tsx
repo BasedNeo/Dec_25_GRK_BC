@@ -132,14 +132,14 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   }, [address, activeTab]); // Re-check when tab changes as user might have performed actions
 
   const navItems = [
-    { id: 'mint', label: t('nav.mint', 'MINT') },
-    { id: 'gallery', label: t('nav.gallery', 'PORTFOLIO') },
-    { id: 'escrow', label: t('nav.escrow', 'MARKET') },
-    { id: 'universe', label: t('nav.universe', 'UNIVERSE') },
-    { id: 'pool', label: t('nav.pool', 'POOL') },
-    { id: 'stats', label: t('nav.stats', 'STATS') },
-    { id: 'voting', label: t('nav.voting', 'VOTING') }, 
-    { id: 'activity', label: t('nav.activity', 'ACTIVITY') },
+    { id: 'mint', label: t('nav.mint', 'Mint') },
+    { id: 'gallery', label: t('nav.gallery', 'Portfolio') },
+    { id: 'escrow', label: t('nav.escrow', 'Market') },
+    { id: 'universe', label: t('nav.universe', 'Universe') },
+    { id: 'pool', label: t('nav.pool', 'Pool') },
+    { id: 'stats', label: t('nav.stats', 'Stats') },
+    { id: 'voting', label: t('nav.voting', 'Voting') }, 
+    { id: 'activity', label: t('nav.activity', 'Activity') },
   ];
 
   return (

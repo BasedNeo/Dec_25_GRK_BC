@@ -466,6 +466,29 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
      const combinedListings = directListingIds.length > 0 ? directListingIds : wagmiListings;
      const listedTokenIds = new Set<number>(combinedListings);
      
+     // Build offer map: tokenId -> highest offer amount
+     const v3OffersByToken = new Map<number, number>();
+     offersV3.myOffers.forEach((offer: { status: string; price: string; tokenId: number }) => {
+       if (offer.status === 'pending' || offer.status === 'accepted') {
+         const amount = parseFloat(offer.price);
+         const current = v3OffersByToken.get(offer.tokenId) || 0;
+         if (amount > current) {
+           v3OffersByToken.set(offer.tokenId, amount);
+         }
+       }
+     });
+     
+     // Also get V2 offers from offersByToken
+     const v2OffersByToken = new Map<number, number>();
+     offersByToken.forEach((offers, tokenId) => {
+       const highestOffer = offers.reduce((max, o) => {
+         const amt = parseFloat(o.amount);
+         return amt > max ? amt : max;
+       }, 0);
+       if (highestOffer > 0) {
+         v2OffersByToken.set(tokenId, highestOffer);
+       }
+     });
      
      // Flatten pages and determine real status based on contract data
      let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
@@ -490,6 +513,11 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
            price = undefined;
         }
         
+        // Get highest offer (V3 takes priority, fallback to V2)
+        const v3Offer = v3OffersByToken.get(tokenId);
+        const v2Offer = v2OffersByToken.get(tokenId);
+        const highestOffer = v3Offer || v2Offer || undefined;
+        
         return {
           ...item,
           isListed,
@@ -497,30 +525,14 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           mintPrice: MINT_PRICE,
           price,
           currency: '$BASED' as const,
-          owner: isMinted ? `0x${'?'.repeat(38)}` : undefined // Unknown owner for minted items
+          owner: isMinted ? `0x${'?'.repeat(38)}` : undefined,
+          highestOffer,
+          hasActiveOffer: !!highestOffer
         };
      }) as unknown as MarketItem[];
      
-     // Re-sort to ensure listed items appear first, sorted by price ascending
-     if (sortBy === 'listed-price-asc') {
-       items = items.sort((a, b) => {
-         // Listed items come first
-         const aListed = a.isListed ? 1 : 0;
-         const bListed = b.isListed ? 1 : 0;
-         if (aListed !== bListed) return bListed - aListed;
-         // Both listed: sort by price ascending (lowest first)
-         if (a.isListed && b.isListed) {
-           const priceA = a.price || Infinity;
-           const priceB = b.price || Infinity;
-           return priceA - priceB;
-         }
-         // Neither listed: sort by ID
-         return a.id - b.id;
-       });
-     }
-     
      return items;
-  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, sortBy, listingPrices]);
+  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, listingPrices, offersV3.myOffers, offersByToken]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
@@ -578,10 +590,23 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // The hook knows about `sortBy`, but `price` is added HERE.
     // So we should sort by price here if needed.
     
+    // Sort helper: Always put minted NFTs first, then unminted
+    const mintedFirstSort = (a: any, b: any) => {
+        const aMinted = a.isMinted ? 1 : 0;
+        const bMinted = b.isMinted ? 1 : 0;
+        return bMinted - aMinted;
+    };
+    
     // Default sort: Listed NFTs first, sorted by price (lowest to highest)
+    // CRITICAL: Minted NFTs ALWAYS show before unminted NFTs
     if (sortBy === 'listed-price-asc') {
          items.sort((a, b) => {
-             // Priority 1: Listed items come first
+             // Priority 1: Minted NFTs ALWAYS come first
+             const aMinted = a.isMinted ? 1 : 0;
+             const bMinted = b.isMinted ? 1 : 0;
+             if (aMinted !== bMinted) return bMinted - aMinted;
+             
+             // Priority 2: Listed items come before unlisted (within minted)
              const aListed = a.isListed ? 1 : 0;
              const bListed = b.isListed ? 1 : 0;
              if (aListed !== bListed) return bListed - aListed;
@@ -593,16 +618,39 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                  return priceA - priceB;
              }
              
-             // Priority 2: Minted (not listed) come before unminted
+             // Otherwise by ID
+             return a.id - b.id;
+         });
+    } else if (sortBy === 'listed-price-desc') {
+         // Highest price first - minted NFTs still always first
+         items.sort((a, b) => {
+             // Priority 1: Minted NFTs ALWAYS come first
              const aMinted = a.isMinted ? 1 : 0;
              const bMinted = b.isMinted ? 1 : 0;
              if (aMinted !== bMinted) return bMinted - aMinted;
              
-             // Otherwise by ID
-             return a.id - b.id;
+             // Priority 2: Listed items come before unlisted (within minted)
+             const aListed = a.isListed ? 1 : 0;
+             const bListed = b.isListed ? 1 : 0;
+             if (aListed !== bListed) return bListed - aListed;
+             
+             // Among listed items, sort by price descending (highest first)
+             if (a.isListed && b.isListed) {
+                 const priceA = a.price || 0;
+                 const priceB = b.price || 0;
+                 return priceB - priceA;
+             }
+             
+             // Otherwise by ID descending
+             return b.id - a.id;
          });
     } else if (sortBy === 'price-asc' || sortBy === 'price-desc' || sortBy === 'floor-price') {
          items.sort((a, b) => {
+             // Minted first
+             const aMinted = a.isMinted ? 1 : 0;
+             const bMinted = b.isMinted ? 1 : 0;
+             if (aMinted !== bMinted) return bMinted - aMinted;
+             
              const priceA = a.price || 0;
              const priceB = b.price || 0;
              if (sortBy === 'price-asc' || sortBy === 'floor-price') return priceA - priceB;
@@ -1017,9 +1065,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                    <SelectValue placeholder="Sort" />
                  </SelectTrigger>
                  <SelectContent className="bg-black/95 border-white/10 backdrop-blur-sm">
-                   <SelectItem value="listed-price-asc">For Sale</SelectItem>
-                   <SelectItem value="price-asc">Price: Low</SelectItem>
-                   <SelectItem value="price-desc">Price: High</SelectItem>
+                   <SelectItem value="listed-price-asc">Price: Low First</SelectItem>
+                   <SelectItem value="listed-price-desc">Price: High First</SelectItem>
                    <SelectItem value="floor-price">Floor Price</SelectItem>
                    <SelectItem value="rarity-desc">Rarity: High</SelectItem>
                    <SelectItem value="rarity-asc">Rarity: Low</SelectItem>

@@ -7,7 +7,8 @@
     "escrow": "マーケット",
     "voting": "投票",
     "pool": "プール",
-    "stats": "統計"
+    "stats": "統計",
+    "activity": "アクティビティ"
   },
   "common": {
     "connectWallet": "ウォレット接続",
