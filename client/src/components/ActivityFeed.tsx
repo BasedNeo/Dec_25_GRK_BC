@@ -26,7 +26,11 @@ import {
   Tag,
   ArrowRightLeft,
   X,
-  Gavel
+  Gavel,
+  Swords,
+  Gem,
+  Sparkles,
+  Crown
 } from 'lucide-react';
 import { 
   useActivityFeed, 
@@ -214,6 +218,75 @@ export function ActivityFeed({
         {!compact && (
           <div className="mt-8">
             <DiamondHandsLeaderboard />
+          </div>
+        )}
+
+        {!compact && (
+          <div className="mt-8">
+            <Card className="bg-black/60 border-purple-500/30 p-6 backdrop-blur-sm relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                      <Swords className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-orbitron font-bold text-white text-lg">Race-to-Based P2E Games</h3>
+                      <p className="text-xs text-muted-foreground">Play-to-Earn Gaming Leaderboard</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 animate-pulse">
+                    COMING SOON
+                  </Badge>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse" />
+                      <div className="relative p-4 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 rounded-full border border-purple-500/30">
+                        <Gem className="w-12 h-12 text-purple-400" />
+                      </div>
+                    </div>
+                    
+                    <h4 className="font-orbitron text-white text-xl mb-2">Compete. Earn. Dominate.</h4>
+                    <p className="text-muted-foreground text-sm max-w-md mb-4">
+                      Race against other Guardians in exciting P2E mini-games. Earn $BASED rewards and climb the leaderboard!
+                    </p>
+                    
+                    <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-4">
+                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
+                        <div className="text-2xl mb-1">🏎️</div>
+                        <p className="text-[10px] text-gray-400 font-mono">SPEED RACE</p>
+                      </div>
+                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
+                        <div className="text-2xl mb-1">🎯</div>
+                        <p className="text-[10px] text-gray-400 font-mono">BRAIN BATTLE</p>
+                      </div>
+                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
+                        <div className="text-2xl mb-1">💎</div>
+                        <p className="text-[10px] text-gray-400 font-mono">BASED HUNT</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 flex items-center gap-2 text-xs text-purple-400/80">
+                      <Sparkles className="w-4 h-4" />
+                      <span>Launching Q1 2025</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 rounded-lg p-3 border border-purple-500/20">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Crown className="w-4 h-4 text-yellow-400" />
+                    <span className="text-gray-300">Top players will earn exclusive NFT rewards and $BASED prizes!</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
         )}
       </div>
