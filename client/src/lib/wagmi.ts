@@ -15,6 +15,7 @@ import {
   safeWallet,
   argentWallet,
   ledgerWallet,
+  uniswapWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
@@ -53,6 +54,7 @@ const wallets = [
       injectedWallet,
       metaMaskWallet,
       coinbaseWallet,
+      uniswapWallet,
       rainbowWallet,
       trustWallet,
     ],
