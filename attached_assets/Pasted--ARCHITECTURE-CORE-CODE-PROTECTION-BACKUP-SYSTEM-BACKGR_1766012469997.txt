@@ -1,0 +1,567 @@
+=== ARCHITECTURE: CORE CODE PROTECTION + BACKUP SYSTEM ===
+
+BACKGROUND: With a tiny dev team, accidental changes to core commerce code could break the entire app. Need automated protection + version control backup system.
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE CORE PROTECTION MANIFEST
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/core/PROTECTION_MANIFEST.json
+
+{
+  "version": "1.0.0",
+  "lastVerified": "2024-12-17",
+  "protectedFiles": [
+    {
+      "path": "client/src/core/commerce/useMint.ts",
+      "criticality": "CRITICAL",
+      "reason": "NFT minting with fixed price (69,420 $BASED)",
+      "lastModified": "2024-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["mint-1-nft", "mint-max-affordable", "mint-soldout-check"]
+    },
+    {
+      "path": "client/src/core/commerce/useMarketplace.ts",
+      "criticality": "CRITICAL",
+      "reason": "Marketplace listing, buying, offer acceptance",
+      "lastModified": "2024-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["list-nft", "buy-nft", "approve-marketplace"]
+    },
+    {
+      "path": "client/src/core/commerce/useOffers.ts",
+      "criticality": "HIGH",
+      "reason": "V3 off-chain offer system",
+      "lastModified": "2024-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["make-offer-v3", "accept-offer-v3", "complete-purchase"]
+    },
+    {
+      "path": "client/src/lib/constants.ts",
+      "criticality": "CRITICAL",
+      "reason": "Contract addresses, revenue splits (LOCKED)",
+      "lastModified": "2024-12-10",
+      "checksum": "",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    },
+    {
+      "path": "client/src/lib/mockData.ts",
+      "criticality": "HIGH",
+      "reason": "Treasury calculations (LOCKED formulas)",
+      "lastModified": "2024-12-10",
+      "checksum": "",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    },
+    {
+      "path": "server/routes.ts",
+      "criticality": "HIGH",
+      "reason": "API endpoints, rate limiting, validation",
+      "lastModified": "2024-12-17",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["api-profile-login", "api-profile-name", "api-rate-limit"]
+    },
+    {
+      "path": "server/storage.ts",
+      "criticality": "HIGH",
+      "reason": "Database operations",
+      "lastModified": "2024-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["db-profile-create", "db-name-check"]
+    },
+    {
+      "path": "shared/schema.ts",
+      "criticality": "CRITICAL",
+      "reason": "Database schema (DO NOT MODIFY WITHOUT MIGRATION)",
+      "lastModified": "2024-12-10",
+      "checksum": "",
+      "testRequired": false,
+      "locked": true,
+      "allowedChanges": []
+    }
+  ],
+  "requiredTests": {
+    "mint-1-nft": "Successfully mint 1 NFT with correct price",
+    "list-nft": "Successfully list owned NFT for sale",
+    "buy-nft": "Successfully purchase listed NFT",
+    "approve-marketplace": "Approve marketplace for NFT transfers",
+    "make-offer-v3": "Create gasless V3 offer",
+    "accept-offer-v3": "Seller accepts V3 offer",
+    "api-rate-limit": "Rate limiter blocks >100 requests/15min"
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE AUTOMATED BACKUP SCRIPT
+═══════════════════════════════════════════════════════════
+
+CREATE: script/backup-core.ts
+
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+
+interface ProtectedFile {
+  path: string;
+  criticality: string;
+  reason: string;
+  checksum: string;
+  locked?: boolean;
+}
+
+const MANIFEST_PATH = './client/src/core/PROTECTION_MANIFEST.json';
+const BACKUP_DIR = '.core-backups';
+const MAX_BACKUPS = 50; // Keep last 50 versions
+
+function getChecksum(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return crypto.createHash('sha256').update(content).digest('hex');
+  } catch (error) {
+    console.error(`❌ Error reading ${filePath}:`, error);
+    return '';
+  }
+}
+
+function createBackup(filePath: string): boolean {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const checksum = getChecksum(filePath);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    
+    // Create backup directory structure
+    const backupPath = path.join(BACKUP_DIR, path.dirname(filePath));
+    fs.mkdirSync(backupPath, { recursive: true });
+    
+    // Save backup with timestamp
+    const fileName = path.basename(filePath);
+    const backupFile = path.join(backupPath, `${fileName}.${timestamp}.bak`);
+    fs.writeFileSync(backupFile, content, 'utf8');
+    
+    // Save metadata
+    const metaFile = `${backupFile}.meta.json`;
+    fs.writeFileSync(metaFile, JSON.stringify({
+      originalPath: filePath,
+      timestamp,
+      checksum,
+      size: content.length
+    }, null, 2));
+    
+    console.log(`✅ Backed up: ${filePath} (${checksum.slice(0, 8)}...)`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Backup failed for ${filePath}:`, error);
+    return false;
+  }
+}
+
+function cleanOldBackups(filePath: string) {
+  try {
+    const backupPath = path.join(BACKUP_DIR, path.dirname(filePath));
+    const fileName = path.basename(filePath);
+    
+    if (!fs.existsSync(backupPath)) return;
+    
+    // Get all backup files for this file
+    const backups = fs.readdirSync(backupPath)
+      .filter(f => f.startsWith(fileName) && f.endsWith('.bak'))
+      .map(f => ({
+        name: f,
+        path: path.join(backupPath, f),
+        mtime: fs.statSync(path.join(backupPath, f)).mtime
+      }))
+      .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+    
+    // Keep only MAX_BACKUPS most recent
+    if (backups.length > MAX_BACKUPS) {
+      const toDelete = backups.slice(MAX_BACKUPS);
+      toDelete.forEach(backup => {
+        fs.unlinkSync(backup.path);
+        const metaPath = `${backup.path}.meta.json`;
+        if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+        console.log(`🗑️  Deleted old backup: ${backup.name}`);
+      });
+    }
+  } catch (error) {
+    console.error('Error cleaning old backups:', error);
+  }
+}
+
+function verifyIntegrity(): boolean {
+  console.log('\n🔍 Verifying core file integrity...\n');
+  
+  if (!fs.existsSync(MANIFEST_PATH)) {
+    console.error('❌ Protection manifest not found!');
+    return false;
+  }
+  
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+  let allValid = true;
+  const changes: Array<{ file: string; status: string; action: string }> = [];
+  
+  for (const file of manifest.protectedFiles) {
+    if (!fs.existsSync(file.path)) {
+      console.error(`❌ CRITICAL: ${file.path} is missing!`);
+      allValid = false;
+      changes.push({ file: file.path, status: 'MISSING', action: 'RESTORE FROM BACKUP' });
+      continue;
+    }
+    
+    const currentChecksum = getChecksum(file.path);
+    
+    // If no checksum in manifest, this is first run - save it
+    if (!file.checksum) {
+      file.checksum = currentChecksum;
+      changes.push({ file: file.path, status: 'INITIALIZED', action: 'Checksum saved' });
+      continue;
+    }
+    
+    // Check if file changed
+    if (currentChecksum !== file.checksum) {
+      if (file.locked) {
+        console.error(`❌ CRITICAL: LOCKED file ${file.path} was modified!`);
+        allValid = false;
+        changes.push({ file: file.path, status: 'MODIFIED (LOCKED)', action: 'REVIEW IMMEDIATELY' });
+      } else {
+        console.warn(`⚠️  ${file.path} has changed (${file.criticality})`);
+        changes.push({ file: file.path, status: 'MODIFIED', action: 'Backup created' });
+        
+        // Create backup before updating checksum
+        createBackup(file.path);
+        cleanOldBackups(file.path);
+        file.checksum = currentChecksum;
+      }
+    } else {
+      console.log(`✅ ${file.path} - OK`);
+    }
+  }
+  
+  // Update manifest with new checksums
+  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+  
+  // Show summary
+  if (changes.length > 0) {
+    console.log('\n📋 CHANGE SUMMARY:\n');
+    console.table(changes);
+  }
+  
+  if (!allValid) {
+    console.error('\n❌ INTEGRITY CHECK FAILED - REVIEW REQUIRED\n');
+    process.exit(1);
+  }
+  
+  console.log('\n✅ All protected files verified successfully\n');
+  return true;
+}
+
+function restoreBackup(filePath: string, timestamp?: string) {
+  const backupPath = path.join(BACKUP_DIR, path.dirname(filePath));
+  const fileName = path.basename(filePath);
+  
+  if (!fs.existsSync(backupPath)) {
+    console.error(`❌ No backups found for ${filePath}`);
+    return false;
+  }
+  
+  // Get all backups
+  const backups = fs.readdirSync(backupPath)
+    .filter(f => f.startsWith(fileName) && f.endsWith('.bak'))
+    .map(f => ({
+      name: f,
+      path: path.join(backupPath, f),
+      timestamp: f.match(/\.(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/)?.[1] || '',
+      mtime: fs.statSync(path.join(backupPath, f)).mtime
+    }))
+    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+  
+  if (backups.length === 0) {
+    console.error(`❌ No backups found for ${filePath}`);
+    return false;
+  }
+  
+  // Find specific backup or use most recent
+  const backup = timestamp 
+    ? backups.find(b => b.timestamp === timestamp)
+    : backups[0];
+  
+  if (!backup) {
+    console.error(`❌ Backup not found`);
+    return false;
+  }
+  
+  try {
+    const content = fs.readFileSync(backup.path, 'utf8');
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log(`✅ Restored ${filePath} from backup: ${backup.name}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Restore failed:`, error);
+    return false;
+  }
+}
+
+// CLI Commands
+const command = process.argv[2];
+
+switch (command) {
+  case 'verify':
+    verifyIntegrity();
+    break;
+    
+  case 'backup':
+    {
+      const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+      fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      
+      console.log('🔐 Backing up protected files...\n');
+      let success = 0;
+      for (const file of manifest.protectedFiles) {
+        if (createBackup(file.path)) {
+          cleanOldBackups(file.path);
+          success++;
+        }
+      }
+      console.log(`\n✅ Backed up ${success}/${manifest.protectedFiles.length} files\n`);
+    }
+    break;
+    
+  case 'restore':
+    {
+      const filePath = process.argv[3];
+      const timestamp = process.argv[4];
+      
+      if (!filePath) {
+        console.error('Usage: npm run core:restore <file-path> [timestamp]');
+        process.exit(1);
+      }
+      
+      restoreBackup(filePath, timestamp);
+    }
+    break;
+    
+  case 'list':
+    {
+      const filePath = process.argv[3];
+      if (!filePath) {
+        console.error('Usage: npm run core:list <file-path>');
+        process.exit(1);
+      }
+      
+      const backupPath = path.join(BACKUP_DIR, path.dirname(filePath));
+      const fileName = path.basename(filePath);
+      
+      if (!fs.existsSync(backupPath)) {
+        console.log(`No backups found for ${filePath}`);
+        process.exit(0);
+      }
+      
+      const backups = fs.readdirSync(backupPath)
+        .filter(f => f.startsWith(fileName) && f.endsWith('.bak'))
+        .map(f => {
+          const metaPath = path.join(backupPath, `${f}.meta.json`);
+          const meta = fs.existsSync(metaPath) 
+            ? JSON.parse(fs.readFileSync(metaPath, 'utf8'))
+            : {};
+          
+          return {
+            file: f,
+            timestamp: meta.timestamp || 'unknown',
+            checksum: (meta.checksum || '').slice(0, 8),
+            size: `${Math.round((meta.size || 0) / 1024)}KB`
+          };
+        });
+      
+      console.log(`\n📦 Backups for ${filePath}:\n`);
+      console.table(backups);
+    }
+    break;
+    
+  default:
+    console.log(`
+🔐 Core Protection System
+
+Commands:
+  npm run core:verify           Verify integrity of protected files
+  npm run core:backup           Create backups of all protected files
+  npm run core:restore <path>   Restore file from most recent backup
+  npm run core:list <path>      List all backups for a file
+
+Examples:
+  npm run core:verify
+  npm run core:backup
+  npm run core:restore client/src/core/commerce/useMint.ts
+  npm run core:list client/src/lib/constants.ts
+    `);
+    break;
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: ADD NPM SCRIPTS
+═══════════════════════════════════════════════════════════
+
+FILE: package.json
+
+FIND "scripts" section, ADD:
+
+"scripts": {
+  ...existing scripts...
+  "core:verify": "tsx script/backup-core.ts verify",
+  "core:backup": "tsx script/backup-core.ts backup",
+  "core:restore": "tsx script/backup-core.ts restore",
+  "core:list": "tsx script/backup-core.ts list",
+  "pre-deploy": "npm run core:verify && npm run build",
+  "pre-commit": "npm run core:verify"
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: CREATE PRE-DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════
+
+CREATE: DEPLOYMENT_CHECKLIST.md
+
+# 🚀 Pre-Deployment Checklist
+
+Run these checks BEFORE every deployment to production.
+
+## 1. Core Integrity Check
+npm run core:verify✅ Expected: All protected files pass integrity check
+❌ If failed: Review changes, restore from backup if needed
+
+## 2. Database Verification
+npm run db:verify✅ Expected: All tables exist and accessible
+❌ If failed: Run `npm run db:push` to apply migrations
+
+## 3. Security Tests
+# Test rate limiting
+curl -X GET http://localhost:5000/api/health (repeat 110 times)
+# Should see 429 after 100 requests## 4. Commerce Function Tests
+
+### Mint Test
+- [ ] Connect wallet
+- [ ] Go to Mint page
+- [ ] Mint 1 NFT successfully
+- [ ] Verify NFT appears in Portfolio
+
+### Marketplace Test
+- [ ] List owned NFT for sale
+- [ ] Verify listing appears in Market
+- [ ] (Optional) Buy from different wallet
+- [ ] Verify ownership transfer
+
+### Offer Test (V3)
+- [ ] Make gasless offer (EIP-712 signature)
+- [ ] Verify offer stored in localStorage
+- [ ] Seller accepts offer
+- [ ] Buyer completes purchase
+- [ ] Verify NFT transfer
+
+### Profile Test
+- [ ] Set custom name
+- [ ] Verify profanity filter blocks bad names
+- [ ] Verify duplicate names blocked
+- [ ] Name displays correctly in Stats
+
+## 5. Performance Check
+# Open browser console
+memReport()
+timers()- Memory usage < 200MB after 5 minutes
+- Active timers < 20
+- No memory leaks detected
+
+## 6. Translation Check
+- [ ] Switch to 3 different languages
+- [ ] Verify nav menu translates
+- [ ] Verify marketplace translates
+- [ ] No missing translation keys
+
+## 7. Mobile Check
+- [ ] Test on mobile device
+- [ ] Wallet connect works
+- [ ] Touch controls responsive
+- [ ] Game playable (if applicable)
+
+## 8. Final Backup
+npm run core:backup✅ All protected files backed up before deployment
+
+## 9. Build Production
+npm run build✅ Build completes without errors
+✅ No TypeScript errors
+✅ No linter errors
+
+## 10. Deploy
+Only after ALL checks pass:
+npm run start═══════════════════════════════════════════════════════════
+PART 5: CREATE GIT HOOKS (OPTIONAL BUT RECOMMENDED)
+═══════════════════════════════════════════════════════════
+
+If using Git:
+
+CREATE: .husky/pre-commit (if using Husky)
+
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Verifying core file integrity..."
+npm run core:verify
+
+if [ $? -ne 0 ]; then
+  echo "❌ Core integrity check failed!"
+  echo "Review changes to protected files before committing."
+  exit 1
+fi
+
+OR manually add to .git/hooks/pre-commit:
+
+#!/bin/bash
+npm run core:verify || exit 1
+
+Make executable:
+chmod +x .git/hooks/pre-commit
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. Initialize protection system:
+   npm run core:verify
+   # Should initialize checksums for all protected files
+
+2. Create initial backup:
+   npm run core:backup
+   # Should create .core-backups directory
+
+3. Test integrity detection:
+   # Make small change to constants.ts (add a comment)
+   npm run core:verify
+   # Should detect change and create backup
+
+4. Test restore:
+   npm run core:list client/src/lib/constants.ts
+   # Shows available backups
+   
+   npm run core:restore client/src/lib/constants.ts
+   # Restores most recent backup
+
+5. Test locked file protection:
+   # Change a LOCKED file (e.g., mockData.ts)
+   npm run core:verify
+   # Should FAIL and exit with error
+
+CHECKLIST:
+□ PROTECTION_MANIFEST.json created
+□ backup-core.ts created
+□ NPM scripts added
+□ DEPLOYMENT_CHECKLIST.md created
+□ core:verify runs successfully
+□ core:backup creates backups
+□ core:restore works
+□ Locked file changes detected
+□ Pre-deploy checks documented
