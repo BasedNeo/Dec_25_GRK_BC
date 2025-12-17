@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
 import { NotificationSettings } from "./NotificationSettings";
+import { PriceTicker } from "./PriceTicker";
 import Untitled from "@/assets/Untitled.png";
 import { useTranslation } from "react-i18next";
 
@@ -210,6 +211,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                         }
                       </span>
                   </div>
+               </div>
+               
+               {/* BTC/ETH Price Ticker - Hidden on mobile */}
+               <div className="hidden lg:block">
+                 <PriceTicker />
                </div>
             </div>
 
