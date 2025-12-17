@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
@@ -311,6 +312,7 @@ function GameStatsSection() {
 }
 
 export function UserStats() {
+  const { t } = useTranslation();
   const { address, isConnected } = useAccount();
   const { profile, getDisplayName, setCustomName, checkNameAvailable, walletSuffix } = useGuardianProfileContext();
   const [nftCount, setNftCount] = useState(0);
@@ -608,11 +610,11 @@ export function UserStats() {
 
   const handleSaveName = async () => {
     if (nameInput.length < 2) {
-      setNameError('Name must be at least 2 characters');
+      setNameError(t('profile.nameRules', 'Name must be at least 2 characters'));
       return;
     }
     if (!nameAvailable) {
-      setNameError('This name is already taken');
+      setNameError(t('profile.nameTaken', 'This name is already taken'));
       return;
     }
     
@@ -639,7 +641,7 @@ export function UserStats() {
       setNameInput('');
       setNameError(null);
     } else {
-      setNameError(result.error || 'Failed to save name');
+      setNameError(result.error || t('errors.generic', 'Failed to save name'));
     }
   };
 
@@ -767,7 +769,7 @@ export function UserStats() {
                         <Input
                           value={nameInput}
                           onChange={(e) => handleNameChange(e.target.value)}
-                          placeholder="Choose a name (2-16 chars)"
+                          placeholder={t('profile.nameRules', '2-16 characters, letters/numbers only')}
                           className="bg-gray-800/50 border-gray-700 text-white pr-10"
                           maxLength={16}
                           data-testid="input-edit-name"
@@ -791,7 +793,7 @@ export function UserStats() {
                         className="bg-purple-600 hover:bg-purple-500"
                         data-testid="button-save-edit-name"
                       >
-                        {savingName ? '...' : 'Save'}
+                        {savingName ? '...' : t('common.save', 'Save')}
                       </Button>
                       <Button
                         size="sm"
@@ -809,7 +811,7 @@ export function UserStats() {
                       </div>
                     )}
                     {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
-                    {nameAvailable === false && !nameError && <p className="text-xs text-red-400 mt-1">This name is already taken</p>}
+                    {nameAvailable === false && !nameError && <p className="text-xs text-red-400 mt-1">{t('profile.nameTaken', 'Name already taken')}</p>}
                   </div>
                 ) : (
                   <div className="flex-1">
@@ -839,7 +841,7 @@ export function UserStats() {
                   data-testid="button-edit-name"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
-                  {getDisplayName() ? 'Change Name' : 'Set Name'}
+                  {getDisplayName() ? t('profile.editName', 'Edit Name') : t('profile.setName', 'Set Name')}
                 </Button>
               )}
             </div>
