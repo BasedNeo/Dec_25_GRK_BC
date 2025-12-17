@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, 
+  ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Check,
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
   Flame, Zap, History, MessageCircle, TrendingUp, Loader2, Square, LayoutGrid, Grid3x3, Grid, Info, Tag
 } from "lucide-react";
@@ -881,6 +881,34 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       });
   };
 
+  // Helper to get the best offer for a specific token
+  const getOfferDataForToken = (tokenId: number): { offerer: string; amount: number; expiresAt: number } | null => {
+    const offers = offersByToken.get(tokenId);
+    if (!offers || offers.length === 0) return null;
+    
+    // Return the highest offer
+    const bestOffer = offers.reduce((best, offer) => {
+      const amount = Number(offer.amount);
+      return amount > (best ? Number(best.amount) : 0) ? offer : best;
+    }, offers[0]);
+    
+    return {
+      offerer: bestOffer.offerer,
+      amount: Number(bestOffer.amount),
+      expiresAt: bestOffer.expiresAt
+    };
+  };
+
+  // Wrapper for MarketCard accept offer (simpler signature)
+  const handleCardAcceptOffer = async (tokenId: number, offerer: string) => {
+    await handleAcceptOffer(`${tokenId}-${offerer}`, tokenId, offerer);
+  };
+
+  // Wrapper for MarketCard decline offer
+  const handleCardDeclineOffer = async (tokenId: number, offerer: string) => {
+    handleRejectOffer(`${tokenId}-${offerer}`);
+  };
+
   return (
     <section id="marketplace" className="py-20 bg-black min-h-screen relative">
        {/* Background */}
@@ -1288,7 +1316,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                         'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
                     }`}>
                         {displayedItems.map((item) => (
-                            <MarketCard key={item.id} item={item} onBuy={() => {}} onOffer={() => handleOffer(item)} onClick={() => setSelectedNFT(item)} isOwner={true} totalMinted={contractStats?.totalMinted} />
+                            <MarketCard 
+                                key={item.id} 
+                                item={item} 
+                                onBuy={() => {}} 
+                                onOffer={() => handleOffer(item)} 
+                                onClick={() => setSelectedNFT(item)} 
+                                isOwner={true} 
+                                totalMinted={contractStats?.totalMinted}
+                                offerData={getOfferDataForToken(item.id)}
+                                onAcceptOffer={handleCardAcceptOffer}
+                                onDeclineOffer={handleCardDeclineOffer}
+                            />
                         ))}
                      </div>
                 ) : (
@@ -1452,7 +1491,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 import { NFTImage } from "./NFTImage";
 
 // Helper Card Component - Memoized for performance
-const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number }) {
+const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClick, isOwner = false, isAdmin = false, onCancel, totalMinted, offerData, onAcceptOffer, onDeclineOffer }: { item: MarketItem, onBuy: () => void, onOffer: () => void, onClick: () => void, isOwner?: boolean, isAdmin?: boolean, onCancel?: () => void, totalMinted?: number, offerData?: { offerer: string; amount: number; expiresAt: number } | null, onAcceptOffer?: (tokenId: number, offerer: string) => void, onDeclineOffer?: (tokenId: number, offerer: string) => void }) {
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
     const [showListModal, setShowListModal] = useState(false);
@@ -1540,8 +1579,48 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                         </div>
                     )}
                     
-                    {/* Highest Offer - Always shown below price when offers exist */}
-                    {item.highestOffer && item.highestOffer > 0 && (
+                    {/* Offer Panel for Owners - Show when there's an active offer */}
+                    {isOwner && offerData && offerData.amount > 0 && (
+                        <div className="mt-2 p-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-purple-400 uppercase font-semibold flex items-center gap-1">
+                                    <MessageCircle size={10} /> OFFER RECEIVED
+                                </span>
+                            </div>
+                            <div className="text-sm font-bold text-white font-mono">
+                                {offerData.amount.toLocaleString()} $BASED
+                            </div>
+                            <div className="text-[9px] text-gray-400 font-mono truncate mb-2">
+                                From: {offerData.offerer.slice(0, 6)}...{offerData.offerer.slice(-4)}
+                            </div>
+                            <div className="flex gap-2">
+                                <Button 
+                                    size="sm"
+                                    className="flex-1 bg-green-500 hover:bg-green-400 text-black text-xs font-bold h-7"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAcceptOffer?.(item.id, offerData.offerer);
+                                    }}
+                                >
+                                    <Check size={12} className="mr-1" /> ACCEPT
+                                </Button>
+                                <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/20 text-xs font-bold h-7"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeclineOffer?.(item.id, offerData.offerer);
+                                    }}
+                                >
+                                    <X size={12} className="mr-1" /> DECLINE
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Best Offer text for non-owners */}
+                    {!isOwner && item.highestOffer && item.highestOffer > 0 && (
                         <span className="text-[11px] text-gray-400 font-mono mt-1">
                             Best Offer: {item.highestOffer.toLocaleString()} $BASED
                         </span>
