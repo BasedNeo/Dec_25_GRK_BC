@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
+import { formatEther } from 'viem';
 import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from './useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
+import { SafeMath } from '@/lib/safeMath';
 
 const MINT_PRICE = 69420;
 
@@ -54,14 +55,23 @@ export function useMint() {
 
   const canAfford = (qty: number) => {
     if (!balanceData) return false;
-    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
-    return balanceData.value >= cost;
+    try {
+      const cost = SafeMath.toWei(mintPrice.toString()) * BigInt(qty);
+      return SafeMath.gte(balanceData.value, cost);
+    } catch {
+      return false;
+    }
   };
 
   const maxAffordable = () => {
     if (!balanceData) return 0;
-    const bal = Number(formatEther(balanceData.value));
-    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+    try {
+      const mintPriceWei = SafeMath.toWei(mintPrice.toString());
+      const maxQty = Number(balanceData.value / mintPriceWei);
+      return Math.min(Math.floor(maxQty), remainingSupply, 10);
+    } catch {
+      return 0;
+    }
   };
 
   useEffect(() => {
@@ -140,7 +150,14 @@ export function useMint() {
       setStatus('Preparing transaction...');
 
       const totalPrice = MINT_PRICE * quantity;
-      const valueInWei = parseEther(totalPrice.toString());
+      const valueInWei = SafeMath.toWei(totalPrice.toString());
+
+      const validation = SafeMath.validate(valueInWei);
+      if (!validation.valid) {
+        setError(validation.error || 'Invalid amount');
+        setIsLoading(false);
+        return;
+      }
 
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
