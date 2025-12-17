@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { useIsGuardianHolder } from './useIsGuardianHolder';
 
-const MAX_DAILY_PLAYS = 10;
+const MAX_DAILY_PLAYS = 25;
 const COOLDOWN_SECONDS = 30;
 const STORAGE_KEY = 'guardian_game_access';
 
