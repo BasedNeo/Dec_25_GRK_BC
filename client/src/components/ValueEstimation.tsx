@@ -21,10 +21,11 @@ import { useGuardians } from "@/hooks/useGuardians";
 import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ethers } from "ethers";
 import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
+import { useInterval } from "@/hooks/useInterval";
 
 const MINT_PRICE = 69420;
 const NFT_ABI = ["function totalMinted() view returns (uint256)"];
@@ -43,29 +44,27 @@ export function ValueEstimation() {
   const salesVolume = activityStats?.totalVolume ?? 0;
 
   // Live Ticker - updates every 60 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-        setBaseValuePerNFT(calculateBackedValue());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  useInterval(() => {
+    setBaseValuePerNFT(calculateBackedValue());
+  }, 60000);
 
   // Fetch minted count from contract
-  useEffect(() => {
-    const fetchMintedCount = async () => {
-      try {
-        const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
-        const minted = await contract.totalMinted();
-        setMintedCount(Number(minted));
-      } catch {
-        // Silent fail
-      }
-    };
-    fetchMintedCount();
-    const interval = setInterval(fetchMintedCount, 60000);
-    return () => clearInterval(interval);
+  const fetchMintedCount = useCallback(async () => {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+      const minted = await contract.totalMinted();
+      setMintedCount(Number(minted));
+    } catch {
+      // Silent fail
+    }
   }, []);
+
+  useEffect(() => {
+    fetchMintedCount();
+  }, [fetchMintedCount]);
+
+  useInterval(fetchMintedCount, 60000);
 
   // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
   // See replit.md "LOCKED CALCULATIONS" section for details

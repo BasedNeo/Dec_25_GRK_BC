@@ -5,6 +5,8 @@ import { Loader2, CheckCircle2, XCircle, ExternalLink, RefreshCw, Copy, Check } 
 import { Button } from '@/components/ui/button';
 import { BLOCK_EXPLORER } from '@/lib/constants';
 import confetti from 'canvas-confetti';
+import { useInterval } from '@/hooks/useInterval';
+import { TimerManager } from '@/lib/timerManager';
 
 export interface TransactionState {
   hash?: `0x${string}`;
@@ -33,15 +35,9 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
     confirmations: 1,
   });
   
-  useEffect(() => {
-    if (!transaction || transaction.status === 'idle') return;
-    
-    const timer = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [transaction?.hash]);
+  useInterval(() => {
+    setElapsedTime(prev => prev + 1);
+  }, transaction && transaction.status !== 'idle' ? 1000 : null);
   
   useEffect(() => {
     if (isSuccess && !showConfetti) {
@@ -69,10 +65,10 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
     
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
     
-    const interval = setInterval(() => {
+    const intervalId = TimerManager.setInterval(() => {
       const timeLeft = animationEnd - Date.now();
       if (timeLeft <= 0) {
-        clearInterval(interval);
+        TimerManager.clear(intervalId);
         return;
       }
       

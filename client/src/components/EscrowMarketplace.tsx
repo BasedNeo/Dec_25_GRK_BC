@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useInterval } from "@/hooks/useInterval";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,65 +85,65 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [listingPrices, setListingPrices] = useState<Map<number, number>>(new Map());
   
   // --- Fetch totalMinted, minted token IDs, AND active listings directly via ethers.js ---
-  useEffect(() => {
-    const fetchContractData = async () => {
-      try {
-        const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
-        
-        // NFT Contract for minted tokens
-        const nftContract = new ethers.Contract(
-          '0xaE51dc5fD1499A129f8654963560f9340773ad59',
-          [
-            'function totalMinted() view returns (uint256)',
-            'function tokenByIndex(uint256 index) view returns (uint256)'
-          ],
-          provider
+  const fetchContractData = useCallback(async () => {
+    try {
+      const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+      
+      // NFT Contract for minted tokens
+      const nftContract = new ethers.Contract(
+        '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+        [
+          'function totalMinted() view returns (uint256)',
+          'function tokenByIndex(uint256 index) view returns (uint256)'
+        ],
+        provider
+      );
+      
+      // Marketplace Contract for listings
+      const marketplaceContract = new ethers.Contract(
+        MARKETPLACE_CONTRACT,
+        [
+          'function getActiveListings() view returns (uint256[])'
+        ],
+        provider
+      );
+      
+      // Fetch minted data
+      const totalMinted = await nftContract.totalMinted();
+      const totalMintedNum = Number(totalMinted);
+      setContractStats({ totalMinted: totalMintedNum });
+      
+      // Fetch all minted token IDs in PARALLEL for speed
+      if (totalMintedNum > 0) {
+        const tokenPromises = Array.from({ length: totalMintedNum }, (_, i) =>
+          nftContract.tokenByIndex(i)
+            .then((id: bigint) => Number(id))
+            .catch(() => null)
         );
-        
-        // Marketplace Contract for listings
-        const marketplaceContract = new ethers.Contract(
-          MARKETPLACE_CONTRACT,
-          [
-            'function getActiveListings() view returns (uint256[])'
-          ],
-          provider
-        );
-        
-        // Fetch minted data
-        const totalMinted = await nftContract.totalMinted();
-        const totalMintedNum = Number(totalMinted);
-        setContractStats({ totalMinted: totalMintedNum });
-        
-        // Fetch all minted token IDs in PARALLEL for speed
-        if (totalMintedNum > 0) {
-          const tokenPromises = Array.from({ length: totalMintedNum }, (_, i) =>
-            nftContract.tokenByIndex(i)
-              .then((id: bigint) => Number(id))
-              .catch(() => null)
-          );
-          const results = await Promise.all(tokenPromises);
-          const tokenIds = results.filter((id): id is number => id !== null);
-          setMintedTokenIdsList(tokenIds);
-        }
-        
-        // Fetch active listings directly from marketplace contract
-        try {
-          const activeListings = await marketplaceContract.getActiveListings();
-          const listingIds = activeListings.map((id: bigint) => Number(id));
-          setDirectListingIds(listingIds);
-        } catch {
-          // Listing fetch failed silently
-        }
-        
-      } catch {
-        // Contract data fetch failed silently
+        const results = await Promise.all(tokenPromises);
+        const tokenIds = results.filter((id): id is number => id !== null);
+        setMintedTokenIdsList(tokenIds);
       }
-    };
-    fetchContractData();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchContractData, 30000);
-    return () => clearInterval(interval);
+      
+      // Fetch active listings directly from marketplace contract
+      try {
+        const activeListings = await marketplaceContract.getActiveListings();
+        const listingIds = activeListings.map((id: bigint) => Number(id));
+        setDirectListingIds(listingIds);
+      } catch {
+        // Listing fetch failed silently
+      }
+      
+    } catch {
+      // Contract data fetch failed silently
+    }
   }, []);
+
+  useEffect(() => {
+    fetchContractData();
+  }, [fetchContractData]);
+
+  useInterval(fetchContractData, 30000);
 
   // Fetch listing prices for all active listings
   useEffect(() => {

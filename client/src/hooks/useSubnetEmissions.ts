@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
+import { useInterval } from '@/hooks/useInterval';
 
 // ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
@@ -335,25 +336,22 @@ export function useSubnetEmissions(): SubnetEmissionsData {
 
   useEffect(() => {
     fetchEmissions();
-    const interval = setInterval(fetchEmissions, 60000); // Poll every minute
-    return () => clearInterval(interval);
   }, [fetchEmissions]);
+
+  useInterval(fetchEmissions, 60000);
 
   // Fetch block info for halving countdown
   useEffect(() => {
     getBlockInfo().then(info => {
       if (info) setBlockInfo(info);
     });
-    
-    // Update every 5 minutes
-    const interval = setInterval(() => {
-      getBlockInfo().then(info => {
-        if (info) setBlockInfo(info);
-      });
-    }, 300000);
-    
-    return () => clearInterval(interval);
   }, []);
+
+  useInterval(() => {
+    getBlockInfo().then(info => {
+      if (info) setBlockInfo(info);
+    });
+  }, 300000);
 
   // Use known rates, not calculated from balance
   const dailyRate = BRAIN_CONFIG.communityDailyRate; // 6,438/day

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, RefreshCw, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
 import { useAccount } from 'wagmi';
+import { useInterval } from '@/hooks/useInterval';
 
 interface HealthStatus {
   rpc: 'checking' | 'healthy' | 'degraded' | 'down';
@@ -89,9 +90,9 @@ export function HealthCheckBanner() {
 
   useEffect(() => {
     checkHealth();
-    const interval = setInterval(checkHealth, 60000);
-    return () => clearInterval(interval);
   }, []);
+
+  useInterval(checkHealth, 60000);
 
   const hasIssues = health.rpc === 'down' || health.rpc === 'degraded' || health.contracts === 'paused' || health.contracts === 'error';
 

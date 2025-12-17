@@ -12,6 +12,7 @@ const MINT_PRICE = 69420;
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useEffect, useState, useMemo } from "react";
+import { useInterval } from "@/hooks/useInterval";
 import { MarketItem } from "@/lib/marketplaceData";
 import DOMPurify from 'dompurify';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -352,12 +353,9 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   }, [isOpen, nft]);
 
   // Live Ticker for Backed Value
-  useEffect(() => {
-    const interval = setInterval(() => {
-        setBackedValue(calculateBackedValue());
-    }, 1000); // Update every second
-    return () => clearInterval(interval);
-  }, []);
+  useInterval(() => {
+    setBackedValue(calculateBackedValue());
+  }, 1000);
 
   // Safe Sanitize Helper - Strips HTML tags to enforce textContent
   const safeSanitize = (content: string | undefined | null) => {

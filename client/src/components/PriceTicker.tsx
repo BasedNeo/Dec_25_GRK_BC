@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePriceTicker } from '@/hooks/usePriceTicker';
 import { useTokenPrice } from '@/hooks/useTokenPrice';
+import { useInterval } from '@/hooks/useInterval';
 
 const ROTATE_INTERVAL = 8000;
 
@@ -20,12 +21,9 @@ export function PriceTicker() {
   const { btcPrice, ethPrice, isLoading: cryptoLoading, securityStatus } = usePriceTicker();
   const { data: basedPrice } = useTokenPrice();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowBased(prev => !prev);
-    }, ROTATE_INTERVAL);
-    return () => clearInterval(interval);
-  }, []);
+  useInterval(() => {
+    setShowBased(prev => !prev);
+  }, ROTATE_INTERVAL);
 
   const formatPrice = (price: number, decimals: number) => {
     return `$${price.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;

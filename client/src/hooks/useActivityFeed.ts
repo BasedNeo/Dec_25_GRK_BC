@@ -23,6 +23,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
+import { useInterval } from '@/hooks/useInterval';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -252,13 +253,8 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     fetchActivities();
   }, [fetchActivities]);
 
-  // Auto refresh
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(fetchActivities, refreshInterval);
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, fetchActivities]);
+  // Auto refresh using safe interval hook
+  useInterval(fetchActivities, autoRefresh ? refreshInterval : null);
 
   // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
   // See replit.md "LOCKED CALCULATIONS" section for details

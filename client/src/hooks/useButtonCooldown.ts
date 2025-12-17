@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { TimerManager } from '@/lib/timerManager';
 
 interface UseCooldownOptions {
   cooldownMs?: number;
@@ -8,30 +9,38 @@ export function useButtonCooldown(options: UseCooldownOptions = {}) {
   const { cooldownMs = 5000 } = options;
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIdRef = useRef<number | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIdRef.current) TimerManager.clear(timerIdRef.current);
+      if (intervalIdRef.current) TimerManager.clear(intervalIdRef.current);
+    };
+  }, []);
 
   const startCooldown = useCallback(() => {
     setIsCoolingDown(true);
     setRemainingTime(Math.ceil(cooldownMs / 1000));
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timerIdRef.current) TimerManager.clear(timerIdRef.current);
+    if (intervalIdRef.current) TimerManager.clear(intervalIdRef.current);
 
-    intervalRef.current = setInterval(() => {
+    intervalIdRef.current = TimerManager.setInterval(() => {
       setRemainingTime(prev => {
         if (prev <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
+          if (intervalIdRef.current) TimerManager.clear(intervalIdRef.current);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    timerRef.current = setTimeout(() => {
+    timerIdRef.current = TimerManager.setTimeout(() => {
       setIsCoolingDown(false);
       setRemainingTime(0);
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalIdRef.current) TimerManager.clear(intervalIdRef.current);
     }, cooldownMs);
   }, [cooldownMs]);
 

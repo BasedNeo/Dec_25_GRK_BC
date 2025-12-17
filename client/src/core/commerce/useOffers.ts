@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
+import { useInterval } from '@/hooks/useInterval';
 import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
 
 const DOMAIN = {
@@ -250,10 +251,7 @@ export function useOffersV3() {
     fetchNonce();
   }, [loadOffers, fetchNonce]);
 
-  useEffect(() => {
-    const interval = setInterval(loadOffers, 30000);
-    return () => clearInterval(interval);
-  }, [loadOffers]);
+  useInterval(loadOffers, 30000);
 
   const makeOffer = useCallback(async (
     tokenId: number, 

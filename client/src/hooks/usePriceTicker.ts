@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useInterval } from '@/hooks/useInterval';
 
 const SECURITY_CONFIG = {
   MAX_PRICE_CHANGE_PERCENT: 50,
@@ -260,9 +261,9 @@ export function usePriceTicker() {
 
   useEffect(() => {
     fetchPrices();
-    const interval = setInterval(fetchPrices, FETCH_INTERVAL);
-    return () => clearInterval(interval);
   }, [fetchPrices]);
+
+  useInterval(fetchPrices, FETCH_INTERVAL);
 
   const btcPrice = prices.get('BTC');
   const ethPrice = prices.get('ETH');

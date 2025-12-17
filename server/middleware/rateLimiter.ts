@@ -32,21 +32,28 @@ export const writeLimiter = rateLimit({
   },
 });
 
+// Helper to normalize IPv6 addresses for consistent rate limiting
+const normalizeIp = (ip: string | undefined): string => {
+  if (!ip) return 'unknown';
+  if (ip.startsWith('::ffff:')) {
+    return ip.slice(7);
+  }
+  if (ip.includes(':')) {
+    return ip.split(':').slice(0, 4).join(':');
+  }
+  return ip;
+};
+
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { error: 'Too many authentication attempts' },
   keyGenerator: (req: Request) => {
     const wallet = req.body?.walletAddress || req.query?.walletAddress || '';
-    let ip = req.ip || 'unknown';
-    if (ip.startsWith('::ffff:')) {
-      ip = ip.slice(7);
-    } else if (ip.includes(':')) {
-      ip = ip.split(':').slice(0, 4).join(':');
-    }
+    const ip = normalizeIp(req.ip);
     return `${ip}-${wallet}`;
   },
-  validate: { ip: false },
+  validate: { keyGeneratorIpFallback: false },
 });
 
 export const gameLimiter = rateLimit({

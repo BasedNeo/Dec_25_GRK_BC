@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
 import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useInterval } from "@/hooks/useInterval";
 
 const MINT_PRICE = 69420;
 
@@ -80,17 +81,13 @@ export function PoolTracker() {
 
   useEffect(() => {
     updateData();
-    
-    const mintInterval = setInterval(() => {
-      fetchMintedCount().then(minted => {
-        if (minted !== null) setMintedCount(minted);
-      });
-    }, 60 * 1000);
+  }, []);
 
-    return () => {
-      clearInterval(mintInterval);
-    };
-  }, [fetchMintedCount]);
+  useInterval(() => {
+    fetchMintedCount().then(minted => {
+      if (minted !== null) setMintedCount(minted);
+    });
+  }, 60000);
 
   // ⚠️ LOCKED CALCULATIONS - Do NOT modify without explicit user request
   // See replit.md "LOCKED CALCULATIONS" section for details

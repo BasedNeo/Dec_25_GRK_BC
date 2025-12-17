@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { NFT_CONTRACT, RPC_URL, IPFS_ROOT } from '@/lib/constants';
 import { Guardian } from '@/lib/mockData';
 import { CacheService, CACHE_KEYS } from '@/lib/cache';
+import { useInterval } from '@/hooks/useInterval';
 
 const NFT_ABI = [
   'function tokensOfOwner(address owner) view returns (uint256[])',
@@ -91,13 +92,7 @@ export function useOwnedNFTs() {
   useEffect(() => { fetchOwnedNFTs(); }, [fetchOwnedNFTs]);
 
   // Auto-refresh every 15 seconds to catch ownership changes
-  useEffect(() => {
-    if (!isConnected || !address) return;
-    const interval = setInterval(() => {
-      fetchOwnedNFTs();
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [isConnected, address, fetchOwnedNFTs]);
+  useInterval(fetchOwnedNFTs, isConnected && address ? 15000 : null);
 
   return { nfts, isLoading, error, balance, refetch: fetchOwnedNFTs };
 }

@@ -4,6 +4,7 @@ import { MARKETPLACE_CONTRACT, RPC_URL, NFT_CONTRACT } from '@/lib/constants';
 import { useAccount } from 'wagmi';
 import { useMarketplace } from './useMarketplace';
 import { useOffersV3, OffchainOffer } from './useOffersV3';
+import { useInterval } from '@/hooks/useInterval';
 
 export interface MyOffer {
   id: string;
@@ -168,9 +169,9 @@ export function useMyOffers() {
 
   useEffect(() => {
     fetchMyOffers();
-    const interval = setInterval(fetchMyOffers, 30000);
-    return () => clearInterval(interval);
   }, [fetchMyOffers]);
+
+  useInterval(fetchMyOffers, 30000);
 
   const cancelOffer = useCallback(async (tokenId: number, isV3: boolean = false, v3OfferId?: string) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
 import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw, Wallet } from "lucide-react";
 import { calculateBackedValue, Guardian } from "@/lib/mockData";
+import { useInterval } from "@/hooks/useInterval";
 const MINT_PRICE = 69420;
 const TOTAL_SUPPLY = 3732;
 import { NFT_SYMBOL, BLOCK_EXPLORER } from "@/lib/constants";
@@ -96,16 +97,13 @@ export function Hero() {
 
   useEffect(() => {
     fetchAllMintedData();
-    const interval = setInterval(fetchAllMintedData, 15000);
-    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsAgo(Math.floor((new Date().getTime() - lastUpdated.getTime()) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lastUpdated]);
+  useInterval(fetchAllMintedData, 15000);
+
+  useInterval(() => {
+    setSecondsAgo(Math.floor((new Date().getTime() - lastUpdated.getTime()) / 1000));
+  }, 1000);
 
   // Parallax
   const { scrollY } = useScroll();
@@ -127,12 +125,9 @@ export function Hero() {
   // Calculate Backing Value (Live)
   const [backingValue, setBackingValue] = useState(calculateBackedValue());
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-        setBackingValue(calculateBackedValue());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  useInterval(() => {
+    setBackingValue(calculateBackedValue());
+  }, 1000);
 
   // Real Smart Contract Minting
   const handleMint = async () => {

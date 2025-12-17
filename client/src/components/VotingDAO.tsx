@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PROPOSAL_CREATOR_WALLETS } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { trackEvent } from "@/lib/analytics";
+import { useInterval } from "@/hooks/useInterval";
 
 interface VotingDAOProps {
   // Props are legacy but kept for interface compatibility if needed by parent
@@ -223,24 +224,19 @@ function ProposalCard({ proposal, isConnected, onConnect, votePower }: { proposa
   const [timeLeft, setTimeLeft] = useState("");
   const { isPaused } = useSecurity();
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const end = new Date(proposal.endTime).getTime();
-      const distance = end - now;
+  useInterval(() => {
+    const now = new Date().getTime();
+    const end = new Date(proposal.endTime).getTime();
+    const distance = end - now;
 
-      if (distance < 0) {
-        setTimeLeft("EXPIRED");
-        clearInterval(timer);
-      } else {
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        setTimeLeft(`${days}d ${hours}h left`);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [proposal.endTime]);
+    if (distance < 0) {
+      setTimeLeft("EXPIRED");
+    } else {
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      setTimeLeft(`${days}d ${hours}h left`);
+    }
+  }, 1000);
 
   const handleVote = (optionId: string) => {
     if (isPaused) {

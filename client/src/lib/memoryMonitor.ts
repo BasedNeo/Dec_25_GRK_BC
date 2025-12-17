@@ -1,3 +1,5 @@
+import { TimerManager } from './timerManager';
+
 class MemoryMonitor {
   private samples: number[] = [];
   private maxSamples = 60;
@@ -6,7 +8,7 @@ class MemoryMonitor {
   start() {
     if (this.intervalId !== null) return;
     
-    this.intervalId = window.setInterval(() => {
+    this.intervalId = TimerManager.setInterval(() => {
       if ('memory' in performance) {
         const mem = (performance as unknown as { memory: { usedJSHeapSize: number } }).memory;
         const usedMB = Math.round(mem.usedJSHeapSize / 1048576);
@@ -33,7 +35,7 @@ class MemoryMonitor {
 
   stop() {
     if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
+      TimerManager.clear(this.intervalId);
       this.intervalId = null;
     }
   }

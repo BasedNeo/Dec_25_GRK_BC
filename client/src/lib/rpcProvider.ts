@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { TimerManager } from './timerManager';
 
 const RPC_ENDPOINTS = [
   'https://mainnet.basedaibridge.com/rpc/',
@@ -35,7 +36,7 @@ class MultiRPCProvider {
     });
     
     if (typeof window !== 'undefined') {
-      setInterval(() => this.healthCheck(), 30000);
+      TimerManager.setInterval(() => this.healthCheck(), 30000);
       this.healthCheck();
     }
   }

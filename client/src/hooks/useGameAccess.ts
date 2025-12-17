@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { useIsGuardianHolder } from './useIsGuardianHolder';
+import { useInterval } from './useInterval';
 
 const MAX_DAILY_PLAYS = 20;
 const COOLDOWN_SECONDS = 30;
@@ -49,17 +50,13 @@ export function useGameAccess() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => {
-      setCooldown(c => {
-        const next = Math.max(0, c - 1);
-        if (next === 0) setRefreshKey(k => k + 1);
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown > 0]);
+  useInterval(() => {
+    setCooldown(c => {
+      const next = Math.max(0, c - 1);
+      if (next === 0) setRefreshKey(k => k + 1);
+      return next;
+    });
+  }, cooldown > 0 ? 1000 : null);
 
   const access = useMemo((): AccessState => {
     const data = getAccessData();

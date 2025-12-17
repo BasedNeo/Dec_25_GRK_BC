@@ -15,6 +15,7 @@ import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAcc
 import { parseEther, formatEther } from 'viem';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useInterval } from '@/hooks/useInterval';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT, GAS_SETTINGS } from '@/lib/constants';
 import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
@@ -717,9 +718,9 @@ export function useFloorPrice() {
     };
 
     fetchFloorPrice();
-    const interval = setInterval(fetchFloorPrice, 30000);
-    return () => clearInterval(interval);
   }, []);
+
+  useInterval(fetchFloorPrice, 30000);
 
   return { floorPrice, isLoading };
 }
