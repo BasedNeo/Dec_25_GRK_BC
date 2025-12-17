@@ -38,10 +38,15 @@ export const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts' },
   keyGenerator: (req: Request) => {
     const wallet = req.body?.walletAddress || req.query?.walletAddress || '';
-    const ip = req.ip?.replace(/^.*:/, '') || 'unknown';
+    let ip = req.ip || 'unknown';
+    if (ip.startsWith('::ffff:')) {
+      ip = ip.slice(7);
+    } else if (ip.includes(':')) {
+      ip = ip.split(':').slice(0, 4).join(':');
+    }
     return `${ip}-${wallet}`;
   },
-  validate: { xForwardedForHeader: false },
+  validate: { ip: false },
 });
 
 export const gameLimiter = rateLimit({

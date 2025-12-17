@@ -1,0 +1,384 @@
+=== RACE CONDITION GUARDS + OPTIMISTIC LOCKING ===
+
+BACKGROUND: Multiple async operations can complete out of order, causing stale data overwrites. Critical in offer/marketplace operations.
+
+═══════════════════════════════════════════════════════════
+PART 1: CREATE REQUEST DEDUPLICATOR
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/requestDeduplicator.ts
+
+/**
+ * RequestDeduplicator - Prevents duplicate concurrent requests
+ * Ensures only one request per key is in-flight at a time
+ */
+
+interface PendingRequest<T> {
+  promise: Promise<T>;
+  timestamp: number;
+}
+
+class RequestDeduplicatorClass {
+  private pending: Map<string, PendingRequest<any>> = new Map();
+  private readonly TIMEOUT = 30000; // 30 seconds
+
+  /**
+   * Execute function, but deduplicate concurrent calls with same key
+   * Returns cached promise if one is already in-flight
+   */
+  async execute<T>(
+    key: string,
+    fn: () => Promise<T>,
+    forceNew = false
+  ): Promise<T> {
+    // Clean up expired requests
+    this.cleanup();
+
+    // Return existing promise if still pending (unless forced)
+    if (!forceNew) {
+      const existing = this.pending.get(key);
+      if (existing) {
+        console.log(`[Dedup] Reusing in-flight request: ${key}`);
+        return existing.promise;
+      }
+    }
+
+    // Create new request
+    const promise = fn();
+    this.pending.set(key, {
+      promise,
+      timestamp: Date.now()
+    });
+
+    try {
+      const result = await promise;
+      this.pending.delete(key);
+      return result;
+    } catch (error) {
+      this.pending.delete(key);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if request is in-flight
+   */
+  isPending(key: string): boolean {
+    return this.pending.has(key);
+  }
+
+  /**
+   * Cancel pending request
+   */
+  cancel(key: string): void {
+    this.pending.delete(key);
+  }
+
+  /**
+   * Clean up expired requests (older than TIMEOUT)
+   */
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, req] of this.pending.entries()) {
+      if (now - req.timestamp > this.TIMEOUT) {
+        console.warn(`[Dedup] Timeout cleaning: ${key}`);
+        this.pending.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Clear all pending requests
+   */
+  clear(): void {
+    this.pending.clear();
+  }
+}
+
+export const requestDedup = new RequestDeduplicatorClass();
+
+═══════════════════════════════════════════════════════════
+PART 2: CREATE ASYNC MUTEX LOCK
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/asyncMutex.ts
+
+/**
+ * AsyncMutex - Mutual exclusion for critical sections
+ * Ensures operations complete sequentially
+ */
+
+class AsyncMutex {
+  private locks: Map<string, Promise<void>> = new Map();
+
+  /**
+   * Acquire lock and execute function
+   * Waits if lock is held by another operation
+   */
+  async runExclusive<T>(
+    key: string,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    // Wait for existing lock to release
+    while (this.locks.has(key)) {
+      await this.locks.get(key);
+      // Small delay to prevent tight loop
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+
+    // Acquire lock
+    let releaseLock!: () => void;
+    const lockPromise = new Promise<void>(resolve => {
+      releaseLock = resolve;
+    });
+    this.locks.set(key, lockPromise);
+
+    try {
+      // Execute critical section
+      const result = await fn();
+      return result;
+    } finally {
+      // Release lock
+      this.locks.delete(key);
+      releaseLock();
+    }
+  }
+
+  /**
+   * Check if lock is held
+   */
+  isLocked(key: string): boolean {
+    return this.locks.has(key);
+  }
+}
+
+export const asyncMutex = new AsyncMutex();
+
+═══════════════════════════════════════════════════════════
+PART 3: ADD VERSION TRACKING TO STATE UPDATES
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/hooks/useVersionedState.ts
+
+import { useState, useCallback, useRef } from 'react';
+
+/**
+ * Versioned state - prevents stale updates from overwriting newer data
+ */
+export function useVersionedState<T>(initialValue: T) {
+  const [state, setState] = useState(initialValue);
+  const versionRef = useRef(0);
+
+  const setVersionedState = useCallback((
+    newValue: T | ((prev: T) => T),
+    sourceVersion?: number
+  ) => {
+    // If source version provided, only update if it's newer
+    if (sourceVersion !== undefined && sourceVersion < versionRef.current) {
+      console.warn(`[VersionedState] Ignoring stale update (v${sourceVersion} < v${versionRef.current})`);
+      return false;
+    }
+
+    // Increment version
+    versionRef.current++;
+
+    // Update state
+    setState(newValue);
+    return true;
+  }, []);
+
+  const getCurrentVersion = useCallback(() => {
+    return versionRef.current;
+  }, []);
+
+  return [state, setVersionedState, getCurrentVersion] as const;
+}
+
+═══════════════════════════════════════════════════════════
+PART 4: PROTECT CRITICAL MARKETPLACE OPERATIONS
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/hooks/useOffersV3.ts
+
+ADD IMPORTS:
+import { requestDedup } from '@/lib/requestDeduplicator';
+import { asyncMutex } from '@/lib/asyncMutex';
+
+FIND makeOffer function (line 258):
+const makeOffer = useCallback(async (
+  tokenId: number, 
+  priceInBased: number, 
+  expirationDays: number = 7,
+  message?: string
+): Promise<boolean> => {
+
+WRAP CRITICAL SECTION:
+const makeOffer = useCallback(async (
+  tokenId: number, 
+  priceInBased: number, 
+  expirationDays: number = 7,
+  message?: string
+): Promise<boolean> => {
+  // Generate unique key for this operation
+  const opKey = `make-offer-${tokenId}-${address}`;
+
+  // Deduplicate concurrent calls
+  return await requestDedup.execute(opKey, async () => {
+    // Use mutex to prevent race with other offer operations
+    return await asyncMutex.runExclusive(`offer-${address}`, async () => {
+      // Original makeOffer logic here
+      if (!isConnected || !address) {
+        toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+        return false;
+      }
+      
+      // ... rest of original code ...
+    });
+  });
+}, [isConnected, address, chainId, userNonce, signTypedDataAsync, toast, fetchNonce, loadOffers]);
+
+FIND acceptOffer function (line 354):
+WRAP SIMILARLY:
+const acceptOffer = useCallback(async (offer: OffchainOffer): Promise<boolean> => {
+  const opKey = `accept-offer-${offer.id}`;
+  
+  return await requestDedup.execute(opKey, async () => {
+    return await asyncMutex.runExclusive(`accept-${address}`, async () => {
+      // Original acceptOffer logic
+      // ...
+    });
+  });
+}, [isConnected, address, writeContract, toast]);
+
+═══════════════════════════════════════════════════════════
+PART 5: PREVENT DOUBLE-CLICK TRANSACTIONS
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/hooks/useButtonLock.ts
+
+import { useState, useCallback } from 'react';
+
+/**
+ * Button lock - prevents double-click transactions
+ */
+export function useButtonLock(cooldownMs = 2000) {
+  const [isLocked, setIsLocked] = useState(false);
+  const [lastClick, setLastClick] = useState(0);
+
+  const withLock = useCallback(
+    async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+      const now = Date.now();
+      
+      // Check cooldown
+      if (now - lastClick < cooldownMs) {
+        console.warn('[ButtonLock] Double-click prevented');
+        return null;
+      }
+
+      // Check lock
+      if (isLocked) {
+        console.warn('[ButtonLock] Operation in progress');
+        return null;
+      }
+
+      setIsLocked(true);
+      setLastClick(now);
+
+      try {
+        const result = await fn();
+        return result;
+      } finally {
+        // Release after cooldown
+        setTimeout(() => setIsLocked(false), cooldownMs);
+      }
+    },
+    [isLocked, lastClick, cooldownMs]
+  );
+
+  return { isLocked, withLock };
+}
+
+USAGE IN COMPONENTS:
+
+FILE: client/src/components/MyOffersPanel.tsx
+
+ADD:
+import { useButtonLock } from '@/hooks/useButtonLock';
+
+const { isLocked, withLock } = useButtonLock(3000); // 3 second cooldown
+
+FIND handleEdit function:
+const handleEdit = async (newAmount: number) => {
+  setIsSubmitting(true);
+  // ...existing code...
+  setIsSubmitting(false);
+};
+
+REPLACE WITH:
+const handleEdit = async (newAmount: number) => {
+  await withLock(async () => {
+    setIsSubmitting(true);
+    // ...existing code...
+    setIsSubmitting(false);
+  });
+};
+
+SIMILARLY PROTECT:
+- handleCancel
+- All buy/sell/offer buttons
+- Any wallet transaction buttons
+
+═══════════════════════════════════════════════════════════
+PART 6: ADD NONCE TRACKING FOR V3 OFFERS
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/hooks/useOffersV3.ts
+
+FIND makeOffer function, AFTER fetchNonce():
+await fetchNonce();
+
+ADD NONCE VERIFICATION:
+// Verify nonce hasn't changed (prevent race)
+const currentNonce = await fetchNonce();
+if (currentNonce !== userNonce) {
+  console.warn(`[Offers] Nonce changed during operation (${userNonce} -> ${currentNonce})`);
+  // Retry with new nonce
+  return await makeOffer(tokenId, priceInBased, expirationDays, message);
+}
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. Test double-click protection:
+   - Click "Make Offer" rapidly 5 times
+   - Should only create 1 offer
+   - Console should show "Double-click prevented"
+
+2. Test race condition:
+   - Open app in 2 browser tabs
+   - Make offer on same NFT from both tabs simultaneously
+   - Should see "Reusing in-flight request"
+   - Only 1 offer should be created
+
+3. Test stale update protection:
+   - Create offer
+   - While offer is pending, refresh page
+   - Old offer data shouldn't overwrite new state
+
+4. Check mutex working:
+   - Make 3 rapid offers on different NFTs
+   - Should queue sequentially (not parallel)
+   - Console should show mutex lock messages
+
+CHECKLIST:
+□ requestDeduplicator.ts created
+□ asyncMutex.ts created
+□ useVersionedState.ts created
+□ useButtonLock.ts created
+□ makeOffer protected with dedup + mutex
+□ acceptOffer protected with dedup + mutex
+□ Buy/Sell buttons use useButtonLock
+□ Double-click prevented
+□ Race conditions prevented
+□ Nonce tracking prevents stale signatures
