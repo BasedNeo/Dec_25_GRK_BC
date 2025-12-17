@@ -9,11 +9,22 @@ export interface GuardianProfile {
   createdAt: string;
 }
 
-const WELCOME_MESSAGES = [
-  "The based realm welcomes you back, Guardian. The fight continues.",
-  "Guardians never rest for long. Your return strengthens us all.",
-  "The Based Life community missed you. Ready for action?",
-  "Welcome back, legend. The blockchain remembers your deeds."
+const RETURNING_MESSAGES = [
+  "Missed you out there. The chain kept your spot warm.",
+  "Look who's back. The Based realm just got a little brighter.",
+  "The frogs were starting to worry. Good to see you.",
+  "Your Guardian was getting restless. Time to ride.",
+  "24 hours? That's practically forever in crypto time.",
+  "The Based Life doesn't pause. Neither do you.",
+];
+
+const FREQUENT_MESSAGES = [
+  "Back already? We respect the grind.",
+  "You really can't stay away, can you? Same.",
+  "Three visits this week? You might be Based.",
+  "At this point, you basically live here. Welcome home.",
+  "The dedication is unreal. Keep stacking.",
+  "Another day, another check-in. You're built different.",
 ];
 
 export function useGuardianProfile() {
@@ -55,10 +66,15 @@ export function useGuardianProfile() {
             setShowNamePrompt(true);
           }
         } else if (data.showWelcomeBack) {
+          const visitCountKey = `visitCount_${address.toLowerCase()}`;
+          const visitCount = parseInt(localStorage.getItem(visitCountKey) || '0') + 1;
+          localStorage.setItem(visitCountKey, visitCount.toString());
+          
+          const messages = visitCount >= 5 ? FREQUENT_MESSAGES : RETURNING_MESSAGES;
           const lastWelcome = localStorage.getItem(`lastWelcomeIndex_${address.toLowerCase()}`);
           const lastIndex = lastWelcome ? parseInt(lastWelcome) : -1;
-          const nextIndex = (lastIndex + 1) % WELCOME_MESSAGES.length;
-          setWelcomeMessage(WELCOME_MESSAGES[nextIndex]);
+          const nextIndex = (lastIndex + 1) % messages.length;
+          setWelcomeMessage(messages[nextIndex]);
           localStorage.setItem(`lastWelcomeIndex_${address.toLowerCase()}`, nextIndex.toString());
         }
       }
