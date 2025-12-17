@@ -259,7 +259,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("listed-price-asc"); // Default: Listed NFTs first
   const [showFilters, setShowFilters] = useState(false);
-  const [useCsvData, setUseCsvData] = useState(true); // Default to CSV (true) for reliability
+  const [useCsvData, setUseCsvData] = useState(false); // Default to Live Mode to show ALL minted NFTs from blockchain
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
   
   // Commercial Search: Attribute Filters
@@ -321,7 +321,39 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                 return;
             }
 
-            // 2. Fetch NFTs (0 to totalMinted - 1) - PARALLEL for speed and reliability
+            // 2. Get active listings from marketplace first
+            const marketplaceContract = new ethers.Contract(
+              MARKETPLACE_CONTRACT,
+              [
+                'function getActiveListings() view returns (uint256[])',
+                'function getListing(uint256 tokenId) view returns (address seller, uint256 price, uint256 listedAt, bool active)'
+              ],
+              provider
+            );
+            
+            let activeListingIds: number[] = [];
+            const listingPricesMap = new Map<number, number>();
+            
+            try {
+              const listings = await marketplaceContract.getActiveListings();
+              activeListingIds = listings.map((id: bigint) => Number(id));
+              
+              // Fetch prices for listed NFTs in parallel
+              const pricePromises = activeListingIds.map(async (tokenId) => {
+                try {
+                  const listing = await marketplaceContract.getListing(tokenId);
+                  if (listing.active) {
+                    const priceInBased = parseFloat(ethers.formatEther(listing.price));
+                    listingPricesMap.set(tokenId, priceInBased);
+                  }
+                } catch {}
+              });
+              await Promise.all(pricePromises);
+            } catch {}
+            
+            const listedTokenSet = new Set(activeListingIds);
+            
+            // 3. Fetch NFTs (0 to totalMinted - 1) - PARALLEL for speed and reliability
             const PRE_REVEAL_URI = "https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeihqtvucde65whnu627ujhsdu7hsa56t5gipw353g7jzfwxyomear4/0.json";
             
             // Create parallel fetch promises for ALL minted NFTs
@@ -384,6 +416,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                             rarity = "Pre-Reveal";
                         }
 
+                        // Check if this NFT is listed for sale
+                        const isListed = listedTokenSet.has(tokenId);
+                        const listingPrice = listingPricesMap.get(tokenId);
+                        
                         return {
                             id: tokenId,
                             name: metadata.name || `Guardian #${tokenId}`,
@@ -391,8 +427,9 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                             traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || [],
                             rarity: rarity,
                             owner: owner,
-                            isListed: true,
-                            price: 0,
+                            isMinted: true,
+                            isListed: isListed,
+                            price: isListed ? listingPrice : undefined,
                             currency: '$BASED'
                         };
 
