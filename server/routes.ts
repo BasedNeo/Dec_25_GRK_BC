@@ -347,5 +347,185 @@ export async function registerRoutes(
     }
   });
 
+  // Proposal Endpoints (Off-chain governance)
+  const ADMIN_WALLETS = [
+    '0xAe543104fDBe456478E19894f7F0e01f0971c9B4',
+    '0x50F20d5f17706e4F3f11E87dc8B1ae2DE8a9F66F'
+  ].map(w => w.toLowerCase());
+
+  const isAdminWallet = (wallet: string | undefined): boolean => {
+    if (!wallet) return false;
+    return ADMIN_WALLETS.includes(wallet.toLowerCase());
+  };
+
+  app.post("/api/proposals", async (req, res) => {
+    try {
+      const schema = z.object({
+        title: z.string().min(5).max(100),
+        description: z.string().min(10).max(1000),
+        category: z.string().min(1).max(50),
+        optionA: z.string().min(1).max(200),
+        optionB: z.string().min(1).max(200),
+        optionC: z.string().max(200).optional().nullable(),
+        optionD: z.string().max(200).optional().nullable(),
+        expirationDays: z.number().min(1).max(30).default(7),
+        createdBy: z.string().min(10),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid proposal data", details: parsed.error.errors });
+      }
+
+      if (!isAdminWallet(parsed.data.createdBy)) {
+        return res.status(403).json({ error: "Only admins can create proposals" });
+      }
+
+      const proposal = await storage.createProposal({
+        ...parsed.data,
+        status: 'review',
+      });
+
+      console.log(`[Proposal] Created proposal: ${proposal.id} by ${parsed.data.createdBy}`);
+      return res.status(201).json({ success: true, proposal });
+    } catch (error) {
+      console.error("[Proposal] Error creating proposal:", error);
+      return res.status(500).json({ error: "Failed to create proposal" });
+    }
+  });
+
+  app.get("/api/proposals", async (req, res) => {
+    try {
+      const status = req.query.status as string;
+      let proposalsList;
+      
+      if (status === 'active') {
+        proposalsList = await storage.getActiveProposals();
+      } else if (status === 'review') {
+        proposalsList = await storage.getReviewProposals();
+      } else if (status) {
+        proposalsList = await storage.getProposalsByStatus(status);
+      } else {
+        proposalsList = await storage.getAllProposals();
+      }
+      
+      return res.json(proposalsList);
+    } catch (error) {
+      console.error("[Proposal] Error fetching proposals:", error);
+      return res.status(500).json({ error: "Failed to fetch proposals" });
+    }
+  });
+
+  app.get("/api/proposals/:id", async (req, res) => {
+    try {
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) {
+        return res.status(404).json({ error: "Proposal not found" });
+      }
+      
+      const votes = await storage.getVoteTallies(req.params.id);
+      return res.json({ ...proposal, votes });
+    } catch (error) {
+      console.error("[Proposal] Error fetching proposal:", error);
+      return res.status(500).json({ error: "Failed to fetch proposal" });
+    }
+  });
+
+  app.patch("/api/proposals/:id/status", async (req, res) => {
+    try {
+      const schema = z.object({
+        status: z.enum(['review', 'active', 'closed']),
+        walletAddress: z.string().min(10),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid data" });
+      }
+
+      if (!isAdminWallet(parsed.data.walletAddress)) {
+        return res.status(403).json({ error: "Only admins can update proposal status" });
+      }
+
+      const updated = await storage.updateProposalStatus(req.params.id, parsed.data.status);
+      if (!updated) {
+        return res.status(404).json({ error: "Proposal not found" });
+      }
+
+      console.log(`[Proposal] Updated proposal ${req.params.id} status to ${parsed.data.status}`);
+      return res.json({ success: true, proposal: updated });
+    } catch (error) {
+      console.error("[Proposal] Error updating proposal status:", error);
+      return res.status(500).json({ error: "Failed to update proposal status" });
+    }
+  });
+
+  app.delete("/api/proposals/:id", async (req, res) => {
+    try {
+      const walletAddress = req.query.wallet as string;
+      
+      if (!isAdminWallet(walletAddress)) {
+        return res.status(403).json({ error: "Only admins can delete proposals" });
+      }
+
+      await storage.deleteProposal(req.params.id);
+      console.log(`[Proposal] Deleted proposal ${req.params.id}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Proposal] Error deleting proposal:", error);
+      return res.status(500).json({ error: "Failed to delete proposal" });
+    }
+  });
+
+  app.post("/api/proposals/:id/vote", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string().min(10),
+        selectedOption: z.enum(['A', 'B', 'C', 'D']),
+        votingPower: z.number().min(1).default(1),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid vote data" });
+      }
+
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) {
+        return res.status(404).json({ error: "Proposal not found" });
+      }
+      if (proposal.status !== 'active') {
+        return res.status(400).json({ error: "Voting is not active for this proposal" });
+      }
+
+      const vote = await storage.castProposalVote({
+        proposalId: req.params.id,
+        ...parsed.data,
+      });
+
+      return res.json({ success: true, vote });
+    } catch (error) {
+      console.error("[Proposal] Error casting vote:", error);
+      return res.status(500).json({ error: "Failed to cast vote" });
+    }
+  });
+
+  app.get("/api/proposals/:id/votes", async (req, res) => {
+    try {
+      const tallies = await storage.getVoteTallies(req.params.id);
+      const walletAddress = req.query.wallet as string;
+      
+      let userVote = null;
+      if (walletAddress) {
+        userVote = await storage.getUserVote(req.params.id, walletAddress);
+      }
+      
+      return res.json({ tallies, userVote });
+    } catch (error) {
+      console.error("[Proposal] Error fetching votes:", error);
+      return res.status(500).json({ error: "Failed to fetch votes" });
+    }
+  });
+
   return httpServer;
 }
