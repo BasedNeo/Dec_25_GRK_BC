@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle } from "lucide-react";
+import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount, useBlockNumber, useConnect, useSwitchChain } from "wagmi";
+import { useAccount, useBlockNumber, useConnect, useSwitchChain, useDisconnect } from "wagmi";
 import { CHAIN_ID } from "@/lib/constants";
 import { useSecurity } from "@/context/SecurityContext";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const { address, isConnected: wagmiConnected, chain } = useAccount();
   const { error: connectError } = useConnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const { disconnect } = useDisconnect();
   const isWrongNetwork = wagmiConnected && chain?.id !== CHAIN_ID;
   const queryClient = useQueryClient();
   
@@ -412,13 +413,12 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               ))}
               
               
-              <div className="w-full flex justify-center gap-4 pt-6 border-t border-white/5 mt-4">
+              <div className="w-full flex flex-col items-center gap-4 pt-6 border-t border-white/5 mt-4">
                 <NotificationSettings />
                 <ConnectButton.Custom>
                   {({
                     account,
                     chain,
-                    openAccountModal,
                     openChainModal,
                     openConnectModal,
                     authenticationStatus,
@@ -434,6 +434,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
                     return (
                       <div
+                        className="w-full"
                         {...(!ready && {
                           'aria-hidden': true,
                           'style': {
@@ -448,7 +449,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                             return (
                               <Button 
                                 onClick={openConnectModal} 
-                                className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
+                                className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
                                 data-testid="button-mobile-connect-wallet"
                               >
                                 CONNECT WALLET
@@ -458,19 +459,36 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
                           if (chain.unsupported) {
                             return (
-                              <Button onClick={openChainModal} className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-wider rounded-xl px-6 py-3">
+                              <Button onClick={openChainModal} className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-wider rounded-xl px-6 py-3">
                                 Wrong network
                               </Button>
                             );
                           }
 
                           return (
-                            <Button 
-                              onClick={openAccountModal} 
-                              className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:border-cyan-400/60 hover:shadow-[0_0_20px_rgba(0,255,255,0.2)] font-orbitron text-sm tracking-[0.1em] px-6 py-3 rounded-xl transition-all duration-300"
-                            >
-                              {account.displayName}
-                            </Button>
+                            <div className="w-full space-y-3">
+                              {/* Wallet Address Display */}
+                              <div className="w-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-4 text-center">
+                                <p className="text-xs text-white/50 font-rajdhani mb-1">Connected Wallet</p>
+                                <p className="text-cyan-400 font-orbitron text-sm tracking-wider">
+                                  {account.displayName}
+                                </p>
+                              </div>
+                              
+                              {/* Disconnect Button */}
+                              <Button 
+                                onClick={() => {
+                                  disconnect();
+                                  setIsMobileMenuOpen(false);
+                                  showToast("Wallet disconnected", "info");
+                                }}
+                                className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-[0.1em] px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+                                data-testid="button-mobile-disconnect"
+                              >
+                                <LogOut size={16} />
+                                DISCONNECT
+                              </Button>
+                            </div>
                           );
                         })()}
                       </div>
