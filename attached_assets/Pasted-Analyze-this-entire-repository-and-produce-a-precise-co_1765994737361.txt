@@ -1,0 +1,197 @@
+Analyze this entire repository and produce a precise, complete, and neutral project scope document intended to be consumed by ChatGPT (GPT-5-Codex) alongside the full codebase.
+
+This document will serve as the authoritative description of the system.
+ChatGPT will be instructed to treat it as ground truth.
+
+
+
+HARD RULES
+
+
+
+
+This is READ-ONLY
+❌ Do NOT suggest improvements
+❌ Do NOT propose refactors
+❌ Do NOT modify or rewrite logic
+❌ Do NOT infer roadmap or future intent
+❌ Do NOT speculate beyond what is present in the code
+If something is unclear, explicitly state “unknown”
+
+
+
+Your role is documentation and scope definition only.
+
+
+
+REQUIRED OUTPUT (USE THESE HEADINGS EXACTLY)
+
+
+
+
+
+1. System Overview
+
+
+
+
+What the application does at a high level
+Primary goals and responsibilities
+Who the users are
+
+
+
+
+
+2. Core Functional Domains
+
+
+
+
+Voting systems
+Gameplay mechanics
+Rewards / play-to-earn logic
+Leaderboards and rankings
+
+
+
+
+
+3. Architecture & Components
+
+
+
+
+Frontend (frameworks, responsibilities)
+Backend/services (APIs, workers, schedulers)
+Blockchain layer (contracts, events, indexing)
+Data persistence and caching
+
+
+
+
+
+4. On-Chain vs Off-Chain Responsibilities
+
+
+
+
+What logic is enforced on-chain
+What logic is handled off-chain
+Source of truth for critical state
+
+
+
+
+
+5. Data & State Flow
+
+
+
+
+How data enters the system
+How state is updated and consumed
+How leaderboard or aggregate data is derived
+
+
+
+
+
+6. Trust, Security, and Authority Boundaries
+
+
+
+
+What components must be trusted
+What components are intentionally untrusted
+Authentication / authorization boundaries
+
+
+
+
+
+7. Performance Characteristics
+
+
+
+
+High-frequency execution paths
+Gas-sensitive or cost-sensitive operations
+Areas sensitive to scale or user growth
+
+
+
+
+
+8. Critical Invariants (Must Never Break)
+
+
+
+
+Voting integrity assumptions
+Reward calculation assumptions
+Gameplay rules the system relies on
+
+
+
+
+
+9. External Dependencies & Integrations
+
+
+
+
+Blockchains
+Wallets
+APIs
+Oracles or third-party services
+
+
+
+
+
+10. Known Constraints & Intentional Tradeoffs
+
+
+
+
+Simplifications visible in the code
+Areas optimized for speed vs safety
+
+
+
+
+
+11. Explicitly Out of Scope
+
+
+
+
+Features not implemented
+Non-goals inferred from the codebase
+
+
+
+
+
+WRITING STYLE
+
+
+
+
+Neutral, professional, enterprise-grade
+Descriptive, not evaluative
+Clear enough for a senior engineer or AI auditor to reason from
+
+
+
+
+
+FINAL REQUIREMENT
+
+
+
+Write this document as if any incorrect assumption could cause a production incident.
+Accuracy is more important than completeness.
+
+
