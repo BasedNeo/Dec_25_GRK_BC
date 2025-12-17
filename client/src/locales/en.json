@@ -3,8 +3,8 @@
     "hub": "Hub",
     "universe": "Universe",
     "mint": "Mint",
-    "gallery": "Gallery",
-    "escrow": "Escrow",
+    "gallery": "Portfolio",
+    "escrow": "Market",
     "voting": "Voting",
     "pool": "Pool",
     "stats": "Stats"
