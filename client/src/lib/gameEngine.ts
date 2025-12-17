@@ -35,11 +35,19 @@ export function createGame(w: number, h: number, extraLife: boolean): GameState 
   };
 }
 
+function getDifficultyMultiplier(level: number): number {
+  if (level === 1) return 0.5;
+  if (level === 2) return 0.75;
+  return 1.0;
+}
+
 export function spawnAliens(state: GameState, w: number): void {
   const { level } = state;
   const types: Alien['type'][] = ['glitch', 'jelly', 'serpent', 'fractal'];
   const type = types[Math.min(level - 1, 3)] || 'glitch';
-  const count = 4 + level * 2;
+  const diff = getDifficultyMultiplier(level);
+  const baseCount = 4 + level * 2;
+  const count = Math.max(3, Math.floor(baseCount * diff));
 
   for (let i = 0; i < count; i++) {
     const x = (w / (count + 1)) * (i + 1);
@@ -72,15 +80,16 @@ export function updateGame(state: GameState, w: number, h: number): void {
 }
 
 function updateShooter(state: GameState, w: number, h: number): void {
+  const diff = getDifficultyMultiplier(state.level);
   state.bullets = state.bullets.filter(b => { b.pos.y -= 8; return b.pos.y > -20 && b.active; });
 
   state.aliens.forEach(a => {
     if (!a.active) return;
     
-    if (a.type === 'glitch') { a.pos.y += 1.5; a.pos.x += Math.sin(state.time * 0.1 + a.phase) * 1; }
-    else if (a.type === 'jelly') { a.pos.y += 1; a.pos.x += Math.sin(state.time * 0.05 + a.phase) * 2; }
+    if (a.type === 'glitch') { a.pos.y += 1.5 * diff; a.pos.x += Math.sin(state.time * 0.1 + a.phase) * 1 * diff; }
+    else if (a.type === 'jelly') { a.pos.y += 1 * diff; a.pos.x += Math.sin(state.time * 0.05 + a.phase) * 2 * diff; }
     else if (a.type === 'serpent' && a.segments) {
-      a.segments[0].x += a.vel.x; a.segments[0].y += 0.8;
+      a.segments[0].x += a.vel.x * diff; a.segments[0].y += 0.8 * diff;
       if (a.segments[0].x < 20 || a.segments[0].x > w - 20) a.vel.x *= -1;
       for (let i = 1; i < a.segments.length; i++) {
         a.segments[i].x += (a.segments[i-1].x - a.segments[i].x) * 0.15;
@@ -88,8 +97,8 @@ function updateShooter(state: GameState, w: number, h: number): void {
       }
       a.pos = { ...a.segments[0] };
     }
-    else if (a.type === 'fractal') { a.pos.y += 0.5; a.phase += 0.03; }
-    else if (a.type === 'boss') { a.pos.x = w/2 - 40 + Math.sin(state.time * 0.02) * 100; a.pos.y = Math.min(80, a.pos.y + 0.5); }
+    else if (a.type === 'fractal') { a.pos.y += 0.5 * diff; a.phase += 0.03; }
+    else if (a.type === 'boss') { a.pos.x = w/2 - 40 + Math.sin(state.time * 0.02) * 100; a.pos.y = Math.min(80, a.pos.y + 0.5 * diff); }
 
     if (a.pos.y > h - 40) { a.active = false; state.lives--; if (state.lives <= 0) state.gameOver = true; }
   });
