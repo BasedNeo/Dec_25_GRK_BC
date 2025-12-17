@@ -187,31 +187,31 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                   border border-white/[0.06] backdrop-blur-xl
                   group-hover:border-white/20 group-hover:from-white/[0.06]
                   group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
-                  transition-all duration-400">
+                  transition-all duration-400 flex-nowrap">
                   
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-4 flex-shrink min-w-0">
                     <div className={`
-                      p-3 rounded-xl bg-gradient-to-br ${item.color}
+                      p-2.5 rounded-xl bg-gradient-to-br ${item.color}
                       shadow-lg group-hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] 
-                      group-hover:scale-110 transition-all duration-300
+                      group-hover:scale-110 transition-all duration-300 flex-shrink-0
                     `}>
                       <Icon className="w-5 h-5 text-white drop-shadow-lg" />
                     </div>
                     
-                    <div className="text-left">
-                      <h3 className="font-bold text-white/90 tracking-[0.15em] text-sm md:text-base
-                        group-hover:text-white transition-colors duration-300">
+                    <div className="text-left min-w-0">
+                      <h3 className="font-bold text-white/90 tracking-[0.12em] text-sm
+                        group-hover:text-white transition-colors duration-300 truncate">
                         {item.label}
                       </h3>
-                      <p className="text-[11px] text-white/30 font-mono tracking-wide
-                        group-hover:text-white/50 transition-colors duration-300">
+                      <p className="text-[10px] text-white/30 font-mono tracking-wide
+                        group-hover:text-white/50 transition-colors duration-300 truncate">
                         {item.description}
                       </p>
                     </div>
                   </div>
                   
-                  <ChevronRight className="w-5 h-5 text-white/20 
-                    group-hover:text-white/60 group-hover:translate-x-1.5 
+                  <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0 ml-2
+                    group-hover:text-white/60 group-hover:translate-x-1 
                     transition-all duration-300" />
                 </div>
               </motion.button>
