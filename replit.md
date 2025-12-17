@@ -30,7 +30,7 @@ The following calculations and formulas are LOCKED and should NOT be changed:
 - Formula: mintRevenue = minted × 69,420 × 51%
 - Formula: royaltyRevenue = salesVolume × 2%
 - Formula: backedValue = totalTreasury ÷ mintedNFTs
-- Block range: 10,000 blocks (~5.5 hours) for activity feed
+- Block range: 40,000 blocks (~22 hours) for activity feed - captures all recent sales
 - Event types: Transfer (mints), Listed, Sold from NFT and Marketplace contracts
 
 ## System Architecture

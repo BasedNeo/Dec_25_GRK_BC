@@ -11,7 +11,7 @@
  * - Transfers
  * 
  * LOCKED SETTINGS:
- * - Block range: 10,000 blocks (~5.5 hours)
+ * - Block range: 40,000 blocks (~22 hours)
  * - Contracts: NFT_CONTRACT, MARKETPLACE_CONTRACT
  * - Events: Transfer, Listed, Sold
  * - Baseline: CUMULATIVE_SALES_BASELINE for historical volume
@@ -114,10 +114,10 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
-      // Look back ~10000 blocks for good coverage without RPC issues
-      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
-      // Historical data is handled by CUMULATIVE_SALES_BASELINE
-      const fromBlock = Math.max(0, currentBlock - 10000);
+      // Look back ~40000 blocks to capture sales from the last ~22 hours
+      // BasedAI ~2 sec blocks, so 40000 blocks ≈ 22 hours of history
+      // All sales volume comes from on-chain events (no hardcoded baseline)
+      const fromBlock = Math.max(0, currentBlock - 40000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);

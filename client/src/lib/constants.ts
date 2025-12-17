@@ -85,12 +85,10 @@ export const GAS_SETTINGS = {
 
 // === CUMULATIVE SALES BASELINE ===
 // ⚠️ LOCKED - Do NOT modify without explicit user request
-// Historical cumulative MARKETPLACE SALES volume (NOT mints - those are calculated separately)
-// This is added to recent on-chain activity for accurate royalty calculations
-// Last updated: December 17, 2024
-// Known sales: 1 NFT sold for ~72,333 $BASED
+// Set to 0 - all sales volume comes from on-chain events (not hardcoded)
+// The activity feed fetches real Sold events from the marketplace contract
 export const CUMULATIVE_SALES_BASELINE = {
-  volume: 72333,          // Total historical SALES volume in $BASED (marketplace trades only)
-  asOfBlock: 1000000,     // Block number when this baseline was captured
+  volume: 0,              // No hardcoded baseline - all volume from on-chain events
+  asOfBlock: 0,
   lastUpdated: "2024-12-17"
 };
