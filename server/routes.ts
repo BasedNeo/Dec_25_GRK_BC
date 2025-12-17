@@ -299,15 +299,30 @@ export async function registerRoutes(
       const name = req.params.name;
       const excludeWallet = req.query.exclude as string | undefined;
       
+      console.log(`[Profile] Checking name availability: "${name}"`);
+      
+      if (!name || name.length < 2) {
+        return res.json({ available: false, error: "Name must be at least 2 characters" });
+      }
+      
+      if (name.length > 16) {
+        return res.json({ available: false, error: "Name must be 16 characters or less" });
+      }
+      
+      if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+        return res.json({ available: false, error: "Name can only contain letters, numbers, underscore, and hyphen" });
+      }
+      
       if (containsProfanity(name)) {
         return res.json({ available: false, error: "This name contains inappropriate content" });
       }
       
       const isTaken = await storage.isNameTaken(name, excludeWallet);
+      console.log(`[Profile] Name "${name}" available: ${!isTaken}`);
       return res.json({ available: !isTaken });
     } catch (error) {
       console.error("[Profile] Error checking name:", error);
-      return res.status(500).json({ error: "Failed to check name" });
+      return res.json({ available: false, error: "Database temporarily unavailable" });
     }
   });
 

@@ -112,18 +112,35 @@ export function useGuardianProfile() {
       return { available: false, error: 'Name must be at least 2 characters' };
     }
     
+    if (name.length > 16) {
+      return { available: false, error: 'Name must be 16 characters or less' };
+    }
+    
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return { available: false, error: 'Only letters, numbers, underscore, hyphen allowed' };
+    }
+    
     try {
       const url = `/api/profile/check-name/${encodeURIComponent(name)}${address ? `?exclude=${address}` : ''}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
       
-      if (res.ok) {
-        const data = await res.json();
-        return { available: data.available };
-      } else {
-        return { available: false, error: 'Could not verify name availability' };
+      const data = await res.json().catch(() => null);
+      
+      if (data) {
+        if (data.error) {
+          return { available: false, error: data.error };
+        }
+        return { available: data.available ?? false };
       }
+      
+      console.warn('[Profile] Could not parse name check response');
+      return { available: true, error: undefined };
     } catch (err) {
-      return { available: false, error: 'Network error checking name' };
+      console.error('[Profile] Network error checking name:', err);
+      return { available: true, error: 'Could not verify (will check on save)' };
     }
   }, [address]);
 
