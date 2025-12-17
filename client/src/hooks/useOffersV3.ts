@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useInterval } from '@/hooks/useInterval';
 import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
 import { SecureStorage } from '@/lib/secureStorage';
+import { requestDedup } from '@/lib/requestDeduplicator';
+import { asyncMutex } from '@/lib/asyncMutex';
 
 const DOMAIN = {
   name: 'BasedGuardiansMarketplace',
@@ -272,134 +274,146 @@ export function useOffersV3() {
     expirationDays: number = 7,
     message?: string
   ): Promise<boolean> => {
-    if (!isConnected || !address) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
-      return false;
-    }
+    const opKey = `make-offer-${tokenId}-${address}`;
+    
+    return await requestDedup.execute(opKey, async () => {
+      return await asyncMutex.runExclusive(`offer-${address}`, async () => {
+        if (!isConnected || !address) {
+          toast({ title: "Connect Wallet", description: "Please connect your wallet first", variant: "destructive" });
+          return false;
+        }
 
-    if (chainId !== CHAIN_ID) {
-      toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
-      return false;
-    }
+        if (chainId !== CHAIN_ID) {
+          toast({ title: "Wrong Network", description: "Please switch to BasedAI network", variant: "destructive" });
+          return false;
+        }
 
-    const existing = getStoredOffers();
-    const recent = existing.filter(o => o.buyer.toLowerCase() === address.toLowerCase() && Date.now() - (o.createdAt * 1000) < 3600000);
-    if (recent.length >= RETENTION.RATE_LIMIT_HOURLY) {
-      toast({ title: "Slow down", description: "Max 5 offers per hour", variant: "destructive" });
-      return false;
-    }
+        const existing = getStoredOffers();
+        const recent = existing.filter(o => o.buyer.toLowerCase() === address.toLowerCase() && Date.now() - (o.createdAt * 1000) < 3600000);
+        if (recent.length >= RETENTION.RATE_LIMIT_HOURLY) {
+          toast({ title: "Slow down", description: "Max 5 offers per hour", variant: "destructive" });
+          return false;
+        }
 
-    try {
-      setIsLoading(true);
-      
-      await fetchNonce();
-      
-      const priceWei = parseEther(priceInBased.toString());
-      const expiration = Math.floor(Date.now() / 1000) + (expirationDays * 24 * 60 * 60);
-      
-      const offerData = {
-        tokenId: BigInt(tokenId),
-        buyer: address,
-        price: priceWei,
-        nonce: BigInt(userNonce),
-        expiration: BigInt(expiration),
-      };
+        try {
+          setIsLoading(true);
+          
+          await fetchNonce();
+          
+          const priceWei = parseEther(priceInBased.toString());
+          const expiration = Math.floor(Date.now() / 1000) + (expirationDays * 24 * 60 * 60);
+          
+          const offerData = {
+            tokenId: BigInt(tokenId),
+            buyer: address,
+            price: priceWei,
+            nonce: BigInt(userNonce),
+            expiration: BigInt(expiration),
+          };
 
-      toast({
-        title: "Sign Offer",
-        description: "Please sign the message in your wallet. This is FREE - no gas needed!",
-        className: "bg-black border-cyan-500 text-cyan-400",
+          toast({
+            title: "Sign Offer",
+            description: "Please sign the message in your wallet. This is FREE - no gas needed!",
+            className: "bg-black border-cyan-500 text-cyan-400",
+          });
+
+          const signature = await signTypedDataAsync({
+            domain: DOMAIN,
+            types: OFFER_TYPES,
+            primaryType: 'Offer',
+            message: offerData,
+          });
+
+          let cleanMessage: string | undefined;
+          if (message?.trim()) {
+            const DOMPurify = (await import('dompurify')).default;
+            cleanMessage = DOMPurify.sanitize(message.trim().slice(0, 280));
+          }
+
+          const offer: OffchainOffer = {
+            id: `${tokenId}-${address}-${Date.now()}`,
+            tokenId,
+            buyer: address,
+            price: priceInBased.toString(),
+            priceWei: priceWei.toString(),
+            nonce: userNonce,
+            expiration,
+            signature,
+            status: 'pending',
+            createdAt: Math.floor(Date.now() / 1000),
+            message: cleanMessage,
+          };
+
+          addOffer(offer);
+          loadOffers();
+
+          toast({
+            title: "Offer Created!",
+            description: `Offer of ${priceInBased.toLocaleString()} $BASED submitted. Funds stay in your wallet until seller accepts!`,
+            className: "bg-black border-green-500 text-green-400",
+          });
+
+          return true;
+
+        } catch (e: unknown) {
+          const error = e as Error;
+          if (error.message?.includes('rejected') || error.message?.includes('denied')) {
+            toast({ title: "Cancelled", description: "You cancelled the signature request" });
+          } else {
+            toast({ title: "Error", description: "Failed to create offer", variant: "destructive" });
+          }
+          return false;
+        } finally {
+          setIsLoading(false);
+        }
       });
-
-      const signature = await signTypedDataAsync({
-        domain: DOMAIN,
-        types: OFFER_TYPES,
-        primaryType: 'Offer',
-        message: offerData,
-      });
-
-      let cleanMessage: string | undefined;
-      if (message?.trim()) {
-        const DOMPurify = (await import('dompurify')).default;
-        cleanMessage = DOMPurify.sanitize(message.trim().slice(0, 280));
-      }
-
-      const offer: OffchainOffer = {
-        id: `${tokenId}-${address}-${Date.now()}`,
-        tokenId,
-        buyer: address,
-        price: priceInBased.toString(),
-        priceWei: priceWei.toString(),
-        nonce: userNonce,
-        expiration,
-        signature,
-        status: 'pending',
-        createdAt: Math.floor(Date.now() / 1000),
-        message: cleanMessage,
-      };
-
-      addOffer(offer);
-      loadOffers();
-
-      toast({
-        title: "Offer Created!",
-        description: `Offer of ${priceInBased.toLocaleString()} $BASED submitted. Funds stay in your wallet until seller accepts!`,
-        className: "bg-black border-green-500 text-green-400",
-      });
-
-      return true;
-
-    } catch (e: unknown) {
-      const error = e as Error;
-      if (error.message?.includes('rejected') || error.message?.includes('denied')) {
-        toast({ title: "Cancelled", description: "You cancelled the signature request" });
-      } else {
-        toast({ title: "Error", description: "Failed to create offer", variant: "destructive" });
-      }
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+    });
   }, [isConnected, address, chainId, userNonce, signTypedDataAsync, toast, fetchNonce, loadOffers]);
 
   const acceptOffer = useCallback(async (offer: OffchainOffer): Promise<boolean> => {
-    if (!isConnected || !address) {
-      toast({ title: "Connect Wallet", description: "Please connect your wallet", variant: "destructive" });
-      return false;
-    }
+    const opKey = `accept-offer-${offer.id}`;
+    
+    return await requestDedup.execute(opKey, async () => {
+      return await asyncMutex.runExclusive(`accept-${address}`, async () => {
+        if (!isConnected || !address) {
+          toast({ title: "Connect Wallet", description: "Please connect your wallet", variant: "destructive" });
+          return false;
+        }
 
-    try {
-      setIsLoading(true);
+        try {
+          setIsLoading(true);
 
-      toast({
-        title: "Accept Offer",
-        description: "Confirm in your wallet to accept this offer...",
-        className: "bg-black border-cyan-500 text-cyan-400",
+          toast({
+            title: "Accept Offer",
+            description: "Confirm in your wallet to accept this offer...",
+            className: "bg-black border-cyan-500 text-cyan-400",
+          });
+
+          writeContract({
+            address: MARKETPLACE_V3_CONTRACT as `0x${string}`,
+            abi: MARKETPLACE_V3_ABI,
+            functionName: 'acceptOffer',
+            args: [
+              BigInt(offer.tokenId),
+              offer.buyer as `0x${string}`,
+              BigInt(offer.priceWei),
+              BigInt(offer.nonce),
+              BigInt(offer.expiration),
+              offer.signature as `0x${string}`,
+            ],
+            gas: BigInt(500000),
+            gasPrice: BigInt(10000000000),
+          });
+
+          return true;
+        } catch {
+          toast({ title: "Error", description: "Failed to accept offer", variant: "destructive" });
+          return false;
+        } finally {
+          setIsLoading(false);
+        }
       });
-
-      writeContract({
-        address: MARKETPLACE_V3_CONTRACT as `0x${string}`,
-        abi: MARKETPLACE_V3_ABI,
-        functionName: 'acceptOffer',
-        args: [
-          BigInt(offer.tokenId),
-          offer.buyer as `0x${string}`,
-          BigInt(offer.priceWei),
-          BigInt(offer.nonce),
-          BigInt(offer.expiration),
-          offer.signature as `0x${string}`,
-        ],
-        gas: BigInt(500000),
-        gasPrice: BigInt(10000000000),
-      });
-
-      return true;
-    } catch {
-      toast({ title: "Error", description: "Failed to accept offer", variant: "destructive" });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+    });
   }, [isConnected, address, writeContract, toast]);
 
   const completePurchase = useCallback(async (tokenId: number, priceWei: bigint): Promise<boolean> => {

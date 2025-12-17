@@ -1,0 +1,362 @@
+=== COMPLETE i18n TRANSLATION + FIX CUSTOM NAME SYSTEM ===
+
+BACKGROUND: Language selector only translates nav menu. Name registration broken (database table missing). Need FULL i18n coverage + working name system.
+
+═══════════════════════════════════════════════════════════
+PART 1: FIX DATABASE SETUP (IF NOT DONE IN PROMPT 1)
+═══════════════════════════════════════════════════════════
+
+VERIFY: Run in terminal:
+npm run db:verify
+
+IF ERROR "relation does not exist":
+npm run db:push
+
+EXPECTED: All tables created successfully
+
+═══════════════════════════════════════════════════════════
+PART 2: EXPAND TRANSLATION KEYS (PRIORITY COMPONENTS)
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/locales/en.json
+
+FIND existing content, ADD these sections:
+
+{
+  "nav": {
+    "hub": "Hub",
+    "universe": "Universe",
+    "mint": "Mint",
+    "gallery": "Portfolio",
+    "escrow": "Market",
+    "voting": "Voting",
+    "pool": "Pool",
+    "stats": "Stats",
+    "activity": "Activity",
+    "game": "Game"
+  },
+  "common": {
+    "connectWallet": "Connect Wallet",
+    "disconnect": "Disconnect",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success!",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "view": "View",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "refresh": "Refresh"
+  },
+  "wallet": {
+    "connect": "Connect Wallet to Continue",
+    "connected": "Connected",
+    "wrongNetwork": "Wrong Network",
+    "switchNetwork": "Switch to BasedAI Network",
+    "balance": "Balance",
+    "address": "Address"
+  },
+  "marketplace": {
+    "title": "NFT Marketplace",
+    "buy": "Buy",
+    "sell": "Sell",
+    "makeOffer": "Make Offer",
+    "listForSale": "List for Sale",
+    "listed": "Listed",
+    "unlisted": "Unlisted",
+    "price": "Price",
+    "floor": "Floor Price",
+    "volume": "Volume",
+    "owners": "Owners",
+    "listed_count": "{{count}} Listed",
+    "approve": "Approve Marketplace",
+    "approving": "Approving...",
+    "buying": "Buying...",
+    "listing": "Listing...",
+    "delisting": "Removing listing...",
+    "offerPlaced": "Offer Placed!",
+    "purchaseComplete": "Purchase Complete!",
+    "listedSuccess": "NFT Listed Successfully!"
+  },
+  "mint": {
+    "title": "Mint Guardian NFT",
+    "price": "Price per NFT",
+    "quantity": "Quantity",
+    "total": "Total Cost",
+    "mintNow": "Mint Now",
+    "minting": "Minting...",
+    "success": "Mint Successful!",
+    "remaining": "{{count}} remaining",
+    "soldOut": "Sold Out!",
+    "maxPerTx": "Max {{max}} per transaction",
+    "insufficientBalance": "Insufficient Balance",
+    "approveFirst": "Please approve first"
+  },
+  "profile": {
+    "title": "Guardian Profile",
+    "name": "Name",
+    "setName": "Set Custom Name",
+    "editName": "Edit Name",
+    "saveName": "Save Name",
+    "nameTaken": "Name already taken",
+    "nameAvailable": "Name available!",
+    "nameInvalid": "Invalid name format",
+    "nameRules": "2-16 characters, letters/numbers only",
+    "nameDisclaimer": "Your name will be visible publicly",
+    "level": "Level",
+    "rank": "Rank",
+    "stats": "Stats",
+    "nftsOwned": "NFTs Owned",
+    "achievements": "Achievements"
+  },
+  "game": {
+    "title": "Guardian Defender",
+    "play": "Play Now",
+    "score": "Score",
+    "highScore": "High Score",
+    "level": "Level",
+    "lives": "Lives",
+    "gameOver": "Game Over",
+    "victory": "Victory!",
+    "playAgain": "Play Again",
+    "leaderboard": "Leaderboard",
+    "rank": "Rank #{{rank}}",
+    "loading": "Loading Game...",
+    "paused": "Paused",
+    "resume": "Resume"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error, please try again",
+    "transaction": "Transaction failed",
+    "timeout": "Request timed out",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "invalidInput": "Invalid input"
+  }
+}
+
+COPY this ENTIRE structure to ALL language files:
+- es.json (Spanish)
+- zh.json (Chinese)
+- ja.json (Japanese)
+- ko.json (Korean)
+- de.json (German)
+- fr.json (French)
+- pt.json (Portuguese)
+- ru.json (Russian)
+- ar.json (Arabic)
+
+FOR NOW: Keep English text in all languages (mark for translation later)
+OR: Use AI translation tool to translate each file
+
+═══════════════════════════════════════════════════════════
+PART 3: TRANSLATE KEY COMPONENTS (TOP PRIORITY)
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/components/Navbar.tsx
+
+ADD IMPORT:
+import { useTranslation } from 'react-i18next';
+
+ADD IN COMPONENT:
+const { t } = useTranslation();
+
+FIND nav items (search for "Hub", "Universe", etc.):
+REPLACE hardcoded text with:
+{t('nav.hub')}
+{t('nav.universe')}
+{t('nav.mint')}
+// etc.
+
+FILE: client/src/components/EscrowMarketplace.tsx
+
+ADD IMPORT:
+import { useTranslation } from 'react-i18next';
+const { t } = useTranslation();
+
+FIND ALL hardcoded strings, examples:
+"Make Offer" → {t('marketplace.makeOffer')}
+"Buy Now" → {t('marketplace.buy')}
+"List for Sale" → {t('marketplace.listForSale')}
+"Price" → {t('marketplace.price')}
+"Approve Marketplace" → {t('marketplace.approve')}
+
+FILE: client/src/components/UserStats.tsx
+
+ADD:
+import { useTranslation } from 'react-i18next';
+const { t } = useTranslation();
+
+TRANSLATE:
+"Set Name" → {t('profile.setName')}
+"Edit Name" → {t('profile.editName')}
+"Save Name" → {t('profile.saveName')}
+"Name available!" → {t('profile.nameAvailable')}
+"Name already taken" → {t('profile.nameTaken')}
+
+FILE: client/src/pages/GuardianDefender.tsx (Game)
+
+ADD:
+import { useTranslation } from 'react-i18next';
+const { t } = useTranslation();
+
+TRANSLATE:
+"Play Now" → {t('game.play')}
+"Game Over" → {t('game.gameOver')}
+"Score" → {t('game.score')}
+"High Score" → {t('game.highScore')}
+"Lives" → {t('game.lives')}
+
+═══════════════════════════════════════════════════════════
+PART 4: CREATE TRANSLATION HELPER FOR TOASTS
+═══════════════════════════════════════════════════════════
+
+CREATE: client/src/lib/translatedToast.ts
+
+import { useToast as useToastOriginal } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
+
+export function useTranslatedToast() {
+  const { toast } = useToastOriginal();
+  const { t } = useTranslation();
+
+  return {
+    toast: (options: {
+      title: string;
+      description?: string;
+      variant?: 'default' | 'destructive';
+      titleKey?: string; // Translation key
+      descriptionKey?: string;
+    }) => {
+      return toast({
+        ...options,
+        title: options.titleKey ? t(options.titleKey) : options.title,
+        description: options.descriptionKey ? t(options.descriptionKey) : options.description
+      });
+    }
+  };
+}
+
+USAGE:
+// Instead of:
+toast({ title: "Success!", description: "Transaction complete" });
+
+// Use:
+toast({ titleKey: 'common.success', descriptionKey: 'marketplace.purchaseComplete' });
+
+═══════════════════════════════════════════════════════════
+PART 5: FIX CUSTOM NAME VALIDATION (SERVER-SIDE)
+═══════════════════════════════════════════════════════════
+
+FILE: server/routes.ts
+
+VERIFY these routes exist and work correctly:
+
+1. POST /api/profile/login (line 227)
+2. POST /api/profile/name (line 264)
+3. GET /api/profile/check-name/:name (line 297)
+
+ENSURE profanity check is in /api/profile/name:
+FIND (line 276):
+if (containsProfanity(parsed.data.customName)) {
+  return res.status(400).json({ error: "This name contains inappropriate content" });
+}
+
+ENSURE name taken check:
+FIND (line 279):
+const isTaken = await storage.isNameTaken(parsed.data.customName, parsed.data.walletAddress);
+if (isTaken) {
+  return res.status(409).json({ error: "This name is already taken" });
+}
+
+═══════════════════════════════════════════════════════════
+PART 6: FIX CLIENT-SIDE NAME VALIDATION
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/hooks/useGuardianProfile.ts
+
+VERIFY checkNameAvailable function (line 110) has:
+1. Length check (2-16 chars)
+2. Character validation (alphanumeric + underscore/hyphen)
+3. Server-side profanity/taken check
+
+ENSURE error messages are clear:
+"Name must be at least 2 characters"
+"Name must be 16 characters or less"
+"Only letters, numbers, underscore, hyphen allowed"
+"This name contains inappropriate content"
+"This name is already taken"
+
+═══════════════════════════════════════════════════════════
+PART 7: ADD TRANSLATION SWITCHER TO FOOTER
+═══════════════════════════════════════════════════════════
+
+FILE: client/src/components/Footer.tsx (or wherever footer is)
+
+ADD language display:
+import { useTranslation } from 'react-i18next';
+import { languages } from '@/lib/i18n';
+
+const { i18n } = useTranslation();
+const currentLang = languages.find(l => l.code === i18n.language);
+
+<div className="text-xs text-gray-500">
+  Language: {currentLang?.name || 'English'}
+</div>
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+1. TEST NAME SYSTEM:
+   ✓ Connect wallet
+   ✓ Go to Stats page
+   ✓ Click "Set Name" or edit icon
+   ✓ Enter name "TestUser123"
+   ✓ Should show green checkmark if available
+   ✓ Click Save
+   ✓ Should show disclaimer popup
+   ✓ Accept disclaimer
+   ✓ Name should save successfully
+
+2. TEST NAME VALIDATION:
+   ✓ Try name with 1 char → Error
+   ✓ Try name with special chars → Auto-removed
+   ✓ Try name with profanity → Blocked
+   ✓ Try duplicate name → "Already taken"
+
+3. TEST TRANSLATIONS:
+   ✓ Click language selector (bottom-right)
+   ✓ Switch to Spanish
+   ✓ Nav menu should translate
+   ✓ Marketplace buttons should translate
+   ✓ Profile page should translate
+   ✓ Game page should translate
+
+4. TEST CROSS-LANGUAGE:
+   ✓ Set name in English
+   ✓ Switch to Spanish
+   ✓ Name should still display correctly
+   ✓ Switch back to English
+   ✓ Everything should work
+
+CHECKLIST:
+□ Database verified (guardian_profiles table exists)
+□ en.json expanded with all keys
+□ All locale files updated
+□ Navbar translated
+□ Marketplace translated
+□ Profile/Stats translated
+□ Game translated
+□ useTranslatedToast created
+□ Name validation works (client + server)
+□ Profanity filter
