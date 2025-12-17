@@ -21,26 +21,38 @@ export function Footer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedback.trim()) return;
+    e.stopPropagation();
+    
+    const trimmedFeedback = feedback.trim();
+    if (!trimmedFeedback || isSubmitting) return;
 
     setIsSubmitting(true);
     
-    const safeFeedback = sanitize(feedback);
-    const safeEmail = sanitize(email);
+    const safeFeedback = sanitize(trimmedFeedback);
+    const safeEmail = sanitize(email.trim());
 
     trackEvent('submit_feedback', 'Engagement', 'Footer Form');
 
     const trySubmit = async (attempt: number): Promise<boolean> => {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
         const response = await fetch('/api/feedback', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
           body: JSON.stringify({
             message: safeFeedback,
             email: safeEmail || null,
             walletAddress: null,
           }),
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           setFeedback("");
@@ -60,7 +72,20 @@ export function Footer() {
           });
           return true;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { name?: string };
+        if (err?.name === 'AbortError') {
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 1000));
+            return false;
+          }
+          toast({
+            title: "Timeout",
+            description: "Request took too long. Please check your connection and try again.",
+            variant: "destructive",
+          });
+          return true;
+        }
         if (attempt < 2) {
           await new Promise(r => setTimeout(r, 1500));
           return false;
@@ -161,8 +186,6 @@ export function Footer() {
             <form 
               onSubmit={handleSubmit} 
               className="space-y-4"
-              action="#"
-              method="POST"
             >
               <Textarea 
                 placeholder="Share your thoughts with us... (max 500 words)" 
@@ -192,13 +215,7 @@ export function Footer() {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting || !feedback.trim()}
-                  className="bg-primary hover:bg-primary/90 font-orbitron min-w-[120px] text-[#34c4c9] h-12 sm:h-10 touch-manipulation"
-                  onClick={(e) => {
-                    if (!feedback.trim()) {
-                      e.preventDefault();
-                      return;
-                    }
-                  }}
+                  className="bg-primary hover:bg-primary/90 font-orbitron min-w-[120px] text-[#34c4c9] h-12 sm:h-10 touch-manipulation active:scale-95"
                 >
                   {isSubmitting ? "SENDING..." : (
                     <>SEND <Send size={14} className="ml-2" /></>
