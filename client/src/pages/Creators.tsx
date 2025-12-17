@@ -158,12 +158,12 @@ export default function Creators() {
                   <Users className="w-5 h-5 text-orange-400" />
                 </div>
                 <h2 className="text-lg sm:text-xl font-orbitron text-orange-400">
-                  A Humble Beginning Last July
+                  A Humble Beginning in July 2023
                 </h2>
               </div>
               <div className="bg-gradient-to-br from-orange-950/30 to-slate-950/50 border border-orange-500/20 rounded-xl p-6 sm:p-8">
                 <p className="text-base sm:text-lg text-gray-300 leading-relaxed font-rajdhani">
-                  Last July, a humble father-daughter team began weaving the Based Guardians project with care and dedication. Together, they've crafted 3,731 unique NFTs—1,776 fox-like Guardians, 1,319 Base Frog Warriors, and 636 Creatures, ranging from Common to Extremely Rare. Set for a 2025 release, these NFTs spark a gentle 14-chapter saga in the Giga Brain Galaxy, where Guardians, Frogs, and Creatures quietly stand against FUD cyborg fowl—symbols of fear—to safeguard the BasedAI network. It's a modest story, inviting you to join a world of simple bravery.
+                  In July 2023, a humble father-daughter team began weaving the Based Guardians project with care and dedication. Together, they've crafted 3,731 unique NFTs—1,776 fox-like Guardians, 1,319 Base Frog Warriors, and 636 Creatures, ranging from Common to Extremely Rare. Set for a 2025 release, these NFTs spark an everliving saga in the Giga Brain Galaxy, where Guardians, Frogs, and Creatures quietly stand against FUD cyborg fowl—symbols of fear—to safeguard the BasedAI network. It's a modest story, inviting you to join a world of simple bravery.
                 </p>
               </div>
             </motion.div>
