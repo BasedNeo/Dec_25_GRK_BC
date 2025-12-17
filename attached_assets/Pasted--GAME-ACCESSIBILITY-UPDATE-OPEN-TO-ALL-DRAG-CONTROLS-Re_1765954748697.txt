@@ -1,0 +1,428 @@
+=== GAME ACCESSIBILITY UPDATE - OPEN TO ALL + DRAG CONTROLS ===
+
+Remove wallet requirement to play. Anyone can play to attract users.
+Keep bot prevention with 4 plays/day limit (uses device fingerprint).
+Add touch-drag controls for mobile (drag ship left/right).
+
+═══════════════════════════════════════════════════════════
+PART 1: UPDATE GAME ACCESS HOOK - REMOVE WALLET REQUIREMENT
+═══════════════════════════════════════════════════════════
+
+File: /client/src/hooks/useGameAccess.ts
+
+REPLACE the entire file with:
+
+import { useState, useCallback, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+import { useIsGuardianHolder } from './useIsGuardianHolder';
+
+const MAX_DAILY_PLAYS = 4;  // 4 plays per day for everyone
+const COOLDOWN_SECONDS = 30;
+const STORAGE_KEY = 'guardian_game_access';
+
+interface AccessState {
+  canPlay: boolean;
+  reason: string;
+  playsRemaining: number;
+  cooldownSeconds: number;
+}
+
+// Simple device fingerprint (not bulletproof but deters casual abuse)
+function getDeviceId(): string {
+  const stored = localStorage.getItem('device_game_id');
+  if (stored) return stored;
+  
+  const id = `${navigator.userAgent.length}_${screen.width}_${screen.height}_${new Date().getTimezoneOffset()}_${Math.random().toString(36).slice(2, 10)}`;
+  localStorage.setItem('device_game_id', id);
+  return id;
+}
+
+export function useGameAccess() {
+  const { address, isConnected } = useAccount();
+  const { isHolder, isLoading: holderLoading } = useIsGuardianHolder();
+  const [cooldown, setCooldown] = useState(0);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown(c => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const checkAccess = useCallback((): AccessState => {
+    const deviceId = getDeviceId();
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let data = { date: today, plays: 0, lastPlay: 0, deviceId };
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Reset if new day or different device
+        if (parsed.date === today && parsed.deviceId === deviceId) {
+          data = parsed;
+        }
+      } catch {}
+    }
+
+    const playsRemaining = MAX_DAILY_PLAYS - data.plays;
+    const elapsed = (Date.now() - data.lastPlay) / 1000;
+    const cooldownSeconds = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed));
+
+    if (playsRemaining <= 0) {
+      return { 
+        canPlay: false, 
+        reason: 'Daily limit reached (resets at midnight)', 
+        playsRemaining: 0, 
+        cooldownSeconds: 0 
+      };
+    }
+    
+    if (cooldownSeconds > 0) {
+      setCooldown(cooldownSeconds);
+      return { 
+        canPlay: false, 
+        reason: `Wait ${cooldownSeconds}s`, 
+        playsRemaining, 
+        cooldownSeconds 
+      };
+    }
+
+    return { canPlay: true, reason: 'Ready to play!', playsRemaining, cooldownSeconds: 0 };
+  }, []);
+
+  const recordPlay = useCallback(() => {
+    const deviceId = getDeviceId();
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let data = { date: today, plays: 1, lastPlay: Date.now(), deviceId };
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.date === today && parsed.deviceId === deviceId) {
+          data.plays = parsed.plays + 1;
+        }
+      } catch {}
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setCooldown(COOLDOWN_SECONDS);
+  }, []);
+
+  // No wallet signature needed anymore - just start playing
+  const startSession = useCallback(async (): Promise<boolean> => {
+    const access = checkAccess();
+    if (!access.canPlay) return false;
+    recordPlay();
+    return true;
+  }, [checkAccess, recordPlay]);
+
+  return {
+    checkAccess,
+    startSession,
+    recordPlay,
+    isHolder,          // Still track for bonus perks
+    isLoading: holderLoading,
+    isConnected,
+    cooldown,
+    // Perks for holders
+    holderPerks: isHolder ? {
+      extraLife: true,
+      scoreMultiplier: 1.5,
+      specialShip: true,
+    } : null,
+  };
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: UPDATE GAME COMPONENT - DRAG CONTROLS + OPEN ACCESS
+═══════════════════════════════════════════════════════════
+
+File: /client/src/components/GuardianDefender.tsx
+
+Find and update these sections:
+
+--- SECTION A: Add drag state refs (near top of component) ---
+
+FIND (around line 15-20):
+const inputRef = useRef({ left: false, right: false, up: false, shoot: false });
+
+ADD AFTER:
+// Touch drag state
+const dragRef = useRef<{ 
+  active: boolean; 
+  startX: number; 
+  startY: number;
+  shipStartX: number;
+}>({ active: false, startX: 0, startY: 0, shipStartX: 0 });
+const lastTouchRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+--- SECTION B: Remove wallet gate from render ---
+
+FIND the gate screen section that checks for wallet connection and replace:
+
+FIND (the entire gate phase block):
+{phase === 'gate' && (
+  <div className="text-center py-12">
+    {isLoading ? (
+      ...
+    ) : !isConnected ? (
+      ...wallet connect stuff...
+    ) : !isHolder ? (
+      ...NFT gate stuff...
+    ) : ...
+  </div>
+)}
+
+REPLACE WITH:
+{phase === 'gate' && (
+  <div className="text-center py-8">
+    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-2 border-cyan-500/50 flex items-center justify-center">
+      <Gamepad2 className="w-10 h-10 text-cyan-400" />
+    </div>
+    <p className="text-white font-orbitron text-xl mb-2">GUARDIAN DEFENDER</p>
+    <p className="text-gray-400 text-sm mb-4">Defend the Based Galaxy!</p>
+    
+    {(() => {
+      const access = checkAccess();
+      if (!access.canPlay) {
+        return (
+          <>
+            <p className="text-red-400 text-sm mb-2">{access.reason}</p>
+            {access.cooldownSeconds > 0 && (
+              <p className="text-cyan-400 text-3xl font-mono">{cooldown}s</p>
+            )}
+          </>
+        );
+      }
+      return (
+        <Button 
+          onClick={() => setPhase('menu')} 
+          className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3"
+        >
+          <Play size={20} className="mr-2" /> PLAY NOW
+        </Button>
+      );
+    })()}
+    
+    <p className="text-gray-600 text-xs mt-4">
+      {checkAccess().playsRemaining} plays remaining today
+    </p>
+    
+    {/* Show holder perks if connected */}
+    {isConnected && holderPerks && (
+      <div className="mt-4 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-lg p-3 text-xs text-[#6cff61] max-w-xs mx-auto">
+        <p className="font-bold">🎮 HOLDER PERKS ACTIVE</p>
+        <p>+1 Life • 1.5x Score • Green Ship</p>
+      </div>
+    )}
+    
+    {!isConnected && (
+      <p className="text-gray-500 text-[10px] mt-4">
+        Connect wallet & own a Guardian for bonus perks!
+      </p>
+    )}
+  </div>
+)}
+
+--- SECTION C: Update menu phase to not require signature ---
+
+FIND the menu phase block and simplify:
+
+REPLACE the startGame function:
+
+const startGame = useCallback(async () => {
+  const access = checkAccess();
+  if (!access.canPlay) return;
+  
+  // No signature needed - just start
+  recordPlay();
+  const { width, height } = canvasSize;
+  stateRef.current = createGame(width, height, holderPerks?.extraLife || false);
+  spawnAliens(stateRef.current, width);
+  setPhase('playing');
+}, [checkAccess, recordPlay, canvasSize, holderPerks]);
+
+--- SECTION D: Add touch drag handlers ---
+
+ADD these functions before the return statement:
+
+// Touch drag controls for mobile
+const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+  if (phase !== 'playing') return;
+  const touch = e.touches[0];
+  const rect = e.currentTarget.getBoundingClientRect();
+  const touchX = touch.clientX - rect.left;
+  const touchY = touch.clientY - rect.top;
+  
+  dragRef.current = {
+    active: true,
+    startX: touchX,
+    startY: touchY,
+    shipStartX: stateRef.current?.player.pos.x || 0,
+  };
+  lastTouchRef.current = { x: touchX, y: touchY };
+  
+  // Tap in upper half = thrust, lower half = shoot
+  const canvasHeight = canvasSize.height;
+  if (touchY < canvasHeight * 0.4) {
+    inputRef.current.up = true;
+  } else {
+    inputRef.current.shoot = true;
+  }
+}, [phase, canvasSize.height]);
+
+const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+  if (phase !== 'playing' || !dragRef.current.active) return;
+  e.preventDefault();
+  
+  const touch = e.touches[0];
+  const rect = e.currentTarget.getBoundingClientRect();
+  const touchX = touch.clientX - rect.left;
+  
+  // Calculate horizontal movement delta
+  const deltaX = touchX - dragRef.current.startX;
+  
+  // Directly set ship position based on drag
+  if (stateRef.current) {
+    const newX = Math.max(0, Math.min(
+      canvasSize.width - stateRef.current.player.size.x,
+      dragRef.current.shipStartX + deltaX
+    ));
+    stateRef.current.player.pos.x = newX;
+  }
+  
+  lastTouchRef.current = { x: touchX, y: touch.clientY - rect.top };
+}, [phase, canvasSize.width]);
+
+const handleTouchEnd = useCallback(() => {
+  dragRef.current.active = false;
+  inputRef.current.up = false;
+  inputRef.current.shoot = false;
+}, []);
+
+--- SECTION E: Update canvas element with touch handlers ---
+
+FIND the canvas element and update:
+
+<canvas
+  ref={canvasRef}
+  width={canvasSize.width}
+  height={canvasSize.height}
+  className="w-full rounded border border-cyan-500/20 touch-none"
+  onTouchStart={handleTouchStart}
+  onTouchMove={handleTouchMove}
+  onTouchEnd={handleTouchEnd}
+  onTouchCancel={handleTouchEnd}
+/>
+
+--- SECTION F: Update mobile controls UI ---
+
+REPLACE the mobile touch controls section with drag instruction:
+
+{/* Mobile Controls - Show drag instructions */}
+<div className="mt-3 md:hidden">
+  <div className="bg-black/60 rounded-lg p-3 border border-cyan-500/20">
+    <p className="text-center text-gray-400 text-xs mb-2">TOUCH CONTROLS</p>
+    <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+      <div className="bg-cyan-500/10 rounded p-2">
+        <span className="text-cyan-400 text-lg">👆</span>
+        <p className="text-gray-400 mt-1">Top = Thrust</p>
+      </div>
+      <div className="bg-purple-500/10 rounded p-2">
+        <span className="text-purple-400 text-lg">👈👉</span>
+        <p className="text-gray-400 mt-1">Drag = Move</p>
+      </div>
+      <div className="bg-red-500/10 rounded p-2">
+        <span className="text-red-400 text-lg">👇</span>
+        <p className="text-gray-400 mt-1">Bottom = Shoot</p>
+      </div>
+    </div>
+  </div>
+  
+  {/* Optional: Add dedicated thrust button for lander level */}
+  {stateRef.current?.mode === 'lander' && (
+    <div className="flex justify-center gap-4 mt-3">
+      <Button
+        onTouchStart={() => { inputRef.current.up = true; }}
+        onTouchEnd={() => { inputRef.current.up = false; }}
+        className="w-20 h-20 rounded-full bg-purple-500/30 border-2 border-purple-500 text-purple-400"
+      >
+        <ChevronUp size={32} />
+        <span className="text-[10px] block">THRUST</span>
+      </Button>
+    </div>
+  )}
+</div>
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE GAME ENGINE FOR DIRECT POSITION CONTROL
+═══════════════════════════════════════════════════════════
+
+File: /client/src/lib/gameEngine.ts
+
+The applyInput function should still work, but add a flag for direct control:
+
+FIND the applyInput function and ADD this at the start:
+
+// Skip left/right input if position was set directly (touch drag)
+// The touch handler sets position directly, so we don't double-apply
+
+This is already handled because we set position directly in touch handler.
+
+═══════════════════════════════════════════════════════════
+PART 4: SCORE MULTIPLIER FOR HOLDERS
+═══════════════════════════════════════════════════════════
+
+File: /client/src/components/GuardianDefender.tsx
+
+In the game over handler, apply score multiplier:
+
+FIND where score is submitted:
+submitScore(state.score, state.level);
+
+REPLACE WITH:
+const finalScore = holderPerks?.scoreMultiplier 
+  ? Math.floor(state.score * holderPerks.scoreMultiplier) 
+  : state.score;
+submitScore(finalScore, state.level);
+
+═══════════════════════════════════════════════════════════
+SUMMARY OF CHANGES
+═══════════════════════════════════════════════════════════
+
+BEFORE:
+- Must connect wallet to play
+- Must own Guardian NFT to play
+- Wallet signature required
+- 10 plays/day
+- Arrow button controls on mobile
+
+AFTER:
+- Anyone can play immediately
+- No wallet needed
+- No signature needed
+- 4 plays/day (device fingerprint)
+- 30 second cooldown between plays
+- Drag ship on mobile (intuitive)
+- Tap top = thrust, tap bottom = shoot
+- Holders still get: +1 life, 1.5x score, green ship
+
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+
+[ ] Game loads without wallet connected
+[ ] "PLAY NOW" button works immediately
+[ ] 4 plays/day limit enforced
+[ ] 30 second cooldown works
+[ ] Mobile: Drag left/right moves ship
+[ ] Mobile: Tap top of screen = thrust
+[ ] Mobile: Tap bottom of screen = shoot
+[ ] Connected holders see "PERKS ACTIVE" badge
+[ ] Holder score is multiplied by 1.5x
+[ ] Holder gets extra life
+[ ] Works on both iOS and Android

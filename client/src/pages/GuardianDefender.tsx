@@ -12,8 +12,12 @@ import {
   ShieldIcon, ControlLeftIcon, ControlRightIcon, ControlUpIcon, 
   FireIcon, GamepadIcon, LoadingIcon, LevelIcon, ScoreIcon, StarIcon 
 } from '@/game/components/GameIcons';
+import { Navbar } from '@/components/Navbar';
+import { Home } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 export function GuardianDefender() {
+  const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<GameState | null>(null);
   const inputRef = useRef({ left: false, right: false, up: false, shoot: false });
@@ -25,7 +29,7 @@ export function GuardianDefender() {
 
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { checkAccess, startSession, recordPlay, isHolder, isLoading } = useGameAccess();
+  const { checkAccess, startSession, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
   const { submitScore, myStats, leaderboard } = useGameScoresLocal();
 
   useEffect(() => {
@@ -36,25 +40,22 @@ export function GuardianDefender() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && isConnected) {
+    if (!isLoading) {
       const access = checkAccess();
-      if (access.canPlay) setPhase('menu');
+      if (access.canPlay) setPhase('gate');
     }
-  }, [isLoading, isConnected, checkAccess]);
+  }, [isLoading, checkAccess]);
 
   const startGame = useCallback(async () => {
     const access = checkAccess();
     if (!access.canPlay) return;
 
-    const started = await startSession();
-    if (!started) return;
-
     recordPlay();
     const { width, height } = canvasSize;
-    stateRef.current = createGame(width, height, isHolder);
+    stateRef.current = createGame(width, height, holderPerks?.extraLife || false);
     spawnAliens(stateRef.current, width);
     setPhase('playing');
-  }, [checkAccess, startSession, recordPlay, canvasSize, isHolder]);
+  }, [checkAccess, recordPlay, canvasSize, holderPerks]);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -128,8 +129,22 @@ export function GuardianDefender() {
   const rankInfo = RANKS.find(r => myStats.lifetimeScore >= r.min) || RANKS[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] py-8 px-4">
-      <Card className="bg-black/90 border-cyan-500/30 backdrop-blur-xl p-5 max-w-md mx-auto relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020]">
+      <Navbar activeTab="game" onTabChange={() => setLocation('/')} isConnected={isConnected} />
+      
+      <div className="py-6 px-4">
+        <div className="max-w-md mx-auto mb-4">
+          <button 
+            onClick={() => setLocation('/')}
+            className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
+            data-testid="button-back-home"
+          >
+            <Home size={16} />
+            <span>Back to Command Center</span>
+          </button>
+        </div>
+        
+        <Card className="bg-black/90 border-cyan-500/30 backdrop-blur-xl p-5 max-w-md mx-auto relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
         <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none" />
@@ -158,78 +173,62 @@ export function GuardianDefender() {
           </div>
 
           {phase === 'gate' && (
-            <div className="text-center py-14">
-              {isLoading ? (
+            <div className="text-center py-10">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-2 border-cyan-500/50 flex items-center justify-center">
+                <GamepadIcon size={40} />
+              </div>
+              <p className="text-white font-orbitron text-xl mb-2">GUARDIAN DEFENDER</p>
+              <p className="text-gray-400 text-sm mb-4">Defend the Based Galaxy!</p>
+              
+              {!access.canPlay ? (
                 <>
-                  <LoadingIcon size={40} className="mx-auto mb-4" />
-                  <p className="text-gray-400 text-sm">Verifying access...</p>
-                </>
-              ) : !isConnected ? (
-                <>
-                  <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/30">
-                    <ShieldIcon size={40} />
-                  </div>
-                  <p className="text-white font-orbitron text-lg mb-2">CONNECT WALLET</p>
-                  <p className="text-gray-500 text-sm mb-6">Access requires wallet verification</p>
-                  <Button 
-                    onClick={openConnectModal} 
-                    className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity" 
-                    data-testid="button-connect-game"
-                  >
-                    CONNECT WALLET
-                  </Button>
-                </>
-              ) : !isHolder ? (
-                <>
-                  <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-purple-500/20 to-magenta-500/20 rounded-2xl flex items-center justify-center border border-purple-500/30">
-                    <ShieldIcon size={40} />
-                  </div>
-                  <p className="text-white font-orbitron text-lg mb-2">GUARDIANS ONLY</p>
-                  <p className="text-gray-500 text-sm mb-6">Own at least 1 Guardian NFT to play</p>
-                  <div className="flex gap-3 justify-center">
-                    <a href="https://aftermint.trade/mint/based-guardians" target="_blank" rel="noopener noreferrer">
-                      <Button className="bg-[#6cff61] text-black font-bold px-6 py-3 rounded-xl hover:bg-[#5de550]" data-testid="button-mint-nft">
-                        <RocketIcon size={18} className="mr-2" /> MINT NFT
-                      </Button>
-                    </a>
-                    <Button variant="outline" className="border-cyan-500/50 text-cyan-400 px-6 py-3 rounded-xl hover:bg-cyan-500/10" data-testid="button-buy-nft">
-                      BUY NFT
-                    </Button>
-                  </div>
-                </>
-              ) : !access.canPlay ? (
-                <>
-                  <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-2xl flex items-center justify-center border border-orange-500/30">
-                    <RestartIcon size={40} />
-                  </div>
-                  <p className="text-white font-orbitron mb-2">{access.reason}</p>
+                  <p className="text-red-400 text-sm mb-2">{access.reason}</p>
                   {access.cooldownSeconds > 0 && (
-                    <p className="text-cyan-400 text-3xl font-mono font-bold">{access.cooldownSeconds}s</p>
+                    <p className="text-cyan-400 text-3xl font-mono font-bold">{cooldown}s</p>
                   )}
                 </>
               ) : (
                 <Button 
                   onClick={() => setPhase('menu')} 
-                  className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold px-8 py-3 rounded-xl" 
-                  data-testid="button-continue"
+                  className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3 rounded-xl"
+                  data-testid="button-play-now"
                 >
-                  CONTINUE
+                  <PlayIcon size={20} className="mr-2" /> PLAY NOW
                 </Button>
+              )}
+              
+              <p className="text-gray-600 text-xs mt-4">
+                {access.playsRemaining} plays remaining today
+              </p>
+              
+              {isConnected && isHolder && (
+                <div className="mt-4 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-lg p-3 text-xs text-[#6cff61] max-w-xs mx-auto">
+                  <p className="font-bold">HOLDER PERKS ACTIVE</p>
+                  <p>+1 Life • 1.5x Score • Green Ship</p>
+                </div>
+              )}
+              
+              {!isConnected && (
+                <p className="text-gray-500 text-[10px] mt-4">
+                  Connect wallet & own a Guardian for bonus perks!
+                </p>
               )}
             </div>
           )}
 
           {phase === 'menu' && (
             <div className="text-center py-10">
-              <div className="inline-flex items-center gap-2 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-full px-4 py-1.5 mb-5">
-                <ShieldIcon size={14} />
-                <span className="text-[#6cff61] text-xs font-bold tracking-wide">GUARDIAN VERIFIED</span>
-              </div>
+              {holderPerks && (
+                <div className="inline-flex items-center gap-2 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-full px-4 py-1.5 mb-5">
+                  <ShieldIcon size={14} />
+                  <span className="text-[#6cff61] text-xs font-bold tracking-wide">GUARDIAN HOLDER</span>
+                </div>
+              )}
               
               <p className="text-white font-orbitron text-2xl mb-2">READY TO LAUNCH</p>
               <p className="text-gray-500 text-sm mb-6">{access.playsRemaining} plays remaining today</p>
               
-              {isHolder && (
+              {holderPerks && (
                 <div className="bg-gradient-to-r from-[#6cff61]/10 to-[#00ffff]/10 border border-[#6cff61]/30 rounded-xl p-4 mb-6 max-w-xs mx-auto">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <StarIcon size={16} />
@@ -248,13 +247,13 @@ export function GuardianDefender() {
 
               <Button 
                 onClick={startGame} 
-                className="bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-[length:200%_100%] animate-pulse text-black font-bold px-10 py-4 text-lg rounded-xl hover:opacity-90 transition-all" 
+                className="bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-[length:200%_100%] animate-pulse text-white font-bold px-10 py-4 text-lg rounded-xl hover:opacity-90 transition-all" 
                 data-testid="button-start-game"
               >
-                <PlayIcon size={24} className="mr-2" /> SIGN TO PLAY
+                <PlayIcon size={24} className="mr-2" /> START GAME
               </Button>
 
-              <p className="text-gray-600 text-[10px] mt-4">Wallet signature required to start session</p>
+              <p className="text-gray-600 text-[10px] mt-4">Defend the galaxy from alien invaders!</p>
               
               {myStats.gamesPlayed > 0 && (
                 <div className="mt-8 pt-6 border-t border-white/10">
@@ -415,6 +414,7 @@ export function GuardianDefender() {
           </div>
         </Card>
       )}
+      </div>
     </div>
   );
 }

@@ -86,28 +86,35 @@ function getSecureCache(): { data: Record<string, PriceData>; valid: boolean } |
 async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price: number; change: number }>> {
   const results = new Map();
   try {
-    const symbolsParam = symbols.map(s => `"${s}"`).join(',');
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 4000);
     
-    const response = await fetch(
-      `https://api.binance.com/api/v3/ticker/24hr?symbols=[${symbolsParam}]`,
-      { signal: controller.signal }
-    );
+    const requests = symbols.map(async (symbol) => {
+      try {
+        const res = await fetch(
+          `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.lastPrice) {
+          const price = parseFloat(data.lastPrice);
+          const change = parseFloat(data.priceChangePercent || '0');
+          if (!isNaN(price) && price > 0) {
+            return { symbol, price, change };
+          }
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    });
+    
+    const responses = await Promise.all(requests);
     clearTimeout(timeout);
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('Invalid response');
-    
-    data.forEach((ticker: { symbol: string; lastPrice: string; priceChangePercent: string }) => {
-      if (ticker.symbol && ticker.lastPrice) {
-        const price = parseFloat(ticker.lastPrice);
-        const change = parseFloat(ticker.priceChangePercent || '0');
-        if (!isNaN(price) && price > 0) {
-          results.set(ticker.symbol, { price, change });
-        }
-      }
+    responses.forEach(r => {
+      if (r) results.set(r.symbol, { price: r.price, change: r.change });
     });
     return results;
   } catch {
@@ -119,15 +126,18 @@ async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: n
   const results = new Map();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 6000);
     
     const response = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`,
-      { signal: controller.signal }
+      { 
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      }
     );
     clearTimeout(timeout);
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) return results;
     const data = await response.json();
     
     Object.entries(data).forEach(([id, info]) => {
