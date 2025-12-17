@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
-import { formatEther } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
 import { SecureStorage } from '@/lib/secureStorage';
-import { SafeMath } from '@/lib/safeMath';
 
 const DOMAIN = {
   name: 'BasedGuardiansMarketplace',
@@ -297,14 +296,7 @@ export function useOffersV3() {
       
       await fetchNonce();
       
-      const priceWei = SafeMath.toWei(priceInBased.toString());
-      
-      const validation = SafeMath.validate(priceWei);
-      if (!validation.valid) {
-        toast({ title: "Invalid Price", description: validation.error, variant: "destructive" });
-        setIsLoading(false);
-        return false;
-      }
+      const priceWei = parseEther(priceInBased.toString());
       const expiration = Math.floor(Date.now() / 1000) + (expirationDays * 24 * 60 * 60);
       
       const offerData = {

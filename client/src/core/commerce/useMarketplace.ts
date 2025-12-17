@@ -12,8 +12,7 @@
  */
 
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { formatEther } from 'viem';
-import { SafeMath } from '@/lib/safeMath';
+import { parseEther, formatEther } from 'viem';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT, GAS_SETTINGS } from '@/lib/constants';
@@ -416,17 +415,7 @@ export function useMarketplace() {
       className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
     });
 
-    const priceWei = SafeMath.toWei(priceInBased.toString());
-
-    const validation = SafeMath.validate(priceWei);
-    if (!validation.valid) {
-      toast({ 
-        title: "Invalid Price", 
-        description: validation.error || "Price validation failed", 
-        variant: "destructive" 
-      });
-      return;
-    }
+    const priceWei = parseEther(String(priceInBased));
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
@@ -536,17 +525,7 @@ export function useMarketplace() {
       className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
     });
 
-    const offerWei = SafeMath.toWei(offerAmountBased.toString());
-
-    const offerValidation = SafeMath.validate(offerWei);
-    if (!offerValidation.valid) {
-      toast({ 
-        title: "Invalid Offer", 
-        description: offerValidation.error || "Offer validation failed", 
-        variant: "destructive" 
-      });
-      return;
-    }
+    const offerWei = parseEther(String(offerAmountBased));
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
