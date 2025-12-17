@@ -140,3 +140,35 @@ client/src/lib/constants.ts
 - Minting gas limit: 8,000,000, gas price: 10 gwei
 - Added Uniswap Wallet support to RainbowKit wallet modal (in Popular section)
 - NFT cards in portfolio now display offer details with Accept/Decline buttons directly visible
+- Mobile wallet connect optimized: Custom styled connect button matching desktop, full wallet list scrollable, touch-friendly 56px minimum targets
+- RainbowKit modal CSS polish: Mobile-first responsive design, proper icon sizing, all wallet groups visible
+
+## Wallet Configuration
+
+### Supported Wallets (wagmi.ts)
+**Popular Group:**
+- Injected Wallet (browser extension detection)
+- MetaMask
+- Coinbase Wallet
+- Uniswap Wallet
+- Rainbow
+- Trust Wallet
+
+**More Options Group:**
+- WalletConnect
+- Rabby
+- Phantom
+- Zerion
+- OKX Wallet
+- Brave Wallet
+
+**Advanced Group:**
+- Ledger
+- Safe
+- Argent
+
+### RainbowKit Configuration
+- Modal size: wide
+- Theme: darkTheme with cyan accent (#00ffff)
+- Initial chain: BasedAI (32323)
+- Recent transactions: enabled
