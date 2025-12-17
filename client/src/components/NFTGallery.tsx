@@ -708,40 +708,39 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
             </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-white/5">
-             {/* Left column: Listing Price or Backed Value */}
-             <div className="flex flex-col">
-                 {isListedOnChain && listingPrice ? (
-                   <>
-                     <span className="text-[9px] text-yellow-400 uppercase font-bold">Sale Price</span>
-                     <span className="text-xs font-mono text-yellow-400 font-bold">{listingPrice.toLocaleString()}</span>
-                   </>
-                 ) : (
-                   <>
-                     <span className="text-[9px] text-muted-foreground uppercase">Backed Based</span>
-                     <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
-                   </>
-                 )}
-             </div>
-             
-             {/* Right column: Highest Offer or Rarity */}
-             <div className="flex flex-col items-end">
-                 {highestOffer ? (
-                   <>
-                     <span className="text-[9px] text-green-400 uppercase font-bold">Best Offer</span>
-                     <span className="text-xs font-mono text-green-400 font-bold">{Number(highestOffer.amount).toLocaleString()}</span>
-                   </>
-                 ) : (
-                   <>
+        <div className="flex flex-col gap-2 mt-auto pt-3 border-t border-white/5">
+             <div className="grid grid-cols-2 gap-2">
+                 {/* Left column: Listing Price or Unlisted */}
+                 <div className="flex flex-col">
+                     {isListedOnChain && listingPrice ? (
+                       <>
+                         <span className="text-[9px] text-yellow-400 uppercase font-bold">Listed Price</span>
+                         <span className="text-xs font-mono text-yellow-400 font-bold">{listingPrice.toLocaleString()}</span>
+                       </>
+                     ) : (
+                       <>
+                         <span className="text-[9px] text-muted-foreground uppercase italic">Unlisted</span>
+                         <span className="text-xs font-mono text-cyan-400 font-bold">{backedValue.toLocaleString()}</span>
+                       </>
+                     )}
+                     {/* Highest Offer - Always shown below price when offers exist */}
+                     {highestOffer && (
+                       <span className="text-[10px] text-gray-400 font-mono mt-0.5">
+                         Best Offer: {Number(highestOffer.amount).toLocaleString()}
+                       </span>
+                     )}
+                 </div>
+                 
+                 {/* Right column: Rarity */}
+                 <div className="flex flex-col items-end">
                      <span className="text-[9px] text-muted-foreground uppercase">Rarity</span>
                      <span className={`text-xs font-mono font-bold ${rarityConfig.color.split(' ')[0]}`}>{rarityTrait}</span>
-                   </>
-                 )}
+                 </div>
              </div>
              
              {/* Buy Button for Listed Items (for Collection view - other people's NFTs) */}
              {isListedOnChain && listingPrice && (
-                <div className="nft-actions col-span-2 mt-2">
+                <div className="nft-actions">
                     <BuyButton 
                         tokenId={guardian.id}
                         price={listingPrice.toString()}

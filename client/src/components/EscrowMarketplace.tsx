@@ -1471,7 +1471,7 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
             
             {/* Details */}
             <div className="nft-info p-4 space-y-4">
-                <div className="flex justify-between items-center min-h-[3rem]">
+                <div className="flex flex-col min-h-[3.5rem]">
                     {isUnminted ? (
                         <div className="flex flex-col">
                             <span className="text-[10px] text-[#6cff61] uppercase font-semibold">Mint Price</span>
@@ -1490,16 +1490,16 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center">
-                            <span className="text-[10px] text-muted-foreground uppercase italic">Not Listed</span>
+                            <span className="text-[10px] text-muted-foreground uppercase italic">Unlisted</span>
                             <span className="text-sm font-bold text-white font-mono">--</span>
                         </div>
                     )}
                     
-                    {/* Show active offer badge to owner */}
-                    {item.hasActiveOffer && item.highestOffer && (
-                        <div className="bg-gray-700/50 border border-gray-500/50 px-2 py-1 rounded">
-                            <span className="text-[10px] text-gray-300 font-mono">OFFER: {item.highestOffer.toLocaleString()} $BASED</span>
-                        </div>
+                    {/* Highest Offer - Always shown below price when offers exist */}
+                    {item.highestOffer && item.highestOffer > 0 && (
+                        <span className="text-[11px] text-gray-400 font-mono mt-1">
+                            Best Offer: {item.highestOffer.toLocaleString()} $BASED
+                        </span>
                     )}
                 </div>
                 
