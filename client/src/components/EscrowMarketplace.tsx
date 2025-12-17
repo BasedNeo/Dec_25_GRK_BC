@@ -267,9 +267,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
 
   // --- DIRECT Ethers.js FETCHING LOGIC (Per User Request) ---
+  // Always fetch on-chain minted NFTs regardless of mode - they appear first in combined view
   useEffect(() => {
-    // Only run this if we are NOT using CSV mode (Live Mode)
-    if (useCsvData) return;
 
     const fetchDirectly = async () => {
         setDirectLoading(true);
@@ -454,7 +453,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     };
 
     fetchDirectly();
-  }, [useCsvData]); // Re-run if toggling CSV mode
+  }, []); // Run once on mount to fetch on-chain minted NFTs
 
   // Determine if we need to start from offset 0 (for filters or when sorting by listed items)
   const needsFullCollection = 
@@ -491,22 +490,9 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   
 
   const allItems = useMemo(() => {
-     // IF LIVE MODE (useCsvData is false), USE DIRECT FETCHED DATA
-     if (!useCsvData) {
-         return directNFTs;
-     }
-
-     if (!data) return [];
-     
      const MINT_PRICE = 69420;
      
-     // Create a Set of actively listed token IDs for O(1) lookup
-     // Prefer directListingIds (ethers.js) over wagmi hook for reliability without wallet
-     const wagmiListings = (marketplace.activeListingIds || []).map(id => Number(id));
-     const combinedListings = directListingIds.length > 0 ? directListingIds : wagmiListings;
-     const listedTokenIds = new Set<number>(combinedListings);
-     
-     // Build offer map: tokenId -> highest offer amount
+     // Build offer maps for both V3 and V2
      const v3OffersByToken = new Map<number, number>();
      offersV3.myOffers.forEach((offer: { status: string; price: string; tokenId: number }) => {
        if (offer.status === 'pending' || offer.status === 'accepted') {
@@ -518,7 +504,6 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
        }
      });
      
-     // Also get V2 offers from offersByToken
      const v2OffersByToken = new Map<number, number>();
      offersByToken.forEach((offers, tokenId) => {
        const highestOffer = offers.reduce((max, o) => {
@@ -530,54 +515,52 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
        }
      });
      
-     // Flatten pages and determine real status based on contract data
-     let items = data.pages.flatMap((page: any) => page.nfts).map((item: any) => {
-        const tokenId = item.id;
-        // Check if token is actually minted:
-        // 1. If we have mintedTokenIdsList, use that Set
-        // 2. Otherwise, use contractStats.totalMinted (token IDs are sequential from tokenByIndex)
-        // NOTE: The 9 minted NFTs have specific token IDs from tokenByIndex, NOT necessarily 1-9
-        const isMinted = mintedTokenIds.size > 0 
-          ? mintedTokenIds.has(tokenId)
-          : (contractStats?.totalMinted && mintedTokenIdsList.length === 0 ? false : false);
-        // Use marketplace activeListingIds for accurate listing status
-        const isListed = isMinted && listedTokenIds.has(tokenId);
-        
-        // Price logic:
-        // - UNMINTED: show mint price
-        // - MINTED + LISTED: use fetched listing price from contract
-        // - MINTED + NOT LISTED: no price (accepts offers)
-        let price: number | undefined;
-        if (!isMinted) {
-           price = MINT_PRICE;
-        } else if (isListed) {
-           // Use the real listing price we fetched from the contract
-           price = listingPrices.get(tokenId);
-        } else {
-           // Minted but not listed - no price, accepts offers
-           price = undefined;
-        }
-        
-        // Get highest offer (V3 takes priority, fallback to V2)
-        const v3Offer = v3OffersByToken.get(tokenId);
-        const v2Offer = v2OffersByToken.get(tokenId);
-        const highestOffer = v3Offer || v2Offer || undefined;
-        
-        return {
-          ...item,
-          isListed,
-          isMinted,
-          mintPrice: MINT_PRICE,
-          price,
-          currency: '$BASED' as const,
-          owner: isMinted ? `0x${'?'.repeat(38)}` : undefined,
-          highestOffer,
-          hasActiveOffer: !!highestOffer
-        };
-     }) as unknown as MarketItem[];
+     // HYBRID APPROACH: On-chain minted NFTs FIRST, then CSV unminted NFTs
+     // 1. Use directNFTs (fetched from blockchain) for minted NFTs - these have real on-chain data
+     // 2. Fill in with CSV data for unminted NFTs (excluding minted token IDs)
      
-     return items;
-  }, [data, directNFTs, useCsvData, mintedTokenIds, directListingIds, marketplace.activeListingIds, listingPrices, offersV3.myOffers, offersByToken, contractStats, mintedTokenIdsList]);
+     // Get the set of minted token IDs from on-chain data
+     const mintedIdsFromChain = new Set<number>(directNFTs.map(nft => nft.id));
+     
+     // Start with on-chain minted NFTs (they already have correct isMinted, isListed, price)
+     const onChainItems: MarketItem[] = directNFTs.map(nft => {
+       const v3Offer = v3OffersByToken.get(nft.id);
+       const v2Offer = v2OffersByToken.get(nft.id);
+       const highestOffer = v3Offer || v2Offer || undefined;
+       return {
+         ...nft,
+         highestOffer,
+         hasActiveOffer: !!highestOffer
+       };
+     });
+     
+     // Get CSV data and filter out minted token IDs
+     let csvItems: MarketItem[] = [];
+     if (data && data.pages) {
+       csvItems = data.pages.flatMap((page: any) => page.nfts)
+         .filter((item: any) => !mintedIdsFromChain.has(item.id)) // Exclude minted NFTs
+         .map((item: any) => {
+           const v3Offer = v3OffersByToken.get(item.id);
+           const v2Offer = v2OffersByToken.get(item.id);
+           const highestOffer = v3Offer || v2Offer || undefined;
+           
+           return {
+             ...item,
+             isListed: false,
+             isMinted: false,
+             mintPrice: MINT_PRICE,
+             price: MINT_PRICE, // Unminted = mint price
+             currency: '$BASED' as const,
+             owner: undefined,
+             highestOffer,
+             hasActiveOffer: !!highestOffer
+           };
+         }) as MarketItem[];
+     }
+     
+     // Combine: On-chain minted first, then CSV unminted
+     return [...onChainItems, ...csvItems];
+  }, [data, directNFTs, offersV3.myOffers, offersByToken]);
 
   // Extract available traits for filters
   const availableTraits = useMemo(() => {
