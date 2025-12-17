@@ -75,6 +75,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (December 2024)
 
+- **Off-Chain Proposal System**: Complete gasless governance system for creating and voting on proposals
+  - Admin form with title, description, category, and A/B/C/D voting options
+  - Review workflow: proposals start in "review" status, admin can approve to make "active" or delete
+  - Multi-choice voting: users vote on options A/B/C/D with voting power = NFT count
+  - Database tables: `proposals` and `proposal_votes` for persistent storage
+  - API endpoints: POST/GET/PATCH/DELETE /api/proposals, POST /api/proposals/:id/vote
+  - Hook: useProposals.ts with useProposals, useProposalVotes, useProposalMutations
 - **My Offers Dashboard**: Dedicated "MY OFFERS" tab in marketplace with filter tabs (All/Active/Accepted/Expired), edit/cancel functionality, NFT thumbnails, and time remaining indicators
   - useMyOffers hook fetches offers from both V3 (off-chain) and V2 (on-chain) sources
   - Active offers badge shows count on tab trigger
