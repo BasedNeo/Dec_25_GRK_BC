@@ -142,10 +142,10 @@ export function ActivityFeed({
               color="text-blue-400" 
             />
             
-            {/* Volume - From recent sales */}
+            {/* Volume - From recent on-chain sales ONLY (not historical baseline) */}
             <StatCard 
               label="Volume" 
-              value={stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '0'} 
+              value={stats.recentVolume > 0 ? stats.recentVolume.toLocaleString() : '0'} 
               suffix="$BASED" 
               icon={<TrendingUp className="w-5 h-5 text-purple-400" />} 
               color="text-purple-400" 
