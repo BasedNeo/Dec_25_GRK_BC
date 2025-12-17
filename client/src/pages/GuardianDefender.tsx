@@ -213,7 +213,7 @@ export function GuardianDefender() {
               )}
               
               <div className="mt-6 pt-4 border-t border-purple-500/20">
-                <p className="text-purple-400 text-xs font-orbitron mb-1">COMING SOON</p>
+                <p className="text-purple-400 text-xs font-orbitron mb-1">COMING 2026</p>
                 <p className="text-white font-bold">Race-to-Base</p>
                 <p className="text-cyan-400 text-[10px]">It will be incredible.</p>
               </div>
