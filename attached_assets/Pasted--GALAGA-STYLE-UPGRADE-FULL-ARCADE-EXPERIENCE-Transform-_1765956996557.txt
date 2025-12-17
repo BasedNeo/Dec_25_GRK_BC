@@ -1,0 +1,1104 @@
+=== GALAGA-STYLE UPGRADE - FULL ARCADE EXPERIENCE ===
+
+Transform the basic game into a proper Galaga-style arcade shooter:
+- Ship moves freely in lower screen area (left/right/up/down)
+- Enemy formations that dive and attack
+- Multiple enemy types with unique behaviors
+- Power-ups and bonus stages
+- Star field background
+- Explosion effects
+- Ship from existing assets
+
+═══════════════════════════════════════════════════════════
+PART 1: ENHANCED GAME ENGINE
+═══════════════════════════════════════════════════════════
+
+REPLACE FILE: /client/src/lib/gameEngine.ts
+
+export interface Vec2 { x: number; y: number; }
+
+export interface Entity {
+  pos: Vec2;
+  vel: Vec2;
+  size: Vec2;
+  active: boolean;
+}
+
+export interface Bullet extends Entity {
+  isEnemy?: boolean;
+  type: 'normal' | 'double' | 'spread';
+}
+
+export interface Explosion {
+  pos: Vec2;
+  frame: number;
+  maxFrames: number;
+  size: number;
+}
+
+export interface Star {
+  x: number;
+  y: number;
+  speed: number;
+  brightness: number;
+}
+
+export interface Alien extends Entity {
+  type: 'grunt' | 'bee' | 'butterfly' | 'boss' | 'galaga';
+  hp: number;
+  pts: number;
+  state: 'formation' | 'diving' | 'returning' | 'dead';
+  formationPos: Vec2;      // Where it belongs in formation
+  diveProgress: number;    // 0-1 progress through dive
+  divePath: Vec2[];        // Bezier control points for dive
+  shootCooldown: number;
+  animFrame: number;
+}
+
+export interface PowerUp extends Entity {
+  type: 'double' | 'shield' | 'speed' | 'bomb';
+}
+
+export interface Player extends Entity {
+  lives: number;
+  powerUp: 'none' | 'double' | 'shield' | 'speed';
+  powerUpTime: number;
+  shootCooldown: number;
+  invincible: number;      // Invincibility frames after respawn
+  capturedShip: boolean;   // Galaga tractor beam feature
+}
+
+export interface GameState {
+  phase: 'playing' | 'dying' | 'respawning' | 'stageComplete' | 'gameOver' | 'bonus' | 'lander' | 'complete';
+  stage: number;
+  wave: number;
+  player: Player;
+  bullets: Bullet[];
+  aliens: Alien[];
+  explosions: Explosion[];
+  powerUps: PowerUp[];
+  stars: Star[];
+  score: number;
+  highScore: number;
+  time: number;
+  spawnTimer: number;
+  diveTimer: number;
+  bonusTimer: number;
+  difficulty: number;
+  enemiesKilledThisWave: number;
+}
+
+const PLAYER_MOVE_ZONE = 0.4; // Player can move in bottom 40% of screen
+const FORMATION_ROWS = 5;
+const FORMATION_COLS = 10;
+const DIVE_DURATION = 180; // Frames for a complete dive
+
+export function getCanvasSize() {
+  const maxW = Math.min(420, window.innerWidth - 24);
+  const maxH = Math.min(640, window.innerHeight - 180);
+  return { width: maxW, height: maxH };
+}
+
+// Create starfield background
+function createStars(count: number, w: number, h: number): Star[] {
+  const stars: Star[] = [];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      speed: 0.2 + Math.random() * 0.8,
+      brightness: 0.3 + Math.random() * 0.7,
+    });
+  }
+  return stars;
+}
+
+export function createGame(w: number, h: number, extraLife: boolean): GameState {
+  const highScore = parseInt(localStorage.getItem('galaga_high') || '0');
+  
+  return {
+    phase: 'playing',
+    stage: 1,
+    wave: 1,
+    player: {
+      pos: { x: w / 2 - 16, y: h - 60 },
+      vel: { x: 0, y: 0 },
+      size: { x: 32, y: 32 },
+      active: true,
+      lives: extraLife ? 4 : 3,
+      powerUp: 'none',
+      powerUpTime: 0,
+      shootCooldown: 0,
+      invincible: 120, // 2 seconds invincible at start
+      capturedShip: false,
+    },
+    bullets: [],
+    aliens: [],
+    explosions: [],
+    powerUps: [],
+    stars: createStars(80, w, h),
+    score: 0,
+    highScore,
+    time: 0,
+    spawnTimer: 60,
+    diveTimer: 0,
+    bonusTimer: 0,
+    difficulty: 1,
+    enemiesKilledThisWave: 0,
+  };
+}
+
+// Create enemy formation for a wave
+export function spawnWave(state: GameState, w: number): void {
+  const { wave, difficulty } = state;
+  const enemyCount = Math.min(30, 8 + wave * 3);
+  const rows = Math.min(FORMATION_ROWS, 2 + Math.floor(wave / 2));
+  const cols = Math.ceil(enemyCount / rows);
+  
+  const startX = (w - cols * 36) / 2;
+  const startY = 50;
+  
+  let idx = 0;
+  for (let row = 0; row < rows && idx < enemyCount; row++) {
+    for (let col = 0; col < cols && idx < enemyCount; col++) {
+      const formationX = startX + col * 36;
+      const formationY = startY + row * 32;
+      
+      // Determine enemy type based on row
+      let type: Alien['type'] = 'grunt';
+      let hp = 1;
+      let pts = 50;
+      
+      if (row === 0) {
+        type = wave >= 3 ? 'galaga' : 'boss';
+        hp = wave >= 3 ? 3 : 2;
+        pts = wave >= 3 ? 400 : 150;
+      } else if (row === 1) {
+        type = 'butterfly';
+        hp = 1;
+        pts = 80;
+      } else if (row === 2) {
+        type = 'bee';
+        pts = 60;
+      }
+      
+      // Spawn from top, flying into formation
+      const alien: Alien = {
+        pos: { x: formationX, y: -40 - row * 20 },
+        vel: { x: 0, y: 2 },
+        size: { x: 28, y: 28 },
+        active: true,
+        type,
+        hp,
+        pts,
+        state: 'returning', // Flying into formation
+        formationPos: { x: formationX, y: formationY },
+        diveProgress: 0,
+        divePath: [],
+        shootCooldown: 60 + Math.random() * 120,
+        animFrame: 0,
+      };
+      
+      state.aliens.push(alien);
+      idx++;
+    }
+  }
+  
+  state.diveTimer = 120; // Start diving after formation
+}
+
+// Generate bezier dive path
+function generateDivePath(start: Vec2, w: number, h: number): Vec2[] {
+  const targetX = Math.random() * (w - 60) + 30;
+  const midX1 = Math.random() * w;
+  const midX2 = Math.random() * w;
+  
+  return [
+    { ...start },
+    { x: midX1, y: h * 0.3 },
+    { x: midX2, y: h * 0.6 },
+    { x: targetX, y: h + 40 }, // Exit bottom
+  ];
+}
+
+// Bezier interpolation
+function bezier(points: Vec2[], t: number): Vec2 {
+  if (points.length === 1) return points[0];
+  const newPoints: Vec2[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    newPoints.push({
+      x: points[i].x + (points[i + 1].x - points[i].x) * t,
+      y: points[i].y + (points[i + 1].y - points[i].y) * t,
+    });
+  }
+  return bezier(newPoints, t);
+}
+
+export function updateGame(state: GameState, w: number, h: number): void {
+  if (state.phase === 'gameOver' || state.phase === 'complete') return;
+  
+  state.time++;
+  
+  // Update stars (parallax scrolling)
+  state.stars.forEach(star => {
+    star.y += star.speed;
+    if (star.y > h) {
+      star.y = 0;
+      star.x = Math.random() * w;
+    }
+  });
+  
+  // Handle respawning
+  if (state.phase === 'dying') {
+    if (state.time % 60 === 0) {
+      if (state.player.lives > 0) {
+        state.phase = 'respawning';
+        state.player.pos = { x: w / 2 - 16, y: h - 60 };
+        state.player.active = true;
+        state.player.invincible = 180;
+      } else {
+        state.phase = 'gameOver';
+        if (state.score > state.highScore) {
+          localStorage.setItem('galaga_high', state.score.toString());
+        }
+      }
+    }
+    return;
+  }
+  
+  if (state.phase === 'respawning') {
+    state.player.invincible--;
+    if (state.player.invincible <= 0) {
+      state.phase = 'playing';
+    }
+  }
+  
+  // Update player
+  const p = state.player;
+  p.pos.x += p.vel.x;
+  p.pos.y += p.vel.y;
+  
+  // Clamp player to movement zone
+  p.pos.x = Math.max(0, Math.min(w - p.size.x, p.pos.x));
+  p.pos.y = Math.max(h * (1 - PLAYER_MOVE_ZONE), Math.min(h - p.size.y, p.pos.y));
+  
+  // Friction
+  p.vel.x *= 0.85;
+  p.vel.y *= 0.85;
+  
+  // Shoot cooldown
+  if (p.shootCooldown > 0) p.shootCooldown--;
+  if (p.invincible > 0) p.invincible--;
+  
+  // Power-up timer
+  if (p.powerUpTime > 0) {
+    p.powerUpTime--;
+    if (p.powerUpTime <= 0) p.powerUp = 'none';
+  }
+  
+  // Update bullets
+  state.bullets = state.bullets.filter(b => {
+    if (b.isEnemy) {
+      b.pos.y += 5;
+      return b.pos.y < h + 20 && b.active;
+    } else {
+      b.pos.y -= 10;
+      return b.pos.y > -20 && b.active;
+    }
+  });
+  
+  // Update aliens
+  state.spawnTimer--;
+  if (state.spawnTimer <= 0 && state.aliens.length === 0) {
+    state.wave++;
+    state.difficulty = 1 + state.wave * 0.1;
+    spawnWave(state, w);
+    state.spawnTimer = 999999;
+    state.enemiesKilledThisWave = 0;
+  }
+  
+  // Dive timer
+  state.diveTimer--;
+  if (state.diveTimer <= 0) {
+    // Pick random alien in formation to dive
+    const formationAliens = state.aliens.filter(a => a.state === 'formation' && a.active);
+    if (formationAliens.length > 0) {
+      const diver = formationAliens[Math.floor(Math.random() * formationAliens.length)];
+      diver.state = 'diving';
+      diver.diveProgress = 0;
+      diver.divePath = generateDivePath(diver.pos, w, h);
+    }
+    state.diveTimer = Math.max(30, 90 - state.wave * 5);
+  }
+  
+  // Update each alien
+  state.aliens.forEach(alien => {
+    if (!alien.active) return;
+    
+    alien.animFrame++;
+    alien.shootCooldown--;
+    
+    if (alien.state === 'returning') {
+      // Fly toward formation position
+      const dx = alien.formationPos.x - alien.pos.x;
+      const dy = alien.formationPos.y - alien.pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist < 3) {
+        alien.pos = { ...alien.formationPos };
+        alien.state = 'formation';
+        alien.vel = { x: 0, y: 0 };
+      } else {
+        alien.pos.x += (dx / dist) * 3;
+        alien.pos.y += (dy / dist) * 3;
+      }
+    } else if (alien.state === 'formation') {
+      // Gentle side-to-side sway
+      alien.pos.x = alien.formationPos.x + Math.sin(state.time * 0.02 + alien.formationPos.y * 0.1) * 8;
+      
+      // Occasionally shoot
+      if (alien.shootCooldown <= 0 && Math.random() < 0.01 * state.difficulty) {
+        state.bullets.push({
+          pos: { x: alien.pos.x + alien.size.x / 2 - 3, y: alien.pos.y + alien.size.y },
+          vel: { x: 0, y: 5 },
+          size: { x: 6, y: 12 },
+          active: true,
+          isEnemy: true,
+          type: 'normal',
+        });
+        alien.shootCooldown = 120;
+      }
+    } else if (alien.state === 'diving') {
+      // Follow bezier dive path
+      alien.diveProgress += 0.008 * state.difficulty;
+      
+      if (alien.diveProgress >= 1) {
+        // Exited bottom, loop back to top
+        alien.pos.y = -40;
+        alien.state = 'returning';
+        alien.diveProgress = 0;
+      } else {
+        const newPos = bezier(alien.divePath, alien.diveProgress);
+        alien.pos = newPos;
+        
+        // Shoot while diving
+        if (alien.shootCooldown <= 0 && Math.random() < 0.03) {
+          state.bullets.push({
+            pos: { x: alien.pos.x + alien.size.x / 2 - 3, y: alien.pos.y + alien.size.y },
+            vel: { x: (p.pos.x - alien.pos.x) * 0.02, y: 4 },
+            size: { x: 6, y: 12 },
+            active: true,
+            isEnemy: true,
+            type: 'normal',
+          });
+          alien.shootCooldown = 60;
+        }
+      }
+    }
+  });
+  
+  // Collision: Player bullets vs Aliens
+  state.bullets.filter(b => !b.isEnemy && b.active).forEach(bullet => {
+    state.aliens.filter(a => a.active).forEach(alien => {
+      if (collides(bullet, alien)) {
+        bullet.active = false;
+        alien.hp--;
+        
+        if (alien.hp <= 0) {
+          alien.active = false;
+          state.score += alien.pts * (alien.state === 'diving' ? 2 : 1);
+          state.enemiesKilledThisWave++;
+          
+          // Explosion
+          state.explosions.push({
+            pos: { x: alien.pos.x + alien.size.x / 2, y: alien.pos.y + alien.size.y / 2 },
+            frame: 0,
+            maxFrames: 20,
+            size: 32,
+          });
+          
+          // Chance to drop power-up
+          if (Math.random() < 0.08) {
+            const types: PowerUp['type'][] = ['double', 'shield', 'speed'];
+            state.powerUps.push({
+              pos: { x: alien.pos.x, y: alien.pos.y },
+              vel: { x: 0, y: 1.5 },
+              size: { x: 20, y: 20 },
+              active: true,
+              type: types[Math.floor(Math.random() * types.length)],
+            });
+          }
+        }
+      }
+    });
+  });
+  
+  // Collision: Enemy bullets vs Player
+  if (p.invincible <= 0 && p.powerUp !== 'shield') {
+    state.bullets.filter(b => b.isEnemy && b.active).forEach(bullet => {
+      if (collides(bullet, p)) {
+        bullet.active = false;
+        playerHit(state, w, h);
+      }
+    });
+  }
+  
+  // Collision: Aliens vs Player (diving aliens)
+  if (p.invincible <= 0) {
+    state.aliens.filter(a => a.active && a.state === 'diving').forEach(alien => {
+      if (collides(alien, p)) {
+        alien.active = false;
+        state.explosions.push({
+          pos: { x: alien.pos.x, y: alien.pos.y },
+          frame: 0,
+          maxFrames: 20,
+          size: 32,
+        });
+        if (p.powerUp !== 'shield') {
+          playerHit(state, w, h);
+        }
+      }
+    });
+  }
+  
+  // Update power-ups
+  state.powerUps = state.powerUps.filter(pu => {
+    pu.pos.y += pu.vel.y;
+    
+    if (collides(pu, p)) {
+      p.powerUp = pu.type;
+      p.powerUpTime = 600; // 10 seconds
+      state.score += 100;
+      return false;
+    }
+    
+    return pu.pos.y < h + 20;
+  });
+  
+  // Update explosions
+  state.explosions = state.explosions.filter(exp => {
+    exp.frame++;
+    return exp.frame < exp.maxFrames;
+  });
+  
+  // Check wave complete
+  if (state.aliens.filter(a => a.active).length === 0 && state.spawnTimer > 100) {
+    state.score += 500; // Wave bonus
+    state.spawnTimer = 90; // Short delay before next wave
+    
+    // Every 4 waves, do lander level
+    if (state.wave > 0 && state.wave % 4 === 0) {
+      state.phase = 'lander';
+      state.player.pos = { x: w / 2, y: 60 };
+      state.player.vel = { x: 0, y: 0 };
+      (state.player as any).fuel = 100;
+    }
+  }
+}
+
+function playerHit(state: GameState, w: number, h: number): void {
+  state.player.lives--;
+  state.player.active = false;
+  state.phase = 'dying';
+  
+  state.explosions.push({
+    pos: { x: state.player.pos.x + 16, y: state.player.pos.y + 16 },
+    frame: 0,
+    maxFrames: 30,
+    size: 48,
+  });
+}
+
+function collides(a: Entity, b: Entity): boolean {
+  return a.pos.x < b.pos.x + b.size.x &&
+         a.pos.x + a.size.x > b.pos.x &&
+         a.pos.y < b.pos.y + b.size.y &&
+         a.pos.y + a.size.y > b.pos.y;
+}
+
+export function applyInput(
+  state: GameState, 
+  input: { left: boolean; right: boolean; up: boolean; down: boolean; shoot: boolean },
+  w: number
+): void {
+  if (state.phase !== 'playing' && state.phase !== 'respawning') return;
+  
+  const p = state.player;
+  const speed = p.powerUp === 'speed' ? 7 : 5;
+  
+  if (input.left) p.vel.x -= speed * 0.3;
+  if (input.right) p.vel.x += speed * 0.3;
+  if (input.up) p.vel.y -= speed * 0.3;
+  if (input.down) p.vel.y += speed * 0.3;
+  
+  // Clamp velocity
+  const maxVel = speed;
+  p.vel.x = Math.max(-maxVel, Math.min(maxVel, p.vel.x));
+  p.vel.y = Math.max(-maxVel, Math.min(maxVel, p.vel.y));
+  
+  // Shooting
+  if (input.shoot && p.shootCooldown <= 0) {
+    const bulletSpeed = -10;
+    
+    if (p.powerUp === 'double') {
+      // Double shot
+      state.bullets.push({
+        pos: { x: p.pos.x + 4, y: p.pos.y },
+        vel: { x: 0, y: bulletSpeed },
+        size: { x: 4, y: 14 },
+        active: true,
+        type: 'double',
+      });
+      state.bullets.push({
+        pos: { x: p.pos.x + p.size.x - 8, y: p.pos.y },
+        vel: { x: 0, y: bulletSpeed },
+        size: { x: 4, y: 14 },
+        active: true,
+        type: 'double',
+      });
+      p.shootCooldown = 10;
+    } else {
+      // Normal shot
+      state.bullets.push({
+        pos: { x: p.pos.x + p.size.x / 2 - 2, y: p.pos.y },
+        vel: { x: 0, y: bulletSpeed },
+        size: { x: 4, y: 14 },
+        active: true,
+        type: 'normal',
+      });
+      p.shootCooldown = 15;
+    }
+  }
+}
+
+// Lander mode physics (for bonus level)
+export function updateLander(state: GameState, w: number, h: number): void {
+  const p = state.player as any;
+  const GRAVITY = 0.03;
+  const GROUND = h - 50;
+  const PAD_X = w / 2 - 40;
+  const PAD_W = 80;
+  
+  p.vel.y += GRAVITY;
+  p.pos.x += p.vel.x;
+  p.pos.y += p.vel.y;
+  p.pos.x = Math.max(10, Math.min(w - 42, p.pos.x));
+  
+  if (p.pos.y >= GROUND - 20) {
+    const onPad = p.pos.x >= PAD_X - 10 && p.pos.x <= PAD_X + PAD_W;
+    const speed = Math.sqrt(p.vel.x ** 2 + p.vel.y ** 2);
+    
+    if (onPad && speed < 1.5) {
+      state.score += Math.floor((1.5 - speed) * 500);
+      state.phase = 'playing';
+      state.player.pos = { x: w / 2 - 16, y: h - 60 };
+      state.spawnTimer = 60;
+    } else {
+      state.player.lives--;
+      if (state.player.lives > 0) {
+        p.pos = { x: w / 2, y: 60 };
+        p.vel = { x: 0, y: 0 };
+        p.fuel = 100;
+      } else {
+        state.phase = 'gameOver';
+      }
+    }
+  }
+}
+
+export function applyLanderInput(
+  state: GameState,
+  input: { left: boolean; right: boolean; up: boolean },
+  w: number
+): void {
+  const p = state.player as any;
+  if (p.fuel <= 0) return;
+  
+  if (input.up) {
+    p.vel.y -= 0.08;
+    p.fuel -= 0.3;
+  }
+  if (input.left) {
+    p.vel.x -= 0.04;
+    p.fuel -= 0.15;
+  }
+  if (input.right) {
+    p.vel.x += 0.04;
+    p.fuel -= 0.15;
+  }
+}
+
+═══════════════════════════════════════════════════════════
+PART 2: ENHANCED RENDERER WITH SPRITES
+═══════════════════════════════════════════════════════════
+
+REPLACE FILE: /client/src/lib/gameRenderer.ts
+
+import { GameState, Alien, Bullet, Explosion, PowerUp } from './gameEngine';
+
+// Color palette
+const COLORS = {
+  shipCyan: '#00ffff',
+  shipGreen: '#6cff61',
+  bulletYellow: '#ffff00',
+  bulletEnemy: '#ff4444',
+  alienRed: '#ff0066',
+  alienBlue: '#0088ff',
+  alienGreen: '#00ff88',
+  alienPurple: '#aa00ff',
+  alienYellow: '#ffcc00',
+  explosionOrange: '#ff8800',
+  powerUpGold: '#ffd700',
+  starWhite: '#ffffff',
+};
+
+export function render(
+  ctx: CanvasRenderingContext2D, 
+  state: GameState, 
+  w: number, 
+  h: number, 
+  isHolder: boolean,
+  shipImage?: HTMLImageElement
+): void {
+  // Clear with dark space background
+  ctx.fillStyle = '#000011';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Draw stars
+  state.stars.forEach(star => {
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * (0.5 + 0.5 * Math.sin(state.time * 0.05 + star.x))})`;
+    ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.speed > 0.5 ? 2 : 1, 1);
+  });
+  
+  // Draw power-ups
+  state.powerUps.forEach(pu => drawPowerUp(ctx, pu, state.time));
+  
+  // Draw aliens
+  state.aliens.filter(a => a.active).forEach(alien => drawAlien(ctx, alien, state.time));
+  
+  // Draw bullets
+  state.bullets.filter(b => b.active).forEach(bullet => drawBullet(ctx, bullet));
+  
+  // Draw player
+  if (state.player.active && (state.player.invincible <= 0 || state.time % 8 < 4)) {
+    drawPlayer(ctx, state.player, isHolder, shipImage, state.time);
+  }
+  
+  // Draw explosions
+  state.explosions.forEach(exp => drawExplosion(ctx, exp));
+  
+  // Draw HUD
+  drawHUD(ctx, state, w, h);
+  
+  // Draw phase overlays
+  if (state.phase === 'dying' || state.phase === 'respawning') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(0, 0, w, h);
+  }
+  
+  if (state.phase === 'gameOver') {
+    drawGameOver(ctx, state, w, h);
+  }
+  
+  if (state.phase === 'lander') {
+    drawLander(ctx, state, w, h, isHolder);
+  }
+}
+
+function drawPlayer(
+  ctx: CanvasRenderingContext2D, 
+  p: GameState['player'], 
+  isHolder: boolean,
+  shipImage?: HTMLImageElement,
+  time: number = 0
+): void {
+  ctx.save();
+  ctx.translate(p.pos.x + p.size.x / 2, p.pos.y + p.size.y / 2);
+  
+  // If we have a ship image, use it
+  if (shipImage && shipImage.complete) {
+    ctx.drawImage(shipImage, -p.size.x / 2, -p.size.y / 2, p.size.x, p.size.y);
+  } else {
+    // Draw stylized ship
+    const color = isHolder ? COLORS.shipGreen : COLORS.shipCyan;
+    
+    // Main body
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, -16);           // Nose
+    ctx.lineTo(-12, 12);          // Left wing
+    ctx.lineTo(-4, 8);            // Left indent
+    ctx.lineTo(-4, 16);           // Left thruster
+    ctx.lineTo(4, 16);            // Right thruster
+    ctx.lineTo(4, 8);             // Right indent
+    ctx.lineTo(12, 12);           // Right wing
+    ctx.closePath();
+    ctx.fill();
+    
+    // Cockpit
+    ctx.fillStyle = '#001133';
+    ctx.beginPath();
+    ctx.ellipse(0, -4, 4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Engine glow
+    ctx.fillStyle = `rgba(255, 136, 0, ${0.5 + 0.3 * Math.sin(time * 0.3)})`;
+    ctx.beginPath();
+    ctx.ellipse(-2, 14, 2, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(2, 14, 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Shield effect
+  if (p.powerUp === 'shield') {
+    ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + 0.2 * Math.sin(time * 0.1)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+}
+
+function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): void {
+  const { x, y } = alien.pos;
+  const wiggle = Math.sin(time * 0.1 + x) * 2;
+  const frame = Math.floor(alien.animFrame / 10) % 2;
+  
+  ctx.save();
+  ctx.translate(x + alien.size.x / 2, y + alien.size.y / 2);
+  
+  // Rotate if diving
+  if (alien.state === 'diving') {
+    const angle = Math.atan2(alien.vel?.y || 1, alien.vel?.x || 0) - Math.PI / 2;
+    ctx.rotate(angle * 0.3);
+  }
+  
+  switch (alien.type) {
+    case 'grunt':
+      // Simple bee-like enemy
+      ctx.fillStyle = COLORS.alienBlue;
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // Wings
+      ctx.fillStyle = `rgba(0, 136, 255, 0.5)`;
+      ctx.beginPath();
+      ctx.ellipse(-10, 0, 6, 4, frame ? 0.3 : -0.3, 0, Math.PI * 2);
+      ctx.ellipse(10, 0, 6, 4, frame ? -0.3 : 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(-3, -3, 2, 0, Math.PI * 2);
+      ctx.arc(3, -3, 2, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+      
+    case 'bee':
+      // Yellow wasp
+      ctx.fillStyle = COLORS.alienYellow;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Stripes
+      ctx.fillStyle = '#000';
+      ctx.fillRect(-8, -3, 16, 2);
+      ctx.fillRect(-8, 3, 16, 2);
+      // Stinger
+      ctx.fillStyle = COLORS.alienYellow;
+      ctx.beginPath();
+      ctx.moveTo(0, 12);
+      ctx.lineTo(-3, 16);
+      ctx.lineTo(3, 16);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'butterfly':
+      // Purple butterfly
+      ctx.fillStyle = COLORS.alienPurple;
+      // Wings
+      ctx.beginPath();
+      ctx.ellipse(-10, 0, 8, 12, frame ? 0.5 : 0, 0, Math.PI * 2);
+      ctx.ellipse(10, 0, 8, 12, frame ? -0.5 : 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 3, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+      
+    case 'boss':
+      // Red commander
+      ctx.fillStyle = COLORS.alienRed;
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(-14, 0);
+      ctx.lineTo(-10, 14);
+      ctx.lineTo(10, 14);
+      ctx.lineTo(14, 0);
+      ctx.closePath();
+      ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(-5, 0, 3, 0, Math.PI * 2);
+      ctx.arc(5, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(-5, 0, 1.5, 0, Math.PI * 2);
+      ctx.arc(5, 0, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+      
+    case 'galaga':
+      // Green boss (like Galaga flagship)
+      ctx.fillStyle = COLORS.alienGreen;
+      // Main body
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.bezierCurveTo(-16, -8, -16, 10, 0, 14);
+      ctx.bezierCurveTo(16, 10, 16, -8, 0, -14);
+      ctx.fill();
+      // Details
+      ctx.fillStyle = '#004400';
+      ctx.beginPath();
+      ctx.arc(0, 2, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Glowing core
+      ctx.fillStyle = `rgba(255, 255, 0, ${0.5 + 0.3 * Math.sin(time * 0.1)})`;
+      ctx.beginPath();
+      ctx.arc(0, 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+  }
+  
+  ctx.restore();
+}
+
+function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
+  if (bullet.isEnemy) {
+    ctx.fillStyle = COLORS.bulletEnemy;
+    ctx.beginPath();
+    ctx.arc(bullet.pos.x + 3, bullet.pos.y + 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = COLORS.bulletYellow;
+    ctx.fillRect(bullet.pos.x, bullet.pos.y, bullet.size.x, bullet.size.y);
+    // Glow
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+    ctx.fillRect(bullet.pos.x - 1, bullet.pos.y, bullet.size.x + 2, bullet.size.y);
+  }
+}
+
+function drawExplosion(ctx: CanvasRenderingContext2D, exp: Explosion): void {
+  const progress = exp.frame / exp.maxFrames;
+  const radius = exp.size * (0.3 + progress * 0.7);
+  const alpha = 1 - progress;
+  
+  // Outer ring
+  ctx.strokeStyle = `rgba(255, 136, 0, ${alpha})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(exp.pos.x, exp.pos.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Inner fill
+  ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.5})`;
+  ctx.beginPath();
+  ctx.arc(exp.pos.x, exp.pos.y, radius * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Particles
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + progress * 2;
+    const dist = radius * (0.5 + progress * 0.5);
+    ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(
+      exp.pos.x + Math.cos(angle) * dist,
+      exp.pos.y + Math.sin(angle) * dist,
+      3 * (1 - progress),
+      0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
+
+function drawPowerUp(ctx: CanvasRenderingContext2D, pu: PowerUp, time: number): void {
+  ctx.save();
+  ctx.translate(pu.pos.x + 10, pu.pos.y + 10);
+  ctx.rotate(time * 0.05);
+  
+  const glow = 0.5 + 0.3 * Math.sin(time * 0.1);
+  
+  ctx.fillStyle = `rgba(255, 215, 0, ${glow})`;
+  ctx.beginPath();
+  // Star shape
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    const innerAngle = angle + Math.PI / 5;
+    ctx.lineTo(Math.cos(angle) * 10, Math.sin(angle) * 10);
+    ctx.lineTo(Math.cos(innerAngle) * 4, Math.sin(innerAngle) * 4);
+  }
+  ctx.closePath();
+  ctx.fill();
+  
+  // Icon
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 8px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const icon = pu.type === 'double' ? '2x' : pu.type === 'shield' ? 'S' : 'F';
+  ctx.fillText(icon, 0, 0);
+  
+  ctx.restore();
+}
+
+function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  // Score
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`SCORE: ${state.score.toLocaleString()}`, 10, 20);
+  
+  // High score
+  ctx.fillStyle = '#888';
+  ctx.font = '10px monospace';
+  ctx.fillText(`HI: ${state.highScore.toLocaleString()}`, 10, 34);
+  
+  // Wave
+  ctx.fillStyle = '#0ff';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(`WAVE ${state.wave}`, w / 2, 20);
+  
+  // Lives (ship icons)
+  ctx.fillStyle = '#0ff';
+  for (let i = 0; i < state.player.lives; i++) {
+    ctx.beginPath();
+    ctx.moveTo(w - 20 - i * 25, 12);
+    ctx.lineTo(w - 30 - i * 25, 22);
+    ctx.lineTo(w - 10 - i * 25, 22);
+    ctx.closePath();
+    ctx.fill();
+  }
+  
+  // Power-up indicator
+  if (state.player.powerUp !== 'none') {
+    ctx.fillStyle = COLORS.powerUpGold;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'right';
+    const timeLeft = Math.ceil(state.player.powerUpTime / 60);
+    ctx.fillText(`${state.player.powerUp.toUpperCase()} ${timeLeft}s`, w - 10, 38);
+  }
+}
+
+function drawGameOver(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(0, 0, w, h);
+  
+  ctx.fillStyle = '#ff0066';
+  ctx.font = 'bold 32px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GAME OVER', w / 2, h / 2 - 40);
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px monospace';
+  ctx.fillText(`SCORE: ${state.score.toLocaleString()}`, w / 2, h / 2);
+  
+  ctx.fillStyle = '#0ff';
+  ctx.font = '14px monospace';
+  ctx.fillText(`WAVE: ${state.wave}`, w / 2, h / 2 + 30);
+  
+  if (state.score >= state.highScore && state.score > 0) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText('NEW HIGH SCORE!', w / 2, h / 2 + 60);
+  }
+}
+
+function drawLander(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, isHolder: boolean): void {
+  const p = state.player as any;
+  const GROUND = h - 50;
+  const PAD_X = w / 2 - 40;
+  const PAD_W = 80;
+  
+  // Ground
+  ctx.fillStyle = '#2a0040';
+  ctx.fillRect(0, GROUND, w, 50);
+  
+  // Landing pad
+  ctx.fillStyle = '#444';
+  ctx.fillRect(PAD_X, GROUND, PAD_W, 6);
+  
+  // Pad lights
+  ctx.fillStyle = state.time % 30 < 15 ? '#0f0' : '#040';
+  ctx.beginPath();
+  ctx.arc(PAD_X + 6, GROUND + 3, 3, 0, Math.PI * 2);
+  ctx.arc(PAD_X + PAD_W - 6, GROUND + 3, 3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Lander ship
+  ctx.save();
+  ctx.translate(p.pos.x + 16, p.pos.y + 16);
+  ctx.fillStyle = isHolder ? '#6cff61' : '#00ffff';
+  ctx.beginPath();
+  ctx.moveTo(0, -12);
+  ctx.lineTo(-10, 12);
+  ctx.lineTo(10, 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  
+  // HUD
+  const vel = Math.sqrt(p.vel.x ** 2 + p.vel.y ** 2);
+  ctx.fillStyle = vel < 1 ? '#0f0' : vel < 1.5 ? '#ff0' : '#f00';
+  ctx.font = '12px monospace';
+  ctx.fillText(`VEL: ${vel.toFixed(1)}`, 10, h - 60);
+  ctx.fillStyle = p.fuel > 30 ? '#0f0' : '#f00';
+  ctx.fillText(`FUEL: ${Math.floor(p.fuel)}%`, 10, h - 45);
+}
+
+═══════════════════════════════════════════════════════════
+PART 3: UPDATE COMPONENT FOR NEW ENGINE
+═══════════════════════════════════════════════════════════
+
+File: /client/src/components/GuardianDefender.tsx
+
+Update the input handling to include up/down:
+
+const inputRef = useRef({ left: false, right: false, up: false, down: false, shoot: false });
+
+Update keyboard handlers:
+- 'ArrowUp' or 'w' → inputRef.current.up = true
+- 'ArrowDown' or 's' → inputRef.current.down = true
+
+Update touch controls:
+- Drag moves in all directions (left/right/up/down)
+- Tap anywhere while dragging = shoot
+
+Update the game loop to call updateLander when state.phase === 'lander'.
+
+═══════════════════════════════════════════════════════════
+SUMMARY OF GALAGA FEATURES
+═══════════════════════════════════════════════════════════
+
+✅ Ship moves freely in bottom 40% (up/down/left/right)
+✅ Enemy formations at top
+✅ Enemies dive with bezier paths
+✅ Multiple enemy types (grunt, bee, butterfly, boss, galaga)
+✅ Enemies shoot back
+✅ Diving enemies = 2x points
+✅ Power-ups (double shot, shield, speed)
+✅ Explosion effects with particles
+✅ Scrolling star background
+✅ High score saved locally
+✅ Lives shown as ship icons
+✅ Wave progression
+✅ Increasing difficulty
+✅ Lander bonus level every 4 waves

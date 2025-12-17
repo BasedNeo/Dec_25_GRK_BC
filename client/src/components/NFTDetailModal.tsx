@@ -24,9 +24,257 @@ import { getRarityClass } from "@/lib/utils";
 import { BuyButton } from "./BuyButton";
 import { NFTImage } from "./NFTImage";
 import { ShareAchievementModal } from "./ShareAchievementModal";
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useReadContract, useSwitchChain, useChainId } from 'wagmi';
 import { useMarketplace, useListing } from '@/hooks/useMarketplace';
 import { CHAIN_ID, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { useOffersV3 } from '@/hooks/useOffersV3';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DialogHeader } from '@/components/ui/dialog';
+import { Gavel, Timer, CheckCircle2, AlertTriangle, Lock, MessageSquare, Sparkles } from 'lucide-react';
+import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
+import { Textarea } from '@/components/ui/textarea';
+
+// Inline Offer Modal Component
+function OfferModalInline({ isOpen, onClose, item }: { isOpen: boolean; onClose: () => void; item: Guardian | MarketItem | null }) {
+  const [amount, setAmount] = useState<number>(1000);
+  const [duration, setDuration] = useState<string>("7");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
+  const { makeOffer, isLoading: offerLoading } = useOffersV3();
+  const { isHolder } = useIsGuardianHolder();
+  
+  const durationOptions = [
+    { value: "1", label: "1 Day" },
+    { value: "3", label: "3 Days" },
+    { value: "7", label: "1 Week" },
+    { value: "30", label: "1 Month" },
+  ];
+  
+  // Fetch wallet balance
+  useEffect(() => {
+    if (isOpen && isConnected && address) {
+      setBalanceLoading(true);
+      const fetchBalance = async () => {
+        try {
+          const { ethers } = await import('ethers');
+          const provider = new ethers.JsonRpcProvider('https://mainnet.basedaibridge.com/rpc/');
+          const balanceWei = await provider.getBalance(address);
+          const balance = parseFloat(ethers.formatEther(balanceWei));
+          setWalletBalance(balance);
+        } catch {
+          setWalletBalance(null);
+        } finally {
+          setBalanceLoading(false);
+        }
+      };
+      fetchBalance();
+    }
+  }, [isOpen, isConnected, address]);
+  
+  // Reset when item changes
+  useEffect(() => {
+    if (item) {
+      setAmount(item.price ? Math.floor(item.price * 0.9) : 1000);
+      setDuration("7");
+      setMessage("");
+      setValidationError(null);
+    }
+  }, [item]);
+  
+  const handleSubmit = async () => {
+    setValidationError(null);
+    
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
+    
+    if (chainId !== 32323) {
+      switchChain?.({ chainId: 32323 });
+      return;
+    }
+    
+    const sanitizedAmount = Math.max(1, Math.min(Number(amount), 999999999));
+    if (isNaN(sanitizedAmount) || sanitizedAmount <= 0 || !item) {
+      setValidationError('Please enter a valid offer amount (1 - 999,999,999)');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const success = await makeOffer(item.id, amount, parseInt(duration), isHolder ? message.trim() : undefined);
+      if (success) {
+        setMessage("");
+        onClose();
+        toast({ 
+          title: "Offer Submitted!", 
+          description: `Your offer of ${amount.toLocaleString()} $BASED has been submitted.`,
+          className: "bg-black border-cyan-500 text-cyan-500 font-orbitron"
+        });
+      }
+    } catch {
+      setValidationError('Failed to submit offer. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  if (!item) return null;
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent 
+        className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto"
+        style={{ zIndex: 99999 }}
+      >
+        <DialogHeader className="pt-8 sm:pt-0">
+          <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
+            <Gavel className="text-cyan-400" size={20} />
+            MAKE AN OFFER
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Offer on <span className="text-cyan-400 font-bold">{Security.sanitizeText(item.name)}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-4">
+          {/* V3 INFO BANNER */}
+          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-green-400 text-sm mb-1">FUNDS STAY IN YOUR WALLET</p>
+                <p className="text-xs text-green-200/80">
+                  This is FREE (just a signature). Your $BASED only leaves your wallet when you complete the purchase after seller accepts.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Amount Input */}
+          <div className="space-y-2">
+            <Label className="text-xs text-cyan-400/70 uppercase font-mono tracking-wider">OFFER AMOUNT ($BASED)</Label>
+            <div className="flex gap-2">
+              <Input 
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={amount || ''} 
+                onChange={(e) => {
+                  const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+                  setAmount(val ? parseInt(val, 10) : 0);
+                  setValidationError(null);
+                }}
+                className="bg-white/5 border-white/20 text-white font-mono text-lg focus:border-cyan-500/50 focus:ring-cyan-500/20"
+                placeholder="Enter amount..."
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => walletBalance && setAmount(Math.floor(walletBalance * 0.95))}
+                disabled={!walletBalance}
+                className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 font-mono text-xs px-4 h-10"
+              >
+                MAX
+              </Button>
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {balanceLoading ? (
+                <span className="animate-pulse">Loading balance...</span>
+              ) : walletBalance !== null ? (
+                <>Balance: <span className="text-emerald-400">{walletBalance.toLocaleString()}</span> $BASED</>
+              ) : isConnected ? (
+                'Could not load balance'
+              ) : (
+                'Connect wallet to see balance'
+              )}
+            </div>
+          </div>
+          
+          {/* Validation Error */}
+          {validationError && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-2">
+              <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <span className="text-xs text-red-300">{validationError}</span>
+            </div>
+          )}
+
+          {/* Duration Select */}
+          <div className="space-y-2">
+            <Label className="text-xs text-cyan-400/70 uppercase font-mono tracking-wider">OFFER DURATION</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-cyan-500/50 h-12">
+                <div className="flex items-center gap-2">
+                  <Timer size={16} className="text-cyan-400" />
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent 
+                className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white"
+                style={{ zIndex: 999999 }}
+              >
+                {durationOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="hover:bg-cyan-500/20">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Message (Guardian Holders only) */}
+          {isHolder ? (
+            <div className="space-y-2">
+              <Label className="text-xs text-cyan-400/70 uppercase font-mono tracking-wider flex items-center gap-2">
+                <MessageSquare size={12} /> MESSAGE TO SELLER (Optional)
+                <Sparkles size={12} className="text-green-400" />
+              </Label>
+              <Textarea 
+                value={message}
+                onChange={(e) => setMessage(e.target.value.slice(0, 280))}
+                placeholder="Add a personal message..."
+                className="bg-white/5 border-white/20 text-white h-20 resize-none"
+              />
+              <p className="text-[10px] text-muted-foreground text-right">{message.length}/280</p>
+            </div>
+          ) : (
+            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+              <div className="flex items-center gap-2 text-purple-400 text-xs">
+                <Lock size={14} />
+                <span>Own a Guardian to unlock messaging</span>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <Button 
+            className="w-full h-14 bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 font-orbitron font-bold text-lg"
+            onClick={handleSubmit}
+            disabled={!isConnected || isSubmitting || offerLoading}
+          >
+            {isSubmitting || offerLoading ? (
+              <span className="animate-pulse">SIGNING...</span>
+            ) : !isConnected ? (
+              'CONNECT WALLET'
+            ) : (
+              <>SUBMIT OFFER</>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface NFTDetailModalProps {
   isOpen: boolean;
@@ -779,6 +1027,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       onClose={() => setShowShareModal(false)}
       nft={nft}
       achievementType="owned"
+    />
+
+    {/* Offer Modal - MUST be outside the parent Dialog */}
+    <OfferModalInline 
+      isOpen={showOfferModal}
+      onClose={() => setShowOfferModal(false)}
+      item={nft}
     />
 
     {/* Mint Explainer Modal - MUST be outside the parent Dialog */}
