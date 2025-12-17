@@ -328,8 +328,8 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
         setEmailCount(data.count || 0);
         addLog(`📧 Email list: ${data.count}/4000`);
       }
-    } catch (e) {
-      console.error('Failed to fetch email count:', e);
+    } catch {
+      // Silent fail - email count is optional
     }
   };
 

@@ -66,8 +66,8 @@ export function AdminInbox({ onBack }: AdminInboxProps) {
       ]);
       if (feedbackRes.ok) setFeedback(await feedbackRes.json());
       if (storiesRes.ok) setStories(await storiesRes.json());
-    } catch (err) {
-      console.error('Failed to fetch messages:', err);
+    } catch {
+      // Silent fail for message fetch
     }
     setIsLoading(false);
   };

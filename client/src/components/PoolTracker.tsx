@@ -37,8 +37,7 @@ export function PoolTracker() {
       const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const minted = await contract.totalMinted();
       return Number(minted);
-    } catch (e) {
-      console.error("Failed to fetch totalMinted:", e);
+    } catch {
       return null;
     }
   }, []);
@@ -57,8 +56,7 @@ export function PoolTracker() {
       }
       
       setLastUpdated(new Date());
-    } catch (e) {
-      console.error("Update failed:", e);
+    } catch {
       setError("Failed to update treasury data");
     } finally {
       setLoading(false);

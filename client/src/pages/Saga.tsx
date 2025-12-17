@@ -244,8 +244,6 @@ function ChooseYourAdventure() {
     
     for (let attempt = 1; attempt <= maxRetries && !submitted; attempt++) {
       try {
-        console.log(`[Saga] Submitting vote (attempt ${attempt}/${maxRetries})`);
-        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
         
@@ -264,12 +262,10 @@ function ChooseYourAdventure() {
         
         if (response.ok) {
           submitted = true;
-          console.log('[Saga] Vote submitted successfully');
         } else {
           throw new Error('Server error');
         }
-      } catch (err) {
-        console.error(`[Saga] Attempt ${attempt} failed:`, err);
+      } catch {
         if (attempt < maxRetries) {
           await new Promise(r => setTimeout(r, 1000 * attempt));
         }
