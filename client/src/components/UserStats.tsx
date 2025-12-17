@@ -13,6 +13,16 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ethers } from 'ethers';
 import { RPC_URL, NFT_CONTRACT } from '@/lib/constants';
 import confetti from 'canvas-confetti';
@@ -319,6 +329,8 @@ export function UserStats() {
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
   const [checkingName, setCheckingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
+  const [showSocialDisclaimer, setShowSocialDisclaimer] = useState(false);
+  const [pendingName, setPendingName] = useState<string | null>(null);
   const [diamondHandsData, setDiamondHandsData] = useState<{
     daysHolding: number;
     totalAcquired: number;
@@ -604,8 +616,22 @@ export function UserStats() {
       return;
     }
     
+    // Check if this is the first time setting a name
+    const isFirstTime = !profile?.customName;
+    
+    if (isFirstTime) {
+      // Show disclaimer for first-time users
+      setPendingName(nameInput);
+      setShowSocialDisclaimer(true);
+    } else {
+      // Just save directly if they're changing an existing name
+      await saveNameDirectly(nameInput);
+    }
+  };
+
+  const saveNameDirectly = async (name: string) => {
     setSavingName(true);
-    const result = await setCustomName(nameInput);
+    const result = await setCustomName(name);
     setSavingName(false);
     
     if (result.success) {
@@ -615,6 +641,19 @@ export function UserStats() {
     } else {
       setNameError(result.error || 'Failed to save name');
     }
+  };
+
+  const handleDisclaimerAccept = async () => {
+    setShowSocialDisclaimer(false);
+    if (pendingName) {
+      await saveNameDirectly(pendingName);
+      setPendingName(null);
+    }
+  };
+
+  const handleDisclaimerCancel = () => {
+    setShowSocialDisclaimer(false);
+    setPendingName(null);
   };
 
   const startEditing = () => {
@@ -1338,6 +1377,46 @@ export function UserStats() {
           <p>Your progress saves automatically. Keep exploring the Based Guardians universe!</p>
         </motion.div>
       </div>
+
+      {/* Social Communications Disclaimer */}
+      <AlertDialog open={showSocialDisclaimer} onOpenChange={setShowSocialDisclaimer}>
+        <AlertDialogContent className="bg-black/95 border-cyan-500/50 backdrop-blur-md max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-orbitron text-cyan-400 flex items-center gap-2">
+              <Edit3 className="w-5 h-5" />
+              Public Guardian Name
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300 space-y-3 pt-2">
+              <p>
+                Your Guardian name <span className="text-white font-bold">{pendingName}#{walletSuffix}</span> will be visible in:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
+                <li>Leaderboards & Rankings</li>
+                <li>Social media posts & announcements</li>
+                <li>Community communications</li>
+                <li>Public activity feeds</li>
+              </ul>
+              <p className="text-cyan-400 text-sm bg-cyan-500/10 border border-cyan-500/30 rounded p-2">
+                Choose a name you're comfortable sharing publicly
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel 
+              onClick={handleDisclaimerCancel}
+              className="bg-transparent border-gray-600 text-gray-400 hover:bg-gray-800"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDisclaimerAccept}
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90"
+            >
+              I Understand, Save Name
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

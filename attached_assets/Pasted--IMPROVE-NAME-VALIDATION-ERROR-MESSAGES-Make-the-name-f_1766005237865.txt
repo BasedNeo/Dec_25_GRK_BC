@@ -1,0 +1,189 @@
+=== IMPROVE NAME VALIDATION & ERROR MESSAGES ===
+
+Make the name feature more robust with better validation,
+error handling, and user feedback.
+
+═══════════════════════════════════════════════════════════
+FILE: /server/routes.ts
+═══════════════════════════════════════════════════════════
+
+FIND the /api/profile/check-name endpoint (around line 297-312) and REPLACE WITH:
+
+app.get("/api/profile/check-name/:name", async (req, res) => {
+  try {
+    const name = req.params.name.trim();
+    const excludeWallet = req.query.exclude as string | undefined;
+    
+    console.log(`[Profile] Checking name availability: "${name}"`);
+    
+    // Validation
+    if (!name || name.length < 2) {
+      return res.json({ available: false, error: "Name must be at least 2 characters" });
+    }
+    if (name.length > 16) {
+      return res.json({ available: false, error: "Name must be 16 characters or less" });
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.json({ available: false, error: "Only letters, numbers, underscore, and hyphen allowed" });
+    }
+    
+    // Profanity check
+    if (containsProfanity(name)) {
+      console.log(`[Profile] Name "${name}" blocked: profanity detected`);
+      return res.json({ available: false, error: "Name contains inappropriate content" });
+    }
+    
+    // Check if taken
+    const isTaken = await storage.isNameTaken(name, excludeWallet);
+    console.log(`[Profile] Name "${name}" available: ${!isTaken}`);
+    
+    return res.json({ available: !isTaken });
+  } catch (error: any) {
+    console.error("[Profile] Error checking name:", error);
+    // Return gracefully instead of 500 to prevent UI breakage
+    return res.json({ 
+      available: false, 
+      error: "Could not verify name. Please try again." 
+    });
+  }
+});
+
+---
+
+FIND the /api/profile/name endpoint (around line 264-295) and REPLACE WITH:
+
+app.post("/api/profile/name", async (req, res) => {
+  try {
+    const schema = z.object({
+      walletAddress: z.string().min(10),
+      customName: z.string().min(2).max(16).nullable(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Name must be 2-16 characters" });
+    }
+
+    const { walletAddress, customName } = parsed.data;
+    console.log(`[Profile] Setting name for ${walletAddress}: "${customName}"`);
+
+    if (customName) {
+      // Validate characters
+      if (!/^[a-zA-Z0-9_-]+$/.test(customName)) {
+        return res.status(400).json({ error: "Only letters, numbers, underscore, hyphen allowed" });
+      }
+      
+      // Profanity check
+      if (containsProfanity(customName)) {
+        console.log(`[Profile] Name blocked: profanity in "${customName}"`);
+        return res.status(400).json({ error: "This name contains inappropriate content" });
+      }
+      
+      // Check if taken
+      const isTaken = await storage.isNameTaken(customName, walletAddress);
+      if (isTaken) {
+        console.log(`[Profile] Name "${customName}" already taken`);
+        return res.status(409).json({ error: "This name is already taken" });
+      }
+    }
+
+    const updated = await storage.setCustomName(walletAddress, customName);
+    if (!updated) {
+      console.error(`[Profile] Failed to save name for ${walletAddress}`);
+      return res.status(500).json({ error: "Failed to update name" });
+    }
+
+    console.log(`[Profile] Name saved successfully: "${customName}"`);
+    return res.json({ success: true, profile: updated });
+  } catch (error: any) {
+    console.error("[Profile] Error setting name:", error);
+    return res.status(500).json({ error: "Failed to set name. Please try again." });
+  }
+});
+
+═══════════════════════════════════════════════════════════
+FILE: /client/src/hooks/useGuardianProfile.ts
+═══════════════════════════════════════════════════════════
+
+FIND the checkNameAvailable function (around line 94-112) and REPLACE WITH:
+
+const checkNameAvailable = useCallback(async (name: string): Promise<{ available: boolean; error?: string }> => {
+  // Client-side validation
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length < 2) {
+    return { available: false, error: 'Name must be at least 2 characters' };
+  }
+  if (trimmed.length > 16) {
+    return { available: false, error: 'Name must be 16 characters or less' };
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return { available: false, error: 'Only letters, numbers, underscore, hyphen allowed' };
+  }
+  
+  try {
+    const url = `/api/profile/check-name/${encodeURIComponent(trimmed)}${address ? `?exclude=${address}` : ''}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    const data = await res.json().catch(() => null);
+    
+    if (data) {
+      if (data.error) {
+        return { available: false, error: data.error };
+      }
+      return { available: data.available ?? false };
+    }
+    
+    // Fallback on parse error
+    console.warn('[Profile] Could not parse name check response');
+    return { available: true, error: 'Verification unavailable (will check on save)' };
+  } catch (err) {
+    console.error('[Profile] Network error checking name:', err);
+    return { available: true, error: 'Verification unavailable (will check on save)' };
+  }
+}, [address]);
+
+═══════════════════════════════════════════════════════════
+FILE: /client/src/components/UserStats.tsx
+═══════════════════════════════════════════════════════════
+
+FIND the handleNameChange function (around line 456-471) and REPLACE WITH:
+
+const handleNameChange = async (value: string) => {
+  // Only allow valid characters
+  const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
+  setNameInput(cleaned);
+  setNameError(null);
+  setNameAvailable(null);
+  
+  if (cleaned.length >= 2) {
+    setCheckingName(true);
+    const result = await checkNameAvailable(cleaned);
+    setNameAvailable(result.available);
+    if (result.error && !result.available) {
+      setNameError(result.error);
+    }
+    setCheckingName(false);
+  } else if (cleaned.length > 0 && cleaned.length < 2) {
+    setNameError('Name must be at least 2 characters');
+  }
+};
+
+═══════════════════════════════════════════════════════════
+FINAL VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════
+
+Test these scenarios:
+[ ] Name with 1 character - Shows error
+[ ] Name with 2 characters - Shows green check if available
+[ ] Name with 17 characters - Gets trimmed to 16
+[ ] Name with special chars (!@#$) - Gets auto-removed
+[ ] Name with profanity - Shows "inappropriate content" error
+[ ] Name already taken - Shows "already taken" error
+[ ] Valid available name - Shows green check
+[ ] Save valid name - Shows disclaimer popup
+[ ] Accept disclaimer - Name saves successfully
+[ ] Change existing name - No disclaimer (direct save)
+[ ] Disconnect wallet - No error popup
+[ ] Server console shows logs when checking names
