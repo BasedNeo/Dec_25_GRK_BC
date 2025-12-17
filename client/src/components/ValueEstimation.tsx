@@ -1,27 +1,71 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { calculateBackedValue } from "@/lib/mockData";
-import { TrendingUp, DollarSign, Activity, RefreshCw } from "lucide-react";
+import { TrendingUp, DollarSign, Activity, RefreshCw, Database } from "lucide-react";
 import { useBalance } from "wagmi";
 import { useGuardians } from "@/hooks/useGuardians";
+import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
+import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { ethers } from "ethers";
+import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
+
+const MINT_PRICE = 69420;
+const NFT_ABI = ["function totalMinted() view returns (uint256)"];
 
 export function ValueEstimation() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [mintedCount, setMintedCount] = useState<number | null>(null);
   const queryClient = useQueryClient();
   
   // Use the centralized harmonized value logic
   const [baseValuePerNFT, setBaseValuePerNFT] = useState(calculateBackedValue());
 
+  // Fetch emissions and activity data (same as Pool page)
+  const subnetEmissions = useSubnetEmissions();
+  const { stats: activityStats } = useActivityFeed();
+  const salesVolume = activityStats?.totalVolume ?? 0;
+
   // Live Ticker - updates every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
         setBaseValuePerNFT(calculateBackedValue());
-    }, 60000); // Update every minute
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch minted count from contract
+  useEffect(() => {
+    const fetchMintedCount = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+        const minted = await contract.totalMinted();
+        setMintedCount(Number(minted));
+      } catch {
+        // Silent fail
+      }
+    };
+    fetchMintedCount();
+    const interval = setInterval(fetchMintedCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate treasury (same formula as Pool page)
+  const treasuryData = useMemo(() => {
+    const minted = mintedCount ?? 0;
+    const sales = salesVolume ?? 0;
+    
+    const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    const royaltyRevenue = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    const passiveEmissions = subnetEmissions.communityShare;
+    
+    const totalTreasury = mintRevenue + royaltyRevenue + passiveEmissions;
+    
+    return { totalTreasury, minted };
+  }, [mintedCount, salesVolume, subnetEmissions]);
 
   // Fetch Pool Balance (for reference/debug, but not used for the display value anymore)
   const { data: poolBalance, refetch: refetchBalance } = useBalance({
@@ -30,30 +74,15 @@ export function ValueEstimation() {
     query: { staleTime: 30000 }
   });
 
-  // Fetch User Guardians
-  const { data, refetch: refetchGuardians } = useGuardians();
-  
-  // Flatten pages from infinite query
-  const guardians = data?.pages.flatMap((page: any) => page.nfts) || [];
-
   // Debounced Refresh
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await Promise.all([refetchBalance(), refetchGuardians()]);
-    // Simulate a min delay for visual feedback and debounce
+    await refetchBalance();
     setTimeout(() => setIsRefreshing(false), 2000);
   };
-  
-  // Calculate User Total Value with Boosts
-  // Boost logic: 30% boost if Rarity Level is 'Rarest', 'Legendary', or contains 'Rare'
-  // UPDATE: User requested to simplify this to just Base Value * Count for the total holdings view
-  const userTotalValue = (guardians || []).reduce((total: number, guardian: any) => {
-    // We simply sum the base value for each guardian
-    return total + baseValuePerNFT;
-  }, 0);
 
-  const ownedCount = guardians?.length || 0;
+  const isDataReady = mintedCount !== null;
 
   return (
     <section className="py-12 bg-background border-y border-white/5 relative group">
@@ -77,7 +106,7 @@ export function ValueEstimation() {
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Activity size={24} />
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-1">BACKED BY / NFT</p>
+            <p className="text-sm text-muted-foreground font-mono mb-1">BACKED VALUE PER NFT</p>
             <h3 className="text-3xl font-orbitron text-white">
               {baseValuePerNFT > 0 ? (
                  <span>{Math.floor(baseValuePerNFT).toLocaleString()} <span className="text-sm text-primary">$BASED</span></span>
@@ -85,26 +114,26 @@ export function ValueEstimation() {
                  <div className="h-8 w-32 skeleton rounded mx-auto" />
               )}
             </h3>
-            <p className="text-xs text-green-400 mt-2 flex items-center">
-              <TrendingUp size={12} className="mr-1" /> +30% FOR RARE+
+            <p className="text-xs text-muted-foreground mt-2">
+              = Treasury ÷ Minted NFTs
             </p>
           </Card>
 
           <Card className="p-6 bg-card/50 border-white/10 flex flex-col items-center text-center hover:border-primary/30 transition-colors relative overflow-hidden">
             <div className="absolute inset-0 bg-primary/5 z-0" />
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-4 text-primary z-10">
-              <DollarSign size={24} />
+              <Database size={24} />
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-1 z-10">YOUR TOTAL HOLDINGS</p>
+            <p className="text-sm text-muted-foreground font-mono mb-1 z-10">COMMUNITY TREASURY</p>
             <h3 className="text-3xl font-orbitron text-white z-10 text-glow">
-              {userTotalValue > 0 || ownedCount > 0 ? (
-                <span>{Math.floor(userTotalValue).toLocaleString()} <span className="text-sm text-primary">$BASED</span></span>
+              {isDataReady ? (
+                <span>{Math.floor(treasuryData.totalTreasury).toLocaleString()} <span className="text-sm text-primary">$BASED</span></span>
               ) : (
                 <div className="h-8 w-40 skeleton rounded mx-auto" />
               )}
             </h3>
             <p className="text-xs text-muted-foreground mt-2 z-10">
-              {ownedCount} Guardians
+              {isDataReady ? `${treasuryData.minted.toLocaleString()} NFTs Minted` : 'Loading...'}
             </p>
           </Card>
 
@@ -117,7 +146,7 @@ export function ValueEstimation() {
               +30%
             </h3>
             <p className="text-xs text-muted-foreground mt-2">
-              Applied to Rare, Epic & Legendary
+              Applied to Legendary NFTs
             </p>
           </Card>
 
