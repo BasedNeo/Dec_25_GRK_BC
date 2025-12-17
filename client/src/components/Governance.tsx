@@ -378,7 +378,7 @@ export function Governance() {
                     isExpanded={expandedProposal === proposal.id}
                     onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
                     votingPower={governance.votingPower}
-                    isAdmin={isAdmin}
+                    isAdmin={isAdmin ?? false}
                     onClose={() => handleCloseProposal(proposal.id)}
                   />
                 ))
@@ -439,11 +439,11 @@ function OffchainProposalCard({ proposal, isExpanded, onToggle, votingPower, isA
     ...(proposal.optionD ? [{ key: 'D', label: proposal.optionD, color: 'purple' }] : []),
   ];
 
-  const totalPower = tallies.reduce((sum, t) => sum + t.power, 0);
-  const totalVoters = tallies.reduce((sum, t) => sum + t.votes, 0);
+  const totalPower = tallies.reduce((sum: number, t: { option: string; power: number; votes: number }) => sum + t.power, 0);
+  const totalVoters = tallies.reduce((sum: number, t: { option: string; power: number; votes: number }) => sum + t.votes, 0);
 
   const getVotePower = (optionKey: string) => {
-    const tally = tallies.find(t => t.option === optionKey);
+    const tally = tallies.find((t: { option: string; power: number; votes: number }) => t.option === optionKey);
     return tally?.power || 0;
   };
 
