@@ -1,11 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
+import { formatEther } from 'viem';
 import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from '@/hooks/useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
-
-const MINT_PRICE = 69420;
 
 const NFT_ABI = [
   {
@@ -43,7 +41,7 @@ export function useMint() {
   });
 
   const { 
-    totalMinted, maxSupply, mintPrice,
+    totalMinted, maxSupply, mintPrice, mintPriceWei,
     publicMintEnabled, isPaused, isSoldOut, canMint, remainingSupply,
   } = useContractData();
 
@@ -53,15 +51,15 @@ export function useMint() {
   });
 
   const canAfford = (qty: number) => {
-    if (!balanceData) return false;
-    const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+    if (!balanceData || !mintPriceWei) return false;
+    const cost = mintPriceWei * BigInt(qty);
     return balanceData.value >= cost;
   };
 
   const maxAffordable = () => {
-    if (!balanceData) return 0;
-    const bal = Number(formatEther(balanceData.value));
-    return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+    if (!balanceData || !mintPriceWei || mintPriceWei === BigInt(0)) return 0;
+    const maxQty = balanceData.value / mintPriceWei;
+    return Math.min(Number(maxQty), remainingSupply, 10);
   };
 
   useEffect(() => {
@@ -139,8 +137,7 @@ export function useMint() {
       setError(null);
       setStatus('Preparing transaction...');
 
-      const totalPrice = MINT_PRICE * quantity;
-      const valueInWei = parseEther(totalPrice.toString());
+      const valueInWei = mintPriceWei * BigInt(quantity);
 
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
@@ -158,7 +155,7 @@ export function useMint() {
       setIsLoading(false);
       setStatus('idle');
     }
-  }, [isConnected, address, writeContract, canMint, isPaused, isSoldOut, publicMintEnabled, canAfford]);
+  }, [isConnected, address, writeContract, canMint, isPaused, isSoldOut, publicMintEnabled, canAfford, mintPriceWei]);
 
   const checkTransaction = useCallback(async () => {
     if (!hash || !publicClient) return null;
