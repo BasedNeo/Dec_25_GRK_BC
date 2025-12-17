@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { useIsGuardianHolder } from './useIsGuardianHolder';
 
@@ -22,38 +22,49 @@ function getDeviceId(): string {
   return id;
 }
 
+function getAccessData() {
+  const deviceId = getDeviceId();
+  const today = new Date().toISOString().split('T')[0];
+  const stored = localStorage.getItem(STORAGE_KEY);
+  let data = { date: today, plays: 0, lastPlay: 0, deviceId };
+
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed.date === today && parsed.deviceId === deviceId) {
+        data = parsed;
+      }
+    } catch {}
+  }
+  return data;
+}
+
 export function useGameAccess() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { isHolder, isLoading: holderLoading } = useIsGuardianHolder();
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldown, setCooldown] = useState(() => {
+    const data = getAccessData();
+    const elapsed = (Date.now() - data.lastPlay) / 1000;
+    return Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed));
+  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
-      setCooldown(c => Math.max(0, c - 1));
+      setCooldown(c => {
+        const next = Math.max(0, c - 1);
+        if (next === 0) setRefreshKey(k => k + 1);
+        return next;
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, [cooldown]);
+  }, [cooldown > 0]);
 
-  const checkAccess = useCallback((): AccessState => {
-    const deviceId = getDeviceId();
-    const today = new Date().toISOString().split('T')[0];
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let data = { date: today, plays: 0, lastPlay: 0, deviceId };
-
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.date === today && parsed.deviceId === deviceId) {
-          data = parsed;
-        }
-      } catch {}
-    }
-
+  const access = useMemo((): AccessState => {
+    const data = getAccessData();
     const playsRemaining = MAX_DAILY_PLAYS - data.plays;
-    const elapsed = (Date.now() - data.lastPlay) / 1000;
-    const cooldownSeconds = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed));
-
+    
     if (playsRemaining <= 0) {
       return { 
         canPlay: false, 
@@ -63,18 +74,17 @@ export function useGameAccess() {
       };
     }
     
-    if (cooldownSeconds > 0) {
-      setCooldown(cooldownSeconds);
+    if (cooldown > 0) {
       return { 
         canPlay: false, 
-        reason: `Wait ${cooldownSeconds}s`, 
+        reason: `Wait ${cooldown}s`, 
         playsRemaining, 
-        cooldownSeconds 
+        cooldownSeconds: cooldown 
       };
     }
 
     return { canPlay: true, reason: 'Ready to play!', playsRemaining, cooldownSeconds: 0 };
-  }, []);
+  }, [cooldown, refreshKey]);
 
   const recordPlay = useCallback(() => {
     const deviceId = getDeviceId();
@@ -95,16 +105,8 @@ export function useGameAccess() {
     setCooldown(COOLDOWN_SECONDS);
   }, []);
 
-  const startSession = useCallback(async (): Promise<boolean> => {
-    const access = checkAccess();
-    if (!access.canPlay) return false;
-    recordPlay();
-    return true;
-  }, [checkAccess, recordPlay]);
-
   return {
-    checkAccess,
-    startSession,
+    access,
     recordPlay,
     isHolder,
     isLoading: holderLoading,

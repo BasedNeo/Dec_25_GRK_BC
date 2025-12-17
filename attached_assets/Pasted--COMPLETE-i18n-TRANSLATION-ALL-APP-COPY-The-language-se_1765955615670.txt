@@ -1,0 +1,137 @@
+=== COMPLETE i18n TRANSLATION - ALL APP COPY ===
+
+The language selector works but only translates the menu.
+We need to translate ALL text throughout the app.
+
+This requires:
+1. Expanding translation files with all app text
+2. Updating components to use useTranslation() hook
+
+═══════════════════════════════════════════════════════════
+PART 1: EXPAND ENGLISH TRANSLATION FILE (BASE)
+═══════════════════════════════════════════════════════════
+
+File: /client/src/locales/en.json
+
+REPLACE the entire file with this comprehensive version:
+
+{
+  "nav": {
+    "hub": "Hub",
+    "universe": "Universe",
+    "mint": "Mint",
+    "gallery": "Portfolio",
+    "escrow": "Market",
+    "voting": "Voting",
+    "pool": "Pool",
+    "stats": "Stats",
+    "admin": "Admin"
+  },
+  "common": {
+    "connectWallet": "Connect Wallet",
+    "disconnect": "Disconnect",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close",
+    "viewMore": "View More",
+    "learnMore": "Learn More",
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "approve": "Approve",
+    "approved": "Approved",
+    "pending": "Pending",
+    "failed": "Failed",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "total": "Total",
+    "balance": "Balance",
+    "price": "Price",
+    "amount": "Amount",
+    "available": "Available",
+    "owned": "Owned",
+    "listed": "Listed",
+    "unlisted": "Unlisted",
+    "minted": "Minted",
+    "unminted": "Not Minted",
+    "soldOut": "Sold Out",
+    "comingSoon": "Coming Soon",
+    "days": "days",
+    "hours": "hours",
+    "minutes": "minutes",
+    "seconds": "seconds"
+  },
+  "wallet": {
+    "connect": "Connect Wallet",
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnect": "Disconnect",
+    "wrongNetwork": "Wrong Network",
+    "switchNetwork": "Switch to BasedAI",
+    "balance": "Balance",
+    "address": "Address",
+    "copy": "Copy Address",
+    "copied": "Copied!",
+    "viewExplorer": "View on Explorer"
+  },
+  "home": {
+    "title": "Based Guardians",
+    "subtitle": "Protect the Galaxy",
+    "welcome": "Welcome to the Based Guardians Command Center",
+    "heroTitle": "Join the Based Revolution",
+    "heroSubtitle": "Mint your Guardian and become part of the community",
+    "mintButton": "Mint Now",
+    "viewCollection": "View Collection",
+    "stats": {
+      "totalMinted": "Total Minted",
+      "floorPrice": "Floor Price",
+      "totalVolume": "Total Volume",
+      "holders": "Holders"
+    }
+  },
+  "mint": {
+    "title": "Mint Your Guardian",
+    "subtitle": "Join the Based Guardians community",
+    "price": "Price",
+    "perNft": "per NFT",
+    "quantity": "Quantity",
+    "total": "Total",
+    "mintNow": "Mint Now",
+    "minting": "Minting...",
+    "mintSuccess": "Mint Successful!",
+    "mintFailed": "Mint Failed",
+    "soldOut": "Sold Out",
+    "remaining": "Remaining",
+    "maxPerWallet": "Max per wallet",
+    "youCanMint": "You can mint",
+    "publicMint": "Public Mint",
+    "mintOpen": "Mint is Open",
+    "mintClosed": "Mint is Closed",
+    "insufficientFunds": "Insufficient funds",
+    "checkWallet": "Check your wallet",
+    "transactionPending": "Transaction pending...",
+    "confirmInWallet": "Confirm in wallet",
+    "viewTransaction": "View Transaction",
+    "mintAnother": "Mint Another",
+    "recentMints": "Recent Mints",
+    "yourMints": "Your Mints"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "subtitle": "Buy and sell Based Guardians",
+    "collection": "Collection",
+    "portfolio": "My Portfolio",
+    "offers

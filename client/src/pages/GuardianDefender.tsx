@@ -29,10 +29,8 @@ export function GuardianDefender() {
 
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { checkAccess, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
+  const { access, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
   const { submitScore, myStats, leaderboard } = useGameScoresLocal();
-  
-  const access = checkAccess();
 
   useEffect(() => {
     const resize = () => setCanvasSize(getCanvasSize());
@@ -354,7 +352,7 @@ export function GuardianDefender() {
               <div className="flex gap-3">
                 <Button 
                   onClick={startGame} 
-                  disabled={!checkAccess().canPlay} 
+                  disabled={!access.canPlay} 
                   className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold px-6 py-3 rounded-xl disabled:opacity-50" 
                   data-testid="button-play-again"
                 >
@@ -369,8 +367,8 @@ export function GuardianDefender() {
                 </Button>
               </div>
               
-              {!checkAccess().canPlay && (
-                <p className="text-red-400 text-xs mt-3">{checkAccess().reason}</p>
+              {!access.canPlay && (
+                <p className="text-red-400 text-xs mt-3">{access.reason}</p>
               )}
             </div>
           )}
