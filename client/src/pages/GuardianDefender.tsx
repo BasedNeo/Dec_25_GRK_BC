@@ -981,7 +981,7 @@ export default function GuardianDefender() {
       <div className="max-w-lg mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+            <Button variant="ghost" size="sm" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10" data-testid="link-back-home">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Command Center
             </Button>
@@ -993,6 +993,8 @@ export default function GuardianDefender() {
               size="sm"
               onClick={() => setIsMuted(!isMuted)}
               className="text-white/60 hover:text-white"
+              data-testid="button-toggle-sound"
+              title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </Button>
@@ -1011,8 +1013,9 @@ export default function GuardianDefender() {
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            className="rounded-xl border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.2)]"
+            className="rounded-xl border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.2)] bg-gradient-to-b from-[#0a0a1a] to-[#0f0f2a]"
             style={{ touchAction: 'none' }}
+            data-testid="game-canvas"
           />
           
           <AnimatePresence>
@@ -1023,7 +1026,7 @@ export default function GuardianDefender() {
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-xl"
               >
-                <Gamepad2 className="w-16 h-16 text-cyan-400 mb-4" />
+                <Gamepad2 className="w-16 h-16 text-cyan-400 mb-4 drop-shadow-[0_0_15px_rgba(0,255,255,0.6)] animate-pulse" />
                 <h2 className="text-xl font-orbitron font-bold text-white mb-2">READY GUARDIAN?</h2>
                 <p className="text-sm text-white/60 mb-6 text-center px-4">
                   Defend the galaxy through 5 levels of combat and land safely on the Based Outpost
@@ -1190,34 +1193,37 @@ export default function GuardianDefender() {
           <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
             <Button
               variant="outline"
-              className="h-16 text-2xl border-cyan-500/50 bg-cyan-500/10 active:bg-cyan-500/30"
+              className="h-16 text-2xl border-cyan-500/50 bg-cyan-500/10 active:bg-cyan-500/30 touch-none select-none"
               onTouchStart={() => handleTouchStart('left')}
               onTouchEnd={() => handleTouchEnd('left')}
               onMouseDown={() => handleTouchStart('left')}
               onMouseUp={() => handleTouchEnd('left')}
               onMouseLeave={() => handleTouchEnd('left')}
+              data-testid="button-control-left"
             >
               ◀
             </Button>
             <Button
               variant="outline"
-              className="h-16 text-xl border-purple-500/50 bg-purple-500/10 active:bg-purple-500/30 font-orbitron"
+              className="h-16 text-xl border-purple-500/50 bg-purple-500/10 active:bg-purple-500/30 font-orbitron touch-none select-none"
               onTouchStart={() => handleTouchStart(gameState.phase === 'lander' ? 'up' : 'fire')}
               onTouchEnd={() => handleTouchEnd(gameState.phase === 'lander' ? 'up' : 'fire')}
               onMouseDown={() => handleTouchStart(gameState.phase === 'lander' ? 'up' : 'fire')}
               onMouseUp={() => handleTouchEnd(gameState.phase === 'lander' ? 'up' : 'fire')}
               onMouseLeave={() => handleTouchEnd(gameState.phase === 'lander' ? 'up' : 'fire')}
+              data-testid="button-control-fire"
             >
               {gameState.phase === 'lander' ? '🔥' : '🔫'}
             </Button>
             <Button
               variant="outline"
-              className="h-16 text-2xl border-cyan-500/50 bg-cyan-500/10 active:bg-cyan-500/30"
+              className="h-16 text-2xl border-cyan-500/50 bg-cyan-500/10 active:bg-cyan-500/30 touch-none select-none"
               onTouchStart={() => handleTouchStart('right')}
               onTouchEnd={() => handleTouchEnd('right')}
               onMouseDown={() => handleTouchStart('right')}
               onMouseUp={() => handleTouchEnd('right')}
               onMouseLeave={() => handleTouchEnd('right')}
+              data-testid="button-control-right"
             >
               ▶
             </Button>
