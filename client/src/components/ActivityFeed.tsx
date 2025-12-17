@@ -280,7 +280,7 @@ export function ActivityFeed({
                     
                     <div className="mt-6 flex items-center gap-2 text-xs text-purple-400/80">
                       <Sparkles className="w-4 h-4" />
-                      <span>Launching Q1 2025</span>
+                      <span>Launching - 2026</span>
                     </div>
                   </div>
                 </div>
