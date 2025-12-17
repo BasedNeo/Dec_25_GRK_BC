@@ -57,6 +57,36 @@ client/src/lib/mockData.ts
 client/src/lib/constants.ts
 ```
 
+### Architecture Insulation (December 2024)
+
+Protected folder structure to isolate core commerce and game code:
+
+```
+/client/src/
+├── core/                          ← PROTECTED: Commerce, auth, contracts
+│   ├── README.md                  ← Documents what's protected and why
+│   ├── contracts/index.ts         ← Contract addresses
+│   ├── commerce/                  ← Minting, marketplace, offers
+│   ├── auth/                      ← Wallet connection, access control
+│   ├── types.ts                   ← Shared TypeScript interfaces
+│   └── index.ts                   ← Barrel export
+│
+├── game/                          ← ISOLATED: Self-contained game module
+│   ├── engine/                    ← gameEngine.ts, gameRenderer.ts
+│   ├── hooks/                     ← useGameAccess.ts, useGameScores.ts
+│   └── index.ts                   ← Single export point
+│
+├── features/                      ← MODULAR: New features go here
+│   ├── messaging/
+│   └── leaderboard/
+│
+└── lib/featureFlags.ts            ← Feature toggle system
+```
+
+**Feature Flags** (lib/featureFlags.ts):
+- Toggle features via localStorage for testing/emergency shutoff
+- Flags: mintingEnabled, marketplaceEnabled, offersV3Enabled, gameEnabled, etc.
+
 ## System Architecture
 
 ### Frontend Architecture
