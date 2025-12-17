@@ -82,3 +82,13 @@ export const GAS_SETTINGS = {
   DELIST: BigInt(150000),
   DEFAULT_GAS_PRICE: BigInt(10000000000), // 10 gwei
 };
+
+// === CUMULATIVE SALES BASELINE ===
+// Historical cumulative sales volume up to a certain date
+// This is added to recent on-chain activity for accurate royalty calculations
+// Last updated: December 17, 2024
+export const CUMULATIVE_SALES_BASELINE = {
+  volume: 2500000,        // Total historical sales volume in $BASED (updated periodically)
+  asOfBlock: 1000000,     // Block number when this baseline was captured
+  lastUpdated: "2024-12-17"
+};

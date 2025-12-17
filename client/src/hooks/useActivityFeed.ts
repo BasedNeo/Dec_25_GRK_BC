@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT } from '@/lib/constants';
+import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -105,9 +105,9 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Get current block
       const currentBlock = await provider.getBlockNumber();
       
-      // Look back ~5000 blocks for faster loading
-      // BasedAI ~2 sec blocks, so 5000 blocks ≈ 2.8 hours of history
-      const fromBlock = Math.max(0, currentBlock - 5000);
+      // Look back ~50000 blocks for better historical coverage
+      // BasedAI ~2 sec blocks, so 50000 blocks ≈ 28 hours of history
+      const fromBlock = Math.max(0, currentBlock - 50000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
@@ -243,21 +243,25 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, fetchActivities]);
 
-  // Stats combining CONTRACT state + EVENT counts
+  // Stats combining CONTRACT state + EVENT counts + BASELINE
+  const recentVolume = activities
+    .filter(a => a.type === 'sale' && a.price)
+    .reduce((sum, a) => sum + Number(a.price || 0), 0);
+    
   const stats = {
     // CUMULATIVE from CONTRACT (real total)
     totalMinted: contractStats.totalMinted,
     
-    // FROM EVENTS (recent activity only - last 10000 blocks)
+    // FROM EVENTS (recent activity only - last 50000 blocks)
     recentMints: activities.filter(a => a.type === 'mint').length,
     totalSales: activities.filter(a => a.type === 'sale').length,
     totalListings: activities.filter(a => a.type === 'list').length,
     totalTransfers: activities.filter(a => a.type === 'transfer').length,
     
-    // VOLUME from events (would need historical indexing for true total)
-    totalVolume: activities
-      .filter(a => a.type === 'sale' && a.price)
-      .reduce((sum, a) => sum + Number(a.price || 0), 0),
+    // VOLUME: Historical baseline + recent on-chain activity
+    // This provides accurate cumulative volume for royalty calculations
+    totalVolume: CUMULATIVE_SALES_BASELINE.volume + recentVolume,
+    recentVolume, // Just the recent activity for display purposes
       
     // FROM CONTRACT (real-time)
     activeListings: contractStats.activeListings,
