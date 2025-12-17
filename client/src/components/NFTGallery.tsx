@@ -27,6 +27,7 @@ import { NFTDetailModal } from "./NFTDetailModal";
 import { RetrieveOldListing } from "./RetrieveOldListing";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { MyOffersPanel } from "./MyOffersPanel";
 
 interface NFTGalleryProps {
   title?: string;
@@ -565,6 +566,12 @@ export function NFTGallery({
                 </>
               )}
             </div>
+            {filterByOwner && isConnected && displayNfts.length > 0 && (
+              <div className="mt-12">
+                <MyOffersPanel />
+              </div>
+            )}
+
             <NFTDetailModal 
               isOpen={!!selectedNFT} 
               onClose={() => setSelectedNFT(null)} 
@@ -624,9 +631,15 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
   const isListedOnChain = listing && listing.active;
   const listingPrice = listing?.price ? Number(listing.price) : null;
 
+  const hasOffers = tokenOffers && tokenOffers.length > 0;
+
   return (
     <Card 
-        className="nft-card bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors duration-300 group h-full flex flex-col cursor-pointer"
+        className={`nft-card bg-card overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer ${
+          hasOffers 
+            ? 'border-2 border-green-500/50 ring-2 ring-green-500/20 bg-gradient-to-b from-green-500/5 to-transparent' 
+            : 'border-white/10 hover:border-primary/50'
+        }`}
         onClick={onClick}
         data-token-id={guardian.id}
     >
@@ -645,6 +658,15 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
           <div className="absolute top-2 left-2 z-20">
             <Badge className="bg-yellow-500/90 text-black border-yellow-400 font-bold text-[10px]">
               FOR SALE
+            </Badge>
+          </div>
+        )}
+        
+        {/* Offers Badge - Below Listed Badge or Top Left */}
+        {hasOffers && (
+          <div className={`absolute ${isListedOnChain ? 'top-10' : 'top-2'} left-2 z-20`}>
+            <Badge className="bg-green-500/90 text-black border-green-400 font-bold text-[10px] animate-pulse">
+              {tokenOffers!.length} OFFER{tokenOffers!.length > 1 ? 'S' : ''}
             </Badge>
           </div>
         )}
