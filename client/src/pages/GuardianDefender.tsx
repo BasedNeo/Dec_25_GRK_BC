@@ -5,7 +5,7 @@ import { useAccount } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { useGameScoresLocal, RANKS } from '@/hooks/useGameScoresLocal';
-import { createGame, updateGame, applyInput, spawnAliens, getCanvasSize, GameState } from '@/lib/gameEngine';
+import { createGame, updateGame, applyInput, spawnWave, updateLander, applyLanderInput, getCanvasSize, GameState } from '@/lib/gameEngine';
 import { render } from '@/lib/gameRenderer';
 import { 
   RocketIcon, TrophyIcon, HeartIcon, PlayIcon, RestartIcon, 
@@ -20,7 +20,7 @@ export function GuardianDefender() {
   const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<GameState | null>(null);
-  const inputRef = useRef({ left: false, right: false, up: false, shoot: false });
+  const inputRef = useRef({ left: false, right: false, up: false, down: false, shoot: false });
   const [phase, setPhase] = useState<'gate' | 'menu' | 'playing' | 'ended'>('gate');
   const [displayScore, setDisplayScore] = useState(0);
   const [displayLives, setDisplayLives] = useState(3);
@@ -45,7 +45,7 @@ export function GuardianDefender() {
     recordPlay();
     const { width, height } = canvasSize;
     stateRef.current = createGame(width, height, holderPerks?.extraLife || false);
-    spawnAliens(stateRef.current, width);
+    spawnWave(stateRef.current, width);
     setPhase('playing');
   }, [access.canPlay, recordPlay, canvasSize, holderPerks]);
 
@@ -62,16 +62,21 @@ export function GuardianDefender() {
       const state = stateRef.current;
       if (!state) return;
 
-      applyInput(state, inputRef.current, width);
-      updateGame(state, width, height);
+      if (state.phase === 'lander') {
+        applyLanderInput(state, inputRef.current, width);
+        updateLander(state, width, height);
+      } else {
+        applyInput(state, inputRef.current, width);
+        updateGame(state, width, height);
+      }
       render(ctx, state, width, height, isHolder);
 
       setDisplayScore(state.score);
-      setDisplayLives(state.lives);
-      setDisplayLevel(state.level);
+      setDisplayLives(state.player.lives);
+      setDisplayLevel(state.wave);
 
-      if (state.gameOver || state.mode === 'complete') {
-        submitScore(state.score, state.level);
+      if (state.phase === 'gameOver' || state.phase === 'complete') {
+        submitScore(state.score, state.wave);
         setPhase('ended');
         return;
       }
@@ -88,12 +93,14 @@ export function GuardianDefender() {
       if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd') inputRef.current.right = true;
       if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = true;
+      if (e.key === 'ArrowDown' || e.key === 's') inputRef.current.down = true;
       if (e.key === ' ') { inputRef.current.shoot = true; e.preventDefault(); }
     };
     const up = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = false;
       if (e.key === 'ArrowRight' || e.key === 'd') inputRef.current.right = false;
       if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = false;
+      if (e.key === 'ArrowDown' || e.key === 's') inputRef.current.down = false;
       if (e.key === ' ') inputRef.current.shoot = false;
     };
     window.addEventListener('keydown', down);
@@ -109,11 +116,11 @@ export function GuardianDefender() {
     return () => { document.body.style.overflow = ''; document.body.style.touchAction = ''; };
   }, [phase]);
 
-  const touchStart = (btn: 'left' | 'right' | 'up' | 'shoot') => (e: React.TouchEvent) => {
+  const touchStart = (btn: 'left' | 'right' | 'up' | 'down' | 'shoot') => (e: React.TouchEvent) => {
     e.preventDefault();
     inputRef.current[btn] = true;
   };
-  const touchEnd = (btn: 'left' | 'right' | 'up' | 'shoot') => () => {
+  const touchEnd = (btn: 'left' | 'right' | 'up' | 'down' | 'shoot') => () => {
     inputRef.current[btn] = false;
   };
 
@@ -307,22 +314,29 @@ export function GuardianDefender() {
                     <ControlRightIcon size={28} />
                   </Button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <Button
                     onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
-                    className="w-16 h-16 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
+                    className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
                     data-testid="button-touch-up"
                   >
-                    <ControlUpIcon size={28} />
+                    <ControlUpIcon size={24} />
                   </Button>
                   <Button
-                    onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
-                    className="w-16 h-16 bg-red-500/10 border-2 border-red-500/40 rounded-xl text-red-400 active:bg-red-500/30 active:scale-95 transition-all"
-                    data-testid="button-touch-shoot"
+                    onTouchStart={touchStart('down')} onTouchEnd={touchEnd('down')}
+                    className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
+                    data-testid="button-touch-down"
                   >
-                    <FireIcon size={28} />
+                    <ControlUpIcon size={24} className="rotate-180" />
                   </Button>
                 </div>
+                <Button
+                  onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
+                  className="w-16 h-16 bg-red-500/10 border-2 border-red-500/40 rounded-xl text-red-400 active:bg-red-500/30 active:scale-95 transition-all"
+                  data-testid="button-touch-shoot"
+                >
+                  <FireIcon size={28} />
+                </Button>
               </div>
             </>
           )}
@@ -330,14 +344,14 @@ export function GuardianDefender() {
           {phase === 'ended' && (
             <div className="absolute inset-4 bg-black/98 backdrop-blur-xl rounded-2xl flex flex-col items-center justify-center text-center p-6 border border-cyan-500/20">
               <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/30">
-                {stateRef.current?.mode === 'complete' ? <TrophyIcon size={32} /> : <RocketIcon size={32} />}
+                {stateRef.current?.phase === 'complete' ? <TrophyIcon size={32} /> : <RocketIcon size={32} />}
               </div>
               
               <p className="text-cyan-400 font-mono text-sm mb-1 tracking-wider" data-testid="text-game-result">
-                MISSION {stateRef.current?.mode === 'complete' ? 'COMPLETE' : 'FAILED'}
+                MISSION {stateRef.current?.phase === 'complete' ? 'COMPLETE' : 'FAILED'}
               </p>
               <p className="text-white font-orbitron text-3xl mb-1" data-testid="text-final-score">{displayScore.toLocaleString()}</p>
-              <p className="text-gray-500 text-sm mb-5">Level {displayLevel} reached</p>
+              <p className="text-gray-500 text-sm mb-5">Wave {displayLevel} reached</p>
               
               <div className="bg-gradient-to-r from-white/5 to-white/10 border border-white/10 rounded-xl p-4 mb-5 w-full max-w-xs">
                 <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Your Rank</p>
