@@ -128,17 +128,21 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // - Transfer events: detect mints (from 0x0) and transfers
       // - Listed events: detect new marketplace listings
       // - Sold events: detect sales (used for royalty volume calculation)
+      console.log(`Activity Feed: Querying blocks ${fromBlock} to ${currentBlock}`);
+      
       const [
         totalMinted,
         transferEvents,
         listedEvents,
         soldEvents
       ] = await Promise.all([
-        nftContract.totalMinted().catch(() => 0),
-        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch(() => []),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch(() => []),
-        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch(() => [])
+        nftContract.totalMinted().catch((e: Error) => { console.error('totalMinted error:', e.message); return 0; }),
+        nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock).catch((e: Error) => { console.error('Transfer query error:', e.message); return []; }),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock).catch((e: Error) => { console.error('Listed query error:', e.message); return []; }),
+        marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock).catch((e: Error) => { console.error('Sold query error:', e.message); return []; })
       ]);
+      
+      console.log(`Activity Feed Results: Minted=${totalMinted}, Transfers=${transferEvents.length}, Listed=${listedEvents.length}, Sold=${soldEvents.length}`);
       
       setContractStats({
         totalMinted: Number(totalMinted),
