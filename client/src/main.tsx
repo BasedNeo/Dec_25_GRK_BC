@@ -2,6 +2,21 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// Global error handler for wallet extension errors (MetaMask, etc.)
+// These errors come from browser extensions and should not crash the app
+window.addEventListener('unhandledrejection', (event) => {
+  const message = event.reason?.message || '';
+  if (
+    message.includes('MetaMask') ||
+    message.includes('wallet') ||
+    message.includes('connect') ||
+    message.includes('extension') ||
+    message.includes('provider')
+  ) {
+    event.preventDefault();
+  }
+});
+
 // Service Worker Management
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
