@@ -1705,7 +1705,7 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                                 onBuy={() => onBuy()}
                             />
                             <Button 
-                                className="offer-btn flex-1 bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
+                                className="offer-btn flex-1 bg-cyan-500 text-black hover:bg-cyan-400 active:bg-cyan-300 font-bold px-3 h-10 min-h-[44px] shadow-[0_0_10px_rgba(0,255,255,0.3)] touch-manipulation select-none" 
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOffer();
@@ -1717,7 +1717,7 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                         </div>
                     ) : !isOwner && isMinted && !isListed ? (
                         <Button 
-                            className="offer-btn w-full bg-cyan-500 text-black hover:bg-cyan-400 font-bold px-2 h-8 shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
+                            className="offer-btn w-full bg-cyan-500 text-black hover:bg-cyan-400 active:bg-cyan-300 font-bold px-3 h-10 min-h-[44px] shadow-[0_0_10px_rgba(0,255,255,0.3)] touch-manipulation select-none" 
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onOffer();
