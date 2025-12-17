@@ -258,17 +258,23 @@ export function ActivityFeed({
                     </p>
                     
                     <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-4">
-                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
-                        <div className="text-2xl mb-1">🏎️</div>
-                        <p className="text-[10px] text-gray-400 font-mono">SPEED RACE</p>
+                      <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors group">
+                        <div className="flex justify-center mb-2">
+                          <SpeedRaceIcon className="w-8 h-8 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                        </div>
+                        <p className="text-[10px] text-cyan-400/80 font-mono text-center">SPEED RACE</p>
                       </div>
-                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
-                        <div className="text-2xl mb-1">🎯</div>
-                        <p className="text-[10px] text-gray-400 font-mono">BRAIN BATTLE</p>
+                      <div className="bg-black/40 rounded-lg p-3 border border-purple-500/20 hover:border-purple-500/40 transition-colors group">
+                        <div className="flex justify-center mb-2">
+                          <BrainBattleIcon className="w-8 h-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
+                        </div>
+                        <p className="text-[10px] text-purple-400/80 font-mono text-center">BRAIN BATTLE</p>
                       </div>
-                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
-                        <div className="text-2xl mb-1">💎</div>
-                        <p className="text-[10px] text-gray-400 font-mono">BASED HUNT</p>
+                      <div className="bg-black/40 rounded-lg p-3 border border-pink-500/20 hover:border-pink-500/40 transition-colors group">
+                        <div className="flex justify-center mb-2">
+                          <BasedHuntIcon className="w-8 h-8 text-pink-400 group-hover:text-pink-300 transition-colors" />
+                        </div>
+                        <p className="text-[10px] text-pink-400/80 font-mono text-center">BASED HUNT</p>
                       </div>
                     </div>
                     
@@ -331,6 +337,55 @@ function GuardianMintIcon({ className }: { className?: string }) {
       <circle cx="12" cy="10" r="1.5" fill="black" />
       <path d="M10 17H14" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
       <path d="M9 19H15" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SpeedRaceIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 20L8 12H16L20 8L28 16L24 20H16L12 24L4 20Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M10 16L14 14L18 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="22" cy="16" r="2" fill="currentColor"/>
+      <path d="M6 22L3 25" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M10 24L8 27" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M14 25L13 28" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M26 10L29 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M28 14L31 12" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function BrainBattleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="16" cy="14" rx="10" ry="8" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M12 10C12 10 14 8 16 10C18 12 20 10 20 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M10 14C10 14 12 16 16 16C20 16 22 14 22 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M12 18L14 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M20 18L18 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1"/>
+      <circle cx="24" cy="8" r="2" stroke="currentColor" strokeWidth="1"/>
+      <path d="M8 10L10 12" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M24 10L22 12" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M14 22L16 26L18 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="16" cy="28" r="1.5" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function BasedHuntIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 4L19 10L26 11L21 16L22 23L16 20L10 23L11 16L6 11L13 10L16 4Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <circle cx="16" cy="14" r="3" fill="currentColor"/>
+      <path d="M16 18V22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M13 25H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M14 28H18" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <circle cx="6" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/>
+      <circle cx="26" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/>
+      <path d="M7 7L10 10" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" strokeDasharray="1 2"/>
+      <path d="M25 7L22 10" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" strokeDasharray="1 2"/>
     </svg>
   );
 }
