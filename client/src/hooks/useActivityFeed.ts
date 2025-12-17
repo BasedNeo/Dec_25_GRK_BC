@@ -115,10 +115,11 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await provider.getBlockNumber();
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Look back ~40000 blocks to capture sales from the last ~22 hours
-      // BasedAI ~2 sec blocks, so 40000 blocks ≈ 22 hours of history
+      // Look back ~2000 blocks to capture sales from the last ~1 hour
+      // BasedAI ~2 sec blocks, so 2000 blocks ≈ 1.1 hours of history
+      // Reduced from 40000 to avoid RPC timeout issues (RPC has 10s limit)
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const fromBlock = Math.max(0, currentBlock - 40000);
+      const fromBlock = Math.max(0, currentBlock - 2000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
