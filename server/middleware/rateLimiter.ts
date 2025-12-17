@@ -21,7 +21,8 @@ export const writeLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
   message: { error: 'Too many write requests' },
-  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: (req: Request, res: Response) => {
     console.warn(`[RateLimit] IP ${req.ip} exceeded write limit on ${req.path}`);
     res.status(429).json({ 
