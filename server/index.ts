@@ -60,19 +60,64 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Branded loading page HTML
+  const brandedLoadingPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Based Guardians - Loading</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #000 0%, #0a0a1a 50%, #000 100%); font-family: system-ui, -apple-system, sans-serif; color: white; text-align: center; padding: 2rem; }
+    @keyframes pulse-glow { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .logo { font-size: 4rem; margin-bottom: 1.5rem; animation: float 3s ease-in-out infinite; }
+    .ring { width: 60px; height: 60px; border: 3px solid rgba(0,255,255,0.2); border-top-color: #00ffff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.5rem; }
+    .title { font-size: 1.5rem; font-weight: bold; background: linear-gradient(90deg, #00ffff, #bf00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .subtitle { color: #00ffff; font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; animation: pulse-glow 2s ease-in-out infinite; }
+    .footer { position: absolute; bottom: 2rem; color: #444; font-size: 0.7rem; }
+  </style>
+  <meta http-equiv="refresh" content="3">
+</head>
+<body>
+  <div class="logo">🛸</div>
+  <div class="ring"></div>
+  <div class="title">BASED GUARDIANS</div>
+  <div class="subtitle">Entering the Giga Brain Galaxy...</div>
+  <div class="footer">If this takes too long, try refreshing</div>
+</body>
+</html>`;
+
   // Fast health check at root - MUST be first for deployment health checks
   // Health checks typically don't send Accept: text/html
   app.get("/", (req, res, next) => {
     const acceptHeader = req.headers['accept'] || '';
-    // If request doesn't accept HTML (health checker), respond immediately
-    if (!acceptHeader.includes('text/html')) {
+    const userAgent = req.headers['user-agent'] || '';
+    
+    // Pure health checkers (no user agent or specific health check agents)
+    const isHealthChecker = !userAgent || 
+      userAgent.includes('HealthChecker') || 
+      userAgent.includes('kube-probe') ||
+      userAgent.includes('GoogleHC');
+    
+    // If request doesn't accept HTML AND is a health checker, respond immediately
+    if (!acceptHeader.includes('text/html') && isHealthChecker) {
       return res.status(200).send('OK');
     }
+    
+    // If request doesn't accept HTML but is a browser, show branded page
+    if (!acceptHeader.includes('text/html')) {
+      res.setHeader('Content-Type', 'text/html');
+      return res.status(200).send(brandedLoadingPage);
+    }
+    
     // Browser requests fall through to static file serving
     next();
   });
 
-  // Additional health check endpoints
+  // Additional health check endpoints (these stay simple for monitoring)
   app.get("/_health", (_req, res) => {
     res.status(200).send('OK');
   });
