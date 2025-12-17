@@ -52,15 +52,15 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
   return (
     <Card 
       className={cn(
-        "p-5 mb-6 max-w-md border rounded-2xl backdrop-blur-md",
+        "p-4 sm:p-5 mb-4 sm:mb-6 max-w-md w-full border rounded-xl sm:rounded-2xl backdrop-blur-md",
         isConnected 
           ? "bg-gradient-to-br from-emerald-500/10 to-emerald-900/20 border-emerald-500/30" 
           : "bg-white/5 border-white/10"
       )}
       data-testid="mint-balance-panel"
     >
-      <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-semibold text-white/70 uppercase tracking-wider">
+      <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <span className="text-xs sm:text-sm font-semibold text-white/70 uppercase tracking-wider">
           Your Wallet
         </span>
         <Button
@@ -68,21 +68,21 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
           size="sm"
           onClick={handleRefresh}
           disabled={!isConnected || isRefreshing}
-          className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 rounded-lg"
+          className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-white/10 hover:bg-white/20 rounded-lg"
           data-testid="refresh-balance-btn"
         >
           <RefreshCw 
-            size={14} 
-            className={cn(isRefreshing && "animate-spin")} 
+            size={12} 
+            className={cn("sm:w-[14px] sm:h-[14px]", isRefreshing && "animate-spin")} 
           />
         </Button>
       </div>
 
-      <div className="mb-5">
-        <div className="flex items-baseline gap-2">
+      <div className="mb-4 sm:mb-5">
+        <div className="flex items-baseline gap-1.5 sm:gap-2">
           <span 
             className={cn(
-              "text-3xl font-bold transition-colors",
+              "text-2xl sm:text-3xl font-bold transition-colors",
               isConnected ? "text-emerald-400" : "text-white/30"
             )}
             data-testid="mint-page-balance"
@@ -90,28 +90,28 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
             {isLoading ? (
               'Loading...'
             ) : !isConnected ? (
-              'Connect Wallet'
+              'Connect'
             ) : balance ? (
               balance.formatted
             ) : (
               'Error'
             )}
           </span>
-          <span className="text-base text-white/60">$BASED</span>
+          <span className="text-sm sm:text-base text-white/60">$BASED</span>
         </div>
       </div>
 
-      <div className="bg-black/20 rounded-xl p-4 space-y-3">
-        <div className="flex justify-between items-center pb-3 border-b border-white/10">
-          <span className="text-sm text-white/60">Mint Price:</span>
-          <span className="text-sm font-semibold text-white">
+      <div className="bg-black/20 rounded-lg sm:rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
+        <div className="flex justify-between items-center pb-2 sm:pb-3 border-b border-white/10">
+          <span className="text-xs sm:text-sm text-white/60">Mint Price:</span>
+          <span className="text-xs sm:text-sm font-semibold text-white">
             {MINT_PRICE.toLocaleString()} $BASED
           </span>
         </div>
         <div className="flex justify-between items-center pt-1">
-          <span className="text-sm text-white/60">You Can Mint:</span>
+          <span className="text-xs sm:text-sm text-white/60">You Can Mint:</span>
           <span 
-            className={cn("text-xl font-bold", getAffordCountClass())}
+            className={cn("text-lg sm:text-xl font-bold", getAffordCountClass())}
             data-testid="max-affordable-mints"
           >
             {!isConnected ? '--' : maxAffordable}
@@ -121,11 +121,11 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
 
       {warningMessage && (
         <div 
-          className="flex items-center gap-2 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg"
+          className="flex items-center gap-2 mt-3 sm:mt-4 p-2.5 sm:p-3 bg-red-500/10 border border-red-500/30 rounded-lg"
           data-testid="balance-warning"
         >
-          <AlertTriangle size={16} className="text-red-400 flex-shrink-0" />
-          <span className="text-[13px] text-red-300">{warningMessage}</span>
+          <AlertTriangle size={14} className="text-red-400 flex-shrink-0 sm:w-4 sm:h-4" />
+          <span className="text-[11px] sm:text-[13px] text-red-300">{warningMessage}</span>
         </div>
       )}
 
@@ -133,13 +133,13 @@ export function MintBalancePanel({ onMaxAffordableChange }: MintBalancePanelProp
         href={AFTERMINT_URL} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="block mt-4"
+        className="block mt-3 sm:mt-4"
       >
         <Button 
-          className="w-full py-4 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-base shadow-[0_0_20px_rgba(108,255,97,0.4)]"
+          className="w-full py-3 sm:py-4 bg-[#6cff61] hover:bg-[#6cff61]/90 text-black font-bold font-orbitron tracking-wider text-sm sm:text-base shadow-[0_0_20px_rgba(108,255,97,0.4)] rounded-xl active:scale-[0.98] transition-transform"
           data-testid="mint-aftermint-btn"
         >
-          <Zap size={14} className="mr-2" /> MINT ON AFTERMINT
+          <Zap size={12} className="mr-1.5 sm:mr-2 sm:w-[14px] sm:h-[14px]" /> MINT ON AFTERMINT
         </Button>
       </a>
     </Card>
