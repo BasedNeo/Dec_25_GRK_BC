@@ -1,0 +1,398 @@
+=== PHASE 2: BIGINT PRECISION + MEMORY LEAK PREVENTION ===
+
+OBJECTIVE: Fix financial calculations + prevent memory leaks
+
+CRITICAL: This affects ALL token amount calculations (mint, buy, sell, offers)
+
+═══════════════════════════════════════════════════════════
+PART A: SAFE MATH LIBRARY (15 MIN)
+═══════════════════════════════════════════════════════════
+
+STEP 1: CREATE SAFEMATH UTILITY
+──────────────────────────────────
+
+CREATE FILE: client/src/lib/safeMath.ts
+
+const DECIMALS = 18;
+const ONE_TOKEN = BigInt(10 ** DECIMALS);
+
+export class SafeMath {
+  static toWei(amount: string | number): bigint {
+    try {
+      const amountStr = typeof amount === 'number' ? amount.toFixed(DECIMALS) : amount;
+      const [whole, decimal = '0'] = amountStr.split('.');
+      const paddedDecimal = decimal.padEnd(DECIMALS, '0').slice(0, DECIMALS);
+      return BigInt(whole) * ONE_TOKEN + BigInt(paddedDecimal);
+    } catch (error) {
+      throw new Error(`Invalid amount: ${amount}`);
+    }
+  }
+
+  static fromWei(wei: bigint, decimals = 2): string {
+    const whole = wei / ONE_TOKEN;
+    const remainder = wei % ONE_TOKEN;
+    
+    if (decimals === 0) return whole.toString();
+    
+    const decimalStr = remainder.toString().padStart(DECIMALS, '0').slice(0, decimals);
+    return `${whole}.${decimalStr}`;
+  }
+
+  static format(wei: bigint, decimals = 2): string {
+    const str = this.fromWei(wei, decimals);
+    const [whole, decimal] = str.split('.');
+    const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decimal ? `${withCommas}.${decimal}` : withCommas;
+  }
+
+  static mulPercent(amount: bigint, percent: number): bigint {
+    if (percent < 0 || percent > 100) throw new Error('Percent must be 0-100');
+    return (amount * BigInt(Math.round(percent * 100))) / BigInt(10000);
+  }
+
+  static add(a: bigint, b: bigint): bigint {
+    return a + b;
+  }
+
+  static sub(a: bigint, b: bigint): bigint {
+    if (b > a) throw new Error('Subtraction would be negative');
+    return a - b;
+  }
+
+  static parseInput(input: string): bigint | null {
+    try {
+      const cleaned = input.replace(/[,\s]/g, '');
+      if (!/^\d+\.?\d*$/.test(cleaned)) return null;
+      return this.toWei(cleaned);
+    } catch {
+      return null;
+    }
+  }
+
+  static validate(wei: bigint): { valid: boolean; error?: string } {
+    if (wei < BigInt(0)) return { valid: false, error: 'Amount cannot be negative' };
+    const MAX = BigInt(10 ** 9) * ONE_TOKEN; // 1 billion max
+    if (wei > MAX) return { valid: false, error: 'Amount too large' };
+    return { valid: true };
+  }
+
+  static gte(a: bigint, b: bigint): boolean { return a >= b; }
+  static lte(a: bigint, b: bigint): boolean { return a <= b; }
+  static eq(a: bigint, b: bigint): boolean { return a === b; }
+}
+
+// Prevent JSON serialization errors
+(BigInt.prototype as any).toJSON = function() { return this.toString(); };
+
+STEP 2: UPDATE MINT HOOK
+──────────────────────────────────
+
+FILE: client/src/core/commerce/useMint.ts
+
+ADD IMPORT at top:
+import { SafeMath } from '@/lib/safeMath';
+
+FIND the canAfford function (around line 55):
+const canAfford = (qty: number) => {
+  if (!balanceData) return false;
+  const cost = BigInt(mintPrice) * BigInt(qty) * BigInt(10**18);
+  return balanceData.value >= cost;
+};
+
+REPLACE WITH:
+const canAfford = (qty: number) => {
+  if (!balanceData) return false;
+  try {
+    const cost = SafeMath.toWei(mintPrice.toString()) * BigInt(qty);
+    return SafeMath.gte(balanceData.value, cost);
+  } catch {
+    return false;
+  }
+};
+
+FIND the maxAffordable function (around line 61):
+const maxAffordable = () => {
+  if (!balanceData) return 0;
+  const bal = Number(formatEther(balanceData.value));
+  return Math.min(Math.floor(bal / mintPrice), remainingSupply, 10);
+};
+
+REPLACE WITH:
+const maxAffordable = () => {
+  if (!balanceData) return 0;
+  try {
+    const mintPriceWei = SafeMath.toWei(mintPrice.toString());
+    const maxQty = Number(balanceData.value / mintPriceWei);
+    return Math.min(Math.floor(maxQty), remainingSupply, 10);
+  } catch {
+    return 0;
+  }
+};
+
+FIND in the mint function (around line 142):
+const totalPrice = MINT_PRICE * quantity;
+const valueInWei = parseEther(totalPrice.toString());
+
+REPLACE WITH:
+const totalPrice = MINT_PRICE * quantity;
+const valueInWei = SafeMath.toWei(totalPrice.toString());
+
+const validation = SafeMath.validate(valueInWei);
+if (!validation.valid) {
+  setError(validation.error || 'Invalid amount');
+  setIsLoading(false);
+  return;
+}
+
+STEP 3: UPDATE MARKETPLACE HOOK
+──────────────────────────────────
+
+FILE: client/src/core/commerce/useMarketplace.ts
+
+ADD IMPORT at top:
+import { SafeMath } from '@/lib/safeMath';
+
+FIND the listNFT function (around line 341), FIND line with parseEther:
+const priceWei = parseEther(String(priceInBased));
+
+REPLACE WITH:
+const priceWei = SafeMath.toWei(priceInBased.toString());
+
+const validation = SafeMath.validate(priceWei);
+if (!validation.valid) {
+  toast({ 
+    title: "Invalid Price", 
+    description: validation.error || "Price validation failed", 
+    variant: "destructive" 
+  });
+  return;
+}
+
+FIND the makeOffer function (around line 475), FIND parseEther:
+const offerWei = parseEther(String(offerAmountBased));
+
+REPLACE WITH:
+const offerWei = SafeMath.toWei(offerAmountBased.toString());
+
+const validation = SafeMath.validate(offerWei);
+if (!validation.valid) {
+  toast({ title: "Invalid Amount", description: validation.error, variant: "destructive" });
+  return;
+}
+
+STEP 4: UPDATE OFFERS V3
+──────────────────────────────────
+
+FILE: client/src/hooks/useOffersV3.ts
+
+ADD IMPORT at top:
+import { SafeMath } from '@/lib/safeMath';
+
+FIND in makeOffer function (around line 286):
+const priceWei = parseEther(priceInBased.toString());
+
+REPLACE WITH:
+const priceWei = SafeMath.toWei(priceInBased.toString());
+
+const validation = SafeMath.validate(priceWei);
+if (!validation.valid) {
+  toast({ title: "Invalid Amount", description: validation.error, variant: "destructive" });
+  return false;
+}
+
+═══════════════════════════════════════════════════════════
+PART B: MEMORY LEAK PREVENTION (30 MIN)
+═══════════════════════════════════════════════════════════
+
+STEP 5: CREATE TIMER MANAGER
+──────────────────────────────────
+
+CREATE FILE: client/src/lib/timerManager.ts
+
+interface Timer {
+  id: number;
+  type: 'interval' | 'timeout';
+  createdAt: number;
+}
+
+class TimerManagerClass {
+  private timers: Map<number, Timer> = new Map();
+  private nextId = 1;
+
+  setInterval(callback: Function, delay: number): number {
+    const id = this.nextId++;
+    const timerId = window.setInterval(callback, delay);
+    
+    this.timers.set(id, {
+      id: timerId,
+      type: 'interval',
+      createdAt: Date.now()
+    });
+    
+    return id;
+  }
+
+  setTimeout(callback: Function, delay: number): number {
+    const id = this.nextId++;
+    const timerId = window.setTimeout(() => {
+      callback();
+      this.timers.delete(id);
+    }, delay);
+    
+    this.timers.set(id, {
+      id: timerId,
+      type: 'timeout',
+      createdAt: Date.now()
+    });
+    
+    return id;
+  }
+
+  clear(id: number): void {
+    const timer = this.timers.get(id);
+    if (!timer) return;
+    
+    if (timer.type === 'interval') {
+      window.clearInterval(timer.id);
+    } else {
+      window.clearTimeout(timer.id);
+    }
+    
+    this.timers.delete(id);
+  }
+
+  clearAll(): void {
+    this.timers.forEach((timer) => {
+      if (timer.type === 'interval') {
+        window.clearInterval(timer.id);
+      } else {
+        window.clearTimeout(timer.id);
+      }
+    });
+    this.timers.clear();
+  }
+
+  getActiveCount(): number {
+    return this.timers.size;
+  }
+}
+
+export const TimerManager = new TimerManagerClass();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => TimerManager.clearAll());
+  (window as any).timers = () => {
+    console.log(`Active timers: ${TimerManager.getActiveCount()}`);
+  };
+}
+
+STEP 6: CREATE SAFE INTERVAL HOOK
+──────────────────────────────────
+
+CREATE FILE: client/src/hooks/useInterval.ts
+
+import { useEffect, useRef } from 'react';
+import { TimerManager } from '@/lib/timerManager';
+
+export function useInterval(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+  const timerIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (delay === null) return;
+
+    const tick = () => savedCallback.current();
+    timerIdRef.current = TimerManager.setInterval(tick, delay);
+
+    return () => {
+      if (timerIdRef.current !== null) {
+        TimerManager.clear(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [delay]);
+}
+
+export function useTimeout(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+  const timerIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (delay === null) return;
+
+    const tick = () => savedCallback.current();
+    timerIdRef.current = TimerManager.setTimeout(tick, delay);
+
+    return () => {
+      if (timerIdRef.current !== null) {
+        TimerManager.clear(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [delay]);
+}
+
+STEP 7: REPLACE DANGEROUS INTERVALS
+──────────────────────────────────
+
+FILE: client/src/hooks/useOffersV3.ts
+
+FIND (around line 253):
+useEffect(() => {
+  const interval = setInterval(loadOffers, 30000);
+  return () => clearInterval(interval);
+}, [loadOffers]);
+
+REPLACE WITH:
+import { useInterval } from '@/hooks/useInterval';
+
+// DELETE the entire useEffect above, ADD this instead:
+useInterval(() => {
+  loadOffers();
+}, 30000);
+
+FILE: client/src/core/commerce/useMarketplace.ts
+
+FIND the useFloorPrice function (around line 614), FIND:
+const interval = setInterval(fetchFloorPrice, 30000);
+return () => clearInterval(interval);
+
+REPLACE WITH:
+// At top of file add:
+import { useInterval } from '@/hooks/useInterval';
+
+// In useFloorPrice, REPLACE the useEffect containing setInterval with:
+useInterval(() => {
+  fetchFloorPrice();
+}, 30000);
+
+FILE: client/src/hooks/usePriceTicker.ts
+
+FIND any setInterval usage
+
+REPLACE WITH:
+import { useInterval } from '@/hooks/useInterval';
+
+// Replace setInterval patterns with useInterval(() => { ... }, delay);
+
+STEP 8: ADD MEMORY MONITOR (DEV ONLY)
+──────────────────────────────────
+
+CREATE FILE: client/src/lib/memoryMonitor.ts
+
+class MemoryMonitor {
+  private intervalId: number | null = null;
+
+  start() {
+    if (this.intervalId !== null) return;
+    
+    this.intervalId = window.setInterval(() => {
+      if ('memory' in performance
