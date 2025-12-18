@@ -1,10 +1,10 @@
 import { LucideIcon } from 'lucide-react';
-import { Zap, Spade, Shield } from 'lucide-react';
+import { Zap, Spade, Shield, Rocket } from 'lucide-react';
 
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'jaguar-runner' | 'guardian-solitaire' | 'space-defender';
+export type GameType = 'jaguar-runner' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining';
 
 /**
  * Game difficulty levels
@@ -153,6 +153,32 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasTimer: false,
       hasLives: true,
       hasCombo: false,
+    },
+  },
+  
+  'asteroid-mining': {
+    id: 'asteroid-mining',
+    name: 'Asteroid Mining',
+    description: 'Pilot your Guardian ship through endless asteroid fields! Destroy asteroids, collect resources, and survive as long as possible.',
+    path: '/asteroid-mining',
+    icon: Rocket,
+    iconColor: 'text-orange-400',
+    thumbnailGradient: 'from-orange-500 to-yellow-600',
+    category: 'action',
+    difficulty: 'medium',
+    averagePlayTime: 180,
+    maxPlaysPerDay: 10,
+    enabled: true,
+    scoring: {
+      maxScore: 50000,
+      goodScore: 5000,
+      greatScore: 20000,
+      legendaryScore: 40000,
+    },
+    features: {
+      hasTimer: true,
+      hasLives: true,
+      hasCombo: true,
     },
   },
 };

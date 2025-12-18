@@ -19,6 +19,7 @@ const Saga = lazy(() => import("@/pages/Saga"));
 const GuardianDefender = lazy(() => import("@/pages/GuardianDefender"));
 const JaguarRunner = lazy(() => import("@/pages/JaguarRunner"));
 const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
+const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
@@ -140,6 +141,7 @@ function Router() {
         <Route path="/game" component={GuardianDefender} />
         <Route path="/jaguar-runner" component={JaguarRunner} />
         <Route path="/guardian-solitaire" component={GuardianSolitaire} />
+        <Route path="/asteroid-mining" component={AsteroidMining} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
