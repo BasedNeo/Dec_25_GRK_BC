@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useInterval } from '@/hooks/useInterval';
 import { TimerManager } from '@/lib/timerManager';
+import { SecureStorage } from '@/lib/secureStorage';
 import { 
   RPC_URL, 
   NFT_CONTRACT, 
@@ -19,6 +20,7 @@ import {
 } from '@/lib/constants';
 import { useAccount, useChainId } from 'wagmi';
 import { X, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function DiagnosticPanel() {
   const { address, isConnected } = useAccount();
@@ -28,10 +30,15 @@ export function DiagnosticPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [timerCount, setTimerCount] = useState(0);
+  const [storageInfo, setStorageInfo] = useState(SecureStorage.getStorageInfo());
 
   useInterval(() => {
     setTimerCount(TimerManager.getActiveCount());
   }, 1000);
+
+  useInterval(() => {
+    setStorageInfo(SecureStorage.getStorageInfo());
+  }, 10000);
 
   const isAdmin = isConnected && address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
@@ -231,6 +238,34 @@ export function DiagnosticPanel() {
         {isRunning && (
           <p className="text-cyan-400 text-center py-4 animate-pulse">Running diagnostics...</p>
         )}
+      </div>
+
+      <div className="border-t border-white/10 pt-3 mt-3 px-3 pb-3">
+        <div className="text-xs">
+          <div className="font-bold text-cyan-400 mb-2">Secure Storage:</div>
+          <div className="space-y-1 text-muted-foreground text-[10px]">
+            <div>Items: {storageInfo.itemCount}</div>
+            <div>Size: {(storageInfo.totalSize / 1024).toFixed(1)} KB</div>
+            <div>Usage: {storageInfo.percentUsed}%</div>
+            <div className={`${Number(storageInfo.percentUsed) > 80 ? 'text-red-400' : 'text-green-400'}`}>
+              {Number(storageInfo.percentUsed) > 80 ? '⚠️ High usage' : '✅ Healthy'}
+            </div>
+          </div>
+          
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const result = SecureStorage.validateAllItems();
+              alert(`Validated storage:\n✅ Valid: ${result.valid}\n❌ Corrupted: ${result.corrupted}\n🗑️ Removed: ${result.removed}`);
+              setStorageInfo(SecureStorage.getStorageInfo());
+            }}
+            className="w-full mt-2 text-[10px] h-6"
+            data-testid="validate-storage-btn"
+          >
+            Validate Storage
+          </Button>
+        </div>
       </div>
 
       <div className="p-2 border-t border-white/10 text-[10px] text-gray-500 text-center">

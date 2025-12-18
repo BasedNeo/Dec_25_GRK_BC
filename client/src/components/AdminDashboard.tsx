@@ -5,12 +5,14 @@ import { ethers } from 'ethers';
 import { 
   X, Shield, RefreshCw, Trash2, Database, Activity, 
   Zap, AlertTriangle, Eye, EyeOff, Server,
-  Download, Wrench, Inbox, Mail, Bug
+  Download, Wrench, Inbox, Mail, Bug, HardDrive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
 import { errorReporter } from '@/lib/errorReporter';
+import { SecureStorage } from '@/lib/secureStorage';
+import { useToast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -28,11 +30,13 @@ interface HealthStatus {
 
 export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardProps) {
   const { address } = useAccount();
+  const { toast } = useToast();
   const isAdmin = address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
   );
   
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [storageInfo, setStorageInfo] = useState(SecureStorage.getStorageInfo());
   const [loading, setLoading] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
@@ -690,6 +694,65 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               </div>
             </div>
           )}
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-4 mb-6">
+            <h3 className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
+              <HardDrive size={16} />
+              Storage Management
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="bg-white/5 rounded p-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-gray-400">Items Stored:</div>
+                    <div className="text-white font-bold">{storageInfo.itemCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Storage Used:</div>
+                    <div className="text-white font-bold">{storageInfo.percentUsed}%</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-7"
+                  onClick={() => {
+                    const result = SecureStorage.validateAllItems();
+                    setStorageInfo(SecureStorage.getStorageInfo());
+                    toast({
+                      title: 'Storage Validated',
+                      description: `Valid: ${result.valid}, Corrupted: ${result.corrupted}, Removed: ${result.removed}`,
+                    });
+                  }}
+                >
+                  Validate All
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="text-xs h-7"
+                  onClick={() => {
+                    if (confirm('Clear all secure storage? This will reset preferences and local scores.')) {
+                      SecureStorage.clear();
+                      setStorageInfo(SecureStorage.getStorageInfo());
+                      toast({ title: 'Storage cleared' });
+                    }
+                  }}
+                >
+                  Clear Storage
+                </Button>
+              </div>
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-[10px] text-yellow-400">
+                ⚠️ Secure storage has size limits (4.5MB) and auto-cleanup. Old items are removed when storage is full.
+              </div>
+            </div>
+          </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">
             Admin: {address?.slice(0, 6)}...{address?.slice(-4)} | 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { SecureStorage } from '@/lib/secureStorage';
 
 interface ScoreEntry {
   wallet: string;
@@ -33,11 +34,11 @@ export function useGameScoresLocal() {
   const [myStats, setMyStats] = useState<PlayerStats>({ lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' });
 
   useEffect(() => {
-    const scores = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    const scores = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
     setLeaderboard(scores.sort((a: ScoreEntry, b: ScoreEntry) => b.score - a.score).slice(0, 10));
 
     if (address) {
-      const stats = JSON.parse(localStorage.getItem(STATS_KEY + address.toLowerCase()) || 'null');
+      const stats = SecureStorage.get<PlayerStats>(STATS_KEY + address.toLowerCase());
       if (stats) setMyStats(stats);
     }
   }, [address]);
@@ -45,14 +46,15 @@ export function useGameScoresLocal() {
   const submitScore = useCallback((score: number, wave: number) => {
     if (!address || score <= 0) return;
 
-    const scores: ScoreEntry[] = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    const scores: ScoreEntry[] = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
     scores.push({ wallet: address, score, wave, timestamp: Date.now() });
     scores.sort((a, b) => b.score - a.score);
-    localStorage.setItem(SCORES_KEY, JSON.stringify(scores.slice(0, 50)));
+    SecureStorage.set(SCORES_KEY, scores.slice(0, 50));
     setLeaderboard(scores.slice(0, 10));
 
     const statsKey = STATS_KEY + address.toLowerCase();
-    const existing: PlayerStats = JSON.parse(localStorage.getItem(statsKey) || '{"lifetimeScore":0,"bestScore":0,"gamesPlayed":0,"rank":"Cadet"}');
+    const existing: PlayerStats = SecureStorage.get<PlayerStats>(statsKey) || 
+      { lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' };
     
     const newStats: PlayerStats = {
       lifetimeScore: existing.lifetimeScore + score,
@@ -61,7 +63,7 @@ export function useGameScoresLocal() {
       rank: RANKS.filter(r => existing.lifetimeScore + score >= r.min).pop()?.title || 'Cadet',
     };
     
-    localStorage.setItem(statsKey, JSON.stringify(newStats));
+    SecureStorage.set(statsKey, newStats);
     setMyStats(newStats);
 
     return newStats;
@@ -69,7 +71,7 @@ export function useGameScoresLocal() {
 
   const getGlobalRank = useCallback(() => {
     if (!address) return 0;
-    const scores: ScoreEntry[] = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]');
+    const scores: ScoreEntry[] = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
     const myBest = scores.filter(s => s.wallet.toLowerCase() === address.toLowerCase())
       .sort((a, b) => b.score - a.score)[0];
     if (!myBest) return scores.length + 1;
