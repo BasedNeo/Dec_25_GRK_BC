@@ -715,18 +715,12 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Fetch more data when user clicks Next and we need more
+  // Auto-correct page when data changes (e.g., after filtering)
   useEffect(() => {
-    const requiredItems = currentPage * ITEMS_PER_PAGE;
-    // If we're at the last page and there's more data, fetch it
-    if (filteredItems.length < requiredItems && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-    // If current page is beyond loaded data, go to last available page
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
     }
-  }, [currentPage, filteredItems.length, hasNextPage, isFetchingNextPage, fetchNextPage, ITEMS_PER_PAGE, totalPages]);
+  }, [currentPage, totalPages]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
