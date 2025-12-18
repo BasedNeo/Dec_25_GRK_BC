@@ -1,110 +1,154 @@
-import { rpcProvider } from './rpcProvider';
+import { ethers } from 'ethers';
+import { RPC_URL } from './constants';
 
-interface TransactionParams {
-  from: string;
+export interface TransactionParams {
   to: string;
+  data: string;
   value?: bigint;
-  data?: string;
+  from: string;
 }
 
-interface TransactionResult {
-  success: boolean;
-  txHash?: string;
-  error?: string;
-  receipt?: unknown;
+export interface TransactionResult {
+  hash: string;
+  confirmed: boolean;
+  blockNumber?: number;
+  gasUsed?: bigint;
 }
 
 export class SafeTransaction {
   private static readonly CONFIRMATION_BLOCKS = 2;
-  private static readonly MAX_WAIT_TIME = 120000;
+  private static readonly GAS_BUFFER_PERCENT = 20;
+  private static readonly MAX_WAIT_TIME = 180000; // 3 minutes
 
   static async estimateGas(params: TransactionParams): Promise<bigint> {
-    return await rpcProvider.executeWithFailover(async (provider) => {
-      const estimate = await provider.estimateGas({
-        from: params.from,
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const gasEstimate = await provider.estimateGas({
         to: params.to,
-        value: params.value,
         data: params.data,
+        value: params.value || BigInt(0),
+        from: params.from,
       });
       
-      return estimate * BigInt(120) / BigInt(100);
-    });
+      const buffered = gasEstimate * BigInt(100 + this.GAS_BUFFER_PERCENT) / BigInt(100);
+      console.log(`[SafeTx] Gas estimate: ${gasEstimate.toString()} (buffered: ${buffered.toString()})`);
+      return buffered;
+    } catch (error: any) {
+      console.error('[SafeTx] Gas estimation failed:', error);
+      throw new Error(`Gas estimation failed: ${error.message || 'Unknown error'}`);
+    }
   }
 
   static async getGasPrice(): Promise<bigint> {
-    return await rpcProvider.executeWithFailover(async (provider) => {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
       const feeData = await provider.getFeeData();
-      return feeData.gasPrice || BigInt(10000000000);
-    });
-  }
-
-  static async verifyBalanceWithGas(address: string, value: bigint, estimatedGas: bigint): Promise<boolean> {
-    return await rpcProvider.executeWithFailover(async (provider) => {
-      const balance = await provider.getBalance(address);
-      const feeData = await provider.getFeeData();
-      const gasPrice = feeData.gasPrice || BigInt(10000000000);
-      const totalRequired = value + (estimatedGas * gasPrice);
-      return balance >= totalRequired;
-    });
+      return feeData.gasPrice || BigInt(10000000000); // 10 gwei default
+    } catch (error) {
+      console.warn('[SafeTx] Failed to get gas price, using default');
+      return BigInt(10000000000);
+    }
   }
 
   static async verifyBalance(address: string, requiredAmount: bigint): Promise<boolean> {
-    return await rpcProvider.executeWithFailover(async (provider) => {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
       const balance = await provider.getBalance(address);
-      return balance >= requiredAmount;
-    });
+      
+      const hasEnough = balance >= requiredAmount;
+      
+      if (!hasEnough) {
+        const shortfall = requiredAmount - balance;
+        console.warn(`[SafeTx] Insufficient balance. Need ${ethers.formatEther(requiredAmount)}, have ${ethers.formatEther(balance)}, short ${ethers.formatEther(shortfall)}`);
+      }
+      
+      return hasEnough;
+    } catch (error) {
+      console.error('[SafeTx] Balance check failed:', error);
+      return false;
+    }
   }
 
   static async waitForConfirmation(
     txHash: string,
-    confirmations = this.CONFIRMATION_BLOCKS
+    confirmations: number = this.CONFIRMATION_BLOCKS
   ): Promise<TransactionResult> {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
     const startTime = Date.now();
-    
-    return await rpcProvider.executeWithFailover(async (provider) => {
-      while (Date.now() - startTime < this.MAX_WAIT_TIME) {
-        try {
-          const receipt = await provider.getTransactionReceipt(txHash);
-          
-          if (receipt) {
-            if (receipt.status === 0) {
-              return {
-                success: false,
-                txHash,
-                error: 'Transaction reverted',
-                receipt,
-              };
-            }
-            
-            const currentBlock = await provider.getBlockNumber();
-            const confirmedBlocks = currentBlock - receipt.blockNumber;
-            
-            if (confirmedBlocks >= confirmations) {
-              return {
-                success: true,
-                txHash,
-                receipt,
-              };
-            }
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        } catch {
-          // Continue waiting
-        }
-      }
+
+    try {
+      console.log(`[SafeTx] Waiting for ${confirmations} confirmations...`);
       
+      const receipt = await provider.waitForTransaction(txHash, confirmations, this.MAX_WAIT_TIME);
+      
+      if (!receipt) {
+        throw new Error('Transaction receipt not found');
+      }
+
+      const waitTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[SafeTx] Transaction confirmed in ${waitTime}s`);
+
       return {
-        success: false,
-        txHash,
-        error: 'Transaction confirmation timeout',
+        hash: txHash,
+        confirmed: receipt.status === 1,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed,
       };
-    });
+    } catch (error: any) {
+      if (Date.now() - startTime >= this.MAX_WAIT_TIME) {
+        console.warn('[SafeTx] Transaction confirmation timeout');
+        return {
+          hash: txHash,
+          confirmed: false,
+        };
+      }
+      throw error;
+    }
   }
 
   static async getNonce(address: string): Promise<number> {
-    return await rpcProvider.executeWithFailover(async (provider) => {
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
       return await provider.getTransactionCount(address, 'pending');
-    });
+    } catch (error) {
+      console.error('[SafeTx] Failed to get nonce:', error);
+      throw error;
+    }
+  }
+
+  static async preFlightCheck(params: TransactionParams, value: bigint = BigInt(0)): Promise<{
+    canProceed: boolean;
+    gasEstimate?: bigint;
+    totalCost?: bigint;
+    error?: string;
+  }> {
+    try {
+      const gasEstimate = await this.estimateGas(params);
+      const gasPrice = await this.getGasPrice();
+      const gasCost = gasEstimate * gasPrice;
+      const totalCost = value + gasCost;
+
+      const hasBalance = await this.verifyBalance(params.from, totalCost);
+
+      if (!hasBalance) {
+        return {
+          canProceed: false,
+          gasEstimate,
+          totalCost,
+          error: `Insufficient balance. Need ${ethers.formatEther(totalCost)} $BASED total (${ethers.formatEther(value)} + ${ethers.formatEther(gasCost)} gas)`,
+        };
+      }
+
+      return {
+        canProceed: true,
+        gasEstimate,
+        totalCost,
+      };
+    } catch (error: any) {
+      return {
+        canProceed: false,
+        error: error.message || 'Pre-flight check failed',
+      };
+    }
   }
 }
