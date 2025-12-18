@@ -15,6 +15,7 @@ import { showToast } from "@/lib/customToast";
 import { useQueryClient } from "@tanstack/react-query";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
 import { NotificationSettings } from "./NotificationSettings";
+import { NotificationBell } from "./NotificationCenter";
 import { PriceTicker } from "./PriceTicker";
 import Untitled from "@/assets/Untitled.png";
 import { useTranslation } from "react-i18next";
@@ -284,6 +285,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   </Tooltip>
               )}
               
+              <NotificationBell />
               <NotificationSettings />
 
               <ConnectButton.Custom>
@@ -414,6 +416,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               
               
               <div className="w-full flex flex-col items-center gap-4 pt-6 border-t border-white/5 mt-4">
+                <NotificationBell />
                 <NotificationSettings />
                 <ConnectButton.Custom>
                   {({

@@ -37,6 +37,8 @@ import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { HealthCheckBanner } from "@/components/HealthCheckBanner";
 import { GuardianProfileProvider } from "@/components/GuardianProfileProvider";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { NotificationsProvider } from "@/context/NotificationsContext";
+import { useNotificationWatchers } from "@/hooks/useNotificationWatchers";
 import { Rocket } from "lucide-react";
 
 function GlobalErrorFallback() {
@@ -140,6 +142,11 @@ function Router() {
   );
 }
 
+function NotificationWatcherSetup() {
+  useNotificationWatchers();
+  return null;
+}
+
 function WelcomeExperienceWrapper({ children }: { children: React.ReactNode }) {
   const { shouldShow, isFirstVisit, loading, markShown, prefersReducedMotion } = useWelcomeExperience();
   const [showOverlay, setShowOverlay] = useState(true);
@@ -195,23 +202,26 @@ function App() {
             <SecurityProvider>
               <TransactionProvider>
                 <GuardianProfileProvider>
-                  <TooltipProvider>
-                    <WelcomeExperienceWrapper>
-                      <HealthCheckBanner />
-                      <NetworkSwitchBanner />
-                      <SpaceBackground />
-                      <Router />
-                      <DisclaimerModal />
-                      <OnboardingTour />
-                      <GlobalBuyListener />
-                      <WalletWatcher />
-                      <PendingTxBanner />
-                      <PendingPurchaseBanner />
-                      <Toaster />
-                      <DiagnosticPanel />
-                      <LanguageSelector />
-                    </WelcomeExperienceWrapper>
-                  </TooltipProvider>
+                  <NotificationsProvider>
+                    <TooltipProvider>
+                      <WelcomeExperienceWrapper>
+                        <NotificationWatcherSetup />
+                        <HealthCheckBanner />
+                        <NetworkSwitchBanner />
+                        <SpaceBackground />
+                        <Router />
+                        <DisclaimerModal />
+                        <OnboardingTour />
+                        <GlobalBuyListener />
+                        <WalletWatcher />
+                        <PendingTxBanner />
+                        <PendingPurchaseBanner />
+                        <Toaster />
+                        <DiagnosticPanel />
+                        <LanguageSelector />
+                      </WelcomeExperienceWrapper>
+                    </TooltipProvider>
+                  </NotificationsProvider>
                 </GuardianProfileProvider>
               </TransactionProvider>
             </SecurityProvider>
