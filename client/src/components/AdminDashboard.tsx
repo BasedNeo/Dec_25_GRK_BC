@@ -44,10 +44,26 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [mintDiagnostics, setMintDiagnostics] = useState<Record<string, any> | null>(null);
   const [emailCount, setEmailCount] = useState<number>(0);
   const [errorLogs, setErrorLogs] = useState(errorReporter.getLogs());
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [conversions, setConversions] = useState<any>(null);
   
   useInterval(() => {
     setErrorLogs(errorReporter.getLogs());
   }, isOpen ? 5000 : null);
+  
+  useEffect(() => {
+    if (isOpen && isAdmin) {
+      fetch('/api/analytics/summary')
+        .then(r => r.json())
+        .then(data => setAnalyticsData(data))
+        .catch(() => {});
+      
+      fetch('/api/analytics/conversions')
+        .then(r => r.json())
+        .then(data => setConversions(data))
+        .catch(() => {});
+    }
+  }, [isOpen, isAdmin]);
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -752,6 +768,73 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
                 ⚠️ Secure storage has size limits (4.5MB) and auto-cleanup. Old items are removed when storage is full.
               </div>
             </div>
+          </Card>
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4">
+              📊 Analytics (Last 7 Days)
+            </h3>
+            
+            {conversions && (
+              <div className="space-y-4">
+                <div className="bg-white/5 rounded p-4">
+                  <div className="text-sm text-gray-400 mb-2">Mint Conversion</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-2xl font-bold text-white">{conversions.mint.conversionRate}%</div>
+                      <div className="text-xs text-gray-500">{conversions.mint.completed}/{conversions.mint.started} completed</div>
+                    </div>
+                    <div className={`text-3xl ${Number(conversions.mint.conversionRate) > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {Number(conversions.mint.conversionRate) > 50 ? '✅' : '⚠️'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white/5 rounded p-4">
+                  <div className="text-sm text-gray-400 mb-2">Buy Conversion</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-2xl font-bold text-white">{conversions.buy.conversionRate}%</div>
+                      <div className="text-xs text-gray-500">{conversions.buy.completed}/{conversions.buy.started} completed</div>
+                    </div>
+                    <div className={`text-3xl ${Number(conversions.buy.conversionRate) > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {Number(conversions.buy.conversionRate) > 50 ? '✅' : '⚠️'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white/5 rounded p-4">
+                  <div className="text-sm text-gray-400 mb-2">Offer Conversion</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-2xl font-bold text-white">{conversions.offer.conversionRate}%</div>
+                      <div className="text-xs text-gray-500">{conversions.offer.completed}/{conversions.offer.started} completed</div>
+                    </div>
+                    <div className={`text-3xl ${Number(conversions.offer.conversionRate) > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {Number(conversions.offer.conversionRate) > 50 ? '✅' : '⚠️'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {analyticsData && analyticsData.events?.length > 0 && (
+              <div className="mt-6">
+                <div className="text-sm text-gray-400 mb-2">Top Events</div>
+                <div className="space-y-2">
+                  {analyticsData.events.slice(0, 10).map((e: any, i: number) => (
+                    <div key={i} className="flex justify-between text-xs bg-white/5 rounded p-2">
+                      <span className="text-white">{e.event}</span>
+                      <span className="text-gray-400">{e.count} times • {e.uniqueUsers} users</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {!conversions && !analyticsData && (
+              <div className="text-gray-500 text-sm">No analytics data yet. Analytics will appear as users interact with the app.</div>
+            )}
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">

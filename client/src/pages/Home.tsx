@@ -18,6 +18,7 @@ import { AdminInbox } from "@/components/AdminInbox";
 import { UserStats } from "@/components/UserStats";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { analytics } from '@/lib/analytics';
 
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -38,6 +39,9 @@ export default function Home() {
       visited.push(activeTab);
       localStorage.setItem('pagesVisited', JSON.stringify(visited));
     }
+    
+    // Track tab change for analytics
+    analytics.pageView(activeTab);
   }, [activeTab]);
 
   // Listen for tab navigation events from child components

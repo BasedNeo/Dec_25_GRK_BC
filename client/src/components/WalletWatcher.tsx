@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAccount, useDisconnect, useSwitchChain, useChainId } from 'wagmi';
 import { showToast } from "@/lib/customToast";
+import { analytics } from '@/lib/analytics';
 
 export function WalletWatcher() {
   const { isConnected, address } = useAccount();
@@ -37,8 +38,13 @@ export function WalletWatcher() {
       
       if (previousAddress.current && previousAddress.current !== address) {
         showToast(`Account Changed: ${address.slice(0,6)}...${address.slice(-4)}`, "info");
+      } else if (!previousAddress.current) {
+        analytics.walletConnected(address);
       }
       previousAddress.current = address;
+    } else if (!isConnected && previousAddress.current) {
+      analytics.walletDisconnected();
+      previousAddress.current = undefined;
     }
   }, [isConnected, address]);
 
