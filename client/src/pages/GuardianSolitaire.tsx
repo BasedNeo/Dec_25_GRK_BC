@@ -1104,9 +1104,20 @@ export default function GuardianSolitaire() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-3 font-orbitron tracking-tight">
+              <h1 
+                className="text-6xl font-black text-transparent bg-clip-text bg-[length:200%_auto] mb-3 font-orbitron tracking-tight animate-[gradient-shift_4s_ease-in-out_infinite]"
+                style={{
+                  backgroundImage: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #f97316, #22d3ee)',
+                }}
+              >
                 GUARDIAN SOLITAIRE
               </h1>
+              <style>{`
+                @keyframes gradient-shift {
+                  0%, 100% { background-position: 0% center; }
+                  50% { background-position: 100% center; }
+                }
+              `}</style>
               <p className="text-gray-400 text-base mb-4">
                 Premium Klondike • Strategy Meets Style
               </p>
@@ -1164,6 +1175,21 @@ export default function GuardianSolitaire() {
                     <Spade className="w-16 h-16 text-cyan-400" />
                   </motion.div>
                 </div>
+
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.8 }}
+                  className="bg-gradient-to-br from-red-500/10 via-purple-500/10 to-cyan-500/10 rounded-xl p-6 border border-red-500/20 relative overflow-hidden"
+                >
+                  <div className="absolute top-2 right-2 text-red-400/30 text-xs font-mono">// TRANSMISSION INTERCEPTED</div>
+                  <p className="text-gray-300 text-sm leading-relaxed italic">
+                    "You've been caught by the <span className="text-red-400 font-bold">FUD</span>. While awaiting your rescue, you find yourself alone in a cell with only one thing... a deck of playing cards. This is the time to sharpen your skills and earn points."
+                  </p>
+                  <div className="mt-3 text-right">
+                    <span className="text-cyan-400/60 text-xs font-mono">— Guardian Protocol 7.3</span>
+                  </div>
+                </motion.div>
 
                 <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                   <div className="flex items-center gap-2 mb-4">
