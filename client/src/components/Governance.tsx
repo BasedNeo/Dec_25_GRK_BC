@@ -83,9 +83,8 @@ export function Governance() {
       toast({ title: 'Vote Cast!', description: `You voted ${vote} on this proposal` });
       setUserVotes(prev => ({ ...prev, [proposalId]: vote }));
       fetchProposals();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to vote';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } catch {
+      toast({ title: 'Vote Failed', description: 'Could not submit your vote. Please try again.', variant: 'destructive' });
     }
   };
 
@@ -118,9 +117,8 @@ export function Governance() {
       setDeletingId(null);
       setDeleteConfirmCount(0);
       fetchProposals();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to delete';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } catch {
+      toast({ title: 'Delete Failed', description: 'Could not remove proposal. Please try again.', variant: 'destructive' });
     }
   };
 

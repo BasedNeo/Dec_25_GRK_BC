@@ -72,10 +72,9 @@ export function Footer() {
           });
           return true;
         } else {
-          const data = await response.json().catch(() => ({}));
           toast({
-            title: "Error",
-            description: data.error || `Server returned ${response.status}`,
+            title: "Unable to Send",
+            description: "Could not submit feedback. Please try again.",
             variant: "destructive",
           });
           return true;
@@ -100,7 +99,7 @@ export function Footer() {
         }
         toast({
           title: "Connection Issue",
-          description: err?.message || "Could not reach the server. Please try again in a moment.",
+          description: "Could not reach the server. Please try again in a moment.",
           variant: "destructive",
         });
         return true;

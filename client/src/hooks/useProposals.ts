@@ -91,8 +91,8 @@ export function useProposalMutations() {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Proposal Created', description: 'Your proposal is now active', className: 'bg-black border-cyan-500 text-cyan-500' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: () => {
+      toast({ title: 'Unable to Create', description: 'Could not create proposal. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -113,8 +113,8 @@ export function useProposalMutations() {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Deleted', description: 'Proposal has been removed', className: 'bg-black border-red-500 text-red-500' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: () => {
+      toast({ title: 'Unable to Delete', description: 'Could not delete proposal. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -137,8 +137,8 @@ export function useProposalMutations() {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Vote Cast', description: 'Your vote has been recorded', className: 'bg-black border-primary text-primary' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: () => {
+      toast({ title: 'Vote Failed', description: 'Could not submit your vote. Please try again.', variant: 'destructive' });
     },
   });
 

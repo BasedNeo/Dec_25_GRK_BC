@@ -1,0 +1,104 @@
+
+## Performance Architecture
+
+### Memory Leak Prevention
+- All `useEffect` hooks include cleanup functions
+- `isMounted` flags for async operations
+- Timer cleanup via `return` statements
+- Canvas cleanup on game unmount
+- Event listener removal
+
+### RPC Management
+- **Multi-endpoint failover**: `client/src/lib/rpcProvider.ts`
+- **Caching**: `client/src/lib/rpcCache.ts` (10-30s TTL)
+- **Request batching**: `Promise.all()` for parallel calls
+- **Retry logic**: Automatic retry with exponential backoff
+
+### Rendering Optimization
+- Code splitting with `React.lazy()`
+- Route-based lazy loading
+- Marketplace pagination
+- `React.memo` on frequently re-rendered components
+- `useMemo` / `useCallback` for expensive operations
+
+### Error Handling
+- Error boundaries on all routes
+- Graceful degradation
+- User-friendly error messages
+- Centralized error reporting: `client/src/lib/errorReporter.ts`
+
+## Security Architecture
+
+### Financial Safety
+- **SafeMath** (`client/src/lib/safeMath.ts`): BigInt precision arithmetic
+- **SafeTransaction** (`client/src/lib/safeTransaction.ts`): Pre-flight checks
+- **AsyncMutex** (`client/src/lib/asyncMutex.ts`): Prevent race conditions
+- **RequestDeduplicator** (`client/src/lib/requestDeduplicator.ts`): Prevent duplicate requests
+- **useButtonLock** hook: Prevent double-clicks
+
+### Data Protection
+- **SecureStorage** (`client/src/lib/secureStorage.ts`): Integrity-checked localStorage
+- Input sanitization on all user inputs
+- XSS protection via React's built-in escaping
+- API rate limiting on backend
+
+### Backend Security (server/)
+- **Helmet**: Security headers (XSS, clickjacking protection)
+- **CORS**: Configured origin restrictions
+- **Rate limiting**: 
+  - `apiLimiter`: 100 requests/15min
+  - `writeLimiter`: 10 requests/15min for mutations
+  - `gameLimiter`: 50 requests/15min for game endpoints
+- **Secure logging**: Sensitive data redaction
+
+## Database Schema (PostgreSQL)
+
+**Tables:**
+- `guardian_profiles`: Custom names for NFTs
+- `proposals`: Governance proposals and votes
+- `feature_flags`: Dynamic feature toggles
+- `analytics_events`: User action tracking
+- `analytics_aggregates`: Aggregated metrics
+
+**ORM**: Drizzle ORM (`shared/schema.ts`)
+
+## External Dependencies
+
+### Blockchain
+- **Network**: BasedAI Layer 1 (Chain ID: 8453)
+- **Contracts**:
+  - Guardian NFT (ERC-721)
+  - Marketplace V2
+  - Offers V3
+  - Governance
+- **Libraries**: wagmi, viem, ethers.js v6
+
+### APIs
+- **Price feeds**: CoinGecko, Binance, CoinCap (with fallbacks)
+- **RPC endpoints**: Multiple with health checks
+
+## Deployment
+
+- **Platform**: Replit
+- **Build**: Vite (`npm run build`)
+- **Start**: `npm start` (serves frontend + backend)
+- **Database**: PostgreSQL managed by Replit
+- **Environment**: See `.env.example` for required variables
+
+## Monitoring
+
+- **Performance Monitor**: `client/src/lib/performanceMonitor.ts`
+  - Tracks operation timing
+  - Warns on slow operations (>1s)
+  - Accessible via Admin Dashboard
+- **Error Reporter**: `client/src/lib/errorReporter.ts`
+  - Logs all errors with context
+  - Exportable for analysis
+- **Analytics**: `client/src/lib/analytics.ts`
+  - Tracks user actions
+  - Conversion funnel
+  - Game engagement metrics
+
+---
+
+For detailed development instructions, see `DEVELOPMENT_GUIDE.md`.

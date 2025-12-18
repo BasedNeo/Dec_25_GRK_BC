@@ -91,9 +91,8 @@ export function CreateProposalModal({ isOpen, onClose, walletAddress }: CreatePr
       setShowConfirmation(false);
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       onClose();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to create proposal';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } catch {
+      toast({ title: 'Unable to Create', description: 'Could not create proposal. Please try again.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

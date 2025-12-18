@@ -123,11 +123,10 @@ export function MyOffersPanel() {
           description: `Your offer on ${offer.nftName} has been removed.`,
           className: "bg-black border-green-500 text-green-400"
         });
-      } catch (err: unknown) {
-        const error = err as Error;
+      } catch {
         toast({
           title: "Cancel Failed",
-          description: error.message || "Could not cancel offer",
+          description: "Could not cancel offer. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -156,11 +155,10 @@ export function MyOffersPanel() {
         });
         setEditingOffer(null);
         refresh();
-      } catch (err: unknown) {
-        const error = err as Error;
+      } catch {
         toast({
           title: "Update Failed",
-          description: error.message || "Could not update offer",
+          description: "Could not update offer. Please try again.",
           variant: "destructive"
         });
       } finally {

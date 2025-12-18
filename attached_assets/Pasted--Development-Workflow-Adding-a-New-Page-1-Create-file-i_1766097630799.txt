@@ -1,0 +1,256 @@
+
+## Development Workflow
+
+### Adding a New Page
+1. Create file in `client/src/pages/YourPage.tsx`
+2. Define props interface with TypeScript
+3. Add route in `client/src/App.tsx`:
+   const YourPage = lazy(() => import('@/pages/YourPage'));
+   // ...
+   <Route path="/your-path" element={<YourPage />} />
+   4. Add navigation link in `Navbar.tsx` if needed
+5. Wrap route in `<ErrorBoundary>` for safety
+
+### Adding a New Hook
+1. Create `client/src/hooks/useYourHook.ts`
+2. Follow naming: `use` prefix + PascalCase
+3. Add TypeScript types for parameters and return values
+4. **Always include cleanup** in `useEffect`:
+   useEffect(() => {
+     let isMounted = true;
+     
+     // async logic...
+     
+     return () => {
+       isMounted = false;
+     };
+   }, [deps]);
+   5. Document complex logic with comments
+
+### Adding a New Component
+1. Create in `client/src/components/YourComponent.tsx`
+2. Define props interface:
+   interface YourComponentProps {
+     prop1: string;
+     prop2: number;
+     onAction?: () => void;
+   }
+   3. Use `React.memo` if component re-renders frequently
+4. Add accessibility attributes (ARIA labels, roles)
+
+### Adding a New Game
+1. Create `client/src/pages/YourGame.tsx`
+2. Add entry to `gameRegistry.ts`:
+   'your-game': {
+     id: 'your-game',
+     name: 'Your Game Name',
+     path: '/games/your-game',
+     icon: '🎮',
+     description: 'Game description',
+     tagline: 'Short tagline',
+     maxScore: 50000,
+     maxPlaysPerDay: 10,
+     scorePerPoint: 1,
+     nftRequired: true, // or false for free games
+     minPlayDuration: 90, // seconds
+     thumbnail: '/game-thumbs/your-game.png'
+   }
+   3. Implement game with required features:
+   - **Bot protection**: Minimum play duration, action throttling
+   - **Memory cleanup**: Cancel `requestAnimationFrame`, clear timers
+   - **NFT gating**: Check balance if `nftRequired: true`
+   - **Play limits**: Integrate with `gameStorage.ts`
+   - **Scoring**: Cap at `maxScore` from registry
+4. Use shared components:
+   - `<GameHUD />` for in-game display
+   - `<VictoryScreen />` for end-game
+5. Add route to `App.tsx`
+6. Test thoroughly on desktop and mobile
+
+### Modifying Smart Contract Interactions
+1. Update contract ABI if interface changed
+2. Update addresses in `client/src/lib/constants.ts`
+3. Use `SafeTransaction.preFlightCheck` before writes
+4. Use `SafeMath` for all financial calculations
+5. Test on testnet first
+6. Update RPC failover if needed
+
+## Code Standards
+
+### Naming Conventions
+- **Files**: 
+  - Components: `PascalCase.tsx` (`GameCard.tsx`)
+  - Hooks: `camelCase.ts` (`useGameStats.ts`)
+  - Utils: `camelCase.ts` (`safeMath.ts`)
+- **Functions**: `camelCase` (`handleClick`, `fetchUserData`)
+- **Components**: `PascalCase` (`NFTCard`, `GameHUD`)
+- **Constants**: `UPPER_SNAKE_CASE` (`MAX_SUPPLY`, `MINT_PRICE`)
+- **Interfaces/Types**: `PascalCase` (`GameConfig`, `NFT`)
+
+### React Best Practices
+- Always use functional components with hooks
+- Extract complex logic into custom hooks
+- Memoize expensive operations:
+  const filteredData = useMemo(() => {
+    return data.filter(item => condition);
+  }, [data]);
+  - Memoize callbacks passed to children:
+  const handleClick = useCallback(() => {
+    // logic
+  }, [deps]);
+  - Use `React.memo` for components that re-render often
+- Always clean up effects (timers, listeners, subscriptions)
+
+### TypeScript Guidelines
+- **No `any` types** - use `unknown` if type is truly unknown
+- Add explicit return types to all functions
+- Create interfaces for all data structures
+- Use type narrowing instead of type assertions
+- Import types from `@/types` for consistency
+
+### Performance Rules
+- **Always** add cleanup to `useEffect` hooks:
+  useEffect(() => {
+    const interval = setInterval(() => {}, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  - Use `isMounted` flag for async operations:
+  useEffect(() => {
+    let isMounted = true;
+    fetchData().then(data => {
+      if (isMounted) setState(data);
+    });
+    return () => { isMounted = false; };
+  }, []);
+  - Batch API calls with `Promise.all()`
+- Use RPC caching for repeated blockchain reads
+- Implement pagination for large lists
+- Clean up canvas elements in games
+
+### Security Requirements
+- Use `SafeMath` for all financial calculations
+- Use `SafeTransaction.preFlightCheck` before writes
+- Wrap critical operations with `AsyncMutex`
+- Use `RequestDeduplicator` to prevent duplicate requests
+- Sanitize all user inputs
+- Never expose private keys or secrets
+- Use user-friendly error messages (no technical details)
+
+## Testing
+
+### Manual Testing Checklist
+Before deploying:
+- [ ] All pages load without console errors
+- [ ] Wallet connection/disconnection works
+- [ ] Minting works (use testnet)
+- [ ] Marketplace displays and pagination works
+- [ ] All games play correctly
+- [ ] Games clean up properly on exit (no memory leaks)
+- [ ] Mobile responsive on all pages
+- [ ] Error scenarios handled gracefully
+- [ ] No TypeScript errors: `npx tsc --noEmit`
+- [ ] Build succeeds: `npm run build`
+
+### Performance Testing
+1. Open DevTools → Performance tab
+2. Start recording
+3. Navigate through app for 2-3 minutes
+4. Stop recording
+5. Check memory graph - should be flat, not climbing
+
+### Game-Specific Testing
+- Play each game 3 times in succession (no slowdown)
+- Exit game mid-play (no console errors)
+- Check daily limit enforcement works
+- Verify NFT gating (for premium games)
+- Test on mobile device (touch controls)
+
+## Common Issues & Solutions
+
+### "Can't perform React state update on unmounted component"
+**Solution**: Add `isMounted` flag:
+useEffect(() => {
+  let isMounted = true;
+  asyncOperation().then(result => {
+    if (isMounted) setState(result);
+  });
+  return () => { isMounted = false; };
+}, []);### RPC Calls Failing
+**Check**:
+- RPC endpoints in `.env` are correct
+- RPC failover is working (`rpcProvider.ts`)
+- Not hitting rate limits
+
+### Games Running Slow
+**Solutions**:
+- Ensure `requestAnimationFrame` is being cancelled on unmount
+- Check for memory leaks in DevTools
+- Reduce number of rendered objects
+- Optimize canvas drawing (batch operations)
+
+### Marketplace Not Loading
+**Check**:
+- Pagination is working correctly
+- RPC cache is functioning
+- No infinite loops in `useEffect`
+- Contract addresses are correct
+
+### TypeScript Errors
+**Solutions**:
+- Run `npx tsc --noEmit` to see all errors
+- Check that types are imported from `@/types`
+- Ensure all props have interfaces
+- Add explicit return types to functions
+
+## Useful Commands
+
+# Development
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run preview          # Preview production build
+
+# Database
+npm run db:push          # Push schema changes to database
+npm run db:studio        # Open Drizzle Studio (DB GUI)
+
+# Type Checking
+npx tsc --noEmit         # Check TypeScript errors
+
+# Dependency Management
+npm audit                # Check for vulnerabilities
+npx depcheck             # Find unused dependencies## Git Workflow (if using Git)
+
+1. Create feature branch: `git checkout -b feature/your-feature`
+2. Make changes and commit: `git commit -m "Add feature"`
+3. Push: `git push origin feature/your-feature`
+4. Create pull request for review
+
+**Never commit:**
+- `.env` files (use `.env.example`)
+- `node_modules/`
+- Build artifacts (`dist/`)
+- Logs or temporary files
+
+## Resources
+
+- [React Documentation](https://react.dev)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Wagmi Documentation](https://wagmi.sh)
+- [TailwindCSS](https://tailwindcss.com/docs)
+- [Drizzle ORM](https://orm.drizzle.team)
+- [Vite Guide](https://vitejs.dev/guide/)
+
+## Need Help?
+
+1. Check this guide and `ARCHITECTURE.md`
+2. Search existing documentation
+3. Check browser console for errors
+4. Ask in team chat with:
+   - What you're trying to do
+   - What you expected
+   - What actually happened
+   - Relevant error messages
+
+---
+
+Happy coding! 🚀
