@@ -71,7 +71,8 @@ async function getBlockTimestamp(provider: ethers.JsonRpcProvider, blockNumber: 
 const NFT_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   'function totalMinted() view returns (uint256)',
-  'function MAX_SUPPLY() view returns (uint256)'
+  'function MAX_SUPPLY() view returns (uint256)',
+  'function totalSupply() view returns (uint256)'
 ];
 
 const MARKETPLACE_ABI = [
@@ -134,11 +135,12 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await retryRpcCall(() => provider.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Look back ~10000 blocks to capture activity from the last ~5.5 hours
-      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
-      // This provides better coverage while staying under RPC timeout limits
+      // For 60 days: 60 * 24 * 60 * 60 / 2 = 2,592,000 blocks (will query in chunks)
+      // But for display, we'll show last 500,000 blocks (~138 hours = ~5.7 days)
+      // Then get cumulative stats from contract state functions
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const fromBlock = Math.max(0, currentBlock - 10000);
+      const DISPLAY_BLOCKS = 500000; // ~5.7 days of detailed activity
+      const fromBlock = Math.max(0, currentBlock - DISPLAY_BLOCKS);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
