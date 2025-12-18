@@ -1,0 +1,223 @@
+=== CRITICAL FIX: DATABASE + API SECURITY (30 MIN) ===
+
+OBJECTIVE: Fix broken custom name system + secure API endpoints
+
+═══════════════════════════════════════════════════════════
+STEP 1: VERIFY DATABASE (5 MIN)
+═══════════════════════════════════════════════════════════
+
+Check if DATABASE_URL environment variable exists:
+- Open "Secrets" tab (lock icon in sidebar)
+- Look for DATABASE_URL key
+
+IF MISSING: Add it with your PostgreSQL connection string
+IF EXISTS: Continue to next step
+
+Run database migration:
+npm run db:push
+
+EXPECTED OUTPUT: "✓ Changes applied"
+IF ERROR: Check DATABASE_URL format, ensure PostgreSQL accessible
+
+═══════════════════════════════════════════════════════════
+STEP 2: INSTALL SECURITY PACKAGES (2 MIN)
+═══════════════════════════════════════════════════════════
+
+Run:
+npm install express-rate-limit helmet cors
+
+═══════════════════════════════════════════════════════════
+STEP 3: CREATE RATE LIMITER (5 MIN)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: server/middleware/rateLimiter.ts
+
+import rateLimit from 'express-rate-limit';
+
+export const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  skip: (req) => req.path === '/api/health'
+});
+
+export const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many writes' },
+  skipSuccessfulRequests: true
+});
+
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many auth attempts' }
+});
+
+═══════════════════════════════════════════════════════════
+STEP 4: CREATE SECURITY MIDDLEWARE (5 MIN)
+═══════════════════════════════════════════════════════════
+
+CREATE FILE: server/middleware/security.ts
+
+import helmet from 'helmet';
+import cors from 'cors';
+
+export const helmetConfig = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      connectSrc: ["'self'", "https://mainnet.basedaibridge.com", "https://api.coingecko.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"]
+    }
+  },
+  crossOriginEmbedderPolicy: false
+});
+
+export const corsConfig = cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://basedguardians.com']
+    : true,
+  credentials: true
+});
+
+═══════════════════════════════════════════════════════════
+STEP 5: UPDATE SERVER INDEX (5 MIN)
+═══════════════════════════════════════════════════════════
+
+FILE: server/index.ts
+
+AFTER line 1 (imports), ADD:
+import { apiLimiter } from './middleware/rateLimiter';
+import { helmetConfig, corsConfig } from './middleware/security';
+
+FIND (around line 36-60) the logging middleware that starts with:
+app.use((req, res, next) => {
+
+REPLACE THE ENTIRE LOGGING MIDDLEWARE WITH:
+
+// Security middleware
+app.use(helmetConfig);
+app.use(corsConfig);
+
+// Rate limiter for all API routes
+app.use('/api', apiLimiter);
+
+// Secure logging (no sensitive data)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    if (req.path.startsWith("/api")) {
+      const duration = Date.now() - start;
+      console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    }
+  });
+  next();
+});
+
+═══════════════════════════════════════════════════════════
+STEP 6: ADD RATE LIMITERS TO ROUTES (5 MIN)
+═══════════════════════════════════════════════════════════
+
+FILE: server/routes.ts
+
+ADD at top after other imports:
+import { writeLimiter, authLimiter } from './middleware/rateLimiter';
+
+FIND: app.post("/api/profile/login"
+REPLACE WITH: app.post("/api/profile/login", authLimiter,
+
+FIND: app.post("/api/profile/name"
+REPLACE WITH: app.post("/api/profile/name", authLimiter, writeLimiter,
+
+FIND: app.post("/api/feedback"
+REPLACE WITH: app.post("/api/feedback", writeLimiter,
+
+═══════════════════════════════════════════════════════════
+STEP 7: FIX NAME VALIDATION (3 MIN)
+═══════════════════════════════════════════════════════════
+
+FILE: server/routes.ts
+
+VERIFY the /api/profile/name endpoint (around line 264) includes:
+
+1. Character validation:
+if (!/^[a-zA-Z0-9_-]+$/.test(customName)) {
+  return res.status(400).json({ error: "Only letters, numbers, underscore, hyphen allowed" });
+}
+
+2. Profanity check:
+if (containsProfanity(customName)) {
+  return res.status(400).json({ error: "This name contains inappropriate content" });
+}
+
+3. Duplicate check:
+const isTaken = await storage.isNameTaken(customName, walletAddress);
+if (isTaken) {
+  return res.status(409).json({ error: "This name is already taken" });
+}
+
+IF MISSING: Add these checks BEFORE the storage.setCustomName call
+
+═══════════════════════════════════════════════════════════
+STEP 8: RESTART & TEST
+═══════════════════════════════════════════════════════════
+
+1. Stop server (if running)
+2. Run: npm run dev
+3. Server should start without errors
+
+TEST DATABASE:
+- Open app in browser
+- Connect wallet
+- Go to Stats page
+- Click "Set Name"
+- Try name "Test123"
+- Should show green checkmark if available
+- Click Save
+- Should save successfully
+
+TEST RATE LIMITING:
+- Open browser console
+- Run this 110 times:
+  for(let i=0; i<110; i++) { fetch('/api/health').then(r => console.log(r.status)) }
+- After request 100, should see status 429 (rate limited)
+
+TEST PROFANITY FILTER:
+- Try to set name with profanity (e.g., "badword")
+- Should be blocked with error message
+
+═══════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════
+
+□ Database migration ran successfully
+□ Security packages installed
+□ rateLimiter.ts created
+□ security.ts created
+□ server/index.ts updated with middleware
+□ server/routes.ts updated with rate limiters
+□ Server restarts without errors
+□ Custom name can be set
+□ Rate limiting works (429 after 100 requests)
+□ Profanity filter blocks bad words
+□ No console errors in browser
+
+IF ALL CHECKED: ✅ PHASE 1 COMPLETE!
+
+═══════════════════════════════════════════════════════════
+WHAT YOU JUST FIXED
+═══════════════════════════════════════════════════════════
+
+✅ Database setup (guardian_profiles table)
+✅ Custom name system working
+✅ Profanity filter active
+✅ API rate limiting (prevents DOS attacks)
+✅ Security headers (prevents XSS, clickjacking)
+✅ CORS protection
+✅ Sensitive data no longer logged
+
+NEXT STEPS: After verifying this works, run PROMPT 3 (BigInt precision)
+or PROMPT 5 (Memory leak prevention)
