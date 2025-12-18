@@ -37,9 +37,9 @@ async function scanHistoricalVolume() {
   
   const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
   
-  // Scan in chunks to avoid timeout
-  const CHUNK_SIZE = 100000; // 100k blocks per chunk
-  const DEPLOY_BLOCK = 2500000; // Approximate marketplace deployment block (adjust if needed)
+  // Scan in chunks to avoid timeout (10k blocks to stay under RPC 10s limit)
+  const CHUNK_SIZE = 10000; // 10k blocks per chunk
+  const DEPLOY_BLOCK = 2800000; // Start closer to current block to reduce scan time
   
   let allSoldEvents: any[] = [];
   let fromBlock = DEPLOY_BLOCK;
