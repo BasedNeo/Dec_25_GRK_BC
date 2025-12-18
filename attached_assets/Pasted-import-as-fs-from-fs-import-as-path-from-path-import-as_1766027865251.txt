@@ -1,0 +1,229 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+
+const MANIFEST_PATH = 'client/src/core/PROTECTION_MANIFEST.json';
+const BACKUP_DIR = 'backups/core';
+
+interface ProtectedFile {
+  path: string;
+  criticality: string;
+  reason: string;
+  lastModified: string;
+  checksum: string;
+  testRequired: boolean;
+  tests?: string[];
+}
+
+interface Manifest {
+  version: string;
+  lastVerified: string;
+  protectedFiles: ProtectedFile[];
+  requiredTests: Record<string, string>;
+}
+
+function getChecksum(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+  } catch {
+    return 'FILE_NOT_FOUND';
+  }
+}
+
+function createBackup(filePath: string): boolean {
+  try {
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ File not found: ${filePath}`);
+      return false;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupPath = path.join(BACKUP_DIR, filePath, `${timestamp}.backup`);
+    
+    fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+    fs.copyFileSync(filePath, backupPath);
+    
+    console.log(`✅ Backed up: ${filePath} → ${backupPath}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Backup failed for ${filePath}:`, error);
+    return false;
+  }
+}
+
+function cleanOldBackups(filePath: string, keepCount: number = 10) {
+  try {
+    const backupDir = path.join(BACKUP_DIR, filePath);
+    if (!fs.existsSync(backupDir)) return;
+
+    const files = fs.readdirSync(backupDir)
+      .filter(f => f.endsWith('.backup'))
+      .map(f => ({
+        name: f,
+        path: path.join(backupDir, f),
+        mtime: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.mtime - a.mtime);
+
+    if (files.length > keepCount) {
+      files.slice(keepCount).forEach(f => {
+        fs.unlinkSync(f.path);
+        console.log(`🗑️  Removed old backup: ${f.name}`);
+      });
+    }
+  } catch (error) {
+    console.error(`⚠️  Failed to clean old backups for ${filePath}`);
+  }
+}
+
+function verifyIntegrity(): boolean {
+  console.log('\n🔍 VERIFYING CORE FILE INTEGRITY\n');
+  
+  const manifest: Manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+  let allValid = true;
+  const changes: string[] = [];
+
+  manifest.protectedFiles.forEach(file => {
+    const currentChecksum = getChecksum(file.path);
+    
+    if (currentChecksum === 'FILE_NOT_FOUND') {
+      console.log(`❌ MISSING: ${file.path}`);
+      allValid = false;
+      changes.push(file.path);
+    } else if (file.checksum && file.checksum !== currentChecksum) {
+      console.log(`⚠️  CHANGED: ${file.path}`);
+      console.log(`   Reason: ${file.reason}`);
+      console.log(`   Old: ${file.checksum}`);
+      console.log(`   New: ${currentChecksum}`);
+      changes.push(file.path);
+    } else {
+      console.log(`✅ OK: ${file.path}`);
+    }
+  });
+
+  if (changes.length > 0) {
+    console.log(`\n⚠️  ${changes.length} file(s) changed. Run 'npm run core:backup' to update.`);
+  } else {
+    console.log('\n✅ All core files intact!\n');
+  }
+
+  return allValid;
+}
+
+function backupAll() {
+  console.log('\n💾 BACKING UP CORE FILES\n');
+  
+  const manifest: Manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+  let successCount = 0;
+
+  manifest.protectedFiles.forEach(file => {
+    if (createBackup(file.path)) {
+      successCount++;
+      cleanOldBackups(file.path);
+      
+      const newChecksum = getChecksum(file.path);
+      file.checksum = newChecksum;
+      file.lastModified = new Date().toISOString().split('T')[0];
+    }
+  });
+
+  manifest.lastVerified = new Date().toISOString().split('T')[0];
+  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+
+  console.log(`\n✅ Backed up ${successCount}/${manifest.protectedFiles.length} files\n`);
+}
+
+function restoreBackup(filePath: string, timestamp?: string) {
+  console.log(`\n♻️  RESTORING: ${filePath}\n`);
+  
+  const backupDir = path.join(BACKUP_DIR, filePath);
+  
+  if (!fs.existsSync(backupDir)) {
+    console.error('❌ No backups found for this file');
+    return;
+  }
+
+  const backups = fs.readdirSync(backupDir)
+    .filter(f => f.endsWith('.backup'))
+    .sort()
+    .reverse();
+
+  if (backups.length === 0) {
+    console.error('❌ No backups available');
+    return;
+  }
+
+  const backupFile = timestamp 
+    ? backups.find(b => b.startsWith(timestamp))
+    : backups[0];
+
+  if (!backupFile) {
+    console.error('❌ Backup not found for specified timestamp');
+    return;
+  }
+
+  const backupPath = path.join(backupDir, backupFile);
+  fs.copyFileSync(backupPath, filePath);
+  
+  console.log(`✅ Restored from: ${backupFile}\n`);
+}
+
+function listBackups(filePath: string) {
+  const backupDir = path.join(BACKUP_DIR, filePath);
+  
+  if (!fs.existsSync(backupDir)) {
+    console.log('No backups found');
+    return;
+  }
+
+  const backups = fs.readdirSync(backupDir)
+    .filter(f => f.endsWith('.backup'))
+    .map(f => {
+      const stats = fs.statSync(path.join(backupDir, f));
+      return {
+        name: f,
+        date: stats.mtime.toISOString(),
+        size: `${(stats.size / 1024).toFixed(1)} KB`,
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  console.log(`\n📦 Backups for: ${filePath}\n`);
+  backups.forEach(b => {
+    console.log(`  ${b.name} - ${b.size} - ${b.date}`);
+  });
+  console.log('');
+}
+
+const command = process.argv[2];
+const arg = process.argv[3];
+
+switch (command) {
+  case 'verify':
+    verifyIntegrity();
+    break;
+  case 'backup':
+    backupAll();
+    break;
+  case 'restore':
+    if (!arg) {
+      console.error('Usage: npm run core:restore <file-path> [timestamp]');
+      process.exit(1);
+    }
+    restoreBackup(arg, process.argv[4]);
+    break;
+  case 'list':
+    if (!arg) {
+      console.error('Usage: npm run core:list <file-path>');
+      process.exit(1);
+    }
+    listBackups(arg);
+    break;
+  default:
+    console.log('Usage:');
+    console.log('  npm run core:verify   - Check file integrity');
+    console.log('  npm run core:backup   - Backup all protected files');
+    console.log('  npm run core:restore <file> [timestamp] - Restore from backup');
+    console.log('  npm run core:list <file> - List available backups');
+}
