@@ -140,11 +140,11 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await rpcManager.executeWithFailover(p => p.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Reduced from 500k to 100k blocks to prevent RPC timeout (10s limit)
-      // 100,000 blocks = ~2.8 days of activity (2 sec block time)
+      // Reduced to 20k blocks to prevent RPC timeout (10s limit on BasedAI RPC)
+      // 20,000 blocks = ~11 hours of activity (2 sec block time)
       // Then get cumulative stats from contract state functions
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const DISPLAY_BLOCKS = 100000; // ~2.8 days of detailed activity (prevents RPC timeout)
+      const DISPLAY_BLOCKS = 20000; // ~11 hours of detailed activity (prevents RPC timeout)
       const fromBlock = Math.max(0, currentBlock - DISPLAY_BLOCKS);
       
       // ⚠️ LOCKED: Event fetching - this is the source of truth for all activity
