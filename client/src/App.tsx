@@ -4,9 +4,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import '@/lib/i18n';
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
+import { MatrixWelcomeOverlay } from "@/components/MatrixWelcomeOverlay";
+import { useWelcomeExperience } from "@/hooks/useWelcomeExperience";
 
 // Lazy load secondary pages for faster initial load
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
@@ -138,6 +140,33 @@ function Router() {
   );
 }
 
+function WelcomeExperienceWrapper({ children }: { children: React.ReactNode }) {
+  const { shouldShow, isFirstVisit, loading, markShown, prefersReducedMotion } = useWelcomeExperience();
+  const [showOverlay, setShowOverlay] = useState(true);
+
+  const handleComplete = () => {
+    markShown();
+    setShowOverlay(false);
+  };
+
+  if (loading) {
+    return <>{children}</>;
+  }
+
+  return (
+    <>
+      {shouldShow && showOverlay && (
+        <MatrixWelcomeOverlay
+          isFirstVisit={isFirstVisit}
+          onComplete={handleComplete}
+          prefersReducedMotion={prefersReducedMotion}
+        />
+      )}
+      {children}
+    </>
+  );
+}
+
 function App() {
   useEffect(() => {
     initAnalytics();
@@ -167,19 +196,21 @@ function App() {
               <TransactionProvider>
                 <GuardianProfileProvider>
                   <TooltipProvider>
-                    <HealthCheckBanner />
-                    <NetworkSwitchBanner />
-                    <SpaceBackground />
-                    <Router />
-                    <DisclaimerModal />
-                    <OnboardingTour />
-                    <GlobalBuyListener />
-                    <WalletWatcher />
-                    <PendingTxBanner />
-                    <PendingPurchaseBanner />
-                    <Toaster />
-                    <DiagnosticPanel />
-                    <LanguageSelector />
+                    <WelcomeExperienceWrapper>
+                      <HealthCheckBanner />
+                      <NetworkSwitchBanner />
+                      <SpaceBackground />
+                      <Router />
+                      <DisclaimerModal />
+                      <OnboardingTour />
+                      <GlobalBuyListener />
+                      <WalletWatcher />
+                      <PendingTxBanner />
+                      <PendingPurchaseBanner />
+                      <Toaster />
+                      <DiagnosticPanel />
+                      <LanguageSelector />
+                    </WelcomeExperienceWrapper>
                   </TooltipProvider>
                 </GuardianProfileProvider>
               </TransactionProvider>
