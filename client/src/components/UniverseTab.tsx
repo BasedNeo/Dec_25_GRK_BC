@@ -1,11 +1,12 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Heart, BookOpen, ArrowRightLeft, Loader2, Globe, Cpu } from "lucide-react";
+import { Heart, BookOpen, ArrowRightLeft, Loader2, Globe, Cpu, Sparkles } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
 import { Link } from "wouter";
+import { LoreExplorer } from "./LoreExplorer";
 
 function AnimatedStarfield() {
   const { scrollY } = useScroll();
@@ -681,6 +682,45 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
                       );
                   })}
               </div>
+          </div>
+        </motion.section>
+
+        {/* Interactive Lore Explorer Section */}
+        <motion.section 
+          className="py-20 bg-gradient-to-b from-indigo-950/10 to-black relative z-10"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          <div className="max-w-6xl mx-auto px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-4">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-mono text-purple-400 uppercase tracking-wider">Interactive Experience</span>
+              </div>
+              <h3 className="text-2xl md:text-3xl font-orbitron text-white mb-4">
+                Explore the <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Deep Lore</span>
+              </h3>
+              <p className="text-white/50 max-w-2xl mx-auto">
+                Discover hidden stories, unlock character backstories, and uncover the secrets of the Based Universe. 
+                Click on locked entries to reveal their mysteries.
+              </p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6"
+            >
+              <LoreExplorer />
+            </motion.div>
           </div>
         </motion.section>
 
