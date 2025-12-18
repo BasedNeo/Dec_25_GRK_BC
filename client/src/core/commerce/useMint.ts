@@ -51,18 +51,19 @@ export function useMint() {
     chainId: CHAIN_ID,
   });
 
-  const canAfford = useMemo(() => {
+  const canAfford = useCallback((qty: number) => {
     if (!balanceData || !mintPriceWei) return false;
-    const balanceWei = SafeMath.toWei(balanceData.formatted);
-    const priceWei = mintPriceWei;
-    return SafeMath.gte(balanceWei, priceWei);
+    const balanceWei = balanceData.value;
+    const cost = SafeMath.mul(mintPriceWei, BigInt(qty));
+    return SafeMath.gte(balanceWei, cost);
   }, [balanceData, mintPriceWei]);
 
-  const maxAffordable = () => {
+  const maxAffordable = useMemo(() => {
     if (!balanceData || !mintPriceWei || mintPriceWei === BigInt(0)) return 0;
-    const maxQty = balanceData.value / mintPriceWei;
-    return Math.min(Number(maxQty), remainingSupply, 10);
-  };
+    const balanceWei = balanceData.value;
+    const maxTokens = SafeMath.div(balanceWei, mintPriceWei);
+    return Math.min(Number(maxTokens), remainingSupply, 10);
+  }, [balanceData, mintPriceWei, remainingSupply]);
 
   useEffect(() => {
     if (isPending) {
@@ -139,7 +140,11 @@ export function useMint() {
       setError(null);
       setStatus('Preparing transaction...');
 
-      const valueInWei = mintPriceWei * BigInt(quantity);
+      const valueInWei = SafeMath.mul(mintPriceWei, BigInt(quantity));
+
+      if (!SafeMath.validate(valueInWei).valid) {
+        throw new Error('Invalid mint amount');
+      }
 
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
@@ -210,7 +215,7 @@ export function useMint() {
     balance: balanceData ? formatEther(balanceData.value) : null,
     balanceFormatted: balanceData ? Number(formatEther(balanceData.value)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
     canAfford,
-    maxAffordable: maxAffordable(),
+    maxAffordable,
   };
 }
 
