@@ -20,6 +20,7 @@ import { NFT_CONTRACT, CHAIN_ID, MARKETPLACE_CONTRACT, GAS_SETTINGS } from '@/li
 import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
+import { rpcCache } from '@/lib/rpcCache';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -631,7 +632,12 @@ export function useFloorPrice() {
         provider
       );
 
-      const activeListings = await marketplaceContract.getActiveListings();
+      // Cache active listings for 20 seconds
+      const activeListings = await rpcCache.get(
+        'floor-price-listings',
+        () => marketplaceContract.getActiveListings(),
+        20000
+      );
       
       if (!activeListings || activeListings.length === 0) {
         setFloorPrice(null);
@@ -644,7 +650,12 @@ export function useFloorPrice() {
 
       for (const tokenId of activeListings) {
         try {
-          const listing = await marketplaceContract.getListing(tokenId);
+          // Cache each listing for 15 seconds
+          const listing = await rpcCache.get(
+            `listing-${tokenId}`,
+            () => marketplaceContract.getListing(tokenId),
+            15000
+          );
           const price = listing[1] as bigint;
           const active = listing[3] as boolean;
           

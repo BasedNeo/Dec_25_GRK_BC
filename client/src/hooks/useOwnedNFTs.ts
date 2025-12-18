@@ -5,6 +5,7 @@ import { NFT_CONTRACT, RPC_URL, IPFS_ROOT } from '@/lib/constants';
 import { Guardian } from '@/lib/mockData';
 import { CacheService, CACHE_KEYS } from '@/lib/cache';
 import { useInterval } from '@/hooks/useInterval';
+import { rpcCache } from '@/lib/rpcCache';
 
 const NFT_ABI = [
   'function tokensOfOwner(address owner) view returns (uint256[])',
@@ -26,11 +27,20 @@ export function useOwnedNFTs() {
 
     // Clear any cached user NFT data to ensure fresh fetch
     CacheService.invalidate(`${CACHE_KEYS.USER_NFTS}${address.toLowerCase()}`);
+    // Also invalidate RPC cache for this user's balance/tokens
+    rpcCache.invalidate(`balance-${address.toLowerCase()}`);
+    rpcCache.invalidate(`tokens-${address.toLowerCase()}`);
 
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
-      const balanceBigInt = await contract.balanceOf(address);
+      
+      // Cache balance for 10 seconds
+      const balanceBigInt = await rpcCache.get(
+        `balance-${address.toLowerCase()}`,
+        () => contract.balanceOf(address),
+        10000
+      );
       const userBalance = Number(balanceBigInt);
       setBalance(userBalance);
 
@@ -40,7 +50,12 @@ export function useOwnedNFTs() {
 
       let tokenIds: number[] = [];
       try {
-        const tokenIdsBigInt = await contract.tokensOfOwner(address);
+        // Cache tokensOfOwner for 10 seconds
+        const tokenIdsBigInt = await rpcCache.get(
+          `tokens-${address.toLowerCase()}`,
+          () => contract.tokensOfOwner(address),
+          10000
+        );
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
       } catch (e) {
         setError('Could not fetch owned tokens');

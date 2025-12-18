@@ -108,6 +108,13 @@ Protected folder structure to isolate core commerce and game code:
 - Contract state from BasedAI RPC.
 - Price data from CoinGecko API (free tier).
 
+### RPC Caching System
+- **RPC Cache** (`client/src/lib/rpcCache.ts`): Reduces redundant blockchain calls with smart caching.
+  - Time-based TTL (default 10 seconds, configurable per call)
+  - Used in: `useFloorPrice` (20s for listings, 15s per listing), `useOwnedNFTs` (10s for balance/tokens)
+  - Console logs `[RPC Cache] Hit/Miss` for debugging
+  - Automatic invalidation after user actions (buy, sell, transfer)
+
 ### Security Considerations
 - Input sanitization (XSS, HTML stripping), CSP headers (helmet).
 - Wallet address validation (Ethereum format regex).
