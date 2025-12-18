@@ -218,3 +218,14 @@ export const analyticsAggregates = pgTable('analytics_aggregates', {
 });
 
 export type AnalyticsAggregate = typeof analyticsAggregates.$inferSelect;
+
+export const featureFlags = pgTable('feature_flags', {
+  id: serial('id').primaryKey(),
+  key: varchar('key', { length: 50 }).notNull().unique(),
+  enabled: boolean('enabled').notNull().default(true),
+  description: varchar('description', { length: 200 }),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 100 }),
+});
+
+export type FeatureFlag = typeof featureFlags.$inferSelect;

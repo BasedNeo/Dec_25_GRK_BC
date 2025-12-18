@@ -1,52 +1,92 @@
-/**
- * Feature flags allow enabling/disabling features without code changes.
- * Toggle features for testing, gradual rollout, or emergency shutoff.
- */
+import { useState, useEffect } from 'react';
 
-interface FeatureFlags {
+export interface FeatureFlags {
   mintingEnabled: boolean;
   marketplaceEnabled: boolean;
-  offersV3Enabled: boolean;
+  offersEnabled: boolean;
   gameEnabled: boolean;
-  gameLeaderboardEnabled: boolean;
-  offerMessagingEnabled: boolean;
-  debugMode: boolean;
-  showDiagnostics: boolean;
+  customNamesEnabled: boolean;
+  votingEnabled: boolean;
 }
 
-const PRODUCTION_FLAGS: FeatureFlags = {
+const DEFAULT_FLAGS: FeatureFlags = {
   mintingEnabled: true,
   marketplaceEnabled: true,
-  offersV3Enabled: true,
+  offersEnabled: true,
   gameEnabled: true,
-  gameLeaderboardEnabled: true,
-  offerMessagingEnabled: true,
-  debugMode: false,
-  showDiagnostics: false,
+  customNamesEnabled: true,
+  votingEnabled: true,
 };
 
-function getFlags(): FeatureFlags {
-  if (typeof window === 'undefined') return PRODUCTION_FLAGS;
-  const stored = localStorage.getItem('feature_flags');
-  if (stored) {
-    try {
-      return { ...PRODUCTION_FLAGS, ...JSON.parse(stored) };
-    } catch {
-      return PRODUCTION_FLAGS;
-    }
+let cachedFlags: FeatureFlags | null = null;
+let lastFetch = 0;
+const CACHE_DURATION = 30000;
+
+export async function fetchFeatureFlags(): Promise<FeatureFlags> {
+  if (cachedFlags && Date.now() - lastFetch < CACHE_DURATION) {
+    return cachedFlags;
   }
-  return PRODUCTION_FLAGS;
+
+  try {
+    const res = await fetch('/api/feature-flags');
+    const data = await res.json();
+    
+    const flags: FeatureFlags = { ...DEFAULT_FLAGS };
+    data.forEach((flag: any) => {
+      if (flag.key in flags) {
+        flags[flag.key as keyof FeatureFlags] = flag.enabled;
+      }
+    });
+    
+    cachedFlags = flags;
+    lastFetch = Date.now();
+    return flags;
+  } catch (error) {
+    console.error('[FeatureFlags] Failed to fetch, using defaults:', error);
+    return DEFAULT_FLAGS;
+  }
 }
 
-export const flags = getFlags();
+export function useFeatureFlags() {
+  const [flags, setFlags] = useState<FeatureFlags>(cachedFlags || DEFAULT_FLAGS);
+  const [isLoading, setIsLoading] = useState(!cachedFlags);
 
-export function setFlag(key: keyof FeatureFlags, value: boolean): void {
-  const current = getFlags();
-  current[key] = value;
-  localStorage.setItem('feature_flags', JSON.stringify(current));
-  window.location.reload();
+  useEffect(() => {
+    fetchFeatureFlags().then(newFlags => {
+      setFlags(newFlags);
+      setIsLoading(false);
+    });
+
+    const interval = setInterval(async () => {
+      const newFlags = await fetchFeatureFlags();
+      setFlags(newFlags);
+    }, CACHE_DURATION);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return { flags, isLoading };
 }
 
-export function useFeatureFlags(): FeatureFlags {
-  return flags;
+export function invalidateFeatureFlagsCache() {
+  cachedFlags = null;
+  lastFetch = 0;
+}
+
+export async function updateFeatureFlag(key: keyof FeatureFlags, enabled: boolean, updatedBy: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/feature-flags/${key}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, updatedBy }),
+    });
+    
+    if (res.ok) {
+      invalidateFeatureFlagsCache();
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }

@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne } from "drizzle-orm";
@@ -410,6 +410,43 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.select().from(gameScores)
       .where(eq(gameScores.walletAddress, walletAddress.toLowerCase()));
     return result;
+  }
+
+  async getFeatureFlags(): Promise<FeatureFlag[]> {
+    const flags = await db.select().from(featureFlags);
+    if (flags.length === 0) {
+      const defaultFlags = [
+        { key: 'mintingEnabled', enabled: true, description: 'Allow users to mint NFTs' },
+        { key: 'marketplaceEnabled', enabled: true, description: 'Allow buying/selling NFTs' },
+        { key: 'offersEnabled', enabled: true, description: 'Allow making offers on NFTs' },
+        { key: 'gameEnabled', enabled: true, description: 'Allow playing Guardian Defender game' },
+        { key: 'customNamesEnabled', enabled: true, description: 'Allow setting custom Guardian names' },
+        { key: 'votingEnabled', enabled: true, description: 'Allow voting on proposals' },
+      ];
+      await db.insert(featureFlags).values(defaultFlags);
+      return db.select().from(featureFlags);
+    }
+    return flags;
+  }
+
+  async updateFeatureFlag(key: string, enabled: boolean, updatedBy: string): Promise<boolean> {
+    try {
+      await db
+        .update(featureFlags)
+        .set({ enabled, updatedAt: new Date(), updatedBy })
+        .where(eq(featureFlags.key, key));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getFeatureFlag(key: string): Promise<boolean> {
+    const [flag] = await db
+      .select()
+      .from(featureFlags)
+      .where(eq(featureFlags.key, key));
+    return flag?.enabled ?? true;
   }
 }
 

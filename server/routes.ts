@@ -572,6 +572,43 @@ export async function registerRoutes(
     }
   });
 
+  // Feature Flags Endpoints
+  app.get("/api/feature-flags", async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      return res.json(flags);
+    } catch (error) {
+      console.error("[FeatureFlags] Error fetching flags:", error);
+      return res.status(500).json({ error: "Failed to fetch feature flags" });
+    }
+  });
+
+  app.patch("/api/feature-flags/:key", writeLimiter, async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { enabled, updatedBy } = req.body;
+
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: "enabled must be a boolean" });
+      }
+
+      if (!updatedBy || typeof updatedBy !== 'string') {
+        return res.status(400).json({ error: "updatedBy wallet address required" });
+      }
+
+      const success = await storage.updateFeatureFlag(key, enabled, updatedBy);
+      if (!success) {
+        return res.status(500).json({ error: "Failed to update feature flag" });
+      }
+
+      console.log(`[FeatureFlags] ${key} set to ${enabled} by ${updatedBy.slice(0, 8)}...`);
+      return res.json({ success: true, key, enabled });
+    } catch (error) {
+      console.error("[FeatureFlags] Error updating flag:", error);
+      return res.status(500).json({ error: "Failed to update feature flag" });
+    }
+  });
+
   // Analytics Endpoints
   app.post("/api/analytics", async (req, res) => {
     try {
