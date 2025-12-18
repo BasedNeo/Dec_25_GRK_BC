@@ -129,45 +129,48 @@ export type DiamondHandsStats = typeof diamondHandsStats.$inferSelect;
 
 export const proposals = pgTable("proposals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
   description: text("description").notNull(),
-  category: varchar("category", { length: 50 }).notNull().default("Community"),
-  optionA: text("option_a").notNull(),
-  optionB: text("option_b").notNull(),
-  optionC: text("option_c"),
-  optionD: text("option_d"),
-  status: varchar("status", { length: 20 }).notNull().default("review"),
-  createdBy: text("created_by").notNull(),
-  expirationDays: integer("expiration_days").default(7).notNull(),
+  proposer: varchar("proposer", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  votesFor: integer("votes_for").notNull().default(0),
+  votesAgainst: integer("votes_against").notNull().default(0),
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  endDate: timestamp("end_date").notNull(),
+  category: varchar("category", { length: 50 }).default("general"),
+  requiredQuorum: integer("required_quorum").default(10),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  publishedAt: timestamp("published_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertProposalSchema = createInsertSchema(proposals).omit({
   id: true,
+  votesFor: true,
+  votesAgainst: true,
+  startDate: true,
   createdAt: true,
-  publishedAt: true,
+  updatedAt: true,
 });
 
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
 
-export const proposalVotes = pgTable("proposal_votes", {
+export const votes = pgTable("votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   proposalId: varchar("proposal_id").notNull(),
-  walletAddress: text("wallet_address").notNull(),
-  selectedOption: varchar("selected_option", { length: 1 }).notNull(),
-  votingPower: integer("voting_power").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  voter: varchar("voter", { length: 100 }).notNull(),
+  vote: varchar("vote", { length: 10 }).notNull(),
+  votingPower: integer("voting_power").notNull().default(1),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
-export const insertProposalVoteSchema = createInsertSchema(proposalVotes).omit({
+export const insertVoteSchema = createInsertSchema(votes).omit({
   id: true,
-  createdAt: true,
+  timestamp: true,
 });
 
-export type InsertProposalVote = z.infer<typeof insertProposalVoteSchema>;
-export type ProposalVote = typeof proposalVotes.$inferSelect;
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+export type Vote = typeof votes.$inferSelect;
 
 export const gameScores = pgTable("game_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
