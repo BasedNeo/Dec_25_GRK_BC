@@ -137,11 +137,11 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await retryRpcCall(() => provider.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
-      // For 60 days: 60 * 24 * 60 * 60 / 2 = 2,592,000 blocks (will query in chunks)
-      // But for display, we'll show last 500,000 blocks (~138 hours = ~5.7 days)
+      // Reduced from 500k to 100k blocks to prevent RPC timeout (10s limit)
+      // 100,000 blocks = ~2.8 days of activity (2 sec block time)
       // Then get cumulative stats from contract state functions
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const DISPLAY_BLOCKS = 500000; // ~5.7 days of detailed activity
+      const DISPLAY_BLOCKS = 100000; // ~2.8 days of detailed activity (prevents RPC timeout)
       const fromBlock = Math.max(0, currentBlock - DISPLAY_BLOCKS);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
