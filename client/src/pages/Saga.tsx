@@ -611,14 +611,14 @@ export default function Saga() {
               Join the Ranks
             </h3>
             
-            <div className="bg-black/60 border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(34,211,238,0.15)]">
+            <div className="bg-black border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(34,211,238,0.15)]">
               <div style={{ padding: "56.25% 0 0 0", position: "relative" }}>
                 <iframe 
-                  src="https://player.vimeo.com/video/1127023633?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" 
+                  src="https://player.vimeo.com/video/1127023633?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479&loop=1&transparent=0&dnt=1" 
                   frameBorder="0" 
-                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
                   referrerPolicy="strict-origin-when-cross-origin"
-                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "#000" }}
                   title="Battle for BTC"
                 />
               </div>

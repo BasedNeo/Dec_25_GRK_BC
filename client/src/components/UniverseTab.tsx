@@ -559,13 +559,13 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               <p className="text-xs font-mono text-cyan-400/40 tracking-[0.3em] uppercase mb-1">Experience</p>
               <h3 className="text-xl font-orbitron text-white/90">Join the Ranks</h3>
             </div>
-            <div style={{ padding: "56.25% 0 0 0", position: "relative" }} className="rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+            <div style={{ padding: "56.25% 0 0 0", position: "relative" }} className="rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.4)] bg-black">
               <iframe 
-                src="https://player.vimeo.com/video/1147786281?badge=0&autopause=0&player_id=0&app_id=58479&loop=1" 
+                src="https://player.vimeo.com/video/1147786281?badge=0&autopause=0&player_id=0&app_id=58479&loop=1&title=0&byline=0&portrait=0&transparent=0&dnt=1" 
                 frameBorder="0" 
-                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
                 referrerPolicy="strict-origin-when-cross-origin" 
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }} 
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "#000" }} 
                 title="Guardian, prepares for glory"
               />
             </div>

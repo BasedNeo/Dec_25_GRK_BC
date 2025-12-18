@@ -85,13 +85,13 @@ export default function Odyssey() {
               className="relative"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl sm:rounded-2xl blur-xl" />
-              <div style={{ padding: "56.25% 0 0 0", position: "relative" }} className="rounded-lg sm:rounded-xl overflow-hidden border border-cyan-500/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] sm:shadow-[0_0_40px_rgba(0,255,255,0.15)]">
+              <div style={{ padding: "56.25% 0 0 0", position: "relative" }} className="rounded-lg sm:rounded-xl overflow-hidden border border-cyan-500/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] sm:shadow-[0_0_40px_rgba(0,255,255,0.15)] bg-black">
                 <iframe 
-                  src="https://player.vimeo.com/video/1147786837?badge=0&autopause=0&player_id=0&app_id=58479&loop=1" 
+                  src="https://player.vimeo.com/video/1147786837?badge=0&autopause=0&player_id=0&app_id=58479&loop=1&title=0&byline=0&portrait=0&transparent=0&dnt=1" 
                   frameBorder="0" 
-                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
                   referrerPolicy="strict-origin-when-cross-origin" 
-                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }} 
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "#000" }} 
                   title="Conviction - Based Guardians"
                 />
               </div>
