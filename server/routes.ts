@@ -1,10 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFeedbackSchema, insertStorySchema } from "@shared/schema";
+import { insertFeedbackSchema, insertStorySchema, analyticsEvents } from "@shared/schema";
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
@@ -594,6 +596,93 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Game] Error fetching player stats:", error);
       return res.status(500).json({ error: "Failed to fetch player stats" });
+    }
+  });
+
+  // Analytics Endpoints
+  app.post("/api/analytics", async (req, res) => {
+    try {
+      const { events } = req.body;
+      
+      if (!Array.isArray(events) || events.length === 0) {
+        return res.status(400).json({ error: 'Invalid events array' });
+      }
+
+      const eventRecords = events.map((e: any) => ({
+        event: e.event,
+        properties: JSON.stringify(e.properties || {}),
+        sessionId: e.sessionId,
+        userId: e.userId || null,
+        timestamp: e.timestamp,
+      }));
+
+      await db.insert(analyticsEvents).values(eventRecords);
+      
+      console.log(`[Analytics] Stored ${events.length} events`);
+      res.json({ success: true, count: events.length });
+    } catch (error: any) {
+      console.error('[Analytics] Error storing events:', error);
+      res.status(500).json({ error: 'Failed to store analytics' });
+    }
+  });
+
+  app.get("/api/analytics/summary", async (req, res) => {
+    try {
+      const events = await db
+        .select({
+          event: analyticsEvents.event,
+          count: sql<number>`count(*)`,
+          uniqueUsers: sql<number>`count(distinct ${analyticsEvents.userId})`,
+        })
+        .from(analyticsEvents)
+        .where(sql`${analyticsEvents.createdAt} >= NOW() - INTERVAL '7 days'`)
+        .groupBy(analyticsEvents.event);
+
+      res.json({ events });
+    } catch (error) {
+      console.error('[Analytics] Error fetching summary:', error);
+      res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+  });
+
+  app.get("/api/analytics/conversions", async (req, res) => {
+    try {
+      const [
+        mintStarted,
+        mintCompleted,
+        buyStarted,
+        buyCompleted,
+        offerStarted,
+        offerCompleted,
+      ] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'mint_started' AND created_at >= NOW() - INTERVAL '7 days'`),
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'mint_completed' AND created_at >= NOW() - INTERVAL '7 days'`),
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'buy_started' AND created_at >= NOW() - INTERVAL '7 days'`),
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'buy_completed' AND created_at >= NOW() - INTERVAL '7 days'`),
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'offer_started' AND created_at >= NOW() - INTERVAL '7 days'`),
+        db.select({ count: sql<number>`count(*)` }).from(analyticsEvents).where(sql`event = 'offer_completed' AND created_at >= NOW() - INTERVAL '7 days'`),
+      ]);
+
+      res.json({
+        mint: {
+          started: mintStarted[0]?.count || 0,
+          completed: mintCompleted[0]?.count || 0,
+          conversionRate: mintStarted[0]?.count ? ((mintCompleted[0]?.count || 0) / mintStarted[0].count * 100).toFixed(1) : 0,
+        },
+        buy: {
+          started: buyStarted[0]?.count || 0,
+          completed: buyCompleted[0]?.count || 0,
+          conversionRate: buyStarted[0]?.count ? ((buyCompleted[0]?.count || 0) / buyStarted[0].count * 100).toFixed(1) : 0,
+        },
+        offer: {
+          started: offerStarted[0]?.count || 0,
+          completed: offerCompleted[0]?.count || 0,
+          conversionRate: offerStarted[0]?.count ? ((offerCompleted[0]?.count || 0) / offerStarted[0].count * 100).toFixed(1) : 0,
+        },
+      });
+    } catch (error) {
+      console.error('[Analytics] Error fetching conversions:', error);
+      res.status(500).json({ error: 'Failed to fetch conversions' });
     }
   });
 

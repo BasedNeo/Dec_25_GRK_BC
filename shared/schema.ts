@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, serial, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -189,3 +189,29 @@ export const insertGameScoreSchema = createInsertSchema(gameScores).omit({
 
 export type InsertGameScore = z.infer<typeof insertGameScoreSchema>;
 export type GameScore = typeof gameScores.$inferSelect;
+
+// Analytics Events Table
+export const analyticsEvents = pgTable('analytics_events', {
+  id: serial('id').primaryKey(),
+  event: varchar('event', { length: 100 }).notNull(),
+  properties: text('properties'),
+  sessionId: varchar('session_id', { length: 100 }).notNull(),
+  userId: varchar('user_id', { length: 100 }),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
+// Analytics Aggregates Table
+export const analyticsAggregates = pgTable('analytics_aggregates', {
+  id: serial('id').primaryKey(),
+  event: varchar('event', { length: 100 }).notNull(),
+  date: varchar('date', { length: 10 }).notNull(),
+  count: integer('count').notNull().default(0),
+  totalValue: integer('total_value').default(0),
+  uniqueUsers: integer('unique_users').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type AnalyticsAggregate = typeof analyticsAggregates.$inferSelect;

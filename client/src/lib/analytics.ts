@@ -177,3 +177,14 @@ export function initAnalytics() {
   console.log('[Analytics] Initialized');
   analytics.pageView(window.location.pathname);
 }
+
+// Backward compatibility exports for existing code
+export const trackEvent = (action: string, category: string, label?: string, value?: number) => {
+  analytics.track(action, { category, label, value });
+};
+
+export const trackSearch = (searchTerm: string) => {
+  analytics.searchPerformed(searchTerm, 0);
+};
+
+export const GA_ID = '';
