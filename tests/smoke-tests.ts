@@ -11,6 +11,18 @@ const MARKETPLACE_CONTRACT = '0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c';
 const MARKETPLACE_V3_CONTRACT = '0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3';
 const API_BASE = process.env.API_URL || 'http://localhost:5000';
 
+async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
+  for (let i = 0; i < maxRetries; i++) {
+    const response = await fetch(url);
+    if (response.status !== 429) return response;
+    if (i < maxRetries - 1) {
+      console.log(`    ↳ Rate limited, waiting ${(i + 1) * 2}s...`);
+      await new Promise(r => setTimeout(r, (i + 1) * 2000));
+    }
+  }
+  return fetch(url);
+}
+
 interface TestResult {
   name: string;
   passed: boolean;
@@ -91,37 +103,43 @@ async function main() {
     }
   });
 
-  // Test 7: API Health Check
+  // Test 7: API Health Check (with retry for rate limiting)
   await test('API Health Endpoint', async () => {
-    const response = await fetch(`${API_BASE}/api/health`);
+    const response = await fetchWithRetry(`${API_BASE}/api/health`);
+    if (response.status === 429) throw new Error('Rate limited - wait 15 min and retry');
     if (response.status !== 200) throw new Error(`Status ${response.status}`);
   });
 
-  // Test 8: Profile API Works
+  // Test 8: Profile API Works (with retry for rate limiting)
   await test('Profile API Responds', async () => {
-    const response = await fetch(`${API_BASE}/api/profile/check-name/test123`);
+    const response = await fetchWithRetry(`${API_BASE}/api/profile/check-name/test123`);
+    if (response.status === 429) throw new Error('Rate limited - wait 15 min and retry');
     if (response.status !== 200) throw new Error(`Status ${response.status}`);
     const data = await response.json() as { available?: boolean };
     if (!('available' in data)) throw new Error('Invalid response format');
   });
 
-  // Test 9: Rate Limiting Active (reduced to avoid overwhelming server)
+  // Test 9: Database Connection (with retry for rate limiting)
+  await test('Database Accessible', async () => {
+    const response = await fetchWithRetry(`${API_BASE}/api/profile/check-name/smoketest${Date.now()}`);
+    if (response.status === 429) throw new Error('Rate limited - wait 15 min and retry');
+    if (response.status !== 200) throw new Error(`DB connection failed with status ${response.status}`);
+  });
+
+  // Test 10: Rate Limiting Active (LAST - triggers 429s intentionally)
   await test('Rate Limiting Active', async () => {
     const promises: Promise<Response>[] = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 110; i++) {
       promises.push(fetch(`${API_BASE}/api/health`));
     }
     const responses = await Promise.all(promises);
-    const allSucceeded = responses.every(r => r.status === 200 || r.status === 429);
-    if (!allSucceeded) {
-      throw new Error('Unexpected response status');
+    const rateLimited = responses.filter(r => r.status === 429);
+    const successful = responses.filter(r => r.status === 200);
+    
+    if (rateLimited.length === 0) {
+      throw new Error(`Rate limiting not working: ${successful.length} OK, 0 rate-limited`);
     }
-  });
-
-  // Test 10: Database Connection
-  await test('Database Accessible', async () => {
-    const response = await fetch(`${API_BASE}/api/profile/check-name/smoketest${Date.now()}`);
-    if (response.status !== 200) throw new Error('DB connection failed');
+    console.log(`    ↳ ${successful.length} OK, ${rateLimited.length} rate-limited (429)`);
   });
 
   // Summary
