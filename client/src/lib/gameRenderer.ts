@@ -95,33 +95,33 @@ function drawPlayer(
     
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.moveTo(0, -16);
-    ctx.lineTo(-12, 12);
-    ctx.lineTo(-4, 8);
-    ctx.lineTo(-4, 16);
-    ctx.lineTo(4, 16);
-    ctx.lineTo(4, 8);
-    ctx.lineTo(12, 12);
+    ctx.moveTo(0, -32);
+    ctx.lineTo(-24, 24);
+    ctx.lineTo(-8, 16);
+    ctx.lineTo(-8, 32);
+    ctx.lineTo(8, 32);
+    ctx.lineTo(8, 16);
+    ctx.lineTo(24, 24);
     ctx.closePath();
     ctx.fill();
     
     ctx.fillStyle = '#001133';
     ctx.beginPath();
-    ctx.ellipse(0, -4, 4, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -8, 8, 12, 0, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.fillStyle = `rgba(255, 136, 0, ${0.5 + 0.3 * Math.sin(time * 0.3)})`;
     ctx.beginPath();
-    ctx.ellipse(-2, 14, 2, 4, 0, 0, Math.PI * 2);
-    ctx.ellipse(2, 14, 2, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(-4, 28, 4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(4, 28, 4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   
   if (p.powerUp === 'shield') {
     ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + 0.2 * Math.sin(time * 0.1)})`;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+    ctx.arc(0, 0, 44, 0, Math.PI * 2);
     ctx.stroke();
   }
   

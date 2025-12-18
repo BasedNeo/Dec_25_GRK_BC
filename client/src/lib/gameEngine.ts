@@ -108,9 +108,9 @@ export function createGame(w: number, h: number, extraLife: boolean): GameState 
     stage: 1,
     wave: 1,
     player: {
-      pos: { x: w / 2 - 16, y: h - 60 },
+      pos: { x: w / 2 - 32, y: h - 80 },
       vel: { x: 0, y: 0 },
-      size: { x: 32, y: 32 },
+      size: { x: 64, y: 64 },
       active: true,
       lives: extraLife ? 4 : 3,
       powerUp: 'none',
@@ -236,7 +236,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     if (state.time % 60 === 0) {
       if (state.player.lives > 0) {
         state.phase = 'respawning';
-        state.player.pos = { x: w / 2 - 16, y: h - 60 };
+        state.player.pos = { x: w / 2 - 32, y: h - 80 };
         state.player.active = true;
         state.player.invincible = 180;
       } else {
@@ -546,7 +546,7 @@ export function updateLander(state: GameState, w: number, h: number): void {
     if (onPad && speed < 1.5) {
       state.score += Math.floor((1.5 - speed) * 500);
       state.phase = 'playing';
-      state.player.pos = { x: w / 2 - 16, y: h - 60 };
+      state.player.pos = { x: w / 2 - 32, y: h - 80 };
       state.spawnTimer = 60;
     } else {
       state.player.lives--;
