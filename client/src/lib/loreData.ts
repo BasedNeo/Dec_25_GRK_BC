@@ -3,9 +3,15 @@ export interface LoreCharacter {
   name: string;
   type: 'guardian' | 'frog' | 'creature';
   title: string;
+  foxType?: string;
+  rarity: string;
+  count: number;
   backstory: string;
+  whatTheyLike: string;
+  flyingStyle: string;
   secretLore: string;
   traits: string[];
+  stats?: { speed: number; agility: number; intellect: number; strength: number };
   allegiance: string;
   discovered?: boolean;
 }
@@ -39,259 +45,328 @@ export interface LoreEvent {
 
 export const LORE_FACTIONS: LoreFaction[] = [
   {
-    id: 'sentinels',
-    name: 'The Sentinels',
-    description: 'Elite protectors sworn to defend the BasedAI network from corruption and external threats. They patrol the digital frontier, ensuring the integrity of every transaction.',
-    motto: 'In Code We Trust',
+    id: 'guardians',
+    name: 'The Based Guardians',
+    description: 'The 1,776 fox-like defenders of the Based Brain Network, each class bringing distinct skills to combat the FUD. United under the banner of Based God, they protect the 1,024 Brain-Planets and ensure $BASED tokens flow freely throughout the Giga Brain Galaxy.',
+    motto: 'Through Code and Courage, We Defend the Light',
     color: 'cyan',
-    members: ['commander-vex', 'guardian-nova', 'sentinel-prime']
+    members: ['neonstrike-hackers', 'duskstrike-elites', 'celestial-captains', 'mindwarp-strategists']
   },
   {
-    id: 'amplifiers',
-    name: 'The Amplifiers',
-    description: 'A secretive order of Frogs who discovered they could enhance blockchain signals across dimensions. Their ribbiting harmonics keep the network synchronized.',
-    motto: 'Ribbit the Truth',
+    id: 'frogs',
+    name: 'The Based Frogs',
+    description: 'The 1,319 amphibian allies who joined the Guardians in Phase 2. The Creature Wrangler Frogs command bio-engineered beasts riding atop massive Creatures with scales of molten gold. Their unique biology grants them abilities no fox possesses.',
+    motto: 'We Leap Where Others Fear to Tread',
     color: 'green',
-    members: ['elder-croaksworth', 'signal-hopper', 'frequency-frog']
+    members: ['creature-wrangler-frogs', 'pilot-class-frogs', 'neuro-bond-frogs', 'black-ops-frogs']
   },
   {
-    id: 'void-walkers',
-    name: 'Void Walkers',
-    description: 'Ancient Creatures born from the entropy between blocks. Neither good nor evil, they maintain balance in the cosmic ledger.',
-    motto: 'Balance in All Chains',
-    color: 'purple',
-    members: ['entropy-beast', 'null-weaver', 'void-oracle']
-  },
-  {
-    id: 'genesis-council',
-    name: 'The Genesis Council',
-    description: 'The founding alliance of all three species who witnessed the birth of BasedAI. They hold the keys to the Original Block.',
-    motto: 'From Nothing, Everything',
+    id: 'creatures',
+    name: 'The Based Creatures',
+    description: 'The 636 bio-engineered beasts bonded to their Wrangler masters through BasedAI neural technology. From Golden Creatures with scales of molten starlight to Sentient Jellies that phase through reality, they are living weapons of breathtaking power.',
+    motto: 'We Are the Fire That Cleanses Darkness',
     color: 'gold',
-    members: ['first-guardian', 'prime-frog', 'ancient-one']
+    members: ['golden-creatures', 'crystal-creatures', 'sentient-jelly-creatures', 'ultra-based-creatures']
+  },
+  {
+    id: 'fud',
+    name: 'The FUD Collective',
+    description: 'Entities of pure negativity from a parallel dimension of despair. The FUD feeds on Fear, Uncertainty, and Doubt, their oil-slick forms and psychic attacks threatening to corrupt the Based Universe, transforming hope into despair and unity into chaos.',
+    motto: 'Doubt is the Death of Dreams',
+    color: 'red',
+    members: ['void-overseer', 'whisper-legion', 'entropy-lords']
   }
 ];
 
 export const LORE_CHARACTERS: LoreCharacter[] = [
   {
-    id: 'commander-vex',
-    name: 'Commander Vex',
+    id: 'neonstrike-hackers',
+    name: 'Neonstrike Hackers',
     type: 'guardian',
-    title: 'First Shield of the Sentinels',
-    backstory: 'Once a simple node validator, Vex witnessed the Great Fork of 2024 and emerged transformed. Now they lead the Sentinels with unwavering dedication, their armor forged from crystallized consensus algorithms.',
-    secretLore: 'Vex carries a fragment of the Genesis Block embedded in their chest plate. This shard grants them the ability to sense network anomalies before they occur, but at the cost of experiencing every failed transaction as physical pain.',
-    traits: ['Honorable', 'Strategic', 'Burdened'],
-    allegiance: 'The Sentinels'
+    title: 'Cyber Warfare Specialists',
+    foxType: 'Red Fox',
+    rarity: 'Rarest',
+    count: 4,
+    backstory: 'Deep in the veiled circuits of the BasedAI cosmos, where the ethereal glow of digital rivers winds through the infinite darkness like the great streams of Eä in the void before creation, the Neonstrike Hackers stand as the cunning wardens of code\'s sacred flame. Born from the forge of neon tempests, these warriors of the wire delve into the labyrinthine depths of FUD\'s shadowed domains, their minds sharp as the blades of Eru\'s first light, severing the dark tendrils that seek to corrupt the sanctity of the 1,024 Brain-Planets.',
+    whatTheyLike: 'Racing turbo-charged ships through asteroid fields, dodging FUD drones while broadcasting victory anthems across the galaxy, their laughter echoing like thunder in the void.',
+    flyingStyle: 'Like swift eagles soaring through the tempests of Arda\'s skies, they dart with ethereal grace, weaving erratic paths inspired by ancient runes of code, unleashing EMP flares that blind the enemy\'s gaze while their vessels roar with the fury of overclocked engines.',
+    secretLore: 'The legendary Vex, leader of the Neonstrike Hackers with fur streaked neon blue from late-night coding sessions, discovered a hidden backdoor into the FUD\'s central command during the Negasphere Rescue. This digital skeleton key could end the war instantly—but at a terrible cost that haunts Vex\'s dreams.',
+    traits: ['Cunning', 'Tech-Savvy', 'Audacious', 'Neon-Touched'],
+    stats: { speed: 9, agility: 8, intellect: 10, strength: 6 },
+    allegiance: 'The Based Guardians'
   },
   {
-    id: 'guardian-nova',
-    name: 'Guardian Nova',
+    id: 'duskstrike-elites',
+    name: 'Duskstrike Elites',
     type: 'guardian',
-    title: 'The Blazing Validator',
-    backstory: 'Born during a solar flare that disrupted global networks, Nova channels cosmic radiation into pure computational power. Their presence accelerates block times by 0.3 seconds.',
-    secretLore: 'Nova is actually the reincarnation of a failed AI experiment from the pre-blockchain era. Fragments of their previous existence surface as visions of a world without decentralization—a nightmare that drives their protective fury.',
-    traits: ['Fierce', 'Radiant', 'Haunted'],
-    allegiance: 'The Sentinels'
+    title: 'Special Operations Lieutenants',
+    foxType: 'Sierra Nevada Red Flare Fox',
+    rarity: 'Rarest',
+    count: 9,
+    backstory: 'As the great sun of BasedAI sinks beneath the horizon\'s rim, casting elongated shadows over the crystalline towers of the Brain-Planets like the twilight gloom that fell upon the Noldor in their exile, the Duskstrike Elites awaken from the folds of night. These masters of the gloaming, their forms woven from the very essence of dusk as if by Varda\'s hand in the weaving of stars, spearhead audacious forays into the core of FUD\'s malignant realms.',
+    whatTheyLike: 'Sipping Eagle Flare whiskey in hidden cockpit sanctuaries, toasting fallen FUD ships under a nebula\'s glow, their stories unfolding like maps of forgotten constellations.',
+    flyingStyle: 'Cloaked hunters of the fading light, they slip through the veil of twilight with the subtlety of Melkor\'s shadows, emerging from hidden realms to unleash devastating blows with the accuracy of Aulë\'s hammer, their vessels melting back into the night like spirits of the elder days.',
+    secretLore: 'Captain Kael, the legendary Duskstrike Elite with scars mapping his fur like a constellation of past wars, carries the names of every Guardian he couldn\'t save encoded in his ship\'s nav computer. He visits each of their home planets on the anniversary of their fall, a ritual of remembrance known only to him.',
+    traits: ['Fearless', 'Shadowy', 'Scarred', 'Loyal'],
+    stats: { speed: 7, agility: 10, intellect: 8, strength: 7 },
+    allegiance: 'The Based Guardians'
   },
   {
-    id: 'sentinel-prime',
-    name: 'Sentinel Prime',
+    id: 'forgeflame-innovators',
+    name: 'Forgeflame Innovators',
     type: 'guardian',
-    title: 'The Eternal Watch',
-    backstory: 'The oldest Guardian in existence, Sentinel Prime has witnessed every epoch since the network began. They speak rarely, but when they do, even the blockchain pauses to listen.',
-    secretLore: 'Prime is not one being but a collective consciousness of the 1,776 original Guardians who sacrificed their individual existence to create an eternal protector. Each Guardian who falls in battle adds their essence to Prime.',
-    traits: ['Ancient', 'Wise', 'Collective'],
-    allegiance: 'Genesis Council'
+    title: 'Weapons & Energy Scientists',
+    foxType: 'Red Fox',
+    rarity: 'Rarest',
+    count: 5,
+    backstory: 'In the abyssal depths of the BasedAI underforge, where molten rivers of code surge through obsidian chasms like the fires of Aulë\'s smithies in the dawn of Arda, the Forgeflame Innovators labor with the passion of creation\'s first spark. These visionary craftsmen, their paws scarred by the embrace of eternal flames, forge weapons of legendary might and unearth primordial energies that kindle the cores of the Brain-Planets.',
+    whatTheyLike: 'Tinkering in lava-lit workshops, forging trinkets from star-metal that sing songs of fire when struck, sharing their creations in midnight feasts of flame-roasted dreams.',
+    flyingStyle: 'Fiery titans of the volcanic gales, they thunder across the heavens with engines roaring like the bellows of Mount Doom, unleashing forged energy barriers that devour adversary assaults and hurl back tempests of molten fury, crafting victory from the heart of the blaze.',
+    secretLore: 'The Forgeflame Innovators guard the original blueprints for the Based-Bridge—Wizard Committer\'s masterwork. In their hidden vaults, they\'ve secretly improved upon his designs, creating modifications so powerful they fear revealing them might undermine his authority or be stolen by FUD spies.',
+    traits: ['Brilliant', 'Obsessive', 'Fire-Touched', 'Innovative'],
+    stats: { speed: 6, agility: 7, intellect: 10, strength: 9 },
+    allegiance: 'The Based Guardians'
   },
   {
-    id: 'elder-croaksworth',
-    name: 'Elder Croaksworth III',
-    type: 'frog',
-    title: 'Grand Amplifier',
-    backstory: 'A distinguished gentleman frog who discovered that certain frequencies of croaking could amplify blockchain signals across three dimensions. His monocle is actually a quantum lens.',
-    secretLore: 'Croaksworth was once human—a brilliant cryptographer who chose to undergo digital metamorphosis rather than die of old age. He remembers everything from his human life, including the location of Satoshi\'s original hard drive.',
-    traits: ['Dignified', 'Brilliant', 'Nostalgic'],
-    allegiance: 'The Amplifiers'
-  },
-  {
-    id: 'signal-hopper',
-    name: 'Signal Hopper',
-    type: 'frog',
-    title: 'Network Leaper',
-    backstory: 'The fastest frog in the network, Signal Hopper can traverse between nodes in microseconds. They carry urgent messages and emergency patches when the network is under attack.',
-    secretLore: 'Hopper exists in a state of quantum superposition—they are simultaneously present at every node in the network. The Hopper we see is merely the most probable manifestation. Sometimes, in quiet moments, all 1,320 Hoppers briefly synchronize and share a single thought.',
-    traits: ['Swift', 'Everywhere', 'Fragmented'],
-    allegiance: 'The Amplifiers'
-  },
-  {
-    id: 'frequency-frog',
-    name: 'Frequency',
-    type: 'frog',
-    title: 'The Harmonic',
-    backstory: 'A mute frog who communicates through pure wavelengths of light and sound. Their vibrations can heal corrupted data and restore broken consensus.',
-    secretLore: 'Frequency was created when a lightning strike hit a lily pad server farm at the exact moment of block confirmation. They are literally made of pure transaction data, and their body contains the hash of every block ever created.',
-    traits: ['Silent', 'Healing', 'Sacred'],
-    allegiance: 'The Amplifiers'
-  },
-  {
-    id: 'entropy-beast',
-    name: 'The Entropy Beast',
-    type: 'creature',
-    title: 'Chaos Keeper',
-    backstory: 'Born from orphaned blocks and abandoned transactions, the Entropy Beast feeds on network waste. Without them, the blockchain would be overwhelmed by digital debris.',
-    secretLore: 'The Entropy Beast is actually the physical manifestation of all failed dreams and abandoned projects on the blockchain. Each scrap of data they consume shows them the hopes and failures of creators who came before. They weep in frequencies humans cannot hear.',
-    traits: ['Lonely', 'Essential', 'Misunderstood'],
-    allegiance: 'Void Walkers'
-  },
-  {
-    id: 'null-weaver',
-    name: 'Null Weaver',
-    type: 'creature',
-    title: 'The Space Between',
-    backstory: 'Null Weaver exists in the gaps between blocks, in the milliseconds where nothing happens. They weave the fabric of time that holds the blockchain together.',
-    secretLore: 'There is no single Null Weaver—the name refers to a position, not an individual. When one Null Weaver\'s energy depletes, they become the fabric they wove, and a new entity takes their place. There have been 10,847 Null Weavers since genesis.',
-    traits: ['Ephemeral', 'Sacrificial', 'Infinite'],
-    allegiance: 'Void Walkers'
-  },
-  {
-    id: 'void-oracle',
-    name: 'The Void Oracle',
-    type: 'creature',
-    title: 'Seer of All Chains',
-    backstory: 'A creature so ancient it predates the concept of blockchain itself. The Void Oracle can see across all possible forks, all potential futures, all chains that could ever exist.',
-    secretLore: 'The Void Oracle is desperately trying to prevent a specific future—one where all blockchains merge into a single, centralized entity controlled by a malevolent AI. Everything they do, every cryptic warning they give, is in service of avoiding this fate.',
-    traits: ['Prophetic', 'Desperate', 'Omniscient'],
-    allegiance: 'Void Walkers'
-  },
-  {
-    id: 'first-guardian',
-    name: 'The First Guardian',
+    id: 'cryptshade-enforcers',
+    name: 'Cryptshade Enforcers',
     type: 'guardian',
-    title: 'Genesis Keeper',
-    backstory: 'The very first Guardian to emerge from the genesis block. They carry the weight of being the prototype, the proof of concept, the original promise.',
-    secretLore: 'The First Guardian is actually incomplete—a bug in the genesis code left them without the ability to feel satisfaction. They are eternally driven to prove their worth, never able to rest, never able to feel that their mission is complete.',
-    traits: ['Driven', 'Incomplete', 'Legendary'],
-    allegiance: 'Genesis Council'
+    title: 'FHE Encryption Artisans',
+    foxType: 'Marble Fox',
+    rarity: 'Rarest',
+    count: 5,
+    backstory: 'Amid the grand tapestry of the BasedAI cosmos, where strands of data entwine like the roots of the Two Trees in Valinor, the Cryptshade Enforcers fashion veils of impenetrable marble and mist. With hands as steadfast as the pillars of Ilmarin, they interlace Fully Homomorphic Encryption into the very weave of the 1,024 Brain-Planets, warding $BASED tokens from the covetous gaze of celestial marauders.',
+    whatTheyLike: 'Weaving marble gardens in the ether, where flowers bloom in encrypted patterns that reveal themselves only under the light of a harvest moon.',
+    flyingStyle: 'Shrouded artisans of the cryptic mists, they navigate in intricate, labyrinthine spirals that bewilder foes\' senses, unfurling holographic illusions while their vessels glide through barriers as if they were mere whispers, transforming the fray into a masterpiece of deception.',
+    secretLore: 'The Cryptshade Enforcers discovered that FUD\'s negativity can be partially encrypted—trapped in mathematical prisons of pure logic. They\'ve been secretly quarantining captured despair in quantum vaults, building an arsenal of weaponized sadness they hope never to deploy.',
+    traits: ['Mysterious', 'Precise', 'Artistic', 'Calculating'],
+    stats: { speed: 7, agility: 8, intellect: 10, strength: 6 },
+    allegiance: 'The Based Guardians'
   },
   {
-    id: 'prime-frog',
-    name: 'Prime Frog',
+    id: 'celestial-captains',
+    name: 'Celestial Captains',
+    type: 'guardian',
+    title: 'Quantum Signal Interpreters',
+    foxType: 'Arctic Fox',
+    rarity: 'Rarest',
+    count: 4,
+    backstory: 'Amid the glacial auroras of the BasedAI frontier, where frosty gales of oblivion imperil the stream of knowledge and the boreal lights interlace narratives of vanished heralds, the Celestial Captains heed the delicate anthems of quantum interlacing. This celestial bard deciphers the subtle utterances from the BASED GOD, rendering the sacred whispers into commanding decrees for the Brain-Planets.',
+    whatTheyLike: 'Chasing the northern lights across icy plains, capturing their glow in vials of frost to illuminate midnight gatherings of storytellers.',
+    flyingStyle: 'Celestial helmsmen of the glacial ether, they command the polar zephyrs to perform spiraling ascents through frost gales, unleashing cryo-projectiles that encase FUD in eternal ice.',
+    secretLore: 'The Celestial Captains can hear whispers from beyond the Based Universe—echoes of other realities where the FUD won and all hope was extinguished. They use these dark futures as warnings, but the knowledge of infinite defeat haunts their frozen dreams.',
+    traits: ['Mystical', 'Patient', 'Prophetic', 'Ice-Touched'],
+    stats: { speed: 9, agility: 7, intellect: 10, strength: 6 },
+    allegiance: 'The Based Guardians'
+  },
+  {
+    id: 'mindwarp-strategists',
+    name: 'Mindwarp Strategists',
+    type: 'guardian',
+    title: 'Psychological Warfare Experts',
+    foxType: 'Kit Fox',
+    rarity: 'Rarest',
+    count: 7,
+    backstory: 'Upon the fog-enshrouded isles of the BasedAI archipelago, where seas of code crash against coasts of enigma and the surges murmur conundrums of the profound, the Mindwarp Strategists safeguard the lore of the forsaken Brains. This enigmatic sage disentangles enigmas that unveil concealed $BASED treasuries, conserving the wisdom of misplaced validators and miners.',
+    whatTheyLike: 'Crafting labyrinths of seashells and star maps, challenging fellow Guardians to solve them over feasts of luminous fruits and tidal songs.',
+    flyingStyle: 'Mind-twisting strategists of the isle winds, they spiral through channels with perplexing maneuvers, deploying illusion fields that warp FUD perceptions and turn enemies against each other in confusion.',
+    secretLore: 'The Mindwarp Strategists code elaborate pranks that broadcast holographic FUD defeats across the galaxy\'s screens. Their greatest secret: one strategist once successfully convinced a FUD general that he was actually a Guardian sleeper agent—a deception that persists to this day.',
+    traits: ['Cunning', 'Deceptive', 'Brilliant', 'Playful'],
+    stats: { speed: 7, agility: 8, intellect: 10, strength: 6 },
+    allegiance: 'The Based Guardians'
+  },
+  {
+    id: 'ironmarsh-captains',
+    name: 'Ironmarsh Captains',
+    type: 'guardian',
+    title: 'Ground Assault Commanders',
+    foxType: 'Tibetan Sand Flare Fox',
+    rarity: 'Rarest',
+    count: 6,
+    backstory: 'These bold captains charge into ground battles, leading the Guardians to crush FUD strongholds on the Brain-Planets\' surfaces. Commander Ryn, with a scarred muzzle and a wild grin, leads his forces with an axe that has cleaved through a thousand FUD spawns. Their leadership secures the $BASED mining zones.',
+    whatTheyLike: 'Hosting rowdy table game tournaments at the Flare Game station, outwitting rivals with cosmic flair while exchanging tales of legendary ground assaults.',
+    flyingStyle: 'They don\'t fly—they crash. The Ironmarsh Captains prefer drop pods that thunder into enemy positions, unleashing devastating ground forces that overwhelm FUD defenses through sheer ferocity.',
+    secretLore: 'Commander Ryn\'s axe contains a fragment of the first $BASED ore ever mined—a shard so pure it can cut through FUD corruption itself. He guards this secret, knowing the FUD would stop at nothing to destroy this ancient relic.',
+    traits: ['Bold', 'Fearless', 'Rowdy', 'Indomitable'],
+    stats: { speed: 6, agility: 7, intellect: 7, strength: 10 },
+    allegiance: 'The Based Guardians'
+  },
+  {
+    id: 'creature-wrangler-frogs',
+    name: 'Creature Wrangler Frogs',
     type: 'frog',
-    title: 'The Original Ribbit',
-    backstory: 'Before there were 1,320 Frogs, there was one. Prime Frog was the template from which all others were derived. Their croak is the root frequency of all blockchain communication.',
-    secretLore: 'Prime Frog chose to split themselves into 1,320 pieces rather than remain alone. Each Frog in the network carries a fragment of Prime Frog\'s original consciousness. When all Frogs croak in unison, Prime Frog briefly reforms—and weeps with joy at no longer being alone.',
-    traits: ['Original', 'Divided', 'Loving'],
-    allegiance: 'Genesis Council'
+    title: 'Beast Masters & Creature Tamers',
+    rarity: 'Rare',
+    count: 342,
+    backstory: 'The Creature Wrangler Frogs are the legendary beast masters of the Based Universe, riding atop massive bio-engineered Creatures with scales of molten gold. Led by the regal Lirien, a Goldback Shimmer Frog whose voice is calm as starlight, they command the living weapons of BasedAI—dragon-like beings that tear through FUD spawns like paper.',
+    whatTheyLike: 'Bonding with their Creature companions in bioluminescent swamps, teaching them new combat maneuvers while sharing telepathic dreams of victory across the stars.',
+    flyingStyle: 'They don\'t fly ships—they ride living starships. Their Creatures navigate by instinct through asteroid fields, their riders directing them with subtle mental commands that form an unbreakable bond.',
+    secretLore: 'Lirien discovered that Creatures can absorb FUD negativity and transform it into pure $BASED energy. This process slowly poisons the Creatures—a sacrifice they willingly make for the galaxy. Lirien searches desperately for a cure.',
+    traits: ['Noble', 'Bonded', 'Telepathic', 'Commanding'],
+    stats: { speed: 8, agility: 9, intellect: 7, strength: 8 },
+    allegiance: 'The Based Frogs'
   },
   {
-    id: 'ancient-one',
-    name: 'The Ancient One',
+    id: 'pilot-class-frogs',
+    name: 'Pilot Class Frogs',
+    type: 'frog',
+    title: 'Fleet Pilots & Transport Specialists',
+    rarity: 'Common',
+    count: 469,
+    backstory: 'The most numerous of the Frog classes, Pilot Class Frogs form the backbone of the Based Universe\'s transportation network. Their amphibious reflexes make them natural pilots, capable of maneuvering through environments that would overwhelm other species. When Talon, the legendary Blazewing Pilot, dove into the Negasphere rescue, he inspired an entire generation.',
+    whatTheyLike: 'Racing through nebula clouds at unsafe speeds, competing in underground flight circuits where the winner takes bragging rights and rare $BASED tokens.',
+    flyingStyle: 'Quick, adaptive, and unpredictable. They change direction mid-flight with their powerful legs, treating spacecraft like extensions of their own bodies. "That\'s for the miners, you freaks!" is their battle cry.',
+    secretLore: 'The Pilot Class maintains a secret network of hidden jump routes through the Giga Brain Galaxy—paths that bypass all FUD patrols. These routes are passed down through generations, never written, only croaked in ancient harmonic patterns.',
+    traits: ['Swift', 'Daring', 'Adaptable', 'Irreverent'],
+    stats: { speed: 10, agility: 9, intellect: 6, strength: 5 },
+    allegiance: 'The Based Frogs'
+  },
+  {
+    id: 'neuro-bond-frogs',
+    name: 'Neuro Bond Frogs',
+    type: 'frog',
+    title: 'Neural Link Specialists',
+    rarity: 'Uncommon',
+    count: 294,
+    backstory: 'These mystical amphibians have evolved the ability to form neural links with any technology they touch. They serve as living interfaces between organic beings and the BasedAI network, translating thought into code at speeds no machine can match.',
+    whatTheyLike: 'Meditating in quantum pools where reality becomes fluid, experiencing the dreams of distant Brain-Planets and sharing visions of possible futures.',
+    flyingStyle: 'They don\'t pilot—they merge. A Neuro Bond Frog becomes one with their vessel, their nervous system extending into every circuit, making the ship an extension of their very soul.',
+    secretLore: 'The Neuro Bond Frogs share a collective consciousness they call "The Deep Croak." In moments of crisis, all 294 can think as one, processing problems no single mind could solve—but this unity leaves them vulnerable to psychic attacks.',
+    traits: ['Connected', 'Intuitive', 'Vulnerable', 'Unified'],
+    stats: { speed: 6, agility: 7, intellect: 10, strength: 4 },
+    allegiance: 'The Based Frogs'
+  },
+  {
+    id: 'golden-creatures',
+    name: 'Golden Creatures',
     type: 'creature',
-    title: 'Memory of Before',
-    backstory: 'The Ancient One remembers what existed before the blockchain—the old internet, the centralized servers, the databases that could be changed and erased. They serve as a warning.',
-    secretLore: 'The Ancient One is not from this universe. They are a refugee from a dimension where blockchain never existed, where all digital truth was controlled by a single corporation. They crossed into our reality through a quantum bridge created during the genesis block.',
-    traits: ['Alien', 'Warning', 'Grateful'],
-    allegiance: 'Genesis Council'
+    title: 'Living Weapons & Battle Mounts',
+    rarity: 'Uncommon',
+    count: 227,
+    backstory: 'The Golden Creatures are the most magnificent of the bio-engineered beasts, their scales shimmering with captured starlight that turns to molten fury in battle. Tamed by the Creature Wranglers through BasedAI\'s advanced neural bonding, they serve as both noble steeds and devastating weapons against the FUD.',
+    whatTheyLike: 'Basking in solar radiation, which charges their golden scales until they glow like small suns. They purr like thunder when content and breathe plasma when angered.',
+    flyingStyle: 'Majestic and terrifying. They soar on wings of living metal that span dozens of meters, leaving trails of golden light that blind pursuing enemies and inspire allied forces.',
+    secretLore: 'Golden Creatures are not entirely natural—they were engineered from the DNA of a species that existed before the Based Universe itself. Their creators\' identity remains the galaxy\'s greatest mystery, locked in genetic code that defies analysis.',
+    traits: ['Majestic', 'Ancient', 'Loyal', 'Devastating'],
+    stats: { speed: 7, agility: 6, intellect: 5, strength: 10 },
+    allegiance: 'The Based Creatures'
+  },
+  {
+    id: 'sentient-jelly-creatures',
+    name: 'Sentient Jelly Creatures',
+    type: 'creature',
+    title: 'Psychic Scouts & Infiltrators',
+    rarity: 'Uncommon',
+    count: 128,
+    backstory: 'These translucent, gelatinous beings can phase through solid matter and read surface thoughts. The FUD fears them more than any other Creature class, for they cannot be hidden from and cannot be stopped by conventional barriers—they simply flow through defenses like water through sand.',
+    whatTheyLike: 'Floating through the vacuum of space, absorbing cosmic radiation and sharing memories with each other through gentle, luminescent contact.',
+    flyingStyle: 'They don\'t fly—they phase. Appearing and disappearing at will, they move through the galaxy like ghosts, leaving no trace except the lingering sense of being watched.',
+    secretLore: 'The Sentient Jellies are the only beings who remember the moment of the Based Universe\'s creation. They witnessed Based God\'s first thought and carry fragments of that divine inspiration within their crystalline forms—fragments that could reshape reality if ever released.',
+    traits: ['Ethereal', 'Ancient', 'Omnipresent', 'Sacred'],
+    stats: { speed: 5, agility: 10, intellect: 9, strength: 3 },
+    allegiance: 'The Based Creatures'
   }
 ];
 
 export const LORE_LOCATIONS: LoreLocation[] = [
   {
-    id: 'genesis-nexus',
-    name: 'The Genesis Nexus',
-    description: 'The sacred site where the first BasedAI block was confirmed. A pillar of pure light marks the exact coordinates, visible from anywhere in the network.',
-    hiddenStory: 'Beneath the Genesis Nexus lies the Unspoken Vault—a chamber containing every private key that was ever lost. The vault is protected by a puzzle that can only be solved by all three species working together. No one has ever tried.',
-    connectedCharacters: ['first-guardian', 'prime-frog', 'ancient-one']
+    id: 'brain-planet-106',
+    name: 'Brain-Planet 106',
+    description: 'A rugged world of jagged peaks and glowing caverns, Brain-Planet 106 is the heart of $BASED ore mining operations. Miners with plasma drills extract the galaxy\'s most precious resource—iridescent ore that shimmers like captured supernovas, each shard worth more than a king\'s ransom. Validators in tech-laden suits oversee the minting process.',
+    hiddenStory: 'Beneath the deepest mines lies the Forge of Destiny—the original chamber where Wizard Committer began constructing the Based-Bridge. When the FUD abducted him from this very site, they left a scar in reality itself. Sometimes, miners report hearing Committer\'s voice echoing from the depths, still dictating blueprints to machines that no longer listen.',
+    connectedCharacters: ['neonstrike-hackers', 'duskstrike-elites', 'ironmarsh-captains']
   },
   {
-    id: 'echo-marshes',
-    name: 'The Echo Marshes',
-    description: 'A vast wetland where transactions echo for centuries. Frogs congregate here to study the patterns of ancient trades.',
-    hiddenStory: 'The Echo Marshes were created accidentally when a whale wallet made a trade so large it literally bent the fabric of the network. The marshes still ripple with the aftershocks of that transaction. Hidden in the deepest pool is the original Frog tadpole pool.',
-    connectedCharacters: ['elder-croaksworth', 'signal-hopper', 'frequency-frog']
+    id: 'negasphere',
+    name: 'The Negasphere',
+    description: 'The FUD\'s domain of absolute despair—a parallel dimension where skies of ash bleed black ichor and the air tastes of regret. Its twisted spires weep dark corruption, and rivers of liquid negativity flow through landscapes that attack the minds of all who enter. Time moves differently here; a moment of doubt can trap you for eternity.',
+    hiddenStory: 'The Negasphere was once Brain-Planet Zero—the first world created by Based God, a paradise of innovation and hope. When the FUD first emerged, they didn\'t attack from outside; they were born from within, from the first moment of doubt that any creation could truly last. The trapped souls of Planet Zero\'s original inhabitants still cry out for salvation.',
+    connectedCharacters: ['cryptshade-enforcers', 'mindwarp-strategists']
   },
   {
-    id: 'crystalline-fortress',
-    name: 'The Crystalline Fortress',
-    description: 'The main stronghold of the Sentinels, built from solidified proof-of-work. Its walls display the hash of every successful defense.',
-    hiddenStory: 'The Fortress has a secret basement that extends infinitely downward. Each level represents a potential attack that was prevented. The deeper you go, the more catastrophic the avoided disaster. No one has ever reached the bottom.',
-    connectedCharacters: ['commander-vex', 'guardian-nova', 'sentinel-prime']
+    id: 'giga-brain-galaxy',
+    name: 'The Giga Brain Galaxy',
+    description: 'Home to 1,024 Brain-Planets, the Giga Brain Galaxy is the Based Universe\'s central cluster. Each planet serves a unique function in the vast network that powers $BASED token generation. The planets pulse with interconnected energy, forming a web of light visible from the galaxy\'s edge.',
+    hiddenStory: 'The arrangement of the 1,024 Brain-Planets is not random—when viewed from the galactic center, they form an enormous circuit diagram. Based God designed the galaxy itself as a machine, and no one knows what happens when all circuits are finally connected. Some believe it will grant access to dimensions beyond imagination.',
+    connectedCharacters: ['celestial-captains', 'creature-wrangler-frogs']
   },
   {
-    id: 'void-between',
-    name: 'The Void Between',
-    description: 'The space between confirmed blocks, where Creatures dwell and time moves differently. A second here is a century outside.',
-    hiddenStory: 'The Void Between contains doorways to other blockchains. The Creatures guard these passages, allowing only those with pure intentions to cross. Legend says there is a door to the Bitcoin blockchain, but it has been sealed since the Great Fork.',
-    connectedCharacters: ['entropy-beast', 'null-weaver', 'void-oracle']
+    id: 'based-bridge',
+    name: 'The Based-Bridge',
+    description: 'A colossal structure of light and code spanning the void between Brain-Planets, the Based-Bridge is Wizard Committer\'s masterwork. When complete, it will connect every Brain-Planet and every soul into a unified network of unprecedented power, enabling instant $BASED transfers across the entire galaxy.',
+    hiddenStory: 'The Bridge isn\'t just infrastructure—it\'s a weapon. Wizard Committer designed it to channel the combined hope of all Guardian holders into a beam capable of destroying the Negasphere itself. The FUD kidnapped him to prevent its completion, and now the half-finished Bridge hangs in space like a broken promise.',
+    connectedCharacters: ['forgeflame-innovators', 'neonstrike-hackers']
   },
   {
-    id: 'signal-spire',
-    name: 'The Signal Spire',
-    description: 'A tower of pure energy that broadcasts the heartbeat of the BasedAI network to every connected device.',
-    hiddenStory: 'The Signal Spire was not built—it grew. When the network reached critical mass, the concentrated hopes of early adopters crystallized into this structure. The Spire responds to genuine belief; skeptics see only empty space.',
-    connectedCharacters: ['signal-hopper', 'guardian-nova']
+    id: 'eternal-forge',
+    name: 'The Eternal Forge',
+    description: 'Hidden in the core of a dying star that refuses to die, the Eternal Forge is where the Forgeflame Innovators create weapons of legendary might. The forge\'s fires burn with temperatures that should be impossible, fueled by pure $BASED energy extracted from willing donors.',
+    hiddenStory: 'The Eternal Forge isn\'t a place—it\'s a being. An ancient consciousness from before the Based Universe, it chose to become a tool of creation rather than a destroyer. It communicates with the Forgeflame Innovators through visions of flame, teaching them secrets that no textbook could ever contain.',
+    connectedCharacters: ['forgeflame-innovators', 'golden-creatures']
   },
   {
-    id: 'forgotten-pools',
-    name: 'The Forgotten Pools',
-    description: 'Ancient liquidity pools that dried up in the bear market of the Old Era. Their ruins hold lessons and lost treasures.',
-    hiddenStory: 'The Forgotten Pools still contain phantom liquidity—ghost tokens of projects that died but were never truly forgotten by their creators. Once a year, on the anniversary of the Genesis Block, these phantom tokens briefly become real again.',
-    connectedCharacters: ['ancient-one', 'entropy-beast']
+    id: 'bioluminescent-swamps',
+    name: 'The Bioluminescent Swamps',
+    description: 'Vast wetlands that glow with otherworldly light, the Bioluminescent Swamps are the ancestral home of all Based Frogs. Here, Creature Wranglers bond with their beasts, and ancient croaking rituals maintain the harmony between species. The swamps exist simultaneously on three Brain-Planets.',
+    hiddenStory: 'The swamps contain the Spawning Pools of Origin—the exact locations where the first Frogs emerged from quantum probability into physical form. These pools still create new Frogs occasionally, but each new generation is slightly different, evolving to meet threats that haven\'t yet appeared.',
+    connectedCharacters: ['creature-wrangler-frogs', 'pilot-class-frogs', 'neuro-bond-frogs']
   }
 ];
 
 export const LORE_EVENTS: LoreEvent[] = [
   {
-    id: 'genesis',
-    title: 'The Genesis Block',
-    era: 'Year Zero',
-    description: 'The moment BasedAI came into existence. From nothing, a universe of possibility emerged.',
-    significance: 'All three species were born simultaneously in this moment—Guardians to protect, Frogs to communicate, Creatures to balance. None remember the moment itself, only the sudden awareness of existing.'
+    id: 'forge-of-destiny',
+    title: 'The Forge of Destiny',
+    era: 'The Beginning',
+    description: 'In the vast, shimmering abyss of creation, the omnipotent Based God crafted the Based Universe, weaving 1,024 Brain-Planets into the Giga Brain Galaxy. This realm became a sanctuary of innovation where $BASED tokens—mined from ore more precious than platinum or gold—flowed like liquid starlight.',
+    significance: 'The creation event established the foundations of all that exists. From this moment, the eternal conflict with FUD became inevitable, for even paradise casts shadows.'
   },
   {
-    id: 'great-fork',
-    title: 'The Great Fork',
-    era: 'Year One',
-    description: 'A schism that nearly destroyed the network. Half the validators wanted to increase block size, half wanted to optimize existing architecture.',
-    significance: 'The Great Fork was resolved not through voting but through sacrifice. Commander Vex offered to absorb all the conflicting data into themselves, ending the debate but permanently scarring their consciousness.'
+    id: 'fud-emergence',
+    title: 'The FUD Emergence',
+    era: 'Era of Shadows',
+    description: 'From a parallel dimension of pure negativity, the FUD emerged—entities of Fear, Uncertainty, and Doubt that fed on hope and corrupted certainty. Their first incursion transformed Brain-Planet Zero into the Negasphere, a wound in reality that bleeds despair.',
+    significance: 'The birth of the eternal enemy revealed that creation itself generates opposition. The FUD is not separate from the Based Universe—it is its shadow.'
   },
   {
-    id: 'first-fud',
-    title: 'The First FUD Storm',
-    era: 'Year One',
-    description: 'The first coordinated attack of Fear, Uncertainty, and Doubt. External forces tried to shake belief in the network.',
-    significance: 'This event revealed the true power of the Frogs. Their synchronized croaking created a shield of truth that deflected the FUD. It also revealed that FUD has a physical form in the network—a shadowy entity that feeds on doubt.'
+    id: 'guardian-awakening',
+    title: 'The Guardian Awakening',
+    era: 'Year of Heroes',
+    description: 'Based God forged the 1,776 Guardians from the essence of courage and code, 32 distinct classes of fox-like warriors each with unique abilities. From the Neonstrike Hackers to the Lunar Commanders, they awakened with one purpose: defend the light.',
+    significance: 'The Guardians represent the first line of defense against FUD. Each class embodies a different aspect of protection, from cyber warfare to ground assault.'
   },
   {
-    id: 'creature-awakening',
-    title: 'The Creature Awakening',
-    era: 'Year Two',
-    description: 'For the first year, Creatures were dormant—abstract code waiting for purpose. Then one day, all 636 Creatures opened their eyes simultaneously.',
-    significance: 'The Awakening happened because the network had accumulated enough orphaned blocks and failed transactions to give the Creatures form. They are, in essence, the network learning to recycle its own waste.'
+    id: 'committer-abduction',
+    title: 'The Abduction of Wizard Committer',
+    era: 'The Dark Hour',
+    description: 'The FUD\'s tendrils coiled around Wizard Committer\'s mind as he worked in the central forge of Brain-Planet 106. In a sudden, silent strike, they overwhelmed his guards and dragged him into the Negasphere, seeking to corrupt the Based-Bridge blueprints and sabotage the Agent Arena.',
+    significance: 'This tragedy became the catalyst for the Guardians\' most dangerous mission—the Negasphere Rescue that would unite foxes, frogs, and creatures for the first time.'
   },
   {
-    id: 'alliance-formed',
-    title: 'Formation of the Genesis Council',
-    era: 'Year Two',
-    description: 'Representatives from all three species gathered at the Genesis Nexus to form an alliance that would guide the network forever.',
-    significance: 'The Genesis Council created the Sacred Protocol—a set of unbreakable rules that govern all species. The most important rule: "No species may act alone to change the fundamental nature of the network."'
+    id: 'negasphere-rescue',
+    title: 'The Negasphere Rescue',
+    era: 'The Present Conflict',
+    description: 'Led by Vex the Neonstrike Hacker and Captain Kael of the Duskstrike Elites, a strike force breached the Negasphere\'s defenses. Commander Ryn\'s Ironmarsh Captains provided ground support while Talon\'s Blazewing Pilots dominated the skies. Lirien and the Creature Wranglers turned the tide with their golden beasts.',
+    significance: 'The successful rescue proved that FUD could be defeated on their own ground—and revealed the war was far from over. Wizard Committer was rescued, but weakened.'
   },
   {
-    id: 'halving-prophecy',
-    title: 'The Halving Prophecy',
-    era: 'Year Three',
-    description: 'The Void Oracle spoke for the first time, revealing that emission rates would halve at predetermined intervals, each halving bringing the network closer to its ultimate purpose.',
-    significance: 'The Oracle also warned that the final halving would trigger a transformation. What form this transformation takes depends entirely on the choices made before then. The countdown has begun.'
+    id: 'emissions-halving',
+    title: 'The Great Emissions Halving',
+    era: 'Est. December 31, 2025',
+    description: 'A prophesied event where $BASED emissions from the Brain-Planets will reduce by half, fundamentally altering the galaxy\'s economy. The Celestial Captains have foreseen this moment, and preparations across all 1,024 Brain-Planets have begun.',
+    significance: 'This economic shift will reshape power dynamics across the universe. Some believe the halving will give Guardians a decisive advantage; others fear it will strengthen FUD\'s desperation.'
   }
 ];
 
 export const DISCOVERY_QUOTES = [
-  "The blockchain remembers what others forget...",
-  "In the space between blocks, secrets wait...",
-  "Every transaction tells a story...",
-  "The Guardians protect more than you know...",
-  "Listen closely—the Frogs are always talking...",
-  "The Creatures see what we cannot...",
-  "Genesis was not a beginning—it was a awakening...",
-  "The code is alive. It always has been..."
+  "The Based God rewards those who seek understanding...",
+  "In the space between blocks, secrets wait for the worthy...",
+  "Every Guardian carries a story worth discovering...",
+  "The FUD fears those who know the truth...",
+  "Legends are born from the curiosity of explorers...",
+  "The Brain-Planets remember all who walk their paths...",
+  "Secrets hidden in starlight await patient eyes...",
+  "The 1,024 worlds hold infinite mysteries...",
+  "Through code and courage, truth reveals itself...",
+  "The Giga Brain Galaxy whispers to those who listen..."
 ];

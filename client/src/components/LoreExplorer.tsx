@@ -412,7 +412,8 @@ function FactionCard({ faction }: { faction: LoreFaction }) {
     cyan: 'from-cyan-500 to-blue-500',
     green: 'from-green-500 to-emerald-500',
     purple: 'from-purple-500 to-violet-500',
-    gold: 'from-yellow-500 to-amber-500'
+    gold: 'from-yellow-500 to-amber-500',
+    red: 'from-red-600 to-rose-500'
   };
   
   return (
