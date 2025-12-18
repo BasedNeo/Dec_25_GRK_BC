@@ -111,13 +111,19 @@ Protected folder structure to isolate core commerce and game code:
 ### Security Considerations
 - Input sanitization (XSS, HTML stripping), CSP headers (helmet).
 - Wallet address validation (Ethereum format regex).
-- Admin wallet gating with header-based authentication.
-  - **Known Limitation**: Current admin auth uses X-Wallet-Address header which can be spoofed. For full production security, implement EIP-191 signature verification.
+- **Admin Authentication**: EIP-191 signature verification with nonce-based challenge system.
+  - Nonces are stored in PostgreSQL (survives restarts, works in distributed environments).
+  - Single-use nonces with 5-minute expiry prevent replay attacks.
+  - Nonces are consumed on any verification attempt (success or failure).
 - Profanity filter applied to all user-submitted content (feedback, stories).
 - Rate limiting on API endpoints (general, write, auth, game).
 - Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options).
 - CORS with origin validation.
 - Sensitive data redaction in logs.
+- **Database Constraints**: Unique indexes on wallet addresses for game scores and composite unique on proposal votes to prevent double voting.
+- **RPC Resilience**: Exponential backoff (0ms, 1s, 2s, 4s...) with configurable timeouts for blockchain calls.
+- **Transaction Preflight**: Balance verification before marketplace operations (buy, offer).
+- **Analytics Integrity**: Transaction analytics tied to receipt confirmation, not optimistic logging.
 
 ### Feature Specifications
 - **Retro Defender Game**: 5-level space arcade minigame accessible to all users (`/game`). Guardian holders receive perks. Includes lifetime score tracking.
