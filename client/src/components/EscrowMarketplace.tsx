@@ -271,6 +271,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const [useCsvData, setUseCsvData] = useState(true); // Default to CSV Mode to show ALL 3,732 NFTs with minted first
   const [gridCols, setGridCols] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 6);
   
+  // --- Pagination State ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 24;
+  
   // Commercial Search: Attribute Filters
   const [traitTypeFilter, setTraitTypeFilter] = useState<string>("all");
   const [traitValueFilter, setTraitValueFilter] = useState<string>("all");
@@ -692,6 +696,43 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     return items;
   }, [allItems, activeTab, isConnected, sortBy, ownedTokenIds]);
 
+  // Memoize paginated NFTs for performance
+  const paginatedNFTs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredItems, currentPage, ITEMS_PER_PAGE]);
+
+  // Calculate total pages based on actually loaded data only
+  // This ensures pagination never shows empty pages
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  
+  // Determine if Next button should be enabled - allow if more data available
+  const canGoNext = currentPage < totalPages || hasNextPage;
+
+  // Memoize page change handler
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Fetch more data when user clicks Next and we need more
+  useEffect(() => {
+    const requiredItems = currentPage * ITEMS_PER_PAGE;
+    // If we're at the last page and there's more data, fetch it
+    if (filteredItems.length < requiredItems && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+    // If current page is beyond loaded data, go to last available page
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, filteredItems.length, hasNextPage, isFetchingNextPage, fetchNextPage, ITEMS_PER_PAGE, totalPages]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, debouncedSearch, rarityFilter, traitTypeFilter, traitValueFilter, activeTab]);
+
   // Suggested Filters (Premium UX)
   const suggestedFilters = useMemo(() => {
     return [
@@ -712,8 +753,8 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     ];
   }, []);
 
-  // Use full filtered list (pagination handled by fetchNextPage)
-  const displayedItems = filteredItems; 
+  // Use paginated list for better performance
+  const displayedItems = paginatedNFTs; 
   
   const loadMore = () => {
     if (useCsvData) fetchNextPage();
@@ -1310,20 +1351,77 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                             ))}
                         </div>
 
-                        {/* Infinite Scroll Trigger & Loader */}
-                        <div ref={observerTarget} className="flex flex-col items-center justify-center py-12 w-full">
-                           {isFetchingNextPage && (
-                             <div className="flex flex-col items-center gap-2">
-                                <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-                                <span className="text-xs font-mono text-cyan-400 animate-pulse">LOADING NEURAL LINK...</span>
-                             </div>
-                           )}
-                           {!hasNextPage && !isFetchingNextPage && displayedItems.length > 0 && (
-                             <div className="text-xs font-mono text-muted-foreground border border-white/10 px-4 py-2 rounded-full mt-4">
-                                END OF COLLECTION
-                             </div>
-                           )}
-                        </div>
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8 pb-8" data-testid="pagination-controls">
+                            <Button
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                              variant="outline"
+                              className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed font-mono"
+                              data-testid="button-prev-page"
+                            >
+                              ← Previous
+                            </Button>
+                            
+                            <div className="flex items-center gap-2">
+                              {/* Page number buttons */}
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum: number;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+                                return (
+                                  <Button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    variant={currentPage === pageNum ? "default" : "outline"}
+                                    size="sm"
+                                    className={currentPage === pageNum 
+                                      ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.5)]" 
+                                      : "border-white/20 text-white hover:bg-white/10"}
+                                    data-testid={`button-page-${pageNum}`}
+                                  >
+                                    {pageNum}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                            
+                            <span className="text-white/60 font-mono text-sm">
+                              Page {currentPage} of {totalPages}{hasNextPage ? '+' : ''} ({filteredItems.length} loaded)
+                            </span>
+                            
+                            <Button
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={!canGoNext}
+                              variant="outline"
+                              className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed font-mono"
+                              data-testid="button-next-page"
+                            >
+                              Next →
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Loading indicator for initial data fetch or pagination */}
+                        {(isLoading || directLoading || isFetchingNextPage) && (
+                          <div className="flex flex-col items-center gap-2 py-8">
+                            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                            <span className="text-xs font-mono text-cyan-400 animate-pulse">
+                              {displayedItems.length === 0 ? 'LOADING NEURAL LINK...' : 'LOADING MORE DATA...'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Hidden observer for background data loading */}
+                        <div ref={observerTarget} className="h-1 opacity-0" />
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl">
