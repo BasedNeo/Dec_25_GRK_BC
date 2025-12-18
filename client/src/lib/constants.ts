@@ -102,11 +102,12 @@ export const GAS_SETTINGS = {
 
 // === CUMULATIVE SALES BASELINE ===
 // ⚠️ LOCKED - Historical baseline for secondary sales
-// Currently set to 0 - ALL volume comes from real on-chain events
-// Update this ONLY after running the blockchain scanner script
+// Scanned from blockchain on 2025-12-18
+// ALL volume comes from real on-chain Sold events
+// Run `npm run scan:volume` weekly to update this
 export const CUMULATIVE_SALES_BASELINE = {
-  volume: 0,              // Start at 0, will be updated by scan script
-  salesCount: 0,          // Number of historical sales
-  asOfBlock: 0,           // Block number when last scanned
-  lastUpdated: "2025-12-17"
+  volume: 223334,         // Total secondary sales volume in $BASED
+  salesCount: 3,          // Number of historical secondary sales
+  asOfBlock: 2894142,     // Block number when last scanned
+  lastUpdated: "2025-12-18"
 };
