@@ -1,0 +1,134 @@
+import { ethers } from 'ethers';
+
+const RPC_URL = 'https://mainnet.basedaibridge.com/rpc/';
+const NFT_CONTRACT = '0xaE51dc5fD1499A129f8654963560f9340773ad59';
+const MARKETPLACE_CONTRACT = '0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c';
+
+const NFT_ABI = [
+  'function totalMinted() view returns (uint256)',
+  'function MAX_SUPPLY() view returns (uint256)',
+  'function MINT_PRICE() view returns (uint256)',
+];
+
+interface TestResult {
+  name: string;
+  passed: boolean;
+  duration: number;
+  error?: string;
+}
+
+const results: TestResult[] = [];
+
+async function test(name: string, fn: () => Promise<void>) {
+  const start = Date.now();
+  try {
+    await fn();
+    results.push({ name, passed: true, duration: Date.now() - start });
+    console.log(`✅ ${name} (${Date.now() - start}ms)`);
+  } catch (error: any) {
+    results.push({ 
+      name, 
+      passed: false, 
+      duration: Date.now() - start,
+      error: error.message 
+    });
+    console.error(`❌ ${name}: ${error.message}`);
+  }
+}
+
+async function main() {
+  console.log('\n🚀 RUNNING SMOKE TESTS\n');
+
+  await test('RPC Connection', async () => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const blockNumber = await provider.getBlockNumber();
+    if (blockNumber < 1) throw new Error('Invalid block number');
+    console.log(`   Current block: ${blockNumber}`);
+  });
+
+  await test('NFT Contract - Total Minted', async () => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+    const totalMinted = await contract.totalMinted();
+    console.log(`   Total minted: ${totalMinted.toString()}`);
+    if (totalMinted < 0) throw new Error('Invalid total minted');
+  });
+
+  await test('NFT Contract - Max Supply', async () => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+    const maxSupply = await contract.MAX_SUPPLY();
+    if (maxSupply.toString() !== '3732') {
+      throw new Error(`Expected 3732, got ${maxSupply.toString()}`);
+    }
+    console.log(`   Max supply: ${maxSupply.toString()} ✓`);
+  });
+
+  await test('NFT Contract - Mint Price', async () => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
+    const mintPrice = await contract.MINT_PRICE();
+    const priceInBased = ethers.formatEther(mintPrice);
+    if (priceInBased !== '69420.0') {
+      throw new Error(`Expected 69420.0 $BASED, got ${priceInBased}`);
+    }
+    console.log(`   Mint price: ${priceInBased} $BASED ✓`);
+  });
+
+  await test('API Health Check', async () => {
+    const response = await fetch('http://localhost:5000/api/health');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data.status !== 'ok') throw new Error('API unhealthy');
+    console.log(`   API status: ${data.status} ✓`);
+  });
+
+  await test('API Rate Limiting', async () => {
+    let hitLimit = false;
+    for (let i = 0; i < 25; i++) {
+      const response = await fetch('http://localhost:5000/api/health');
+      if (response.status === 429) {
+        hitLimit = true;
+        break;
+      }
+    }
+    if (!hitLimit) throw new Error('Rate limit not working');
+    console.log(`   Rate limit active ✓`);
+  });
+
+  await test('Database Connection', async () => {
+    const response = await fetch('http://localhost:5000/api/leaderboard?limit=1');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error('Invalid response format');
+    console.log(`   Database connected ✓`);
+  });
+
+  console.log('\n📊 TEST SUMMARY\n');
+  
+  const passed = results.filter(r => r.passed).length;
+  const failed = results.filter(r => !r.passed).length;
+  const total = results.length;
+  const totalTime = results.reduce((sum, r) => sum + r.duration, 0);
+
+  console.log(`Total: ${total} tests`);
+  console.log(`Passed: ${passed} ✅`);
+  console.log(`Failed: ${failed} ${failed > 0 ? '❌' : ''}`);
+  console.log(`Duration: ${totalTime}ms\n`);
+
+  if (failed > 0) {
+    console.log('Failed tests:');
+    results.filter(r => !r.passed).forEach(r => {
+      console.log(`  ❌ ${r.name}: ${r.error}`);
+    });
+    process.exit(1);
+  } else {
+    console.log('🎉 All tests passed!\n');
+    process.exit(0);
+  }
+}
+
+main().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
