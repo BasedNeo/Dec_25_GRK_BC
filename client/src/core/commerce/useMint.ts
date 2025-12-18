@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
 import { formatEther } from 'viem';
 import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
@@ -51,11 +51,12 @@ export function useMint() {
     chainId: CHAIN_ID,
   });
 
-  const canAfford = (qty: number) => {
+  const canAfford = useMemo(() => {
     if (!balanceData || !mintPriceWei) return false;
-    const cost = mintPriceWei * BigInt(qty);
-    return balanceData.value >= cost;
-  };
+    const balanceWei = SafeMath.toWei(balanceData.formatted);
+    const priceWei = mintPriceWei;
+    return SafeMath.gte(balanceWei, priceWei);
+  }, [balanceData, mintPriceWei]);
 
   const maxAffordable = () => {
     if (!balanceData || !mintPriceWei || mintPriceWei === BigInt(0)) return 0;
