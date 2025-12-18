@@ -704,9 +704,9 @@ export default function GuardianSolitaire() {
   const undoMove = useCallback(() => {
     if (gameHistory.length === 0) {
       toast({ 
-        title: "No Moves to Undo", 
+        title: "⏪ No Moves to Undo", 
         description: "You're at the start of the game",
-        variant: "destructive" 
+        variant: "info" 
       });
       return;
     }
@@ -769,9 +769,9 @@ export default function GuardianSolitaire() {
       setInvalidAttempts(a => a + 1);
       playSound('invalid');
       toast({ 
-        title: "Invalid Move",
-        description: "Card can't be placed here",
-        variant: "destructive" 
+        title: "⚠️ Invalid Move",
+        description: "Card can't be placed on this foundation",
+        variant: "warning" 
       });
       setSelectedCard(null);
       return;
@@ -828,11 +828,11 @@ export default function GuardianSolitaire() {
       setInvalidAttempts(a => a + 1);
       playSound('invalid');
       toast({ 
-        title: "Invalid Move",
+        title: "⚠️ Invalid Move",
         description: card.rank === 13 && targetPile.cards.length > 0 
           ? "Kings go on empty columns"
           : "Place cards in alternating colors, descending rank",
-        variant: "destructive" 
+        variant: "warning" 
       });
       setSelectedCard(null);
       return;
@@ -935,8 +935,9 @@ export default function GuardianSolitaire() {
     const validMoves = findValidMoves();
     if (validMoves.length === 0) {
       toast({ 
-        title: "No Hints Available",
+        title: "💡 No Hints Available",
         description: "Try drawing from the deck",
+        variant: "info"
       });
       return;
     }
@@ -991,7 +992,7 @@ export default function GuardianSolitaire() {
   const startGame = useCallback(async (resume: boolean = false) => {
     if (!access.canPlay) {
       toast({
-        title: "Cannot Start Game",
+        title: "🚫 Cannot Start Game",
         description: access.reason,
         variant: "destructive"
       });
