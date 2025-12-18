@@ -17,6 +17,7 @@ const Odyssey = lazy(() => import("@/pages/Odyssey"));
 const Creators = lazy(() => import("@/pages/Creators"));
 const Saga = lazy(() => import("@/pages/Saga"));
 const GuardianDefender = lazy(() => import("@/pages/GuardianDefender"));
+const JaguarRunner = lazy(() => import("@/pages/JaguarRunner"));
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
@@ -136,6 +137,7 @@ function Router() {
         <Route path="/creators" component={Creators} />
         <Route path="/saga" component={Saga} />
         <Route path="/game" component={GuardianDefender} />
+        <Route path="/jaguar-runner" component={JaguarRunner} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
