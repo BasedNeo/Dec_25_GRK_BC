@@ -7,6 +7,7 @@ export interface FeatureFlags {
   gameEnabled: boolean;
   customNamesEnabled: boolean;
   votingEnabled: boolean;
+  poolShowLiveData: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -16,6 +17,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   gameEnabled: true,
   customNamesEnabled: true,
   votingEnabled: true,
+  poolShowLiveData: true,
 };
 
 let cachedFlags: FeatureFlags | null = null;

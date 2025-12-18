@@ -425,6 +425,7 @@ export class DatabaseStorage implements IStorage {
         { key: 'gameEnabled', enabled: true, description: 'Allow playing Guardian Defender game' },
         { key: 'customNamesEnabled', enabled: true, description: 'Allow setting custom Guardian names' },
         { key: 'votingEnabled', enabled: true, description: 'Allow voting on proposals' },
+        { key: 'poolShowLiveData', enabled: true, description: 'Show live treasury data in Pool Tracker' },
       ];
       await db.insert(featureFlags).values(defaultFlags);
       return db.select().from(featureFlags);

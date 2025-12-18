@@ -18,6 +18,7 @@ import { useActivityFeed } from "@/hooks/useActivityFeed";
 import React, { Suspense, lazy } from "react";
 import { motion } from "framer-motion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useFeatureFlags } from "@/lib/featureFlags";
 
 const BrainDiagnostics = lazy(() => import("./BrainDiagnostics").then(m => ({ default: m.BrainDiagnostics })));
 import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, DollarSign, Info, X } from "lucide-react";
@@ -39,6 +40,9 @@ export function PoolTracker() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  
+  const { flags } = useFeatureFlags();
+  const showLiveData = flags.poolShowLiveData;
   
   const subnetEmissions = useSubnetEmissions();
   const { stats: activityStats } = useActivityFeed();
@@ -203,26 +207,85 @@ export function PoolTracker() {
               </div>
             )}
 
-            <div className="flex flex-col items-center justify-center mb-8 relative py-8">
-              <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
-              <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
-              <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow" data-testid="text-total-treasury">
-                {displayValue(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 font-mono">
-                {isDataReady ? `${formatNumber(mintedCount!)} NFTs Minted` : 'Loading data...'}
-              </p>
-            </div>
+            {!showLiveData ? (
+              <>
+                <div className="flex flex-col items-center justify-center mb-8 relative py-8">
+                  <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
+                  <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
+                  <div className="text-5xl md:text-7xl font-black text-gray-500 font-orbitron" data-testid="text-total-treasury">
+                    N/A <span className="text-2xl md:text-4xl text-gray-600">$BASED</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-3 font-mono">Coming Soon</p>
+                </div>
 
-            <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl max-w-md mx-auto">
-              <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Backed Value Per NFT</span>
-              <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2" data-testid="text-backed-value">
-                {displayValue(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted NFTs</p>
-            </div>
+                <div className="mb-8 p-6 bg-gradient-to-r from-gray-500/10 to-gray-600/10 border border-gray-500/30 rounded-xl max-w-md mx-auto">
+                  <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">Backed Value Per NFT</span>
+                  <div className="text-3xl md:text-4xl font-black text-gray-500 font-orbitron mt-2" data-testid="text-backed-value">
+                    N/A <span className="text-lg text-gray-600">$BASED</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2 font-mono opacity-70">Coming Soon</p>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
+                  <div className="bg-black/40 border border-gray-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Coins size={18} className="text-gray-500" />
+                      <h3 className="text-sm font-bold text-gray-400 font-orbitron uppercase">From Mints</h3>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-gray-500 mb-1">N/A</span>
+                    <span className="text-xs text-gray-600 font-mono">Coming Soon</span>
+                  </div>
+                  
+                  <div className="bg-black/40 border border-gray-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap size={18} className="text-gray-500" />
+                      <h3 className="text-sm font-bold text-gray-400 font-orbitron uppercase">From Emissions</h3>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-gray-500 mb-1">N/A</span>
+                    <span className="text-xs text-gray-600 font-mono">Coming Soon</span>
+                  </div>
+                  
+                  <div className="bg-black/40 border border-gray-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign size={18} className="text-gray-500" />
+                      <h3 className="text-sm font-bold text-gray-400 font-orbitron uppercase">From Royalties</h3>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-gray-500 mb-1">N/A</span>
+                    <span className="text-xs text-gray-600 font-mono">Coming Soon</span>
+                  </div>
+                  
+                  <div className="bg-black/40 border border-gray-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Database size={18} className="text-gray-500" />
+                      <h3 className="text-sm font-bold text-gray-400 font-orbitron uppercase">Staking Emissions</h3>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-gray-500 mb-1">N/A</span>
+                    <span className="text-xs text-gray-600 font-mono">Coming Soon</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center justify-center mb-8 relative py-8">
+                  <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
+                  <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
+                  <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow" data-testid="text-total-treasury">
+                    {displayValue(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 font-mono">
+                    {isDataReady ? `${formatNumber(mintedCount!)} NFTs Minted` : 'Loading data...'}
+                  </p>
+                </div>
+
+                <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl max-w-md mx-auto">
+                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Backed Value Per NFT</span>
+                  <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2" data-testid="text-backed-value">
+                    {displayValue(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted NFTs</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
               
               <div className="bg-black/40 border border-pink-500/30 rounded-xl p-5 flex flex-col items-center text-center">
                 <div className="flex items-center gap-2 mb-3">
@@ -342,6 +405,8 @@ export function PoolTracker() {
               <p className="mt-4 text-[10px] text-muted-foreground/50 font-mono">
                 Last Updated: {lastUpdated.toLocaleTimeString()}
               </p>
+            )}
+              </>
             )}
 
           </motion.div>
