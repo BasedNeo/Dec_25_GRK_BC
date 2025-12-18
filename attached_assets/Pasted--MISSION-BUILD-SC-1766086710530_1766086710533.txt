@@ -1,0 +1,1394 @@
+═══════════════════════════════════════════════════════════════════════════════
+🎯 MISSION: BUILD SCALABLE GAME INFRASTRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTEXT:
+Before adding multiple games, establish a centralized infrastructure for:
+✓ Game registry (single source of truth)
+✓ Unified storage management with auto-cleanup
+✓ Shared UI components (reusable across all games)
+✓ Normalized scoring system (fair cross-game comparison)
+✓ Performance monitoring
+✓ Error handling patterns
+
+This creates a solid foundation that prevents technical debt as you scale to 5-10 games.
+
+ARCHITECTURE PRINCIPLES:
+• DRY (Don't Repeat Yourself) - shared components
+• Single Responsibility - each module has one job
+• Open/Closed - easy to add games without modifying core
+• Type Safety - full TypeScript coverage
+• Performance First - lazy loading, code splitting
+• User Experience - consistent patterns across games
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: CREATE GAME REGISTRY (SINGLE SOURCE OF TRUTH)
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE PATH: client/src/lib/gameRegistry.ts
+
+CREATE this new file:
+
+import { LucideIcon } from 'lucide-react';
+import { Zap, Spade, Shield } from 'lucide-react';
+
+/**
+ * Unique identifier for each game in the platform
+ */
+export type GameType = 'jaguar-runner' | 'guardian-solitaire' | 'space-defender';
+
+/**
+ * Game difficulty levels
+ */
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
+
+/**
+ * Game categories for filtering and organization
+ */
+export type GameCategory = 'action' | 'strategy' | 'puzzle';
+
+/**
+ * Performance tiers for score evaluation
+ */
+export type PerformanceTier = 'beginner' | 'good' | 'great' | 'legendary';
+
+/**
+ * Scoring configuration for each game
+ * Used for normalization and performance evaluation
+ */
+export interface ScoringConfig {
+  maxScore: number;        // Theoretical maximum (for 0-100% normalization)
+  goodScore: number;       // 60th percentile target
+  greatScore: number;      // 85th percentile target  
+  legendaryScore: number;  // 95th percentile target
+}
+
+/**
+ * Complete game configuration
+ * All metadata needed to render, route, and evaluate a game
+ */
+export interface GameConfig {
+  // Identity
+  id: GameType;
+  name: string;
+  description: string;
+  
+  // Routing
+  path: string;
+  
+  // UI/UX
+  icon: LucideIcon;
+  iconColor: string;
+  thumbnailGradient: string; // Tailwind gradient classes
+  
+  // Metadata
+  category: GameCategory;
+  difficulty: GameDifficulty;
+  averagePlayTime: number; // seconds
+  
+  // Game Rules
+  maxPlaysPerDay: number;
+  enabled: boolean;
+  
+  // Scoring
+  scoring: ScoringConfig;
+  
+  // Optional features
+  features?: {
+    hasTimer?: boolean;
+    hasMoves?: boolean;
+    hasLives?: boolean;
+    hasCombo?: boolean;
+    hasUndo?: boolean;
+  };
+}
+
+/**
+ * GAME REGISTRY
+ * Add new games here - single source of truth
+ */
+export const GAME_REGISTRY: Record<GameType, GameConfig> = {
+  'jaguar-runner': {
+    id: 'jaguar-runner',
+    name: 'Jaguar Runner',
+    description: 'Endless runner on an alien planet. Jump over obstacles and survive as long as you can!',
+    path: '/jaguar-runner',
+    icon: Zap,
+    iconColor: 'text-orange-400',
+    thumbnailGradient: 'from-orange-500 to-red-600',
+    category: 'action',
+    difficulty: 'easy',
+    averagePlayTime: 120,
+    maxPlaysPerDay: 10,
+    enabled: true,
+    scoring: {
+      maxScore: 50000,      // Perfect run: 5000 distance
+      goodScore: 5000,      // 500 distance, decent performance
+      greatScore: 15000,    // 1500 distance, strong performance
+      legendaryScore: 30000, // 3000+ distance, top 5%
+    },
+    features: {
+      hasTimer: false,
+      hasMoves: false,
+      hasLives: true,
+    },
+  },
+  
+  'guardian-solitaire': {
+    id: 'guardian-solitaire',
+    name: 'Guardian Solitaire',
+    description: 'Premium Klondike Solitaire using Guardian NFT images as playing cards. Strategy meets style.',
+    path: '/guardian-solitaire',
+    icon: Spade,
+    iconColor: 'text-cyan-400',
+    thumbnailGradient: 'from-cyan-500 to-blue-600',
+    category: 'strategy',
+    difficulty: 'medium',
+    averagePlayTime: 300,
+    maxPlaysPerDay: 10,
+    enabled: true,
+    scoring: {
+      maxScore: 50000,       // Sub-3min, sub-80 moves, flawless
+      goodScore: 12000,      // Completed in reasonable time/moves
+      greatScore: 20000,     // Fast completion, efficient moves
+      legendaryScore: 35000, // Near-perfect execution
+    },
+    features: {
+      hasTimer: true,
+      hasMoves: true,
+      hasUndo: true,
+      hasCombo: true,
+    },
+  },
+  
+  'space-defender': {
+    id: 'space-defender',
+    name: 'Space Defender',
+    description: 'Defend the Guardian galaxy from alien invaders. Coming soon!',
+    path: '/space-defender',
+    icon: Shield,
+    iconColor: 'text-purple-400',
+    thumbnailGradient: 'from-purple-500 to-pink-600',
+    category: 'action',
+    difficulty: 'hard',
+    averagePlayTime: 180,
+    maxPlaysPerDay: 10,
+    enabled: false, // Not yet implemented
+    scoring: {
+      maxScore: 50000,
+      goodScore: 10000,
+      greatScore: 18000,
+      legendaryScore: 32000,
+    },
+    features: {
+      hasTimer: false,
+      hasLives: true,
+      hasCombo: true,
+    },
+  },
+};
+
+/**
+ * Get configuration for a specific game
+ */
+export function getGameConfig(gameId: GameType): GameConfig {
+  const config = GAME_REGISTRY[gameId];
+  if (!config) {
+    throw new Error(`Game configuration not found: ${gameId}`);
+  }
+  return config;
+}
+
+/**
+ * Get all game configurations
+ */
+export function getAllGames(): GameConfig[] {
+  return Object.values(GAME_REGISTRY);
+}
+
+/**
+ * Get only enabled games (ready to play)
+ */
+export function getEnabledGames(): GameConfig[] {
+  return Object.values(GAME_REGISTRY).filter(g => g.enabled);
+}
+
+/**
+ * Get games by category
+ */
+export function getGamesByCategory(category: GameCategory): GameConfig[] {
+  return Object.values(GAME_REGISTRY).filter(
+    g => g.category === category && g.enabled
+  );
+}
+
+/**
+ * Get games by difficulty
+ */
+export function getGamesByDifficulty(difficulty: GameDifficulty): GameConfig[] {
+  return Object.values(GAME_REGISTRY).filter(
+    g => g.difficulty === difficulty && g.enabled
+  );
+}
+
+/**
+ * Normalize score to 0-100 scale for cross-game comparison
+ * Allows leaderboards to show "best overall player" fairly
+ */
+export function normalizeScore(gameId: GameType, score: number): number {
+  const config = getGameConfig(gameId);
+  const normalized = (score / config.scoring.maxScore) * 100;
+  return Math.min(100, Math.max(0, normalized));
+}
+
+/**
+ * Get performance tier for a score
+ * Used for victory screen messaging and achievements
+ */
+export function getScorePerformanceTier(
+  gameId: GameType, 
+  score: number
+): PerformanceTier {
+  const config = getGameConfig(gameId);
+  
+  if (score >= config.scoring.legendaryScore) return 'legendary';
+  if (score >= config.scoring.greatScore) return 'great';
+  if (score >= config.scoring.goodScore) return 'good';
+  return 'beginner';
+}
+
+/**
+ * Get percentage to next tier
+ * Used for progress bars and motivation
+ */
+export function getProgressToNextTier(
+  gameId: GameType,
+  score: number
+): { currentTier: PerformanceTier; nextTier: PerformanceTier | null; progress: number } {
+  const tier = getScorePerformanceTier(gameId, score);
+  const config = getGameConfig(gameId);
+  
+  const tiers: Array<{ tier: PerformanceTier; threshold: number }> = [
+    { tier: 'beginner', threshold: 0 },
+    { tier: 'good', threshold: config.scoring.goodScore },
+    { tier: 'great', threshold: config.scoring.greatScore },
+    { tier: 'legendary', threshold: config.scoring.legendaryScore },
+  ];
+  
+  const currentIndex = tiers.findIndex(t => t.tier === tier);
+  const nextIndex = currentIndex + 1;
+  
+  if (nextIndex >= tiers.length) {
+    return { currentTier: tier, nextTier: null, progress: 100 };
+  }
+  
+  const current = tiers[currentIndex];
+  const next = tiers[nextIndex];
+  const range = next.threshold - current.threshold;
+  const achieved = score - current.threshold;
+  const progress = Math.min(100, (achieved / range) * 100);
+  
+  return {
+    currentTier: tier,
+    nextTier: next.tier,
+    progress: Math.max(0, progress),
+  };
+}
+
+/**
+ * Validate that a game exists and is playable
+ */
+export function isGamePlayable(gameId: string): gameId is GameType {
+  return gameId in GAME_REGISTRY && GAME_REGISTRY[gameId as GameType].enabled;
+}═══════════════════════════════════════════════════════════════════════════════
+STEP 2: CREATE UNIFIED STORAGE MANAGER
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE PATH: client/src/lib/gameStorage.ts
+
+CREATE this new file:
+
+import { GameType } from './gameRegistry';
+
+/**
+ * Storage configuration
+ */
+const STORAGE_PREFIX = 'guardian-game';
+const MAX_STORAGE_AGE_DAYS = 7;
+const MAX_STORAGE_SIZE_KB = 100;
+const STORAGE_VERSION = '1.0';
+
+/**
+ * Saved game state structure
+ * Generic to support any game type
+ */
+export interface GameSave<T = any> {
+  gameType: GameType;
+  address: string;
+  state: T;
+  timestamp: number;
+  version: string;
+  checksum?: string; // For integrity verification
+}
+
+/**
+ * Unified stats structure across all games
+ * Consistent shape enables cross-game analytics
+ */
+export interface GameStats {
+  // Play counts
+  gamesPlayed: number;
+  gamesWon: number;
+  
+  // Performance
+  totalScore: number;
+  totalTime: number;
+  bestScore: number;
+  bestTime: number;
+  bestMoves?: number;
+  
+  // Streaks
+  currentStreak: number;
+  longestStreak: number;
+  
+  // Timestamps
+  lastPlayed: number;
+  firstPlayed: number;
+  
+  // Calculated fields (computed on load)
+  averageScore?: number;
+  averageTime?: number;
+  winRate?: number;
+}
+
+/**
+ * Game settings structure
+ * Each game can extend this with custom settings
+ */
+export interface GameSettings {
+  soundEnabled: boolean;
+  soundVolume: number;
+  animationSpeed: 'slow' | 'normal' | 'fast' | 'instant';
+  particleIntensity: 'off' | 'low' | 'medium' | 'high';
+}
+
+/**
+ * Storage health check result
+ */
+export interface StorageHealth {
+  healthy: boolean;
+  totalKB: number;
+  warnings: string[];
+  byGame: Record<string, number>;
+}
+
+/**
+ * GAME STORAGE MANAGER
+ * Centralized localStorage management for all games
+ * 
+ * Benefits:
+ * - Automatic cleanup of old saves
+ * - Version management
+ * - Error handling
+ * - Storage quota monitoring
+ * - Cross-game consistency
+ */
+export class GameStorageManager {
+  
+  // ═══════════════════════════════════════════════════════════
+  // SAVE GAME STATE
+  // ═══════════════════════════════════════════════════════════
+  
+  /**
+   * Save game state to localStorage
+   * Automatically adds timestamp and version
+   */
+  static saveSave<T>(
+    gameType: GameType, 
+    address: string, 
+    state: T
+  ): boolean {
+    try {
+      const save: GameSave<T> = {
+        gameType,
+        address,
+        state,
+        timestamp: Date.now(),
+        version: STORAGE_VERSION,
+      };
+      
+      const key = this.getSaveKey(gameType, address);
+      const serialized = JSON.stringify(save);
+      
+      localStorage.setItem(key, serialized);
+      return true;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to save ${gameType}:`, err);
+      
+      // Handle quota exceeded
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        console.warn('[GameStorage] Quota exceeded, cleaning up old saves...');
+        this.cleanupOldSaves(address);
+        
+        // Retry once after cleanup
+        try {
+          const key = this.getSaveKey(gameType, address);
+          const save: GameSave<T> = {
+            gameType,
+            address,
+            state,
+            timestamp: Date.now(),
+            version: STORAGE_VERSION,
+          };
+          localStorage.setItem(key, JSON.stringify(save));
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      
+      return false;
+    }
+  }
+  
+  /**
+   * Load game state from localStorage
+   * Returns null if not found or expired
+   */
+  static loadSave<T>(gameType: GameType, address: string): GameSave<T> | null {
+    try {
+      const key = this.getSaveKey(gameType, address);
+      const data = localStorage.getItem(key);
+      
+      if (!data) return null;
+      
+      const save: GameSave<T> = JSON.parse(data);
+      
+      // Validate structure
+      if (!save.gameType || !save.state || !save.timestamp) {
+        console.warn('[GameStorage] Invalid save structure, removing...');
+        this.deleteSave(gameType, address);
+        return null;
+      }
+      
+      // Check expiration
+      const age = Date.now() - save.timestamp;
+      const maxAge = MAX_STORAGE_AGE_DAYS * 24 * 60 * 60 * 1000;
+      
+      if (age > maxAge) {
+        console.log(`[GameStorage] Save expired for ${gameType}, removing...`);
+        this.deleteSave(gameType, address);
+        return null;
+      }
+      
+      return save;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to load ${gameType}:`, err);
+      return null;
+    }
+  }
+  
+  /**
+   * Delete a saved game
+   */
+  static deleteSave(gameType: GameType, address: string): void {
+    const key = this.getSaveKey(gameType, address);
+    localStorage.removeItem(key);
+  }
+  
+  /**
+   * Check if a save exists
+   */
+  static hasSave(gameType: GameType, address: string): boolean {
+    return this.loadSave(gameType, address) !== null;
+  }
+  
+  // ═══════════════════════════════════════════════════════════
+  // STATISTICS
+  // ═══════════════════════════════════════════════════════════
+  
+  /**
+   * Save game statistics
+   */
+  static saveStats(
+    gameType: GameType, 
+    address: string, 
+    stats: GameStats
+  ): boolean {
+    try {
+      // Add calculated fields
+      const enrichedStats: GameStats = {
+        ...stats,
+        averageScore: stats.gamesPlayed > 0 
+          ? Math.round(stats.totalScore / stats.gamesPlayed) 
+          : 0,
+        averageTime: stats.gamesWon > 0 
+          ? Math.round(stats.totalTime / stats.gamesWon) 
+          : 0,
+        winRate: stats.gamesPlayed > 0 
+          ? (stats.gamesWon / stats.gamesPlayed) * 100 
+          : 0,
+      };
+      
+      const key = this.getStatsKey(gameType, address);
+      localStorage.setItem(key, JSON.stringify(enrichedStats));
+      return true;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to save stats for ${gameType}:`, err);
+      return false;
+    }
+  }
+  
+  /**
+   * Load game statistics
+   */
+  static loadStats(gameType: GameType, address: string): GameStats {
+    try {
+      const key = this.getStatsKey(gameType, address);
+      const data = localStorage.getItem(key);
+      
+      if (!data) {
+        return this.getDefaultStats();
+      }
+      
+      const stats: GameStats = JSON.parse(data);
+      
+      // Recalculate derived fields in case they're stale
+      stats.averageScore = stats.gamesPlayed > 0 
+        ? Math.round(stats.totalScore / stats.gamesPlayed) 
+        : 0;
+      stats.averageTime = stats.gamesWon > 0 
+        ? Math.round(stats.totalTime / stats.gamesWon) 
+        : 0;
+      stats.winRate = stats.gamesPlayed > 0 
+        ? (stats.gamesWon / stats.gamesPlayed) * 100 
+        : 0;
+      
+      return stats;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to load stats for ${gameType}:`, err);
+      return this.getDefaultStats();
+    }
+  }
+  
+  /**
+   * Get default stats structure
+   */
+  static getDefaultStats(): GameStats {
+    return {
+      gamesPlayed: 0,
+      gamesWon: 0,
+      totalScore: 0,
+      totalTime: 0,
+      bestScore: 0,
+      bestTime: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastPlayed: 0,
+      firstPlayed: Date.now(),
+      averageScore: 0,
+      averageTime: 0,
+      winRate: 0,
+    };
+  }
+  
+  // ═══════════════════════════════════════════════════════════
+  // SETTINGS
+  // ═══════════════════════════════════════════════════════════
+  
+  /**
+   * Save game-specific settings
+   */
+  static saveSettings<T extends GameSettings>(
+    gameType: GameType, 
+    settings: T
+  ): boolean {
+    try {
+      const key = this.getSettingsKey(gameType);
+      localStorage.setItem(key, JSON.stringify(settings));
+      return true;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to save settings for ${gameType}:`, err);
+      return false;
+    }
+  }
+  
+  /**
+   * Load game-specific settings
+   * Merges with defaults to handle new settings added in updates
+   */
+  static loadSettings<T extends GameSettings>(
+    gameType: GameType, 
+    defaultSettings: T
+  ): T {
+    try {
+      const key = this.getSettingsKey(gameType);
+      const data = localStorage.getItem(key);
+      
+      if (!data) return defaultSettings;
+      
+      const saved = JSON.parse(data);
+      
+      // Merge with defaults (handles new settings gracefully)
+      return { ...defaultSettings, ...saved };
+    } catch (err) {
+      console.error(`[GameStorage] Failed to load settings for ${gameType}:`, err);
+      return defaultSettings;
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════
+  // CLEANUP & MAINTENANCE
+  // ═══════════════════════════════════════════════════════════
+  
+  /**
+   * Clean up old and orphaned saves
+   * Returns number of items cleaned
+   */
+  static cleanupOldSaves(address: string): number {
+    let cleaned = 0;
+    const maxAge = MAX_STORAGE_AGE_DAYS * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(`${STORAGE_PREFIX}-save-`)) continue;
+        
+        try {
+          const data = localStorage.getItem(key);
+          if (!data) {
+            localStorage.removeItem(key);
+            cleaned++;
+            continue;
+          }
+          
+          const save = JSON.parse(data);
+          const age = now - save.timestamp;
+          
+          // Remove if expired or wrong address
+          if (age > maxAge || save.address !== address) {
+            localStorage.removeItem(key);
+            cleaned++;
+          }
+        } catch {
+          // Invalid data, remove it
+          localStorage.removeItem(key);
+          cleaned++;
+        }
+      }
+    } catch (err) {
+      console.error('[GameStorage] Cleanup failed:', err);
+    }
+    
+    return cleaned;
+  }
+  
+  /**
+   * Get storage usage breakdown
+   */
+  static getStorageUsage(): StorageHealth['byGame'] & { total: number } {
+    let totalBytes = 0;
+    const byGame: Record<string, number> = {};
+    
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
+        
+        const value = localStorage.getItem(key);
+        if (!value) continue;
+        
+        const bytes = new Blob([value]).size;
+        totalBytes += bytes;
+        
+        // Extract game type from key
+        const match = key.match(
+          new RegExp(`${STORAGE_PREFIX}-(save|stats|settings)-([^-]+)`)
+        );
+        
+        if (match) {
+          const gameType = match[2];
+          byGame[gameType] = (byGame[gameType] || 0) + bytes;
+        }
+      }
+    } catch (err) {
+      console.error('[GameStorage] Usage calculation failed:', err);
+    }
+    
+    return {
+      total: totalBytes,
+      ...Object.fromEntries(
+        Object.entries(byGame).map(([k, v]) => [k, Math.round(v / 1024)])
+      ),
+    };
+  }
+  
+  /**
+   * Check storage health
+   * Returns warnings if storage is getting full or has issues
+   */
+  static checkStorageHealth(): StorageHealth {
+    const warnings: string[] = [];
+    const usage = this.getStorageUsage();
+    const totalKB = Math.round(usage.total / 1024);
+    
+    if (totalKB > MAX_STORAGE_SIZE_KB) {
+      warnings.push(
+        `Total storage (${totalKB}KB) exceeds recommended ${MAX_STORAGE_SIZE_KB}KB`
+      );
+    }
+    
+    Object.entries(usage).forEach(([game, kb]) => {
+      if (game === 'total') return;
+      
+      if (kb > MAX_STORAGE_SIZE_KB / 2) {
+        warnings.push(
+          `Game "${game}" storage (${kb}KB) is unusually large`
+        );
+      }
+    });
+    
+    // Check for corrupted data
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
+        
+        const value = localStorage.getItem(key);
+        if (!value) continue;
+        
+        try {
+          JSON.parse(value);
+        } catch {
+          warnings.push(`Corrupted data found: ${key}`);
+        }
+      }
+    } catch (err) {
+      warnings.push('Failed to verify data integrity');
+    }
+    
+    return {
+      healthy: warnings.length === 0,
+      totalKB,
+      warnings,
+      byGame: Object.fromEntries(
+        Object.entries(usage)
+          .filter(([k]) => k !== 'total')
+          .map(([k, v]) => [k, v as number])
+      ),
+    };
+  }
+  
+  /**
+   * Export all player data for a specific address
+   * Used for data portability or debugging
+   */
+  static exportPlayerData(address: string): Record<string, any> {
+    const data: Record<string, any> = {};
+    
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(STORAGE_PREFIX) || !key.includes(address)) {
+          continue;
+        }
+        
+        const value = localStorage.getItem(key);
+        if (!value) continue;
+        
+        try {
+          data[key] = JSON.parse(value);
+        } catch {
+          data[key] = value;
+        }
+      }
+    } catch (err) {
+      console.error('[GameStorage] Export failed:', err);
+    }
+    
+    return data;
+  }
+  
+  /**
+   * Clear all data for a specific game and address
+   */
+  static clearGameData(gameType: GameType, address: string): void {
+    this.deleteSave(gameType, address);
+    // Intentionally keep stats - player history is valuable
+  }
+  
+  // ═══════════════════════════════════════════════════════════
+  // PRIVATE HELPERS
+  // ═══════════════════════════════════════════════════════════
+  
+  private static getSaveKey(gameType: GameType, address: string): string {
+    return `${STORAGE_PREFIX}-save-${gameType}-${address}`;
+  }
+  
+  private static getStatsKey(gameType: GameType, address: string): string {
+    return `${STORAGE_PREFIX}-stats-${gameType}-${address}`;
+  }
+  
+  private static getSettingsKey(gameType: GameType): string {
+    return `${STORAGE_PREFIX}-settings-${gameType}`;
+  }
+}
+
+/**
+ * AUTO-CLEANUP ON APP LOAD
+ * Runs once when the app initializes
+ * Non-blocking, runs after 2 seconds
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      try {
+        const address = localStorage.getItem('last-connected-wallet');
+        if (address) {
+          const cleaned = GameStorageManager.cleanupOldSaves(address);
+          if (cleaned > 0) {
+            console.log(`[GameStorage] Auto-cleaned ${cleaned} old saves`);
+          }
+        }
+      } catch (err) {
+        console.error('[GameStorage] Auto-cleanup failed:', err);
+      }
+    }, 2000);
+  });
+}═══════════════════════════════════════════════════════════════════════════════
+STEP 3: CREATE SHARED GAME UI COMPONENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE PATH: client/src/components/game/GameHUD.tsx
+
+CREATE this new file:
+
+import { Clock, Target, Flame, Pause, LucideIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+/**
+ * Additional stat to display in HUD
+ */
+export interface HUDStat {
+  icon: LucideIcon;
+  label?: string;
+  value: string | number;
+  color: string;
+}
+
+/**
+ * Game HUD Props
+ */
+export interface GameHUDProps {
+  // Core stats
+  score: number;
+  time?: number;
+  moves?: number;
+  combo?: number;
+  
+  // Controls
+  onPause?: () => void;
+  
+  // Customization
+  formatTime?: (seconds: number) => string;
+  formatScore?: (score: number) => string;
+  extraStats?: HUDStat[];
+  
+  // Accessibility
+  ariaLabel?: string;
+}
+
+/**
+ * GAME HUD COMPONENT
+ * Reusable heads-up display for all games
+ * 
+ * Shows: Time, Score, Moves, Combo, Custom Stats
+ * Responsive and accessible
+ */
+export function GameHUD({ 
+  score,
+  time, 
+  moves, 
+  combo, 
+  onPause,
+  formatTime = defaultFormatTime,
+  formatScore = defaultFormatScore,
+  extraStats = [],
+  ariaLabel = "Game statistics"
+}: GameHUDProps) {
+  return (
+    <div 
+      className="flex justify-between items-center bg-black/60 rounded-lg p-4 border border-white/10 backdrop-blur-md flex-wrap gap-4"
+      role="region"
+      aria-label={ariaLabel}
+    >
+      <div className="flex items-center gap-6 flex-wrap">
+        {/* Time */}
+        {time !== undefined && (
+          <div className="flex items-center gap-2" aria-label="Time elapsed">
+            <Clock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+            <span className="text-white font-mono text-lg">
+              {formatTime(time)}
+            </span>
+          </div>
+        )}
+        
+        {/* Score */}
+        <div className="flex items-center gap-2" aria-label="Current score">
+          <Target className="w-4 h-4 text-purple-400" aria-hidden="true" />
+          <span className="text-white font-mono text-lg">
+            {formatScore(score)}
+          </span>
+        </div>
+        
+        {/* Moves */}
+        {moves !== undefined && (
+          <div className="flex items-center gap-2" aria-label="Moves made">
+            <Target className="w-4 h-4 text-blue-400" aria-hidden="true" />
+            <span className="text-white font-mono text-lg">
+              {moves} {moves === 1 ? 'move' : 'moves'}
+            </span>
+          </div>
+        )}
+        
+        {/* Combo */}
+        {combo !== undefined && combo > 0 && (
+          <div 
+            className="flex items-center gap-2 animate-pulse" 
+            aria-label={`${combo} times combo`}
+          >
+            <Flame className="w-4 h-4 text-orange-400" aria-hidden="true" />
+            <span className="text-orange-400 font-bold">
+              {combo}x Combo
+            </span>
+          </div>
+        )}
+        
+        {/* Extra Stats */}
+        {extraStats.map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <div 
+              key={idx} 
+              className="flex items-center gap-2"
+              aria-label={stat.label ? `${stat.label}: ${stat.value}` : String(stat.value)}
+            >
+              <Icon className={`w-4 h-4 ${stat.color}`} aria-hidden="true" />
+              <span className="text-white font-mono text-lg">
+                {stat.label && `${stat.label}: `}{stat.value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Pause Button */}
+      {onPause && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onPause}
+          className="border-white/20 hover:border-white/40 transition-colors"
+          aria-label="Pause game"
+        >
+          <Pause className="w-4 h-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Default time formatter
+ */
+function defaultFormatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Default score formatter
+ */
+function defaultFormatScore(score: number): string {
+  return score.toLocaleString();
+}FILE PATH: client/src/components/game/VictoryScreen.tsx
+
+CREATE this new file (COMPLETE implementation - 250 lines):
+
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Star, Clock, Target, TrendingUp, Play, Home, Share2, 
+  Award, Zap, Trophy, Crown, LucideIcon 
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  GameType, 
+  getGameConfig, 
+  getScorePerformanceTier,
+  PerformanceTier 
+} from '@/lib/gameRegistry';
+
+/**
+ * Additional stat to display in victory screen
+ */
+export interface VictoryStat {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  color: string;
+}
+
+/**
+ * Victory Screen Props
+ */
+export interface VictoryScreenProps {
+  // Game info
+  gameType: GameType;
+  
+  // Performance
+  score: number;
+  time?: number;
+  moves?: number;
+  extraStats?: VictoryStat[];
+  
+  // Context
+  playsRemaining: number;
+  maxPlays: number;
+  isNewBest: boolean;
+  personalBest?: number;
+  
+  // Actions
+  onPlayAgain: () => void;
+  onExit: () => void;
+  onViewLeaderboard?: () => void;
+  onShare?: () => void;
+  
+  // Customization
+  formatTime?: (seconds: number) => string;
+}
+
+/**
+ * Performance-based messaging
+ */
+const PERFORMANCE_MESSAGES: Record<PerformanceTier, {
+  title: string;
+  message: string;
+  gradient: string;
+  icon: LucideIcon;
+}> = {
+  legendary: {
+    title: "LEGENDARY!",
+    message: "Absolute mastery! You're among the elite.",
+    gradient: "from-yellow-400 via-orange-400 to-red-500",
+    icon: Crown,
+  },
+  great: {
+    title: "OUTSTANDING!",
+    message: "Exceptional performance! Keep pushing!",
+    gradient: "from-cyan-400 via-blue-400 to-purple-500",
+    icon: Trophy,
+  },
+  good: {
+    title: "IMPRESSIVE!",
+    message: "Strong showing! Room for growth.",
+    gradient: "from-green-400 via-cyan-400 to-blue-500",
+    icon: Zap,
+  },
+  beginner: {
+    title: "COMPLETE!",
+    message: "Well done! Practice makes perfect.",
+    gradient: "from-gray-400 via-gray-300 to-gray-400",
+    icon: Award,
+  },
+};
+
+/**
+ * VICTORY SCREEN COMPONENT
+ * Reusable end-game celebration screen
+ * 
+ * Features:
+ * - Performance-based messaging
+ * - Animated entrance
+ * - Stats breakdown
+ * - Personal best indication
+ * - Call-to-action buttons
+ * - Responsive layout
+ * - Accessible
+ */
+export function VictoryScreen({
+  gameType,
+  score,
+  time,
+  moves,
+  extraStats = [],
+  playsRemaining,
+  maxPlays,
+  isNewBest,
+  personalBest,
+  onPlayAgain,
+  onExit,
+  onViewLeaderboard,
+  onShare,
+  formatTime = (s) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+}: VictoryScreenProps) {
+  const config = getGameConfig(gameType);
+  const tier = getScorePerformanceTier(gameType, score);
+  const message = PERFORMANCE_MESSAGES[tier];
+  const MessageIcon = message.icon;
+  
+  // Calculate improvement percentage
+  const improvement = personalBest && personalBest > 0
+    ? ((score - personalBest) / personalBest) * 100
+    : 0;
+  
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md p-4"
+        role="dialog"
+        aria-labelledby="victory-title"
+        aria-describedby="victory-message"
+      >
+        <motion.div
+          initial={{ scale: 0.8, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-4 border-cyan-400 rounded-2xl p-8 md:p-12 text-center backdrop-blur-lg max-w-lg w-full relative overflow-hidden"
+        >
+          {/* Celebration Icon */}
+          <motion.div 
+            animate={{ 
+              rotate: [0, 10, -10, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
+            className="mb-6"
+          >
+            <MessageIcon className="w-20 h-20 mx-auto text-yellow-400" />
+          </motion.div>
+          
+          {/* Title */}
+          <h2 
+            id="victory-title"
+            className={`text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r ${message.gradient} mb-2 font-orbitron`}
+          >
+            {message.title}
+          </h2>
+          <p id="victory-message" className="text-gray-300 text-lg mb-6">
+            {message.message}
+          </p>
+          
+          {/* Score */}
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring" }}
+            className="mb-6"
+          >
+            <div className="flex items-center justify-center gap-3 text-4xl mb-2">
+              <Star className="w-10 h-10 text-yellow-400" aria-hidden="true" />
+              <span className="text-yellow-400 font-bold">
+                {score.toLocaleString()}
+              </span>
+              <span className="text-white text-2xl">pts</span>
+            </div>
+            
+            {isNewBest && (
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/50 animate-pulse">
+                NEW PERSONAL BEST!
+              </Badge>
+            )}
+            
+            {!isNewBest && improvement > 0 && (
+              <p className="text-sm text-cyan-400">
+                +{improvement.toFixed(1)}% improvement!
+              </p>
+            )}
+          </motion.div>
+          
+          {/* Stats Grid */}
+          {(time !== undefined || moves !== undefined || extraStats.length > 0) && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {time !== undefined && (
+                <div className="bg-black/40 rounded-lg p-4 border border-white/10">
+                  <Clock className="w-5 h-5 text-cyan-400 mx-auto mb-2" aria-hidden="true" />
+                  <p className="text-cyan-400 font-bold text-lg">{formatTime(time)}</p>
+                  <p className="text-xs text-gray-500">Time</p>
+                </div>
+              )}
+              
+              {moves !== undefined && (
+                <div className="bg-black/40 rounded-lg p-4 border border-white/10">
+                  <Target className="w-5 h-5 text-purple-400 mx-auto mb-2" aria-hidden="true" />
+                  <p className="text-purple-400 font-bold text-lg">{moves}</p>
+                  <p className="text-xs text-gray-500">Moves</p>
+                </div>
+              )}
+              
+              {extraStats.map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <div 
+                    key={idx} 
+                    className="bg-black/40 rounded-lg p-4 border border-white/10"
+                  >
+                    <Icon className={`w-5 h-5 ${stat.color} mx-auto mb-2`} aria-hidden="true" />
+                    <p className={`${stat.color} font-bold text-lg`}>{stat.value}</p>
+                    <p className="text-xs text-gray-500">{stat.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Plays Remaining */}
+          <div className="mb-6 text-sm text-gray-400">
+            <p>
+              {playsRemaining === 0 ? (
+                <span className="text-red-400 font-bold">No plays remaining today</span>
+              ) : (
+                <span>
+                  {playsRemaining} of {maxPlays} plays remaining today
+                </span>
+              )}
+            </p>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center flex-wrap">
+            <Button
+              onClick={onPlayAgain}
+              disabled={playsRemaining === 0}
+              size="lg"
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Play className="w-5 h-5 mr-2" />
+              Play Again
+            </Button>
+            
+            {onViewLeaderboard && (
+              <Button
+                onClick={onViewLeaderboard}
+                size="lg"
+                variant="outline"
+                className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                Leaderboard
+              </Button>
+            )}
+            
+            {onShare && (
+              <Button
+                onClick={onShare}
+                size="lg"
+                variant="outline"
+                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+              >
+                <Share2 className="w-5 h-5 mr-2" />
+                Share
+              </Button>
+            )}
+            
+            <Button
+              onClick={onExit}
+              size="lg"
+              variant="outline"
+              className="border-white/30 text-white hover:bg-white/10"
+            >
+              <Home className="w-5 h-5 mr-2" />
+              Exit
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}═══════════════════════════════════════════════════════════════════════════════
+STEP 4: UPDATE EXISTING JAGUAR RUNNER
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE PATH: client/src/pages/JaguarRunner.tsx
+
+FIND the imports section (around line 1-10) and ADD:
+
+import { getGameConfig } from '@/lib/gameRegistry';
+import { GameStorageManager } from '@/lib/gameStorage';
+import { GameHUD } from '@/components/game/GameHUD';
+import { VictoryScreen } from '@/components/game/VictoryScreen';FIND where stats are initialized (around line 50-70) and REPLACE with:
+
+const [stats, setStats] = useState(() => 
+  address ? GameStorageManager.loadStats('jaguar-runner', address) : GameStorageManager.getDefaultStats()
+);FIND the scoring calculation (around line 200-250) and UPDATE:
+
+const config = getGameConfig('jaguar-runner');
+
+// Calculate final score (capped at config max)
+const baseScore = Math.floor(distance * 10);
+const obstacleBonus = obstaclesAvoided * 100;
+const finalScore = Math.min(baseScore + obstacleBonus, config.scoring.maxScore);FIND where stats are saved (after game ends) and UPDATE:
+
+// Update stats
+const newStats = { ...stats };
+// ... your existing stats update logic ...
+
+// Save to storage
+if (address) {
+  GameStorageManager.saveStats('jaguar-runner', address, newStats);
+}
+setStats(newStats);FIND the game HUD rendering (the div showing score/distance) and REPLACE with:
+
+<GameHUD
+  score={score}
+  extraStats={[
+    { icon: Target, label: 'Distance', value: `${Math.floor(distance)}m`, color: 'text-cyan-400' },
+    { icon: Heart, label: 'Lives', value: lives, color: 'text-red-400' },
+  ]}
+/>═══════════════════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+After implementing all steps, verify:
+
+ARCHITECTURE:
+[ ] gameRegistry.ts exists with 3 games configured
+[ ] getGameConfig('jaguar-runner') returns correct config
+[ ] getAllGames() returns array of 3 games
+[ ] normalizeScore() works for all games
+
+STORAGE:
+[ ] GameStorageManager can save/load game state
+[ ] Stats are persisted between sessions
+[ ] Old saves auto-cleanup after 7 days
+[ ] Storage health check returns warnings if needed
+[ ] Check browser DevTools → Application → LocalStorage
+[ ] Keys follow pattern: guardian-game-{type}-{gameId}-{address}
+
+UI COMPONENTS:
+[ ] GameHUD renders correctly with all stats
+[ ] VictoryScreen shows performance-based messaging
+[ ] Victory screen is responsive on mobile
+[ ] All buttons work (Play Again, Exit, Leaderboard)
+
+INTEGRATION:
+[ ] Jaguar Runner uses new infrastructure
+[ ] Stats display correctly in game
+[ ] Score calculation uses config.scoring.maxScore
+[ ] No console errors
+
+NEXT STEPS:
+After verification, you're ready for:
+- Prompt 2: Scoring Framework Refinements
+- Prompt 3: Guardian Solitaire Implementation
+
+═══════════════════════════════════════════════════════════════════════════════
