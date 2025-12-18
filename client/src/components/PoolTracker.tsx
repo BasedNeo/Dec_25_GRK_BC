@@ -25,7 +25,7 @@ import { Database, RefreshCw, Timer, AlertTriangle, TrendingUp, Coins, Zap, Doll
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
-import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT } from "@/lib/constants";
+import { RPC_URL, NFT_CONTRACT, MINT_SPLIT, ROYALTY_SPLIT, PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useInterval } from "@/hooks/useInterval";
 
@@ -99,33 +99,70 @@ export function PoolTracker() {
     const minted = mintedCount ?? 0;
     const sales = salesVolume ?? 0;
     
-    // LOCKED: mintRevenue = minted × 69,420 × 51%
-    const mintRevenue = minted * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
-    // LOCKED: royaltyRevenue = salesVolume × 2%
-    const royaltyRevenue = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    // === MINT REVENUE (69,420 $BASED per NFT) ===
+    const totalMintRevenue = minted * MINT_PRICE;
+    const mintToTreasury = totalMintRevenue * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    const mintToCreator = totalMintRevenue * (MINT_SPLIT.CREATOR_PERCENT / 100);
+    
+    // === ROYALTY REVENUE (10% of secondary sales) ===
+    const totalRoyalties = sales * (ROYALTY_SPLIT.TOTAL_ROYALTY_PERCENT / 100);
+    const royaltyToTreasury = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    const royaltyToRoyaltyWallet = sales * (ROYALTY_SPLIT.ROYALTY_WALLET_PERCENT / 100);
+    const royaltyToCreator = sales * (ROYALTY_SPLIT.CREATOR_PERCENT / 100);
+    
+    // === PLATFORM FEE (1% of secondary sales) ===
+    const platformFeeToCreator = sales * (PLATFORM_FEE_PERCENT / 100);
+    
+    // === WALLET TOTALS ===
+    const treasuryTotal = mintToTreasury + royaltyToTreasury;
+    const creatorTotal = mintToCreator + royaltyToCreator + platformFeeToCreator;
+    const royaltyWalletTotal = royaltyToRoyaltyWallet;
     
     // Use REAL emission data from blockchain
     const passiveEmissions = subnetEmissions.communityShare; // 10% of brain emissions
     
-    const totalTreasury = mintRevenue + royaltyRevenue + passiveEmissions;
+    const totalTreasuryWithEmissions = treasuryTotal + passiveEmissions;
     const backedValuePerNFT = calculateBackedValue();
     
     return {
-      mintRevenue,
-      royaltyRevenue,
+      // Mint breakdown
+      totalMintRevenue,
+      mintToTreasury,
+      mintToCreator,
+      
+      // Royalty breakdown
+      totalRoyalties,
+      royaltyToTreasury,
+      royaltyToRoyaltyWallet,
+      royaltyToCreator,
+      
+      // Platform fee
+      platformFeeToCreator,
+      
+      // Wallet totals
+      treasuryTotal,
+      creatorTotal,
+      royaltyWalletTotal,
+      
+      // Legacy names (for backward compatibility)
+      mintRevenue: mintToTreasury,
+      royaltyRevenue: royaltyToTreasury,
+      
+      // Treasury with emissions
       passiveEmissions,
-      totalTreasury,
+      totalTreasury: totalTreasuryWithEmissions,
       backedValuePerNFT,
-      currentDailyRate: subnetEmissions.dailyRate, // Already community 10% rate (6,438)
-      nextHalvingIn: null, // Real emissions don't have programmatic halvings
+      currentDailyRate: subnetEmissions.dailyRate,
+      nextHalvingIn: null,
       nextHalvingRate: null,
       minted,
       salesVolume: sales,
-      // New real data
+      
+      // Real emission data
       brainBalance: subnetEmissions.brainBalance,
       totalBrainEmissions: subnetEmissions.totalReceived,
       weeklyTotal: subnetEmissions.weeklyTotal,
-      monthlyProjection: subnetEmissions.monthlyProjection, // Already community rate * 30
+      monthlyProjection: subnetEmissions.monthlyProjection,
       brainStatus: subnetEmissions.status
     };
   }, [mintedCount, salesVolume, subnetEmissions]);
@@ -266,119 +303,176 @@ export function PoolTracker() {
               </>
             ) : (
               <>
-                <div className="flex flex-col items-center justify-center mb-8 relative py-8">
-                  <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10"></div>
-                  <span className="text-sm font-mono text-muted-foreground uppercase tracking-widest mb-2">Total Treasury</span>
-                  <div className="text-5xl md:text-7xl font-black text-white font-orbitron text-glow" data-testid="text-total-treasury">
-                    {displayValue(treasuryData.totalTreasury)} <span className="text-2xl md:text-4xl text-primary">$BASED</span>
+                {/* === COMMUNITY TREASURY CARD === */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-5xl mx-auto">
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-lg p-6 border border-cyan-500/30 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-6 h-6 text-cyan-400" />
+                        <h3 className="text-lg font-orbitron text-white">Community Treasury</h3>
+                      </div>
+                      <span className="text-2xl">🏦</span>
+                    </div>
+
+                    {/* Total Balance */}
+                    <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-6" data-testid="text-total-treasury">
+                      {displayValue(treasuryData.totalTreasury, 0)} $BASED
+                    </div>
+
+                    {/* Treasury Breakdown */}
+                    <div className="space-y-3 text-sm">
+                      {/* From Mints */}
+                      <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                        <span className="text-gray-400">From Mints ({MINT_SPLIT.TREASURY_PERCENT}%)</span>
+                        <span className="text-cyan-400 font-semibold">
+                          {displayValue(treasuryData.mintToTreasury, 0)} $BASED
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 pl-2 -mt-2">
+                        {isDataReady ? `${formatNumber(treasuryData.minted)} minted × ${formatNumber(MINT_PRICE)} × ${MINT_SPLIT.TREASURY_PERCENT}%` : '---'}
+                      </div>
+
+                      {/* From Royalties */}
+                      <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                        <span className="text-gray-400">From Royalties (2%)</span>
+                        <span className="text-cyan-400 font-semibold">
+                          {displayValue(treasuryData.royaltyToTreasury, 0)} $BASED
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 pl-2 -mt-2">
+                        {isDataReady ? `${formatNumber(treasuryData.salesVolume)} sales × 2%` : '---'}
+                      </div>
+
+                      {/* From Emissions */}
+                      <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                        <span className="text-gray-400">From $BRAIN Emissions</span>
+                        <span className="text-purple-400 font-semibold">
+                          {displayValue(treasuryData.passiveEmissions, 0)} $BASED
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 pl-2 -mt-2">
+                        Community share: {displayValue(treasuryData.currentDailyRate, 0)}/day
+                      </div>
+                    </div>
+
+                    {/* Backed Value */}
+                    <div className="mt-4 pt-4 border-t border-cyan-500/20">
+                      <div className="text-xs text-gray-400 mb-1">Backed Value per NFT</div>
+                      <div className="text-xl font-bold text-cyan-400" data-testid="text-backed-value">
+                        {displayValue(treasuryData.backedValuePerNFT, 0)} $BASED
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3 font-mono">
-                    {isDataReady ? `${formatNumber(mintedCount!)} NFTs Minted` : 'Loading data...'}
-                  </p>
-                </div>
 
-                <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl max-w-md mx-auto">
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Backed Value Per NFT</span>
-                  <div className="text-3xl md:text-4xl font-black text-white font-orbitron mt-2" data-testid="text-backed-value">
-                    {displayValue(treasuryData.backedValuePerNFT)} <span className="text-lg text-primary">$BASED</span>
+                  {/* === ECOSYSTEM REVENUE CARD (NEW) === */}
+                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-6 border border-purple-500/30 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-6 h-6 text-purple-400" />
+                        <h3 className="text-lg font-orbitron text-white">Ecosystem Revenue</h3>
+                      </div>
+                      <span className="text-2xl">💰</span>
+                    </div>
+
+                    {/* Total Ecosystem Revenue */}
+                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
+                      {displayValue(treasuryData.totalMintRevenue + treasuryData.totalRoyalties + treasuryData.platformFeeToCreator, 0)} $BASED
+                    </div>
+
+                    {/* Revenue Breakdown by Source */}
+                    <div className="space-y-3 text-sm mb-4">
+                      {/* Mint Revenue */}
+                      <div>
+                        <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                          <span className="text-gray-400">Mint Revenue</span>
+                          <span className="text-purple-400 font-semibold">
+                            {displayValue(treasuryData.totalMintRevenue, 0)} $BASED
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
+                          <div>→ Treasury: {displayValue(treasuryData.mintToTreasury, 0)} ({MINT_SPLIT.TREASURY_PERCENT}%)</div>
+                          <div>→ Creator: {displayValue(treasuryData.mintToCreator, 0)} ({MINT_SPLIT.CREATOR_PERCENT}%)</div>
+                        </div>
+                      </div>
+
+                      {/* Royalty Revenue */}
+                      <div>
+                        <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                          <span className="text-gray-400">Royalty Revenue (10%)</span>
+                          <span className="text-purple-400 font-semibold">
+                            {displayValue(treasuryData.totalRoyalties, 0)} $BASED
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
+                          <div>→ Treasury: {displayValue(treasuryData.royaltyToTreasury, 0)} (2%)</div>
+                          <div>→ Royalty Wallet: {displayValue(treasuryData.royaltyToRoyaltyWallet, 0)} (4%)</div>
+                          <div>→ Creator: {displayValue(treasuryData.royaltyToCreator, 0)} (4%)</div>
+                        </div>
+                      </div>
+
+                      {/* Platform Fee */}
+                      <div>
+                        <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                          <span className="text-gray-400">Platform Fee (1%)</span>
+                          <span className="text-purple-400 font-semibold">
+                            {displayValue(treasuryData.platformFeeToCreator, 0)} $BASED
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 pl-2 mt-1">
+                          → Creator Wallet
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wallet Totals */}
+                    <div className="mt-4 pt-4 border-t border-purple-500/20">
+                      <div className="text-xs text-gray-400 mb-2">Total by Wallet</div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Treasury:</span>
+                          <span className="text-cyan-400 font-semibold">{displayValue(treasuryData.treasuryTotal, 0)} $BASED</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Creator:</span>
+                          <span className="text-purple-400 font-semibold">{displayValue(treasuryData.creatorTotal, 0)} $BASED</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Royalty Wallet:</span>
+                          <span className="text-pink-400 font-semibold">{displayValue(treasuryData.royaltyWalletTotal, 0)} $BASED</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 font-mono opacity-70">= Treasury ÷ Minted NFTs</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-4xl mx-auto">
-              
-              <div className="bg-black/40 border border-pink-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-3">
-                  <Coins size={18} className="text-pink-400" />
-                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Mints ({MINT_SPLIT.TREASURY_PERCENT}%)</h3>
+                {/* === EMISSIONS STATS === */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-2xl mx-auto">
+                  <div className="bg-black/40 border border-amber-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap size={16} className="text-amber-400" />
+                      <h3 className="text-xs font-bold text-white font-orbitron uppercase">Daily Community Rate</h3>
+                    </div>
+                    <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
+                      ~{formatNumber(treasuryData.currentDailyRate, 0)} $BASED/day
+                    </span>
+                    <span className="text-[9px] text-muted-foreground font-mono mt-1">
+                      10% of ~{formatNumber(subnetEmissions.brainTotalDaily, 0)}/day brain output
+                    </span>
+                  </div>
+                  
+                  <div className="bg-black/40 border border-purple-500/30 rounded-xl p-5 flex flex-col items-center text-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Timer size={16} className="text-purple-400" />
+                      <h3 className="text-xs font-bold text-white font-orbitron uppercase">Monthly Projection</h3>
+                    </div>
+                    <span className="text-xl font-mono font-bold text-purple-400" data-testid="text-monthly-projection">
+                      ~{formatNumber(treasuryData.monthlyProjection || 0)} $BASED
+                    </span>
+                    <span className="text-[9px] text-muted-foreground font-mono mt-1">
+                      Community share at current rate
+                    </span>
+                  </div>
                 </div>
-                <span className="text-2xl font-mono font-bold text-pink-400 mb-1" data-testid="text-mint-revenue">
-                  {displayValue(treasuryData.mintRevenue)} $BASED
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {isDataReady ? `${formatNumber(treasuryData.minted)} × ${formatNumber(MINT_PRICE)} × ${MINT_SPLIT.TREASURY_PERCENT}%` : '--- × --- × ---'}
-                </span>
-              </div>
-              
-              <div className="bg-black/40 border border-cyan-500/30 rounded-xl p-5 flex flex-col items-center text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
-                <div className="flex items-center gap-2 mb-3">
-                  <Zap size={18} className="text-cyan-400" />
-                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Emissions (10%)</h3>
-                  {subnetEmissions.loading ? (
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                  ) : (
-                    <span className={`w-2 h-2 rounded-full ${
-                      treasuryData.brainStatus === 'active' ? 'bg-green-400 animate-pulse' :
-                      treasuryData.brainStatus === 'delayed' ? 'bg-yellow-400' : 'bg-red-400'
-                    }`} />
-                  )}
-                </div>
-                <span className="text-2xl font-mono font-bold text-cyan-400 mb-1" data-testid="text-passive-emissions">
-                  {subnetEmissions.loading ? '...' : formatNumber(treasuryData.passiveEmissions)} $BASED
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  Community share of {formatNumber(treasuryData.totalBrainEmissions || 0)} total
-                </span>
-                <span className="text-[9px] text-cyan-500/50 font-mono mt-1">
-                  ~{formatNumber(treasuryData.currentDailyRate, 2)}/day • Live from ETH
-                </span>
-              </div>
-              
-              <div className="bg-black/40 border border-green-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-3">
-                  <DollarSign size={18} className="text-green-400" />
-                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">From Royalties</h3>
-                </div>
-                <span className="text-2xl font-mono font-bold text-green-400 mb-1" data-testid="text-royalty-revenue">
-                  {displayValue(treasuryData.royaltyRevenue)} $BASED
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  2% of {isDataReady ? formatNumber(treasuryData.salesVolume) : '---'} marketplace volume
-                </span>
-              </div>
-              
-              <div className="bg-black/40 border border-orange-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-3">
-                  <Database size={18} className="text-orange-400" />
-                  <h3 className="text-sm font-bold text-white font-orbitron uppercase">Staking Emissions</h3>
-                </div>
-                <span className="text-2xl font-mono font-bold text-orange-400 mb-1" data-testid="text-staking-emissions">
-                  0 $BASED
-                </span>
-                <span className="text-xs text-orange-500/70 font-mono bg-orange-500/5 px-2 py-1 rounded border border-orange-500/10 mt-1">COMING SOON</span>
-              </div>
-
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-2xl mx-auto">
-              
-              <div className="bg-black/40 border border-amber-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp size={16} className="text-amber-400" />
-                  <h3 className="text-xs font-bold text-white font-orbitron uppercase">Daily Community Rate</h3>
-                </div>
-                <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
-                  ~{formatNumber(treasuryData.currentDailyRate, 0)} $BASED/day
-                </span>
-                <span className="text-[9px] text-muted-foreground font-mono mt-1">
-                  10% of ~{formatNumber(subnetEmissions.brainTotalDaily, 0)}/day brain output
-                </span>
-              </div>
-              
-              <div className="bg-black/40 border border-purple-500/30 rounded-xl p-5 flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-2">
-                  <Timer size={16} className="text-purple-400" />
-                  <h3 className="text-xs font-bold text-white font-orbitron uppercase">Monthly Projection</h3>
-                </div>
-                <span className="text-xl font-mono font-bold text-purple-400" data-testid="text-monthly-projection">
-                  ~{formatNumber(treasuryData.monthlyProjection || 0)} $BASED
-                </span>
-                <span className="text-[9px] text-muted-foreground font-mono mt-1">
-                  Community share at current rate
-                </span>
-              </div>
-
-            </div>
 
             <div className="mb-6 flex justify-center">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 border border-white/5 rounded-full px-3 py-1 bg-black/20">

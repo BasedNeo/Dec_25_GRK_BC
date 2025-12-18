@@ -1,0 +1,311 @@
+=== FIX PAYMENT STRUCTURE & REVENUE TRACKING ===
+
+CONTEXT: Our app has 3 revenue streams that need accurate tracking:
+1. Mint Revenue: 69,420 $BASED per NFT (split 51% treasury, 49% creator)
+2. Royalty Revenue: 10% of secondary sales (split 2% treasury, 4% royalty wallet, 4% creator)
+3. Platform Fee: 1% of secondary sales (goes to creator wallet)
+
+PROBLEM: PoolTracker only shows treasury's portion (51% mint + 2% royalty). It's missing:
+- Platform fee revenue (1% of all sales → creator)
+- Full royalty breakdown (where the other 8% goes)
+- Creator's total earnings across all streams
+
+═══════════════════════════════════════════════════════════
+FILE: /client/src/components/PoolTracker.tsx
+═══════════════════════════════════════════════════════════
+
+FIND the treasuryData useMemo calculation (around line 97-130) and REPLACE WITH:
+
+  const treasuryData = useMemo(() => {
+    const minted = mintedCount ?? 0;
+    const sales = salesVolume ?? 0;
+    
+    // === MINT REVENUE (69,420 $BASED per NFT) ===
+    const totalMintRevenue = minted * MINT_PRICE;
+    const mintToTreasury = totalMintRevenue * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    const mintToCreator = totalMintRevenue * (MINT_SPLIT.CREATOR_PERCENT / 100);
+    
+    // === ROYALTY REVENUE (10% of secondary sales) ===
+    const totalRoyalties = sales * (ROYALTY_SPLIT.TOTAL_ROYALTY_PERCENT / 100);
+    const royaltyToTreasury = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    const royaltyToRoyaltyWallet = sales * (ROYALTY_SPLIT.ROYALTY_WALLET_PERCENT / 100);
+    const royaltyToCreator = sales * (ROYALTY_SPLIT.CREATOR_PERCENT / 100);
+    
+    // === PLATFORM FEE (1% of secondary sales) ===
+    const platformFeeToCreator = sales * (PLATFORM_FEE_PERCENT / 100);
+    
+    // === WALLET TOTALS ===
+    const treasuryTotal = mintToTreasury + royaltyToTreasury;
+    const creatorTotal = mintToCreator + royaltyToCreator + platformFeeToCreator;
+    const royaltyWalletTotal = royaltyToRoyaltyWallet;
+    
+    // Use REAL emission data from blockchain
+    const passiveEmissions = subnetEmissions.communityShare; // 10% of brain emissions
+    
+    const totalTreasuryWithEmissions = treasuryTotal + passiveEmissions;
+    const backedValuePerNFT = calculateBackedValue();
+    
+    return {
+      // Mint breakdown
+      totalMintRevenue,
+      mintToTreasury,
+      mintToCreator,
+      
+      // Royalty breakdown
+      totalRoyalties,
+      royaltyToTreasury,
+      royaltyToRoyaltyWallet,
+      royaltyToCreator,
+      
+      // Platform fee
+      platformFeeToCreator,
+      
+      // Wallet totals
+      treasuryTotal,
+      creatorTotal,
+      royaltyWalletTotal,
+      
+      // Legacy names (for backward compatibility)
+      mintRevenue: mintToTreasury,
+      royaltyRevenue: royaltyToTreasury,
+      
+      // Treasury with emissions
+      passiveEmissions,
+      totalTreasury: totalTreasuryWithEmissions,
+      backedValuePerNFT,
+      currentDailyRate: subnetEmissions.dailyRate,
+      nextHalvingIn: null,
+      nextHalvingRate: null,
+      minted,
+      salesVolume: sales,
+      
+      // Real emission data
+      brainBalance: subnetEmissions.brainBalance,
+      totalBrainEmissions: subnetEmissions.totalReceived,
+      weeklyTotal: subnetEmissions.weeklyTotal,
+      monthlyProjection: subnetEmissions.monthlyProjection,
+      brainStatus: subnetEmissions.status
+    };
+  }, [mintedCount, salesVolume, subnetEmissions]);
+
+---
+
+FIND the "Treasury Balance" section in the JSX (around line 170-270) and REPLACE the ENTIRE treasury card WITH:
+
+        {/* === COMMUNITY TREASURY CARD === */}
+        <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-lg p-6 border border-cyan-500/30 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Coins className="w-6 h-6 text-cyan-400" />
+              <h3 className="text-lg font-orbitron text-white">Community Treasury</h3>
+            </div>
+            <span className="text-2xl">🏦</span>
+          </div>
+
+          {/* Total Balance */}
+          <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-6">
+            {displayValue(treasuryData.totalTreasury, 0)} $BASED
+          </div>
+
+          {/* Treasury Breakdown */}
+          <div className="space-y-3 text-sm">
+            {/* From Mints */}
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+              <span className="text-gray-400">From Mints (51%)</span>
+              <span className="text-cyan-400 font-semibold">
+                {displayValue(treasuryData.mintToTreasury, 0)} $BASED
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 pl-2 -mt-2">
+              {isDataReady ? `${formatNumber(treasuryData.minted)} minted × ${formatNumber(MINT_PRICE)} × 51%` : '---'}
+            </div>
+
+            {/* From Royalties */}
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+              <span className="text-gray-400">From Royalties (2%)</span>
+              <span className="text-cyan-400 font-semibold">
+                {displayValue(treasuryData.royaltyToTreasury, 0)} $BASED
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 pl-2 -mt-2">
+              {isDataReady ? `${formatNumber(treasuryData.salesVolume)} sales × 2%` : '---'}
+            </div>
+
+            {/* From Emissions */}
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+              <span className="text-gray-400">From $BRAIN Emissions</span>
+              <span className="text-purple-400 font-semibold">
+                {displayValue(treasuryData.passiveEmissions, 0)} $BASED
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 pl-2 -mt-2">
+              Community share: {displayValue(treasuryData.currentDailyRate, 0)}/day
+            </div>
+          </div>
+
+          {/* Backed Value */}
+          <div className="mt-4 pt-4 border-t border-cyan-500/20">
+            <div className="text-xs text-gray-400 mb-1">Backed Value per NFT</div>
+            <div className="text-xl font-bold text-cyan-400">
+              {displayValue(treasuryData.backedValuePerNFT, 0)} $BASED
+            </div>
+          </div>
+        </div>
+
+        {/* === ECOSYSTEM REVENUE CARD (NEW) === */}
+        <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-6 border border-purple-500/30 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-purple-400" />
+              <h3 className="text-lg font-orbitron text-white">Ecosystem Revenue</h3>
+            </div>
+            <span className="text-2xl">💰</span>
+          </div>
+
+          {/* Total Ecosystem Revenue */}
+          <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
+            {displayValue(treasuryData.totalMintRevenue + treasuryData.totalRoyalties + treasuryData.platformFeeToCreator, 0)} $BASED
+          </div>
+
+          {/* Revenue Breakdown by Source */}
+          <div className="space-y-3 text-sm mb-4">
+            {/* Mint Revenue */}
+            <div>
+              <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                <span className="text-gray-400">Mint Revenue</span>
+                <span className="text-purple-400 font-semibold">
+                  {displayValue(treasuryData.totalMintRevenue, 0)} $BASED
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
+                <div>→ Treasury: {displayValue(treasuryData.mintToTreasury, 0)} (51%)</div>
+                <div>→ Creator: {displayValue(treasuryData.mintToCreator, 0)} (49%)</div>
+              </div>
+            </div>
+
+            {/* Royalty Revenue */}
+            <div>
+              <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                <span className="text-gray-400">Royalty Revenue (10%)</span>
+                <span className="text-purple-400 font-semibold">
+                  {displayValue(treasuryData.totalRoyalties, 0)} $BASED
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
+                <div>→ Treasury: {displayValue(treasuryData.royaltyToTreasury, 0)} (2%)</div>
+                <div>→ Royalty Wallet: {displayValue(treasuryData.royaltyToRoyaltyWallet, 0)} (4%)</div>
+                <div>→ Creator: {displayValue(treasuryData.royaltyToCreator, 0)} (4%)</div>
+              </div>
+            </div>
+
+            {/* Platform Fee */}
+            <div>
+              <div className="flex justify-between items-center p-2 bg-black/30 rounded">
+                <span className="text-gray-400">Platform Fee (1%)</span>
+                <span className="text-purple-400 font-semibold">
+                  {displayValue(treasuryData.platformFeeToCreator, 0)} $BASED
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 pl-2 mt-1">
+                → Creator Wallet
+              </div>
+            </div>
+          </div>
+
+          {/* Wallet Totals */}
+          <div className="mt-4 pt-4 border-t border-purple-500/20">
+            <div className="text-xs text-gray-400 mb-2">Total by Wallet</div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Treasury:</span>
+                <span className="text-cyan-400 font-semibold">{displayValue(treasuryData.treasuryTotal, 0)} $BASED</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Creator:</span>
+                <span className="text-purple-400 font-semibold">{displayValue(treasuryData.creatorTotal, 0)} $BASED</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Royalty Wallet:</span>
+                <span className="text-pink-400 font-semibold">{displayValue(treasuryData.royaltyWalletTotal, 0)} $BASED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+---
+
+FIND the imports at the top (around line 1-15) and ADD this import if missing:
+
+import { TrendingUp, Coins } from "lucide-react";
+
+AND ensure PLATFORM_FEE_PERCENT is imported:
+
+import {
+  MINT_PRICE,
+  MINT_SPLIT,
+  ROYALTY_SPLIT,
+  PLATFORM_FEE_PERCENT,  // ADD THIS IF MISSING
+  COMMUNITY_TREASURY,
+} from "@/lib/constants";
+
+═══════════════════════════════════════════════════════════
+FILE: /client/src/lib/constants.ts
+═══════════════════════════════════════════════════════════
+
+FIND this line (around line 39):
+
+export const CREATOR_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";      // 49% of mint, 4% of royalty, 1% platform fee
+
+VERIFY the comment is accurate. It should say:
+// 49% of mint, 4% of royalty, 1% platform fee
+
+This is CORRECT - no changes needed, just verification.
+
+═══════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════
+
+After Replit applies changes:
+
+1. Go to Pool/Stats page
+2. Check "Community Treasury" card shows:
+   ✓ Total balance
+   ✓ From Mints (51%)
+   ✓ From Royalties (2%)
+   ✓ From $BRAIN Emissions
+   ✓ Backed Value per NFT
+
+3. Check NEW "Ecosystem Revenue" card shows:
+   ✓ Total ecosystem revenue
+   ✓ Mint Revenue breakdown (51% treasury, 49% creator)
+   ✓ Royalty Revenue breakdown (2% treasury, 4% royalty wallet, 4% creator)
+   ✓ Platform Fee (1% to creator)
+   ✓ Total by wallet (Treasury, Creator, Royalty Wallet)
+
+4. Verify math with your real data:
+   - 9 NFTs minted = 624,780 total mint revenue
+   - Treasury gets: 318,638 (51%)
+   - Creator gets: 306,142 (49%)
+   - Sales: 223,334 $BASED
+   - Royalties (10%): 22,333
+     - Treasury: 4,467 (2%)
+     - Royalty Wallet: 8,933 (4%)
+     - Creator: 8,933 (4%)
+   - Platform Fee (1%): 2,233 to Creator
+
+5. Check console for errors
+6. Test on mobile - cards should stack vertically
+
+═══════════════════════════════════════════════════════════
+WHAT THIS FIXES
+═══════════════════════════════════════════════════════════
+
+✅ Tracks ALL revenue streams (mint, royalty, platform fee)
+✅ Shows where every $BASED token goes
+✅ Displays creator's FULL earnings (was missing 1% platform fee + 4% royalty)
+✅ Shows royalty wallet's 4% share (was completely missing)
+✅ Adds "Ecosystem Revenue" card showing full financial picture
+✅ Maintains backward compatibility with existing treasury display
+✅ Clear breakdown helps with financial transparency
+
+═══════════════════════════════════════════════════════════
