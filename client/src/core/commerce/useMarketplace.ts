@@ -583,6 +583,25 @@ export function useMarketplace() {
       return;
     }
 
+    // Preflight balance check
+    try {
+      const preFlightResult = await SafeTransaction.preFlightCheck(
+        { to: MARKETPLACE_CONTRACT, data: '0x', value: offerWei, from: address },
+        offerWei
+      );
+      
+      if (!preFlightResult.canProceed) {
+        toast({
+          title: "Insufficient Balance",
+          description: preFlightResult.error || "Not enough $BASED to make this offer",
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (error) {
+      console.warn('[Offer] Preflight check failed, proceeding anyway:', error);
+    }
+
     setState(prev => ({ ...prev, action: 'offer' }));
     const offerFormatted = SafeMath.format(offerWei);
     lastActionRef.current = { action: 'offer', description: `Making offer of ${offerFormatted} $BASED for Guardian #${tokenId}`, retryFn: () => makeOffer(tokenId, offerAmount, expirationDays) };
@@ -602,7 +621,7 @@ export function useMarketplace() {
       chainId: CHAIN_ID,
       gas: GAS_SETTINGS.OFFER,
     });
-  }, [checkNetwork, toast, writeContract]);
+  }, [address, checkNetwork, toast, writeContract]);
 
   const cancelOffer = useCallback(async (tokenId: number) => {
     if (!checkNetwork()) return;

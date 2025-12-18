@@ -107,22 +107,43 @@ export class RPCProviderManager {
 
   public async executeWithFailover<T>(
     fn: (provider: ethers.JsonRpcProvider) => Promise<T>,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    timeoutMs: number = 10000
   ): Promise<T> {
     const healthyEndpoints = this.endpoints.filter(e => e.healthy);
     
     if (healthyEndpoints.length === 0) {
-      throw new Error('No healthy RPC endpoints available');
+      // Try all endpoints as fallback
+      console.warn('[RPC] No healthy endpoints, trying all...');
     }
-
+    
+    const endpointsToTry = healthyEndpoints.length > 0 ? healthyEndpoints : this.endpoints;
     let lastError: Error | null = null;
 
-    for (let i = 0; i < Math.min(maxRetries, healthyEndpoints.length); i++) {
-      const endpoint = healthyEndpoints[i];
+    for (let i = 0; i < Math.min(maxRetries, endpointsToTry.length); i++) {
+      const endpoint = endpointsToTry[i];
+      // Exponential backoff: 0ms, 1000ms, 2000ms, 4000ms...
+      const backoffDelay = i > 0 ? Math.min(1000 * Math.pow(2, i - 1), 8000) : 0;
+      
+      if (backoffDelay > 0) {
+        console.log(`[RPC] Waiting ${backoffDelay}ms before retry ${i + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      }
       
       try {
-        console.log(`[RPC] Trying ${endpoint.url}...`);
-        const result = await fn(endpoint.provider);
+        console.log(`[RPC] Trying ${endpoint.url} (attempt ${i + 1}/${maxRetries})...`);
+        
+        // Execute with timeout
+        const result = await Promise.race([
+          fn(endpoint.provider),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error(`RPC timeout after ${timeoutMs}ms`)), timeoutMs)
+          ),
+        ]);
+        
+        // Reset failure count on success
+        endpoint.failureCount = 0;
+        endpoint.healthy = true;
         return result;
       } catch (error: any) {
         lastError = error;
@@ -136,6 +157,44 @@ export class RPCProviderManager {
     }
 
     throw lastError || new Error('All RPC endpoints failed');
+  }
+
+  public async executeWithRetry<T>(
+    fn: (provider: ethers.JsonRpcProvider) => Promise<T>,
+    options: { maxRetries?: number; timeoutMs?: number; retryOnlyOnTimeout?: boolean } = {}
+  ): Promise<T> {
+    const { maxRetries = 3, timeoutMs = 10000, retryOnlyOnTimeout = false } = options;
+    const provider = this.getProvider();
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const backoffDelay = attempt > 0 ? Math.min(500 * Math.pow(2, attempt - 1), 4000) : 0;
+      
+      if (backoffDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      }
+      
+      try {
+        const result = await Promise.race([
+          fn(provider),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+          ),
+        ]);
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        const isTimeout = error.message?.includes('Timeout') || error.message?.includes('timeout');
+        
+        if (retryOnlyOnTimeout && !isTimeout) {
+          throw error;
+        }
+        
+        console.warn(`[RPC] Attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
+      }
+    }
+
+    throw lastError || new Error('All retry attempts failed');
   }
 
   public getStatus() {

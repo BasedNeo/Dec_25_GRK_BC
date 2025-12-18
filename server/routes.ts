@@ -37,28 +37,24 @@ const ADMIN_WALLETS = [
   "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
 ];
 
-// Admin nonce store for EIP-191 signature verification
-// Map: wallet address -> { nonce, expiry }
-const adminNonces = new Map<string, { nonce: string; expiry: number }>();
+// Admin nonce configuration for EIP-191 signature verification
 const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
-function generateAdminNonce(wallet: string): string {
+async function generateAdminNonce(wallet: string): Promise<string> {
   const nonce = crypto.randomBytes(32).toString('hex');
-  adminNonces.set(wallet.toLowerCase(), {
-    nonce,
-    expiry: Date.now() + NONCE_EXPIRY_MS
-  });
+  const expiresAt = new Date(Date.now() + NONCE_EXPIRY_MS);
+  await storage.createAdminNonce(wallet, nonce, expiresAt);
   return nonce;
 }
 
-function verifyAdminSignature(wallet: string, signature: string): boolean {
-  const stored = adminNonces.get(wallet.toLowerCase());
+async function verifyAdminSignature(wallet: string, signature: string): Promise<boolean> {
+  const stored = await storage.getAdminNonce(wallet);
   if (!stored) return false;
   
   // ALWAYS consume nonce on any verification attempt (prevents replay attacks)
-  adminNonces.delete(wallet.toLowerCase());
+  await storage.deleteAdminNonce(wallet);
   
-  if (Date.now() > stored.expiry) {
+  if (new Date() > stored.expiresAt) {
     return false;
   }
 
@@ -72,32 +68,37 @@ function verifyAdminSignature(wallet: string, signature: string): boolean {
 }
 
 // Admin authentication middleware - requires EIP-191 signature verification
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const walletAddress = req.headers['x-wallet-address'] as string;
-  const signature = req.headers['x-admin-signature'] as string;
-  
-  if (!walletAddress) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  
-  if (!isValidEthAddress(walletAddress)) {
-    return res.status(400).json({ error: "Invalid wallet address format" });
-  }
-  
-  if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const walletAddress = req.headers['x-wallet-address'] as string;
+    const signature = req.headers['x-admin-signature'] as string;
+    
+    if (!walletAddress) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
+    if (!isValidEthAddress(walletAddress)) {
+      return res.status(400).json({ error: "Invalid wallet address format" });
+    }
+    
+    if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
-  // Verify EIP-191 signature
-  if (!signature) {
-    return res.status(401).json({ error: "Signature required for admin access" });
-  }
+    // Verify EIP-191 signature
+    if (!signature) {
+      return res.status(401).json({ error: "Signature required for admin access" });
+    }
 
-  if (!verifyAdminSignature(walletAddress, signature)) {
-    return res.status(401).json({ error: "Invalid or expired signature" });
+    if (!(await verifyAdminSignature(walletAddress, signature))) {
+      return res.status(401).json({ error: "Invalid or expired signature" });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[Admin Auth] Error during authentication:', error);
+    return res.status(500).json({ error: "Authentication service temporarily unavailable" });
   }
-  
-  next();
 }
 
 export async function registerRoutes(
@@ -122,7 +123,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not an admin wallet" });
       }
       
-      const nonce = generateAdminNonce(walletAddress);
+      const nonce = await generateAdminNonce(walletAddress);
       const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
       
       return res.json({ 

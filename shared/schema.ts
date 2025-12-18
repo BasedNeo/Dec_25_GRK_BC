@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, serial, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, serial, bigint, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -162,7 +162,9 @@ export const proposalVotes = pgTable("proposal_votes", {
   selectedOption: varchar("selected_option", { length: 20 }).notNull(),
   votingPower: integer("voting_power").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  uniqueVote: uniqueIndex("unique_vote_per_proposal").on(table.proposalId, table.walletAddress),
+}));
 
 export const insertVoteSchema = createInsertSchema(proposalVotes).omit({
   id: true,
@@ -174,7 +176,7 @@ export type Vote = typeof proposalVotes.$inferSelect;
 
 export const gameScores = pgTable("game_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  walletAddress: text("wallet_address").notNull(),
+  walletAddress: text("wallet_address").notNull().unique(),
   customName: varchar("custom_name", { length: 20 }),
   score: integer("score").notNull().default(0),
   level: integer("level").notNull().default(1),
@@ -229,3 +231,13 @@ export const featureFlags = pgTable('feature_flags', {
 });
 
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+
+export const adminNonces = pgTable('admin_nonces', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull().unique(),
+  nonce: text('nonce').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type AdminNonce = typeof adminNonces.$inferSelect;

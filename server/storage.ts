@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne } from "drizzle-orm";
@@ -27,6 +27,10 @@ export interface IStorage {
   getFeatureFlags(): Promise<FeatureFlag[]>;
   updateFeatureFlag(key: string, enabled: boolean, updatedBy: string): Promise<boolean>;
   getFeatureFlag(key: string): Promise<boolean>;
+  createAdminNonce(walletAddress: string, nonce: string, expiresAt: Date): Promise<AdminNonce>;
+  getAdminNonce(walletAddress: string): Promise<AdminNonce | undefined>;
+  deleteAdminNonce(walletAddress: string): Promise<void>;
+  cleanupExpiredNonces(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -451,6 +455,31 @@ export class DatabaseStorage implements IStorage {
       .from(featureFlags)
       .where(eq(featureFlags.key, key));
     return flag?.enabled ?? true;
+  }
+
+  async createAdminNonce(walletAddress: string, nonce: string, expiresAt: Date): Promise<AdminNonce> {
+    const normalizedWallet = walletAddress.toLowerCase();
+    await db.delete(adminNonces).where(eq(adminNonces.walletAddress, normalizedWallet));
+    const [result] = await db.insert(adminNonces).values({
+      walletAddress: normalizedWallet,
+      nonce,
+      expiresAt,
+    }).returning();
+    return result;
+  }
+
+  async getAdminNonce(walletAddress: string): Promise<AdminNonce | undefined> {
+    const [nonce] = await db.select().from(adminNonces).where(eq(adminNonces.walletAddress, walletAddress.toLowerCase()));
+    return nonce;
+  }
+
+  async deleteAdminNonce(walletAddress: string): Promise<void> {
+    await db.delete(adminNonces).where(eq(adminNonces.walletAddress, walletAddress.toLowerCase()));
+  }
+
+  async cleanupExpiredNonces(): Promise<void> {
+    const now = new Date();
+    await db.delete(adminNonces).where(sql`${adminNonces.expiresAt} < ${now}`);
   }
 }
 
