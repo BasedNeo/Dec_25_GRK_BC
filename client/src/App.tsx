@@ -73,7 +73,7 @@ function GlobalErrorFallback() {
       <div className="text-center p-8 relative z-10 max-w-lg">
         <div className="mb-8">
           <div className="text-7xl mb-4">
-            <span className="inline-block animate-bounce">🛸</span>
+            <span className="inline-block motion-safe:animate-float">🛸</span>
           </div>
           <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
             // transmission interrupted
@@ -100,7 +100,7 @@ function GlobalErrorFallback() {
           data-testid="button-refresh-page"
         >
           <Rocket className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-          LAUNCH AGAIN
+          RELAUNCH
         </button>
         
         <button 

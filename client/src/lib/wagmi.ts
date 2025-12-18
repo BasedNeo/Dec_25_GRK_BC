@@ -51,18 +51,18 @@ const wallets = [
   {
     groupName: 'Popular',
     wallets: [
-      injectedWallet,
+      walletConnectWallet,
       metaMaskWallet,
       coinbaseWallet,
-      uniswapWallet,
-      rainbowWallet,
       trustWallet,
+      rainbowWallet,
+      injectedWallet,
     ],
   },
   {
     groupName: 'More Options',
     wallets: [
-      walletConnectWallet,
+      uniswapWallet,
       rabbyWallet,
       phantomWallet,
       zerionWallet,
