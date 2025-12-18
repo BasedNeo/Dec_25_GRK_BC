@@ -17,8 +17,104 @@ import {
   Play, RotateCcw, Sparkles, Info, Undo2, Lightbulb, 
   Volume2, VolumeX, Star, Flame, ChevronRight,
   Settings, Shield, Loader2, Home, Maximize2,
-  Spade, Heart, Diamond, Club, Trophy
+  Spade, Heart, Diamond, Club, Trophy, LogOut, Save
 } from 'lucide-react';
+
+function ExitConfirmationModal({ 
+  isOpen, 
+  onConfirm, 
+  onCancel,
+  moves,
+  elapsedTime
+}: { 
+  isOpen: boolean; 
+  onConfirm: () => void; 
+  onCancel: () => void;
+  moves: number;
+  elapsedTime: number;
+}) {
+  if (!isOpen) return null;
+  
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md p-4"
+        onClick={onCancel}
+        data-testid="exit-modal-backdrop"
+      >
+        <motion.div
+          initial={{ scale: 0.8, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.8, y: 20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="bg-gradient-to-br from-indigo-900/90 to-purple-900/90 border-2 border-cyan-500/50 rounded-2xl p-8 text-center backdrop-blur-lg max-w-md w-full relative overflow-hidden"
+          onClick={e => e.stopPropagation()}
+          data-testid="exit-modal"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,255,0.1),transparent_50%)]" />
+          
+          <motion.div
+            animate={{ rotate: [0, -10, 10, 0] }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="relative mb-6"
+          >
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full flex items-center justify-center border-2 border-yellow-500/30">
+              <LogOut className="w-10 h-10 text-yellow-400" />
+            </div>
+          </motion.div>
+
+          <h2 className="text-2xl font-bold text-white mb-2 relative">
+            Exit Game?
+          </h2>
+          
+          <p className="text-gray-300 mb-6 relative">
+            Your progress will be saved automatically. You can resume later from where you left off.
+          </p>
+
+          <div className="flex gap-4 justify-center mb-6 relative">
+            <div className="bg-black/40 rounded-lg px-4 py-2 border border-white/10">
+              <p className="text-cyan-400 font-bold">{moves}</p>
+              <p className="text-xs text-gray-500">Moves</p>
+            </div>
+            <div className="bg-black/40 rounded-lg px-4 py-2 border border-white/10">
+              <p className="text-purple-400 font-bold">{formatTime(elapsedTime)}</p>
+              <p className="text-xs text-gray-500">Time</p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-center relative">
+            <Button
+              onClick={onCancel}
+              variant="outline"
+              className="border-white/30 text-white hover:bg-white/10"
+              data-testid="button-cancel-exit"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Keep Playing
+            </Button>
+            <Button
+              onClick={onConfirm}
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold"
+              data-testid="button-confirm-exit"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save & Exit
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -310,6 +406,7 @@ export default function GuardianSolitaire() {
   const [showHint, setShowHint] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [isLoadingDeck, setIsLoadingDeck] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [draggedCard, setDraggedCard] = useState<{
     card: SolitaireCard;
     from: 'waste' | 'foundation' | 'tableau';
@@ -1312,11 +1409,7 @@ export default function GuardianSolitaire() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (confirm('Exit to main menu? Progress will be saved.')) {
-                setLocation('/');
-              }
-            }}
+            onClick={() => setShowExitModal(true)}
             className="border-white/20 hover:border-white/40"
             data-testid="button-exit"
           >
@@ -1448,6 +1541,17 @@ export default function GuardianSolitaire() {
           onExit={() => setLocation('/')}
         />
       )}
+
+      <ExitConfirmationModal
+        isOpen={showExitModal}
+        onConfirm={() => {
+          setShowExitModal(false);
+          setLocation('/');
+        }}
+        onCancel={() => setShowExitModal(false)}
+        moves={moves}
+        elapsedTime={elapsedTime}
+      />
     </section>
   );
 }
