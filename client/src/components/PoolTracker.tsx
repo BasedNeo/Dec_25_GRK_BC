@@ -390,8 +390,8 @@ export function PoolTracker() {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
-                          <div>→ Treasury: {displayValue(treasuryData.mintToTreasury, 0)} ({MINT_SPLIT.TREASURY_PERCENT}%)</div>
-                          <div>→ Creator: {displayValue(treasuryData.mintToCreator, 0)} ({MINT_SPLIT.CREATOR_PERCENT}%)</div>
+                          <div data-testid="text-mint-treasury-split">→ Treasury: {displayValue(treasuryData.mintToTreasury, 0)} ({MINT_SPLIT.TREASURY_PERCENT}%)</div>
+                          <div data-testid="text-mint-creator-split">→ Creator: {displayValue(treasuryData.mintToCreator, 0)} ({MINT_SPLIT.CREATOR_PERCENT}%)</div>
                         </div>
                       </div>
 
@@ -404,9 +404,9 @@ export function PoolTracker() {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
-                          <div>→ Treasury: {displayValue(treasuryData.royaltyToTreasury, 0)} (2%)</div>
-                          <div>→ Royalty Wallet: {displayValue(treasuryData.royaltyToRoyaltyWallet, 0)} (4%)</div>
-                          <div>→ Creator: {displayValue(treasuryData.royaltyToCreator, 0)} (4%)</div>
+                          <div data-testid="text-royalty-treasury-split">→ Treasury: {displayValue(treasuryData.royaltyToTreasury, 0)} (2%)</div>
+                          <div data-testid="text-royalty-wallet-split">→ Royalty Wallet: {displayValue(treasuryData.royaltyToRoyaltyWallet, 0)} (4%)</div>
+                          <div data-testid="text-royalty-creator-split">→ Creator: {displayValue(treasuryData.royaltyToCreator, 0)} (4%)</div>
                         </div>
                       </div>
 
