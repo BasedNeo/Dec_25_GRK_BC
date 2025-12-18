@@ -64,6 +64,13 @@ class RequestDeduplicatorClass {
   clear(): void {
     this.pending.clear();
   }
+
+  getStats() {
+    return {
+      pendingCount: this.pending.size,
+      keys: Array.from(this.pending.keys()),
+    };
+  }
 }
 
 export const requestDedup = new RequestDeduplicatorClass();
