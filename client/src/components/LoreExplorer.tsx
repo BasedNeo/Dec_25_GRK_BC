@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Sparkles, BookOpen, Eye, EyeOff, Lock, Unlock, 
   Users, MapPin, Calendar, ChevronRight, Star, Shield, 
-  Zap, Ghost, Crown, Compass, X
+  Zap, Ghost, Crown, Compass, X, ChevronLeft, ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,6 +21,111 @@ import {
   type LoreEvent,
   type LoreFaction
 } from "@/lib/loreData";
+import { IPFS_ROOT } from "@/lib/constants";
+
+const PINATA_GATEWAY = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/';
+
+function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; characterName: string }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [images, setImages] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(true);
+  
+  const fetchImage = useCallback(async (tokenId: number) => {
+    try {
+      const res = await fetch(`${IPFS_ROOT}${tokenId}.json`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.image) {
+          const imageUrl = data.image
+            .replace('ipfs://', PINATA_GATEWAY)
+            .replace('https://ipfs.io/ipfs/', PINATA_GATEWAY);
+          return imageUrl;
+        }
+      }
+    } catch {
+    }
+    return null;
+  }, []);
+  
+  useEffect(() => {
+    const loadImages = async () => {
+      setLoading(true);
+      const imagePromises = tokenIds.slice(0, 5).map(async (id) => {
+        const url = await fetchImage(id);
+        return { id, url };
+      });
+      const results = await Promise.all(imagePromises);
+      const imageMap: Record<number, string> = {};
+      results.forEach(r => {
+        if (r.url) imageMap[r.id] = r.url;
+      });
+      setImages(imageMap);
+      setLoading(false);
+    };
+    loadImages();
+  }, [tokenIds, fetchImage]);
+  
+  const displayIds = tokenIds.slice(0, 5);
+  const currentTokenId = displayIds[currentIndex];
+  const currentImage = images[currentTokenId];
+  
+  const nextImage = () => setCurrentIndex((i) => (i + 1) % displayIds.length);
+  const prevImage = () => setCurrentIndex((i) => (i - 1 + displayIds.length) % displayIds.length);
+  
+  return (
+    <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-black/50 mb-3">
+      {loading ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+        </div>
+      ) : currentImage ? (
+        <>
+          <motion.img
+            key={currentTokenId}
+            src={currentImage}
+            alt={`${characterName} #${currentTokenId}`}
+            className="w-full h-full object-cover"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          />
+          {displayIds.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
+                {displayIds.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentIndex ? 'bg-cyan-400' : 'bg-white/30'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white/70">
+            #{currentTokenId}
+          </div>
+        </>
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30">
+          <ImageIcon className="w-8 h-8 mb-1" />
+          <span className="text-xs">No image</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type TabType = 'characters' | 'locations' | 'events' | 'factions';
 
@@ -120,6 +225,13 @@ function CharacterCard({
         <div className={`h-1 bg-gradient-to-r ${typeColors[character.type]}`} />
         
         <div className="p-4">
+          {character.nftTokenIds && character.nftTokenIds.length > 0 && (
+            <NFTImageGallery 
+              tokenIds={character.nftTokenIds} 
+              characterName={character.name} 
+            />
+          )}
+          
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${typeColors[character.type]} flex items-center justify-center`}>

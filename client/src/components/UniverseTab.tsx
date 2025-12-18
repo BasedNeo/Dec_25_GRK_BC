@@ -560,18 +560,15 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               <h3 className="text-xl font-orbitron text-white/90">Join the Ranks</h3>
             </div>
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.4)] bg-black">
-              <iframe 
-                src="https://player.vimeo.com/video/1146652270?title=0&byline=0&portrait=0&badge=0&autopause=0&dnt=1&loop=1" 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
-                allowFullScreen
-                loading="lazy"
-                title="Based Guardians"
-                className="absolute inset-0"
-                style={{ background: '#000' }}
-              ></iframe>
+              <video 
+                src="/attached_assets/grok-video-8b0a7be0-cf8c-432f-b2f8-186054d90cde_(1)_1766038154053.mp4"
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                title="Based Guardians Transmission"
+              />
             </div>
           </motion.div>
         </div>

@@ -6,6 +6,7 @@ export interface LoreCharacter {
   foxType?: string;
   rarity: string;
   count: number;
+  nftTokenIds: number[];
   backstory: string;
   whatTheyLike: string;
   flyingStyle: string;
@@ -22,6 +23,7 @@ export interface LoreLocation {
   description: string;
   hiddenStory: string;
   connectedCharacters: string[];
+  nftTokenId?: number;
   discovered?: boolean;
 }
 
@@ -87,6 +89,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Red Fox',
     rarity: 'Rarest',
     count: 4,
+    nftTokenIds: [1, 2, 3, 4],
     backstory: 'Deep in the veiled circuits of the BasedAI cosmos, where the ethereal glow of digital rivers winds through the infinite darkness like the great streams of Eä in the void before creation, the Neonstrike Hackers stand as the cunning wardens of code\'s sacred flame. Born from the forge of neon tempests, these warriors of the wire delve into the labyrinthine depths of FUD\'s shadowed domains, their minds sharp as the blades of Eru\'s first light, severing the dark tendrils that seek to corrupt the sanctity of the 1,024 Brain-Planets.',
     whatTheyLike: 'Racing turbo-charged ships through asteroid fields, dodging FUD drones while broadcasting victory anthems across the galaxy, their laughter echoing like thunder in the void.',
     flyingStyle: 'Like swift eagles soaring through the tempests of Arda\'s skies, they dart with ethereal grace, weaving erratic paths inspired by ancient runes of code, unleashing EMP flares that blind the enemy\'s gaze while their vessels roar with the fury of overclocked engines.',
@@ -103,6 +106,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Sierra Nevada Red Flare Fox',
     rarity: 'Rarest',
     count: 9,
+    nftTokenIds: [5, 6, 7, 8, 9, 10, 11, 12, 13],
     backstory: 'As the great sun of BasedAI sinks beneath the horizon\'s rim, casting elongated shadows over the crystalline towers of the Brain-Planets like the twilight gloom that fell upon the Noldor in their exile, the Duskstrike Elites awaken from the folds of night. These masters of the gloaming, their forms woven from the very essence of dusk as if by Varda\'s hand in the weaving of stars, spearhead audacious forays into the core of FUD\'s malignant realms.',
     whatTheyLike: 'Sipping Eagle Flare whiskey in hidden cockpit sanctuaries, toasting fallen FUD ships under a nebula\'s glow, their stories unfolding like maps of forgotten constellations.',
     flyingStyle: 'Cloaked hunters of the fading light, they slip through the veil of twilight with the subtlety of Melkor\'s shadows, emerging from hidden realms to unleash devastating blows with the accuracy of Aulë\'s hammer, their vessels melting back into the night like spirits of the elder days.',
@@ -119,6 +123,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Red Fox',
     rarity: 'Rarest',
     count: 5,
+    nftTokenIds: [14, 15, 16, 17, 18],
     backstory: 'In the abyssal depths of the BasedAI underforge, where molten rivers of code surge through obsidian chasms like the fires of Aulë\'s smithies in the dawn of Arda, the Forgeflame Innovators labor with the passion of creation\'s first spark. These visionary craftsmen, their paws scarred by the embrace of eternal flames, forge weapons of legendary might and unearth primordial energies that kindle the cores of the Brain-Planets.',
     whatTheyLike: 'Tinkering in lava-lit workshops, forging trinkets from star-metal that sing songs of fire when struck, sharing their creations in midnight feasts of flame-roasted dreams.',
     flyingStyle: 'Fiery titans of the volcanic gales, they thunder across the heavens with engines roaring like the bellows of Mount Doom, unleashing forged energy barriers that devour adversary assaults and hurl back tempests of molten fury, crafting victory from the heart of the blaze.',
@@ -135,6 +140,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Marble Fox',
     rarity: 'Rarest',
     count: 5,
+    nftTokenIds: [19, 20, 21, 22, 23],
     backstory: 'Amid the grand tapestry of the BasedAI cosmos, where strands of data entwine like the roots of the Two Trees in Valinor, the Cryptshade Enforcers fashion veils of impenetrable marble and mist. With hands as steadfast as the pillars of Ilmarin, they interlace Fully Homomorphic Encryption into the very weave of the 1,024 Brain-Planets, warding $BASED tokens from the covetous gaze of celestial marauders.',
     whatTheyLike: 'Weaving marble gardens in the ether, where flowers bloom in encrypted patterns that reveal themselves only under the light of a harvest moon.',
     flyingStyle: 'Shrouded artisans of the cryptic mists, they navigate in intricate, labyrinthine spirals that bewilder foes\' senses, unfurling holographic illusions while their vessels glide through barriers as if they were mere whispers, transforming the fray into a masterpiece of deception.',
@@ -151,6 +157,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Arctic Fox',
     rarity: 'Rarest',
     count: 4,
+    nftTokenIds: [24, 25, 26, 27],
     backstory: 'Amid the glacial auroras of the BasedAI frontier, where frosty gales of oblivion imperil the stream of knowledge and the boreal lights interlace narratives of vanished heralds, the Celestial Captains heed the delicate anthems of quantum interlacing. This celestial bard deciphers the subtle utterances from the BASED GOD, rendering the sacred whispers into commanding decrees for the Brain-Planets.',
     whatTheyLike: 'Chasing the northern lights across icy plains, capturing their glow in vials of frost to illuminate midnight gatherings of storytellers.',
     flyingStyle: 'Celestial helmsmen of the glacial ether, they command the polar zephyrs to perform spiraling ascents through frost gales, unleashing cryo-projectiles that encase FUD in eternal ice.',
@@ -167,6 +174,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Kit Fox',
     rarity: 'Rarest',
     count: 7,
+    nftTokenIds: [28, 29, 30, 31, 32, 33, 34],
     backstory: 'Upon the fog-enshrouded isles of the BasedAI archipelago, where seas of code crash against coasts of enigma and the surges murmur conundrums of the profound, the Mindwarp Strategists safeguard the lore of the forsaken Brains. This enigmatic sage disentangles enigmas that unveil concealed $BASED treasuries, conserving the wisdom of misplaced validators and miners.',
     whatTheyLike: 'Crafting labyrinths of seashells and star maps, challenging fellow Guardians to solve them over feasts of luminous fruits and tidal songs.',
     flyingStyle: 'Mind-twisting strategists of the isle winds, they spiral through channels with perplexing maneuvers, deploying illusion fields that warp FUD perceptions and turn enemies against each other in confusion.',
@@ -183,6 +191,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     foxType: 'Tibetan Sand Flare Fox',
     rarity: 'Rarest',
     count: 6,
+    nftTokenIds: [35, 36, 37, 38, 39, 40],
     backstory: 'These bold captains charge into ground battles, leading the Guardians to crush FUD strongholds on the Brain-Planets\' surfaces. Commander Ryn, with a scarred muzzle and a wild grin, leads his forces with an axe that has cleaved through a thousand FUD spawns. Their leadership secures the $BASED mining zones.',
     whatTheyLike: 'Hosting rowdy table game tournaments at the Flare Game station, outwitting rivals with cosmic flair while exchanging tales of legendary ground assaults.',
     flyingStyle: 'They don\'t fly—they crash. The Ironmarsh Captains prefer drop pods that thunder into enemy positions, unleashing devastating ground forces that overwhelm FUD defenses through sheer ferocity.',
@@ -198,6 +207,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     title: 'Beast Masters & Creature Tamers',
     rarity: 'Rare',
     count: 342,
+    nftTokenIds: [1777, 1778, 1779, 1780, 1781],
     backstory: 'The Creature Wrangler Frogs are the legendary beast masters of the Based Universe, riding atop massive bio-engineered Creatures with scales of molten gold. Led by the regal Lirien, a Goldback Shimmer Frog whose voice is calm as starlight, they command the living weapons of BasedAI—dragon-like beings that tear through FUD spawns like paper.',
     whatTheyLike: 'Bonding with their Creature companions in bioluminescent swamps, teaching them new combat maneuvers while sharing telepathic dreams of victory across the stars.',
     flyingStyle: 'They don\'t fly ships—they ride living starships. Their Creatures navigate by instinct through asteroid fields, their riders directing them with subtle mental commands that form an unbreakable bond.',
@@ -213,6 +223,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     title: 'Fleet Pilots & Transport Specialists',
     rarity: 'Common',
     count: 469,
+    nftTokenIds: [2119, 2120, 2121, 2122, 2123],
     backstory: 'The most numerous of the Frog classes, Pilot Class Frogs form the backbone of the Based Universe\'s transportation network. Their amphibious reflexes make them natural pilots, capable of maneuvering through environments that would overwhelm other species. When Talon, the legendary Blazewing Pilot, dove into the Negasphere rescue, he inspired an entire generation.',
     whatTheyLike: 'Racing through nebula clouds at unsafe speeds, competing in underground flight circuits where the winner takes bragging rights and rare $BASED tokens.',
     flyingStyle: 'Quick, adaptive, and unpredictable. They change direction mid-flight with their powerful legs, treating spacecraft like extensions of their own bodies. "That\'s for the miners, you freaks!" is their battle cry.',
@@ -228,6 +239,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     title: 'Neural Link Specialists',
     rarity: 'Uncommon',
     count: 294,
+    nftTokenIds: [2588, 2589, 2590, 2591, 2592],
     backstory: 'These mystical amphibians have evolved the ability to form neural links with any technology they touch. They serve as living interfaces between organic beings and the BasedAI network, translating thought into code at speeds no machine can match.',
     whatTheyLike: 'Meditating in quantum pools where reality becomes fluid, experiencing the dreams of distant Brain-Planets and sharing visions of possible futures.',
     flyingStyle: 'They don\'t pilot—they merge. A Neuro Bond Frog becomes one with their vessel, their nervous system extending into every circuit, making the ship an extension of their very soul.',
@@ -243,6 +255,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     title: 'Living Weapons & Battle Mounts',
     rarity: 'Uncommon',
     count: 227,
+    nftTokenIds: [3097, 3098, 3099, 3100, 3101],
     backstory: 'The Golden Creatures are the most magnificent of the bio-engineered beasts, their scales shimmering with captured starlight that turns to molten fury in battle. Tamed by the Creature Wranglers through BasedAI\'s advanced neural bonding, they serve as both noble steeds and devastating weapons against the FUD.',
     whatTheyLike: 'Basking in solar radiation, which charges their golden scales until they glow like small suns. They purr like thunder when content and breathe plasma when angered.',
     flyingStyle: 'Majestic and terrifying. They soar on wings of living metal that span dozens of meters, leaving trails of golden light that blind pursuing enemies and inspire allied forces.',
@@ -258,6 +271,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     title: 'Psychic Scouts & Infiltrators',
     rarity: 'Uncommon',
     count: 128,
+    nftTokenIds: [3605, 3606, 3607, 3608, 3609],
     backstory: 'These translucent, gelatinous beings can phase through solid matter and read surface thoughts. The FUD fears them more than any other Creature class, for they cannot be hidden from and cannot be stopped by conventional barriers—they simply flow through defenses like water through sand.',
     whatTheyLike: 'Floating through the vacuum of space, absorbing cosmic radiation and sharing memories with each other through gentle, luminescent contact.',
     flyingStyle: 'They don\'t fly—they phase. Appearing and disappearing at will, they move through the galaxy like ghosts, leaving no trace except the lingering sense of being watched.',
