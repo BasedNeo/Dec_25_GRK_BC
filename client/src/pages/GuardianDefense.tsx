@@ -134,10 +134,10 @@ const BATTERY_POSITIONS = [
 ];
 
 const CITY_POSITIONS = [
-  { x: 200, y: GROUND_Y, name: 'ALPHA BASE' },
-  { x: 300, y: GROUND_Y, name: 'BETA OUTPOST' },
-  { x: 500, y: GROUND_Y, name: 'GAMMA STATION' },
-  { x: 600, y: GROUND_Y, name: 'DELTA HQ' },
+  { x: 200, y: GROUND_Y, name: 'NEON JAGUAR LAIR' },
+  { x: 300, y: GROUND_Y, name: 'SERPENT SANCTUM' },
+  { x: 500, y: GROUND_Y, name: 'PHOENIX ROOST' },
+  { x: 600, y: GROUND_Y, name: 'WOLF DEN' },
 ];
 
 const MISSILE_COLORS: Record<MissileColor, string> = {
@@ -159,29 +159,29 @@ const EXPLOSION_LIFETIME = 1.8;
 const RELOAD_TIME = 4000;
 
 const WAVE_CONFIG = [
-  { count: 4, speed: 45, delay: 400, message: "Incoming hostiles detected!" },
-  { count: 6, speed: 50, delay: 350, message: "More missiles inbound!" },
-  { count: 8, speed: 55, delay: 320, message: "The swarm intensifies!" },
-  { count: 10, speed: 60, delay: 300, message: "Heavy resistance ahead!" },
-  { count: 12, speed: 65, delay: 280, message: "They're getting faster!" },
-  { count: 14, speed: 70, delay: 260, message: "Hold the line, Guardian!" },
-  { count: 16, speed: 75, delay: 240, message: "Overwhelming force!" },
-  { count: 18, speed: 80, delay: 220, message: "Final push incoming!" },
-  { count: 20, speed: 85, delay: 200, message: "Armageddon wave!" },
-  { count: 28, speed: 95, delay: 150, message: "⚠️ BOSS WAVE - SURVIVE!" },
+  { count: 4, speed: 45, delay: 400, message: "The creatures sense danger!" },
+  { count: 6, speed: 50, delay: 350, message: "The Jaguar roars in defiance!" },
+  { count: 8, speed: 55, delay: 320, message: "Serpent coils for defense!" },
+  { count: 10, speed: 60, delay: 300, message: "Phoenix flames ignite!" },
+  { count: 12, speed: 65, delay: 280, message: "Wolf pack assembles!" },
+  { count: 14, speed: 70, delay: 260, message: "All creatures UNITE!" },
+  { count: 16, speed: 75, delay: 240, message: "The swarm overwhelms!" },
+  { count: 18, speed: 80, delay: 220, message: "Creatures fight as one!" },
+  { count: 20, speed: 85, delay: 200, message: "The final stand begins!" },
+  { count: 28, speed: 95, delay: 150, message: "⚠️ ALPHA SWARM - DEFEND THE LAIRS!" },
 ];
 
 const WAVE_MESSAGES = [
-  "Brain Planet 77 thanks you, Guardian!",
-  "The Giga Brain Galaxy is proud!",
-  "Outstanding defense, Commander!",
-  "Your shields held strong!",
-  "The installations are secure!",
-  "Based Guardian forces prevail!",
-  "Victory for the Based Protocol!",
-  "Neural defenses optimal!",
-  "Cosmic debris neutralized!",
-  "LEGENDARY DEFENSE COMPLETE!",
+  "The Neon Jaguar purrs with gratitude!",
+  "The Cyber Serpent coils in victory!",
+  "Phoenix rises from the ashes!",
+  "The Wolf howls in triumph!",
+  "All creature lairs are secure!",
+  "The Based Creatures stand strong!",
+  "The sanctuary is defended!",
+  "Creature powers channeled!",
+  "The homeworld is safe!",
+  "LEGENDARY CREATURE COMMANDER!",
 ];
 
 const getDistance = (a: Vector2D, b: Vector2D): number => {
@@ -1162,7 +1162,7 @@ export default function GuardianDefense() {
         <Card className="p-8 bg-black/60 border-cyan-500/30 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-            <p className="text-cyan-400">Loading Guardian Defense...</p>
+            <p className="text-cyan-400">Awakening the Creatures...</p>
           </div>
         </Card>
       </div>
@@ -1182,7 +1182,7 @@ export default function GuardianDefense() {
         personalBest={stats.bestScore}
         extraStats={[
           { icon: Zap, label: 'Wave', value: `${state.wave}/10`, color: 'text-purple-400' },
-          { icon: Shield, label: 'Cities', value: `${state.cities.filter(c => c.active).length}/4`, color: 'text-cyan-400' },
+          { icon: Shield, label: 'Lairs', value: `${state.cities.filter(c => c.active).length}/4`, color: 'text-cyan-400' },
           { icon: Target, label: 'Accuracy', value: `${state.accuracy.shots > 0 ? Math.round((state.accuracy.hits / state.accuracy.shots) * 100) : 0}%`, color: 'text-green-400' },
           { icon: Star, label: 'Chain Bonus', value: state.waveChainBonus, color: 'text-yellow-400' },
         ]}
@@ -1228,14 +1228,14 @@ export default function GuardianDefense() {
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Target className="w-10 h-10 text-cyan-400" />
                 <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 font-orbitron tracking-tight">
-                  GUARDIAN DEFENSE
+                  CREATURE COMMAND
                 </h1>
               </div>
               <p className="text-purple-300 text-sm mb-2 font-mono">
-                BRAIN PLANET 77 • GIGA BRAIN GALAXY
+                BASED CREATURES • LEGENDARY DEFENDERS
               </p>
               <p className="text-gray-400 text-base">
-                Defend the Command Center • Protect the Installations
+                Command the Creatures • Protect the Sacred Lairs
               </p>
             </motion.div>
 
@@ -1295,28 +1295,28 @@ export default function GuardianDefense() {
                 <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 rounded-xl p-5 border border-purple-500/20">
                   <div className="flex items-center gap-2 mb-3">
                     <Info className="w-5 h-5 text-purple-400" />
-                    <h3 className="font-bold text-white text-lg">Mission Briefing</h3>
+                    <h3 className="font-bold text-white text-lg">Creature Commander Briefing</h3>
                   </div>
                   <ul className="space-y-2 text-gray-300 text-sm">
                     <li className="flex items-start gap-2">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span><strong>Tap the sky</strong> to launch anti-missiles at that location</span>
+                      <span><strong>Tap the sky</strong> to unleash creature energy at that location</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Destroy incoming missiles before they hit ground</span>
+                      <span>Intercept the swarm before they reach the sacred ground</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Protect <strong>4 installations</strong> and <strong>3 batteries</strong></span>
+                      <span>Defend <strong>4 creature lairs</strong>: Jaguar, Serpent, Phoenix & Wolf</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Catch missiles in explosions for <strong>chain reaction bonuses</strong>!</span>
+                      <span>Chain creature powers for <strong>devastating combo attacks</strong>!</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Survive <strong>10 waves</strong> to save Brain Planet 77!</span>
+                      <span>Survive <strong>10 waves</strong> to become a Legendary Creature Commander!</span>
                     </li>
                   </ul>
                 </div>
@@ -1428,7 +1428,7 @@ export default function GuardianDefense() {
           score={state.score}
           extraStats={[
             { icon: Zap, label: 'Wave', value: `${state.wave}/10`, color: 'text-purple-400' },
-            { icon: Shield, label: 'Cities', value: `${citiesAlive}/4`, color: 'text-cyan-400' },
+            { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: 'text-cyan-400' },
             { icon: Target, label: 'Missiles', value: totalMissiles, color: 'text-yellow-400' },
           ]}
         />

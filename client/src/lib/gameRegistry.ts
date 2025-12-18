@@ -79,8 +79,8 @@ export interface GameConfig {
 export const GAME_REGISTRY: Record<GameType, GameConfig> = {
   'guardian-defense': {
     id: 'guardian-defense',
-    name: 'Guardian Defense',
-    description: 'Defend Brain Planet 77 in the Giga Brain Galaxy! Classic missile defense with stunning visuals, chain reactions, and 10 waves of alien missiles.',
+    name: 'Creature Command',
+    description: 'Command the legendary Based Creatures to defend their homeworld! Lead the Neon Jaguar, Cyber Serpent, and other mythical guardians against the incoming swarm. Chain creature powers for devastating combos!',
     path: '/guardian-defense',
     icon: Target,
     iconColor: 'text-cyan-400',
