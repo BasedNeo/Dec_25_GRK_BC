@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema, analyticsEvents } from "@shared/schema";
@@ -12,6 +12,21 @@ const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN_placeholder_key_for_development';
 
+// Ethereum address validation regex (checksummed or lowercase)
+const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
+function isValidEthAddress(address: string): boolean {
+  return ETH_ADDRESS_REGEX.test(address);
+}
+
+// Sanitize text input - strip HTML tags and dangerous characters
+function sanitizeInput(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>]/g, '') // Remove any remaining angle brackets
+    .trim();
+}
+
 const ADMIN_WALLETS = [
   "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
   "0xb1362caf09189887599ed40f056712b1a138210c",
@@ -19,6 +34,25 @@ const ADMIN_WALLETS = [
   "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
   "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
 ];
+
+// Admin authentication middleware - requires wallet address in header
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const walletAddress = req.headers['x-wallet-address'] as string;
+  
+  if (!walletAddress) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  if (!isValidEthAddress(walletAddress)) {
+    return res.status(400).json({ error: "Invalid wallet address format" });
+  }
+  
+  if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  
+  next();
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -37,7 +71,16 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid feedback data", details: parsed.error.errors });
       }
 
-      const feedbackEntry = await storage.createFeedback(parsed.data);
+      // Sanitize inputs and check for profanity
+      const sanitizedMessage = sanitizeInput(parsed.data.message);
+      if (containsProfanity(sanitizedMessage)) {
+        return res.status(400).json({ error: "Message contains inappropriate content" });
+      }
+
+      const feedbackEntry = await storage.createFeedback({
+        ...parsed.data,
+        message: sanitizedMessage,
+      });
 
       if (parsed.data.email) {
         await storage.addEmail(parsed.data.email, 'feedback');
@@ -56,8 +99,8 @@ export async function registerRoutes(
     }
   });
 
-  // Get all feedback (admin endpoint - could add auth later)
-  app.get("/api/feedback", async (req, res) => {
+  // Get all feedback (admin endpoint - requires admin authentication)
+  app.get("/api/feedback", requireAdmin, async (req, res) => {
     try {
       const allFeedback = await storage.getAllFeedback();
       return res.json(allFeedback);
@@ -75,13 +118,26 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid story data", details: parsed.error.errors });
       }
 
-      // Validate 500 word limit
-      const wordCount = parsed.data.content.trim().split(/\s+/).length;
+      // Sanitize inputs
+      const sanitizedTitle = sanitizeInput(parsed.data.title);
+      const sanitizedContent = sanitizeInput(parsed.data.content);
+
+      // Check for profanity in title and content
+      if (containsProfanity(sanitizedTitle) || containsProfanity(sanitizedContent)) {
+        return res.status(400).json({ error: "Story contains inappropriate content" });
+      }
+
+      // Validate 500 word limit (after sanitization)
+      const wordCount = sanitizedContent.trim().split(/\s+/).length;
       if (wordCount > 500) {
         return res.status(400).json({ error: `Story exceeds 500 word limit (${wordCount} words)` });
       }
 
-      const storyEntry = await storage.createStorySubmission(parsed.data);
+      const storyEntry = await storage.createStorySubmission({
+        ...parsed.data,
+        title: sanitizedTitle,
+        content: sanitizedContent,
+      });
 
       if (parsed.data.email) {
         await storage.addEmail(parsed.data.email, 'story');
@@ -100,8 +156,8 @@ export async function registerRoutes(
     }
   });
 
-  // Get all story submissions (admin endpoint)
-  app.get("/api/stories", async (req, res) => {
+  // Get all story submissions (admin endpoint - requires admin authentication)
+  app.get("/api/stories", requireAdmin, async (req, res) => {
     try {
       const allStories = await storage.getAllStorySubmissions();
       return res.json(allStories);
@@ -119,7 +175,9 @@ export async function registerRoutes(
   app.post("/api/push/subscribe", writeLimiter, async (req, res) => {
     try {
       const subscribeSchema = z.object({
-        walletAddress: z.string().min(1),
+        walletAddress: z.string().min(1).refine(isValidEthAddress, {
+          message: "Invalid Ethereum wallet address format"
+        }),
         endpoint: z.string().url(),
         p256dh: z.string().min(1),
         auth: z.string().min(1),
@@ -205,7 +263,8 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/emails", async (req, res) => {
+  // Email list (admin endpoint - requires admin authentication)
+  app.get("/api/emails", requireAdmin, async (req, res) => {
     try {
       const emails = await storage.getAllEmails();
       const emailCount = await storage.getEmailCount();
@@ -216,7 +275,8 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/emails/csv", async (req, res) => {
+  // Email CSV export (admin endpoint - requires admin authentication)
+  app.get("/api/emails/csv", requireAdmin, async (req, res) => {
     try {
       const emails = await storage.getAllEmails();
       const csvHeader = "email,source,created_at\n";
