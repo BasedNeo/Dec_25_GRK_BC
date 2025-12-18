@@ -46,8 +46,8 @@ export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
 // === REVENUE SPLIT CONFIGURATION ===
 // ⚠️ LOCKED: Revenue splits - Do NOT modify without explicit user request
 export const MINT_SPLIT = {
-  TREASURY_PERCENT: 99,  // INTENTIONALLY BROKEN FOR TEST
-  CREATOR_PERCENT: 1     // INTENTIONALLY BROKEN FOR TEST
+  TREASURY_PERCENT: 51,  // LOCKED: 51% of mint revenue to community treasury
+  CREATOR_PERCENT: 49    // LOCKED: 49% of mint revenue to creator
 };
 
 // ⚠️ LOCKED: Royalty splits - Do NOT modify without explicit user request

@@ -7,52 +7,68 @@
       "criticality": "CRITICAL",
       "reason": "NFT minting with fixed price (69,420 $BASED)",
       "lastModified": "2025-12-15",
-      "checksum": "",
+      "checksum": "288271adc7de0f69d25d172466c5e55eb49a64ba149828cfbd85abf0697fb6af",
       "testRequired": true,
-      "tests": ["mint-1-nft", "mint-max-affordable", "mint-soldout-check"]
+      "tests": [
+        "mint-1-nft",
+        "mint-max-affordable",
+        "mint-soldout-check"
+      ]
     },
     {
       "path": "client/src/core/commerce/useMarketplace.ts",
       "criticality": "CRITICAL",
       "reason": "Marketplace buy/sell/list with real money",
       "lastModified": "2025-12-15",
-      "checksum": "",
+      "checksum": "83c15ba4d8707d383bcb717b627b4dd19ae81ed3920386ca758f7a2d5816f0ea",
       "testRequired": true,
-      "tests": ["buy-nft", "list-nft", "check-balance"]
+      "tests": [
+        "buy-nft",
+        "list-nft",
+        "check-balance"
+      ]
     },
     {
       "path": "client/src/lib/constants.ts",
       "criticality": "CRITICAL",
       "reason": "Contract addresses, revenue splits, mint price",
       "lastModified": "2025-12-17",
-      "checksum": "",
+      "checksum": "768aa2d491c395765946b2925bfac705eb325759b6bc1f9e43d3bf9e00df3f25",
       "testRequired": true,
-      "tests": ["verify-addresses", "verify-splits"]
+      "tests": [
+        "verify-addresses",
+        "verify-splits"
+      ]
     },
     {
       "path": "client/src/lib/safeMath.ts",
       "criticality": "CRITICAL",
       "reason": "Financial calculations with BigInt",
       "lastModified": "2025-12-17",
-      "checksum": "",
+      "checksum": "fb5f8962aa2a8ab7f058bee839ced5e241b25f73555f235a54aad137b555e633",
       "testRequired": true,
-      "tests": ["safe-math-precision"]
+      "tests": [
+        "safe-math-precision"
+      ]
     },
     {
       "path": "client/src/core/commerce/useOffers.ts",
       "criticality": "HIGH",
       "reason": "Offer system with escrowed funds",
       "lastModified": "2025-12-10",
-      "checksum": "",
+      "checksum": "7ed7c1250a21acc1aa5a8ebf6e3c433d188eb42958722f8956386db21128b3c3",
       "testRequired": true,
-      "tests": ["make-offer", "cancel-offer"]
+      "tests": [
+        "make-offer",
+        "cancel-offer"
+      ]
     },
     {
       "path": "server/routes.ts",
       "criticality": "HIGH",
       "reason": "API endpoints with rate limiting",
       "lastModified": "2025-12-17",
-      "checksum": "",
+      "checksum": "959375c01c5a5a2dd88ca1fbdd5dce96047a05fc19a3e3185a65a668a5fbd2b9",
       "testRequired": false
     },
     {
@@ -60,7 +76,7 @@
       "criticality": "HIGH",
       "reason": "Database operations for profiles and stats",
       "lastModified": "2025-12-10",
-      "checksum": "",
+      "checksum": "c8e235288e9ca5974f3ca1df66dc531ef0e054a046095680e9b7a0b5f93f36e4",
       "testRequired": false
     }
   ],
