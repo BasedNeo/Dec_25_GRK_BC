@@ -155,22 +155,22 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
 
-export const votes = pgTable("votes", {
+export const proposalVotes = pgTable("proposal_votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   proposalId: varchar("proposal_id").notNull(),
-  voter: varchar("voter", { length: 100 }).notNull(),
-  vote: varchar("vote", { length: 10 }).notNull(),
+  walletAddress: text("wallet_address").notNull(),
+  selectedOption: varchar("selected_option", { length: 20 }).notNull(),
   votingPower: integer("voting_power").notNull().default(1),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertVoteSchema = createInsertSchema(votes).omit({
+export const insertVoteSchema = createInsertSchema(proposalVotes).omit({
   id: true,
-  timestamp: true,
+  createdAt: true,
 });
 
 export type InsertVote = z.infer<typeof insertVoteSchema>;
-export type Vote = typeof votes.$inferSelect;
+export type Vote = typeof proposalVotes.$inferSelect;
 
 export const gameScores = pgTable("game_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

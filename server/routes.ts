@@ -376,57 +376,12 @@ export async function registerRoutes(
     return ADMIN_WALLETS.includes(wallet.toLowerCase());
   };
 
-  app.post("/api/proposals", writeLimiter, async (req, res) => {
-    try {
-      const schema = z.object({
-        title: z.string().min(5).max(200),
-        description: z.string().min(10).max(2000),
-        proposer: z.string().min(10),
-        endDate: z.string(),
-        category: z.string().max(50).optional(),
-        requiredQuorum: z.number().min(1).max(100).optional(),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid proposal data", details: parsed.error.errors });
-      }
-
-      if (!isAdminWallet(parsed.data.proposer)) {
-        return res.status(403).json({ error: "Only admins can create proposals" });
-      }
-
-      const proposal = await storage.createProposal({
-        title: parsed.data.title,
-        description: parsed.data.description,
-        proposer: parsed.data.proposer,
-        endDate: new Date(parsed.data.endDate),
-        category: parsed.data.category,
-        requiredQuorum: parsed.data.requiredQuorum,
-      });
-
-      console.log(`[Proposal] Created proposal: ${proposal.id} by ${parsed.data.proposer}`);
-      return res.status(201).json({ success: true, proposal });
-    } catch (error) {
-      console.error("[Proposal] Error creating proposal:", error);
-      return res.status(500).json({ error: "Failed to create proposal" });
-    }
-  });
-
   app.get("/api/proposals", async (req, res) => {
     try {
-      const status = req.query.status as string;
-      let proposalsList;
-      
-      if (status === 'active') {
-        proposalsList = await storage.getActiveProposals();
-      } else {
-        proposalsList = await storage.getAllProposals();
-      }
-      
-      return res.json(proposalsList);
+      const proposals = await storage.getActiveProposals();
+      return res.json(proposals);
     } catch (error) {
-      console.error("[Proposal] Error fetching proposals:", error);
+      console.error("[Proposals] Error fetching:", error);
       return res.status(500).json({ error: "Failed to fetch proposals" });
     }
   });
@@ -437,102 +392,129 @@ export async function registerRoutes(
       if (!proposal) {
         return res.status(404).json({ error: "Proposal not found" });
       }
-      
-      const votes = await storage.getProposalVotes(req.params.id);
-      return res.json({ ...proposal, votesList: votes });
+      return res.json(proposal);
     } catch (error) {
-      console.error("[Proposal] Error fetching proposal:", error);
+      console.error("[Proposals] Error fetching proposal:", error);
       return res.status(500).json({ error: "Failed to fetch proposal" });
+    }
+  });
+
+  app.post("/api/proposals", writeLimiter, async (req, res) => {
+    try {
+      const { title, description, proposer, durationDays, category, requiredQuorum } = req.body;
+      
+      if (!ADMIN_WALLETS.includes(proposer?.toLowerCase())) {
+        return res.status(403).json({ error: "Only admins can create proposals" });
+      }
+
+      if (!title || title.length < 10) {
+        return res.status(400).json({ error: "Title must be at least 10 characters" });
+      }
+
+      if (!description || description.length < 50) {
+        return res.status(400).json({ error: "Description must be at least 50 characters" });
+      }
+
+      if (!durationDays || durationDays < 1 || durationDays > 30) {
+        return res.status(400).json({ error: "Duration must be between 1 and 30 days" });
+      }
+
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + durationDays);
+
+      const proposal = await storage.createProposal({
+        title,
+        description,
+        proposer,
+        endDate,
+        category: category || 'general',
+        requiredQuorum: requiredQuorum || 10,
+      });
+
+      console.log(`[Proposals] Created new proposal #${proposal.id} by ${proposer}`);
+      return res.json({ success: true, proposal });
+    } catch (error) {
+      console.error("[Proposals] Error creating:", error);
+      return res.status(500).json({ error: "Failed to create proposal" });
     }
   });
 
   app.delete("/api/proposals/:id", writeLimiter, async (req, res) => {
     try {
-      const walletAddress = req.query.wallet as string;
-      
-      if (!isAdminWallet(walletAddress)) {
+      const { walletAddress, confirmations } = req.body;
+
+      if (!ADMIN_WALLETS.includes(walletAddress?.toLowerCase())) {
         return res.status(403).json({ error: "Only admins can delete proposals" });
       }
 
-      const deleted = await storage.deleteProposal(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Proposal not found" });
+      if (confirmations !== 3) {
+        return res.status(400).json({ error: "Must confirm deletion 3 times" });
       }
-      
-      console.log(`[Proposal] Deleted proposal ${req.params.id}`);
+
+      const success = await storage.deleteProposal(req.params.id);
+      if (!success) {
+        return res.status(500).json({ error: "Failed to delete proposal" });
+      }
+
+      console.log(`[Proposals] Deleted proposal #${req.params.id} by ${walletAddress}`);
       return res.json({ success: true });
     } catch (error) {
-      console.error("[Proposal] Error deleting proposal:", error);
+      console.error("[Proposals] Error deleting:", error);
       return res.status(500).json({ error: "Failed to delete proposal" });
     }
   });
 
   app.post("/api/proposals/:id/vote", writeLimiter, async (req, res) => {
     try {
-      const schema = z.object({
-        voter: z.string().min(10),
-        vote: z.enum(['for', 'against']),
-        votingPower: z.number().min(1).default(1),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid vote data" });
+      const proposalId = req.params.id;
+      const { voter, vote, votingPower } = req.body;
+
+      if (!voter || !vote) {
+        return res.status(400).json({ error: "Missing voter or vote" });
       }
 
-      const proposal = await storage.getProposalById(req.params.id);
+      if (vote !== 'for' && vote !== 'against') {
+        return res.status(400).json({ error: "Vote must be 'for' or 'against'" });
+      }
+
+      const proposal = await storage.getProposalById(proposalId);
       if (!proposal) {
         return res.status(404).json({ error: "Proposal not found" });
       }
+
       if (proposal.status !== 'active') {
-        return res.status(400).json({ error: "Voting is not active for this proposal" });
+        return res.status(400).json({ error: "Proposal is not active" });
       }
-      if (new Date() > proposal.endDate) {
+
+      if (new Date() > new Date(proposal.endDate)) {
         return res.status(400).json({ error: "Voting period has ended" });
       }
 
-      const success = await storage.castVote(
-        req.params.id,
-        parsed.data.voter,
-        parsed.data.vote,
-        parsed.data.votingPower
-      );
-
+      const nftBalance = votingPower || 1;
+      
+      const success = await storage.castVote(proposalId, voter, vote, nftBalance);
       if (!success) {
         return res.status(500).json({ error: "Failed to cast vote" });
       }
 
+      console.log(`[Proposals] ${voter} voted ${vote} on proposal #${proposalId}`);
       return res.json({ success: true });
     } catch (error) {
-      console.error("[Proposal] Error casting vote:", error);
+      console.error("[Proposals] Error voting:", error);
       return res.status(500).json({ error: "Failed to cast vote" });
     }
   });
 
-  app.get("/api/proposals/:id/votes", async (req, res) => {
+  app.get("/api/proposals/:id/vote/:voter", async (req, res) => {
     try {
-      const proposal = await storage.getProposalById(req.params.id);
-      if (!proposal) {
-        return res.status(404).json({ error: "Proposal not found" });
-      }
-      
-      const votes = await storage.getProposalVotes(req.params.id);
-      const walletAddress = req.query.wallet as string;
-      
-      let userVote = null;
-      if (walletAddress) {
-        userVote = await storage.getUserVote(req.params.id, walletAddress);
-      }
-      
-      return res.json({ 
-        votesFor: proposal.votesFor,
-        votesAgainst: proposal.votesAgainst,
-        votes,
-        userVote 
-      });
+      const proposalId = req.params.id;
+      const voter = req.params.voter;
+
+      const vote = await storage.getUserVote(proposalId, voter);
+      return res.json({ vote });
     } catch (error) {
-      console.error("[Proposal] Error fetching votes:", error);
-      return res.status(500).json({ error: "Failed to fetch votes" });
+      console.error("[Proposals] Error fetching user vote:", error);
+      return res.status(500).json({ error: "Failed to fetch vote" });
     }
   });
 

@@ -3,36 +3,27 @@ import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
 import { PROPOSAL_CREATOR_WALLETS } from '@/lib/constants';
 
-export interface OffchainProposal {
+export interface Proposal {
   id: string;
   title: string;
   description: string;
-  category: string;
-  optionA: string;
-  optionB: string;
-  optionC: string | null;
-  optionD: string | null;
-  status: 'review' | 'active' | 'closed';
-  createdBy: string;
-  expirationDays: number;
+  proposer: string;
+  status: string;
+  votesFor: number;
+  votesAgainst: number;
+  startDate: string;
+  endDate: string;
+  category: string | null;
+  requiredQuorum: number | null;
   createdAt: string;
-  publishedAt: string | null;
-  votes?: { option: string; votes: number; power: number }[];
+  updatedAt: string;
 }
 
-export interface VoteTally {
-  option: string;
-  votes: number;
-  power: number;
-}
-
-export function useProposals(status?: string) {
-  const url = status ? `/api/proposals?status=${status}` : '/api/proposals';
-  
-  return useQuery<OffchainProposal[]>({
-    queryKey: ['proposals', status],
+export function useProposals() {
+  return useQuery<Proposal[]>({
+    queryKey: ['proposals'],
     queryFn: async () => {
-      const res = await fetch(url);
+      const res = await fetch('/api/proposals');
       if (!res.ok) throw new Error('Failed to fetch proposals');
       return res.json();
     },
@@ -41,7 +32,7 @@ export function useProposals(status?: string) {
 }
 
 export function useProposalDetail(id: string | undefined) {
-  return useQuery<OffchainProposal & { votes: VoteTally[] }>({
+  return useQuery<Proposal>({
     queryKey: ['proposal', id],
     queryFn: async () => {
       if (!id) throw new Error('No proposal ID');
@@ -54,19 +45,16 @@ export function useProposalDetail(id: string | undefined) {
   });
 }
 
-export function useProposalVotes(proposalId: string | undefined, walletAddress?: string) {
-  return useQuery({
-    queryKey: ['proposalVotes', proposalId, walletAddress],
+export function useUserVote(proposalId: string | undefined, voter: string | undefined) {
+  return useQuery<{ vote: string | null }>({
+    queryKey: ['userVote', proposalId, voter],
     queryFn: async () => {
-      if (!proposalId) throw new Error('No proposal ID');
-      const url = walletAddress 
-        ? `/api/proposals/${proposalId}/votes?wallet=${walletAddress}`
-        : `/api/proposals/${proposalId}/votes`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch votes');
+      if (!proposalId || !voter) throw new Error('Missing params');
+      const res = await fetch(`/api/proposals/${proposalId}/vote/${voter}`);
+      if (!res.ok) throw new Error('Failed to fetch vote');
       return res.json();
     },
-    enabled: !!proposalId,
+    enabled: !!proposalId && !!voter,
     refetchInterval: 10000,
   });
 }
@@ -84,17 +72,14 @@ export function useProposalMutations() {
     mutationFn: async (data: {
       title: string;
       description: string;
-      category: string;
-      optionA: string;
-      optionB: string;
-      optionC?: string | null;
-      optionD?: string | null;
-      expirationDays: number;
+      durationDays: number;
+      category?: string;
+      requiredQuorum?: number;
     }) => {
       const res = await fetch('/api/proposals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, createdBy: address }),
+        body: JSON.stringify({ ...data, proposer: address }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -104,31 +89,7 @@ export function useProposalMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
-      toast({ title: 'Proposal Created', description: 'Your proposal is now in review', className: 'bg-black border-cyan-500 text-cyan-500' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'review' | 'active' | 'closed' }) => {
-      const res = await fetch(`/api/proposals/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, walletAddress: address }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update status');
-      }
-      return res.json();
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['proposal', variables.id] });
-      const msg = variables.status === 'active' ? 'Proposal is now active' : 'Status updated';
-      toast({ title: 'Success', description: msg, className: 'bg-black border-green-500 text-green-500' });
+      toast({ title: 'Proposal Created', description: 'Your proposal is now active', className: 'bg-black border-cyan-500 text-cyan-500' });
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -137,8 +98,10 @@ export function useProposalMutations() {
 
   const deleteProposal = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/proposals/${id}?wallet=${address}`, {
+      const res = await fetch(`/api/proposals/${id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address, confirmations: 3 }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -156,11 +119,11 @@ export function useProposalMutations() {
   });
 
   const castVote = useMutation({
-    mutationFn: async ({ proposalId, selectedOption, votingPower }: { proposalId: string; selectedOption: 'A' | 'B' | 'C' | 'D'; votingPower: number }) => {
+    mutationFn: async ({ proposalId, vote, votingPower }: { proposalId: string; vote: 'for' | 'against'; votingPower: number }) => {
       const res = await fetch(`/api/proposals/${proposalId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address, selectedOption, votingPower }),
+        body: JSON.stringify({ voter: address, vote, votingPower }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -169,8 +132,9 @@ export function useProposalMutations() {
       return res.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['proposalVotes', variables.proposalId] });
+      queryClient.invalidateQueries({ queryKey: ['userVote', variables.proposalId] });
       queryClient.invalidateQueries({ queryKey: ['proposal', variables.proposalId] });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Vote Cast', description: 'Your vote has been recorded', className: 'bg-black border-primary text-primary' });
     },
     onError: (error: Error) => {
@@ -181,7 +145,6 @@ export function useProposalMutations() {
   return {
     isAdmin,
     createProposal,
-    updateStatus,
     deleteProposal,
     castVote,
   };

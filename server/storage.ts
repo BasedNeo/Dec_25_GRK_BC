@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, votes, gameScores } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne } from "drizzle-orm";
@@ -282,7 +282,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProposal(id: string): Promise<boolean> {
     try {
-      await db.delete(votes).where(eq(votes.proposalId, id));
+      await db.delete(proposalVotes).where(eq(proposalVotes.proposalId, id));
       await db.delete(proposals).where(eq(proposals.id, id));
       return true;
     } catch {
@@ -292,16 +292,16 @@ export class DatabaseStorage implements IStorage {
 
   async castVote(proposalId: string, voter: string, voteType: 'for' | 'against', votingPower: number = 1): Promise<boolean> {
     try {
-      const existingVote = await db.select().from(votes)
-        .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter.toLowerCase())));
+      const existingVote = await db.select().from(proposalVotes)
+        .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.walletAddress, voter.toLowerCase())));
 
       if (existingVote.length > 0) {
-        await db.delete(votes)
-          .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter.toLowerCase())));
+        await db.delete(proposalVotes)
+          .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.walletAddress, voter.toLowerCase())));
         
         const proposal = await this.getProposalById(proposalId);
         if (proposal) {
-          if (existingVote[0].vote === 'for') {
+          if (existingVote[0].selectedOption === 'for') {
             await db.update(proposals).set({ votesFor: proposal.votesFor - existingVote[0].votingPower, updatedAt: new Date() }).where(eq(proposals.id, proposalId));
           } else {
             await db.update(proposals).set({ votesAgainst: proposal.votesAgainst - existingVote[0].votingPower, updatedAt: new Date() }).where(eq(proposals.id, proposalId));
@@ -309,10 +309,10 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      await db.insert(votes).values({
+      await db.insert(proposalVotes).values({
         proposalId,
-        voter: voter.toLowerCase(),
-        vote: voteType,
+        walletAddress: voter.toLowerCase(),
+        selectedOption: voteType,
         votingPower,
       });
 
@@ -333,15 +333,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserVote(proposalId: string, voter: string): Promise<string | null> {
-    const [vote] = await db.select().from(votes)
-      .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter.toLowerCase())));
-    return vote?.vote || null;
+    const [vote] = await db.select().from(proposalVotes)
+      .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.walletAddress, voter.toLowerCase())));
+    return vote?.selectedOption || null;
   }
 
   async getProposalVotes(proposalId: string): Promise<Vote[]> {
-    return db.select().from(votes)
-      .where(eq(votes.proposalId, proposalId))
-      .orderBy(desc(votes.timestamp));
+    return db.select().from(proposalVotes)
+      .where(eq(proposalVotes.proposalId, proposalId))
+      .orderBy(desc(proposalVotes.createdAt));
   }
 
   async submitGameScore(walletAddress: string, score: number, level: number, customName?: string): Promise<GameScore> {
