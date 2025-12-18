@@ -5,6 +5,8 @@ import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from '@/hooks/useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
+import { requestDedup } from '@/lib/requestDeduplicator';
+import { asyncMutex } from '@/lib/asyncMutex';
 
 const NFT_ABI = [
   {
