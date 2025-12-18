@@ -514,19 +514,28 @@ export function useMarketplace() {
     });
   }, [address, checkNetwork, toast, writeContract]);
 
-  const makeOffer = useCallback(async (tokenId: number, offerAmountBased: number, expirationDays: number = 7) => {
-    if (!checkNetwork()) return;
+  const makeOffer = useCallback(async (tokenId: number, offerAmount: string, expirationDays: number = 7) => {
+    if (!checkNetwork() || !address) return;
+
+    const offerWei = SafeMath.parseInput(offerAmount);
+    if (!offerWei || !SafeMath.validate(offerWei).valid || offerWei < SafeMath.toWei('1000')) {
+      toast({ 
+        title: "Offer Too Low", 
+        description: "Minimum offer is 1,000 $BASED", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     setState(prev => ({ ...prev, action: 'offer' }));
-    lastActionRef.current = { action: 'offer', description: `Making offer of ${offerAmountBased.toLocaleString()} $BASED for Guardian #${tokenId}`, retryFn: () => makeOffer(tokenId, offerAmountBased, expirationDays) };
+    const offerFormatted = SafeMath.format(offerWei);
+    lastActionRef.current = { action: 'offer', description: `Making offer of ${offerFormatted} $BASED for Guardian #${tokenId}`, retryFn: () => makeOffer(tokenId, offerAmount, expirationDays) };
 
     toast({
       title: "Make Offer",
-      description: `Offering ${offerAmountBased.toLocaleString()} $BASED for Guardian #${tokenId}...`,
+      description: `Offering ${offerFormatted} $BASED for Guardian #${tokenId}...`,
       className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
     });
-
-    const offerWei = parseEther(String(offerAmountBased));
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
