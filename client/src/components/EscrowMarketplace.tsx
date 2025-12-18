@@ -44,6 +44,7 @@ import { useOffersV3 } from "@/hooks/useOffersV3";
 import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { parseEther } from "viem";
 import { MyOffersPanel } from "./MyOffersPanel";
+import { SafeMath } from "@/lib/safeMath";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
@@ -783,7 +784,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   };
 
   // --- List/Delist NFT Functions ---
-  const handleListNFT = async (tokenId: number, price: number) => {
+  const handleListNFT = async (tokenId: number, price: string) => {
       if (!marketplace.isApproved) {
           toast({
               title: "Approval Required",
@@ -795,7 +796,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       
       try {
           await marketplace.listNFT(tokenId, price);
-          trackEvent('nft_list', 'Marketplace', `Item #${tokenId}`, price);
+          trackEvent('nft_list', 'Marketplace', `Item #${tokenId}`, Number(price));
       } catch {
           // Error handled by marketplace hook
       }
@@ -1530,8 +1531,26 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
     const isRare = ['Rare', 'Epic', 'Legendary'].includes(item.rarity);
     const [showRandomMintWarning, setShowRandomMintWarning] = useState(false);
     const [showListModal, setShowListModal] = useState(false);
-    const [listPrice, setListPrice] = useState<number>(69420);
+    const [listPrice, setListPrice] = useState<string>('69420');
+    const [listPriceError, setListPriceError] = useState<string | null>(null);
     const marketplace = useMarketplace();
+    
+    const handleListingPriceChange = useCallback((value: string) => {
+      const cleaned = value.replace(/[^0-9]/g, '');
+      setListPrice(cleaned);
+      try {
+        const priceWei = SafeMath.parseInput(cleaned);
+        if (!priceWei || priceWei < SafeMath.toWei('1')) {
+          setListPriceError('Minimum price is 1 $BASED');
+        } else if (priceWei > SafeMath.toWei('1000000000')) {
+          setListPriceError('Maximum price is 1B $BASED');
+        } else {
+          setListPriceError(null);
+        }
+      } catch {
+        setListPriceError('Invalid price format');
+      }
+    }, []);
     
     // Use the isMinted prop from item (set in allItems useMemo) or fallback to calculation
     const isMinted = item.isMinted ?? (totalMinted !== undefined && item.id <= totalMinted);
@@ -1819,17 +1838,18 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      value={listPrice || ''} 
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, '').replace(/[^0-9]/g, '');
-                        setListPrice(val ? parseInt(val, 10) : 0);
-                      }}
-                      className="bg-white/5 border-white/10 text-white font-mono text-lg"
+                      value={listPrice} 
+                      onChange={(e) => handleListingPriceChange(e.target.value)}
+                      className={`bg-white/5 border-white/10 text-white font-mono text-lg ${listPriceError ? 'border-red-500' : ''}`}
                       placeholder="69420"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      You'll receive {Math.floor(listPrice * 0.99).toLocaleString()} $BASED after 1% platform fee
-                    </p>
+                    {listPriceError ? (
+                      <p className="text-xs text-red-500">{listPriceError}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        You'll receive {Math.floor(Number(listPrice) * 0.99).toLocaleString()} $BASED after 1% platform fee
+                      </p>
+                    )}
                   </div>
                 </div>
                 
@@ -1838,12 +1858,11 @@ const MarketCard = React.memo(function MarketCard({ item, onBuy, onOffer, onClic
                   <Button 
                     className="bg-green-500 text-black hover:bg-green-400 font-bold"
                     onClick={() => {
-                      const sanitizedPrice = Math.max(1, Math.min(Number(listPrice), 999999999));
-                      if (isNaN(sanitizedPrice)) return;
-                      marketplace.listNFT(item.id, sanitizedPrice);
+                      if (listPriceError) return;
+                      marketplace.listNFT(item.id, listPrice);
                       setShowListModal(false);
                     }}
-                    disabled={listPrice < 1 || listPrice > 999999999 || marketplace.state.isPending}
+                    disabled={!!listPriceError || !listPrice || marketplace.state.isPending}
                   >
                     {marketplace.state.isPending ? 'LISTING...' : 'CONFIRM LISTING'}
                   </Button>
