@@ -125,6 +125,7 @@ Protected folder structure to isolate core commerce and game code:
 - **Multi-language support**: 10 languages with a language selector.
 - **Welcome Back messages**: Rotating messages for returning users.
 - **Matrix Welcome Experience**: Premium typing animation welcome screen for new users and visitors returning after 24+ hours. Features "Wake up, Guardian..." Matrix-style reveal with beta phase messaging, skip functionality, and reduced-motion accessibility support.
+- **In-App Notification Center**: Privacy-focused notification system using localStorage (no browser push notifications). Supports price alerts (configurable threshold 1-20%), new listings, sales, governance proposals, and game events. Features NotificationBell with unread count badge, NotificationDrawer with tabs (All/Unread/Types), per-wallet preferences, and mark-as-read functionality. Maximum 100 notifications per wallet with automatic oldest-first trimming.
 
 ## External Dependencies
 
