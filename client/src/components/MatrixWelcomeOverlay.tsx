@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MatrixWelcomeOverlayProps {
@@ -16,15 +16,23 @@ const GREETING_OPTIONS = [
 
 const GREETING_INDEX_KEY = 'guardian_greeting_index';
 
-function getNextGreeting(): string {
+function getNextGreetingIndex(): number {
+  if (typeof window === 'undefined') return 0;
   try {
     const storedIndex = localStorage.getItem(GREETING_INDEX_KEY);
     const lastIndex = storedIndex ? parseInt(storedIndex, 10) : -1;
-    const nextIndex = (lastIndex + 1) % GREETING_OPTIONS.length;
-    localStorage.setItem(GREETING_INDEX_KEY, nextIndex.toString());
-    return GREETING_OPTIONS[nextIndex];
+    if (isNaN(lastIndex)) return 0;
+    return (lastIndex + 1) % GREETING_OPTIONS.length;
   } catch {
-    return GREETING_OPTIONS[0];
+    return 0;
+  }
+}
+
+function saveGreetingIndex(index: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(GREETING_INDEX_KEY, index.toString());
+  } catch {
   }
 }
 
@@ -39,8 +47,16 @@ export function MatrixWelcomeOverlay({
   const [showCursor, setShowCursor] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
-
-  const greeting = useMemo(() => getNextGreeting(), []);
+  
+  const greetingIndexRef = useRef<number | null>(null);
+  
+  const greeting = useMemo(() => {
+    if (greetingIndexRef.current === null) {
+      greetingIndexRef.current = getNextGreetingIndex();
+      saveGreetingIndex(greetingIndexRef.current);
+    }
+    return GREETING_OPTIONS[greetingIndexRef.current];
+  }, []);
 
   const lines = useMemo(() => {
     if (isFirstVisit) {

@@ -51,27 +51,28 @@ export function useLoreProgress() {
   }, []);
   
   const progress: LoreProgress = useMemo(() => {
-    const totalCharacters = LORE_CHARACTERS.length;
-    const totalLocations = LORE_LOCATIONS.length;
-    const totalEvents = LORE_EVENTS.length;
-    const totalSecrets = LORE_CHARACTERS.length + LORE_LOCATIONS.length;
+    const totalCharacters = LORE_CHARACTERS?.length || 0;
+    const totalLocations = LORE_LOCATIONS?.length || 0;
+    const totalEvents = LORE_EVENTS?.length || 0;
+    const totalSecrets = totalCharacters + totalLocations;
     
     const discovered = 
-      discoveries.characters.length + 
-      discoveries.locations.length + 
-      discoveries.events.length + 
-      discoveries.secrets.length;
+      (discoveries.characters?.length || 0) + 
+      (discoveries.locations?.length || 0) + 
+      (discoveries.events?.length || 0) + 
+      (discoveries.secrets?.length || 0);
     
     const total = totalCharacters + totalLocations + totalEvents + totalSecrets;
+    const percentage = total > 0 ? Math.round((discovered / total) * 100) : 0;
     
     return {
       discovered,
       total,
-      percentage: Math.round((discovered / total) * 100),
-      characters: { discovered: discoveries.characters.length, total: totalCharacters },
-      locations: { discovered: discoveries.locations.length, total: totalLocations },
-      events: { discovered: discoveries.events.length, total: totalEvents },
-      secrets: { discovered: discoveries.secrets.length, total: totalSecrets },
+      percentage,
+      characters: { discovered: discoveries.characters?.length || 0, total: totalCharacters },
+      locations: { discovered: discoveries.locations?.length || 0, total: totalLocations },
+      events: { discovered: discoveries.events?.length || 0, total: totalEvents },
+      secrets: { discovered: discoveries.secrets?.length || 0, total: totalSecrets },
     };
   }, [discoveries]);
   
@@ -91,26 +92,27 @@ export function useLoreProgress() {
 
 export function getLoreProgressStatic(): LoreProgress {
   const discoveries = getStoredDiscoveries();
-  const totalCharacters = LORE_CHARACTERS.length;
-  const totalLocations = LORE_LOCATIONS.length;
-  const totalEvents = LORE_EVENTS.length;
-  const totalSecrets = LORE_CHARACTERS.length + LORE_LOCATIONS.length;
+  const totalCharacters = LORE_CHARACTERS?.length || 0;
+  const totalLocations = LORE_LOCATIONS?.length || 0;
+  const totalEvents = LORE_EVENTS?.length || 0;
+  const totalSecrets = totalCharacters + totalLocations;
   
   const discovered = 
-    discoveries.characters.length + 
-    discoveries.locations.length + 
-    discoveries.events.length + 
-    discoveries.secrets.length;
+    (discoveries.characters?.length || 0) + 
+    (discoveries.locations?.length || 0) + 
+    (discoveries.events?.length || 0) + 
+    (discoveries.secrets?.length || 0);
   
   const total = totalCharacters + totalLocations + totalEvents + totalSecrets;
+  const percentage = total > 0 ? Math.round((discovered / total) * 100) : 0;
   
   return {
     discovered,
     total,
-    percentage: Math.round((discovered / total) * 100),
-    characters: { discovered: discoveries.characters.length, total: totalCharacters },
-    locations: { discovered: discoveries.locations.length, total: totalLocations },
-    events: { discovered: discoveries.events.length, total: totalEvents },
-    secrets: { discovered: discoveries.secrets.length, total: totalSecrets },
+    percentage,
+    characters: { discovered: discoveries.characters?.length || 0, total: totalCharacters },
+    locations: { discovered: discoveries.locations?.length || 0, total: totalLocations },
+    events: { discovered: discoveries.events?.length || 0, total: totalEvents },
+    secrets: { discovered: discoveries.secrets?.length || 0, total: totalSecrets },
   };
 }

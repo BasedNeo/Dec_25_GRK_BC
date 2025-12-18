@@ -179,7 +179,15 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
             return (
               <motion.button
                 key={item.id}
-                onClick={() => !isDisabled && (item.isRoute ? setLocation(item.route!) : onNavigate(item.id))}
+                onClick={(e) => {
+                  if (isDisabled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  item.isRoute ? setLocation(item.route!) : onNavigate(item.id);
+                }}
+                aria-disabled={isDisabled}
                 className={`w-full group relative ${isDisabled ? 'cursor-not-allowed' : ''}`}
                 initial={{ x: -60, opacity: 0 }}
                 animate={{ x: 0, opacity: isDisabled ? 0.5 : 1 }}
