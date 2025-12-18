@@ -225,7 +225,7 @@ function GameStatsSection() {
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
                   <Gamepad2 className="w-5 h-5 text-cyan-400" />
                 </div>
-                <h3 className="font-orbitron font-bold text-white">Guardian Defender Stats</h3>
+                <h3 className="font-orbitron font-bold text-white">Retro Defender Stats</h3>
               </div>
               <Link href="/game">
                 <Button size="sm" variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10" data-testid="button-play-minigame">
@@ -265,7 +265,7 @@ function GameStatsSection() {
               <div className="text-center py-6">
                 <Gamepad2 className="w-12 h-12 text-white/20 mx-auto mb-3" />
                 <p className="text-white/40 text-sm mb-2">No game stats yet</p>
-                <p className="text-white/30 text-xs mb-4">Play Guardian Defender to start tracking your scores!</p>
+                <p className="text-white/30 text-xs mb-4">Play Retro Defender to start tracking your scores!</p>
                 <Link href="/game">
                   <Button size="sm" className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30">
                     <Rocket className="w-4 h-4 mr-1" />

@@ -64,7 +64,7 @@
     "votingDesc": "Participate in governance",
     "activityLabel": "Activity",
     "activityDesc": "Live transaction feed",
-    "gameLabel": "Guardian Defender",
+    "gameLabel": "Retro Defender",
     "gameDesc": "The Based Odyssey arcade"
   },
   "marketplace": {
@@ -166,7 +166,7 @@
     "loginStreak": "Login Streak"
   },
   "game": {
-    "title": "Guardian Defender",
+    "title": "Retro Defender",
     "play": "Play Now",
     "score": "Score",
     "highScore": "High Score",

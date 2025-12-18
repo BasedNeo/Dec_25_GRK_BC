@@ -62,7 +62,7 @@ export function RaceToBaseLeaderboard() {
               RACE-TO-BASE
               <Trophy className="w-4 h-4 text-yellow-400" />
             </h3>
-            <p className="text-xs text-muted-foreground">Guardian Defender Minigame Leaderboard</p>
+            <p className="text-xs text-muted-foreground">Retro Defender Minigame Leaderboard</p>
           </div>
         </div>
         <Link href="/game">
@@ -155,7 +155,7 @@ export function RaceToBaseLeaderboard() {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Gamepad2 className="w-12 h-12 text-white/20 mb-3" />
               <p className="text-white/40 text-sm mb-2">No scores yet!</p>
-              <p className="text-white/30 text-xs">Be the first to play Guardian Defender</p>
+              <p className="text-white/30 text-xs">Be the first to play Retro Defender</p>
               <Link href="/game">
                 <Button size="sm" className="mt-4 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30">
                   <Rocket className="w-4 h-4 mr-1" />
