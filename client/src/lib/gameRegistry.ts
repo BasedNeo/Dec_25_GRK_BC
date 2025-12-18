@@ -132,27 +132,27 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
   
   'space-defender': {
     id: 'space-defender',
-    name: 'Space Defender',
-    description: 'Defend the Guardian galaxy from alien invaders. Coming soon!',
-    path: '/space-defender',
+    name: 'Retro Defender',
+    description: 'Defend the Based Galaxy from alien invaders! Classic arcade shooter with waves, power-ups, and lunar lander bonus stages.',
+    path: '/game',
     icon: Shield,
     iconColor: 'text-purple-400',
-    thumbnailGradient: 'from-purple-500 to-pink-600',
+    thumbnailGradient: 'from-purple-500 to-cyan-600',
     category: 'action',
-    difficulty: 'hard',
+    difficulty: 'medium',
     averagePlayTime: 180,
     maxPlaysPerDay: 10,
-    enabled: false, // Not yet implemented
+    enabled: true,
     scoring: {
-      maxScore: 50000,
-      goodScore: 10000,
-      greatScore: 18000,
-      legendaryScore: 32000,
+      maxScore: 100000,
+      goodScore: 5000,
+      greatScore: 15000,
+      legendaryScore: 50000,
     },
     features: {
       hasTimer: false,
       hasLives: true,
-      hasCombo: true,
+      hasCombo: false,
     },
   },
 };
