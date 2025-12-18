@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAccount } from 'wagmi';
@@ -13,10 +14,74 @@ import {
   FireIcon, GamepadIcon, LoadingIcon, LevelIcon, ScoreIcon, StarIcon 
 } from '@/game/components/GameIcons';
 import { Navbar } from '@/components/Navbar';
-import { Home } from 'lucide-react';
+import { Home, Shield } from 'lucide-react';
 import { useLocation } from 'wouter';
 import rocketShip from '@assets/Untitled.png';
 import { useFeatureFlags } from '@/lib/featureFlags';
+
+const LoadingScreen = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex items-center justify-center z-50"
+  >
+    <div className="text-center">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        className="w-20 h-20 mx-auto mb-6"
+      >
+        <Shield className="w-full h-full text-cyan-400" />
+      </motion.div>
+      <motion.h2
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="text-2xl font-bold text-cyan-400 font-orbitron"
+      >
+        LOADING GAME...
+      </motion.h2>
+      <div className="mt-4 flex gap-2 justify-center">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+            className="w-2 h-2 bg-cyan-400 rounded-full"
+          />
+        ))}
+      </div>
+    </div>
+  </motion.div>
+);
+
+const AnimatedScore = ({ value }: { value: number }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  
+  useEffect(() => {
+    if (value === displayValue) return;
+    const duration = 500;
+    const steps = 20;
+    const stepValue = (value - displayValue) / steps;
+    const stepDuration = duration / steps;
+    
+    let currentStep = 0;
+    const startValue = displayValue;
+    const interval = setInterval(() => {
+      if (currentStep >= steps) {
+        setDisplayValue(value);
+        clearInterval(interval);
+      } else {
+        setDisplayValue(Math.round(startValue + stepValue * currentStep));
+        currentStep++;
+      }
+    }, stepDuration);
+    
+    return () => clearInterval(interval);
+  }, [value]);
+  
+  return <span>{displayValue.toLocaleString()}</span>;
+};
 
 export function GuardianDefender() {
   const [, setLocation] = useLocation();
@@ -30,7 +95,14 @@ export function GuardianDefender() {
   const [displayLevel, setDisplayLevel] = useState(1);
   const [showLanderControls, setShowLanderControls] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
+  const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
+  const [gameLoading, setGameLoading] = useState(true);
   const { flags } = useFeatureFlags();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setGameLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!flags.gameEnabled) {
     return (
@@ -198,8 +270,25 @@ export function GuardianDefender() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020]">
-      <Navbar activeTab="game" onTabChange={() => setLocation('/')} isConnected={isConnected} />
+    <>
+      <AnimatePresence mode="wait">
+        {gameLoading && <LoadingScreen />}
+      </AnimatePresence>
+      <motion.div 
+        key="game-screen"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020]"
+        style={{ transform: `translate(${screenShake.x}px, ${screenShake.y}px)` }}
+      >
+        <div className="absolute top-4 left-4 z-20">
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
+            <Shield className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-cyan-400 font-orbitron">GUARDIAN</span>
+          </div>
+        </div>
+        <Navbar activeTab="game" onTabChange={() => setLocation('/')} isConnected={isConnected} />
       
       <div className="py-6 px-4">
         <div className="max-w-md mx-auto mb-4">
@@ -228,7 +317,7 @@ export function GuardianDefender() {
               <div className="flex items-center gap-4 text-xs font-mono">
                 <div className="flex items-center gap-1">
                   <ScoreIcon size={14} />
-                  <span className="text-cyan-400" data-testid="text-game-score">{displayScore.toLocaleString()}</span>
+                  <span className="text-cyan-400" data-testid="text-game-score"><AnimatedScore value={displayScore} /></span>
                 </div>
                 <div className="flex items-center gap-1">
                   <LevelIcon size={14} />
@@ -287,7 +376,11 @@ export function GuardianDefender() {
                   )}
                 </div>
               ) : (
-                <div className="relative inline-block group">
+                <motion.div 
+                  className="relative inline-block"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Button 
                     onClick={() => setPhase('menu')} 
                     className="relative bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold px-8 py-3 rounded-xl border-0"
@@ -295,7 +388,7 @@ export function GuardianDefender() {
                   >
                     <PlayIcon size={20} className="mr-2" /> ENTER HANGAR
                   </Button>
-                </div>
+                </motion.div>
               )}
               
               <p className="text-gray-600 text-xs mt-4 font-mono">
@@ -589,8 +682,9 @@ export function GuardianDefender() {
           </div>
         </Card>
       )}
-      </div>
-    </div>
+        </div>
+      </motion.div>
+    </>
   );
 }
 

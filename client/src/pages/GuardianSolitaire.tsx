@@ -1073,6 +1073,12 @@ export default function GuardianSolitaire() {
   if (!gameStarted) {
     return (
       <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-hidden">
+        <div className="absolute top-4 left-4 z-20">
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
+            <Shield className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-cyan-400 font-orbitron">GUARDIAN</span>
+          </div>
+        </div>
         <style>{`
           @keyframes gradient-shift {
             0%, 100% { background-position: 0% center; }
