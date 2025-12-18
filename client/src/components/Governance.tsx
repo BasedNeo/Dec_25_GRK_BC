@@ -8,79 +8,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { 
-  Vote, Plus, Clock, CheckCircle2, XCircle, Users, Zap, 
-  Loader2, AlertCircle, Shield, Trash2, ThumbsUp, ThumbsDown
+  Vote, Plus, Clock, CheckCircle2, Users, Zap, 
+  AlertCircle, Shield, Trash2, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useToast } from '@/hooks/use-toast';
-import { useRateLimit } from '@/hooks/useRateLimit';
-import { Security } from '@/lib/security';
 import { useGovernance } from '@/hooks/useGovernance';
 import { useProposals, useUserVote, useProposalMutations, Proposal } from '@/hooks/useProposals';
-
-const CATEGORIES = ['Community', 'Treasury', 'Roadmap', 'Partnership', 'General'];
+import { CreateProposalModal } from './CreateProposalModal';
 
 export function Governance() {
   const { toast } = useToast();
   const { openConnectModal } = useConnectModal();
   const governance = useGovernance();
-  const { checkRateLimit } = useRateLimit({ minInterval: 3000, message: 'Please wait before submitting again' });
-  const { isAdmin, createProposal, deleteProposal, castVote } = useProposalMutations();
+  const { isAdmin, deleteProposal } = useProposalMutations();
   
   const { data: proposals, isLoading: loadingProposals } = useProposals();
   
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
-  
-  const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState('General');
-  const [newDescription, setNewDescription] = useState('');
-  const [newDurationDays, setNewDurationDays] = useState('7');
-  const [newQuorum, setNewQuorum] = useState('10');
-  
   const [deleteConfirmState, setDeleteConfirmState] = useState<{ id: string; step: number } | null>(null);
-
-  const handleCreateProposal = async () => {
-    if (!checkRateLimit()) return;
-    
-    const titleValidation = Security.validateProposalTitle(newTitle);
-    if (!titleValidation.valid) {
-      toast({ title: 'Invalid Title', description: titleValidation.error, variant: 'destructive' });
-      return;
-    }
-    
-    const descValidation = Security.validateProposalDescription(newDescription);
-    if (!descValidation.valid) {
-      toast({ title: 'Invalid Description', description: descValidation.error, variant: 'destructive' });
-      return;
-    }
-    
-    const sanitizedTitle = Security.sanitizeProposalInput(newTitle);
-    const sanitizedDesc = Security.sanitizeProposalInput(newDescription);
-    
-    createProposal.mutate({
-      title: sanitizedTitle,
-      description: sanitizedDesc,
-      category: newCategory,
-      durationDays: parseInt(newDurationDays),
-      requiredQuorum: parseInt(newQuorum),
-    }, {
-      onSuccess: () => {
-        setNewTitle('');
-        setNewDescription('');
-        setNewDurationDays('7');
-        setNewQuorum('10');
-        setShowCreateForm(false);
-      }
-    });
-  };
 
   const handleDeleteClick = (id: string) => {
     if (!deleteConfirmState || deleteConfirmState.id !== id) {
@@ -163,7 +112,7 @@ export function Governance() {
             {isAdmin && (
               <div className="mb-8">
                 <Button 
-                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  onClick={() => setShowCreateModal(true)}
                   className="bg-cyan-500 text-white hover:bg-cyan-400 font-orbitron shadow-[0_0_15px_rgba(0,255,255,0.5)]"
                   data-testid="create-proposal-btn"
                 >
@@ -173,111 +122,11 @@ export function Governance() {
               </div>
             )}
 
-            <AnimatePresence>
-              {showCreateForm && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden mb-8"
-                >
-                  <Card className="p-6 bg-white/5 border-white/10 space-y-4">
-                    <h3 className="text-lg font-bold text-white font-orbitron flex items-center gap-2">
-                      <Plus className="w-5 h-5 text-cyan-400" />
-                      New Proposal
-                    </h3>
-                    <p className="text-xs text-muted-foreground -mt-2">
-                      Create a binary (For/Against) proposal for the community to vote on.
-                    </p>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">TITLE (min 10 chars)</Label>
-                        <Input 
-                          value={newTitle} 
-                          onChange={(e) => setNewTitle(e.target.value)}
-                          placeholder="Enter proposal title..."
-                          className="bg-black/50 border-white/10 text-base h-12"
-                          data-testid="proposal-title-input"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">CATEGORY</Label>
-                        <Select value={newCategory} onValueChange={setNewCategory}>
-                          <SelectTrigger className="bg-black/50 border-white/10 h-12" data-testid="proposal-category-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/95 border-white/10">
-                            {CATEGORIES.map(cat => (
-                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground font-mono">DESCRIPTION (min 50 chars)</Label>
-                      <Textarea 
-                        value={newDescription}
-                        onChange={(e) => setNewDescription(e.target.value)}
-                        placeholder="Describe your proposal in detail..."
-                        className="bg-black/50 border-white/10 min-h-[120px] text-base"
-                        data-testid="proposal-description-input"
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">VOTING PERIOD (days)</Label>
-                        <Select value={newDurationDays} onValueChange={setNewDurationDays}>
-                          <SelectTrigger className="bg-black/50 border-white/10 text-white h-12" data-testid="proposal-duration-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/95 border-white/10">
-                            <SelectItem value="3">3 Days</SelectItem>
-                            <SelectItem value="7">7 Days</SelectItem>
-                            <SelectItem value="14">14 Days</SelectItem>
-                            <SelectItem value="21">21 Days</SelectItem>
-                            <SelectItem value="30">30 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground font-mono">QUORUM (%)</Label>
-                        <Select value={newQuorum} onValueChange={setNewQuorum}>
-                          <SelectTrigger className="bg-black/50 border-white/10 text-white h-12" data-testid="proposal-quorum-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/95 border-white/10">
-                            <SelectItem value="5">5%</SelectItem>
-                            <SelectItem value="10">10%</SelectItem>
-                            <SelectItem value="15">15%</SelectItem>
-                            <SelectItem value="20">20%</SelectItem>
-                            <SelectItem value="25">25%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleCreateProposal}
-                        disabled={createProposal.isPending}
-                        className="bg-cyan-500 text-white hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)] h-12"
-                        data-testid="submit-proposal-btn"
-                      >
-                        {createProposal.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Create Proposal
-                      </Button>
-                      <Button variant="outline" onClick={() => setShowCreateForm(false)} className="border-white/20 text-white hover:text-white/80 h-12">
-                        Cancel
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <CreateProposalModal 
+              isOpen={showCreateModal} 
+              onClose={() => setShowCreateModal(false)} 
+              walletAddress={governance.address || ''} 
+            />
 
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
