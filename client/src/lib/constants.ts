@@ -101,10 +101,11 @@ export const GAS_SETTINGS = {
 
 // === CUMULATIVE SALES BASELINE ===
 // ⚠️ LOCKED - Do NOT modify without explicit user request
-// Historical baseline for sales that occurred before the activity feed window
-// The activity feed adds recent on-chain Sold events to this baseline
+// Historical baseline for secondary sales that occurred before our activity feed window
+// Does NOT include mint volume (that's calculated from totalMinted * 69420)
+// Update this periodically by summing all historical Sold events from marketplace
 export const CUMULATIVE_SALES_BASELINE = {
-  volume: 2500000,        // Historical volume in $BASED from marketplace sales
+  volume: 2500000,        // Historical secondary sales volume in $BASED
   asOfBlock: 1000000,
-  lastUpdated: "2024-12-17"
+  lastUpdated: "2025-12-17"
 };
