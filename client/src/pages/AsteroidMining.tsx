@@ -1163,8 +1163,8 @@ export default function AsteroidMining() {
           <Link to="/mint" className="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 text-white rounded-lg font-semibold hover:scale-105 transition">
             Mint a Guardian
           </Link>
-          <Link to="/arcade" className="block mt-4 text-orange-400 hover:text-orange-300">
-            ← Back to Arcade
+          <Link to="/games" className="block mt-4 text-orange-400 hover:text-orange-300">
+            ← Back to Games
           </Link>
         </div>
       </div>

@@ -140,10 +140,14 @@ function Router() {
         <Route path="/creators" component={Creators} />
         <Route path="/saga" component={Saga} />
         <Route path="/game" component={GuardianDefender} />
+        <Route path="/games" component={BasedArcade} />
+        <Route path="/games/guardian-defense" component={GuardianDefense} />
+        <Route path="/games/guardian-solitaire" component={GuardianSolitaire} />
+        <Route path="/games/asteroid-mining" component={AsteroidMining} />
+        <Route path="/arcade" component={BasedArcade} />
         <Route path="/guardian-defense" component={GuardianDefense} />
         <Route path="/guardian-solitaire" component={GuardianSolitaire} />
         <Route path="/asteroid-mining" component={AsteroidMining} />
-        <Route path="/arcade" component={BasedArcade} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
