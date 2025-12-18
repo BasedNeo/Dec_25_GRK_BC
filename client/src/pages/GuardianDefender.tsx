@@ -116,6 +116,8 @@ export function GuardianDefender() {
     return () => cancelAnimationFrame(animId);
   }, [phase, canvasSize, isHolder, submitScore]);
 
+  const landerCheatRef = useRef<{ lastL: number; count: number }>({ lastL: 0, count: 0 });
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = true;
@@ -123,16 +125,26 @@ export function GuardianDefender() {
       if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = true;
       if (e.key === 'ArrowDown' || e.key === 's') inputRef.current.down = true;
       if (e.key === ' ') { inputRef.current.shoot = true; e.preventDefault(); }
-      if (e.key === 'l' || e.key === 'L') {
-        const state = stateRef.current;
-        if (state && state.phase === 'playing') {
-          state.phase = 'lander';
-          state.wave = 4;
-          state.player.pos = { x: canvasSize.width / 2, y: 60 };
-          state.player.vel = { x: 0, y: 0 };
-          state.player.fuel = 100;
-          state.aliens = [];
-          state.bullets = [];
+      if ((e.key === 'l' || e.key === 'L') && e.shiftKey) {
+        const now = Date.now();
+        if (now - landerCheatRef.current.lastL < 500) {
+          landerCheatRef.current.count++;
+        } else {
+          landerCheatRef.current.count = 1;
+        }
+        landerCheatRef.current.lastL = now;
+        if (landerCheatRef.current.count >= 2) {
+          const state = stateRef.current;
+          if (state && state.phase === 'playing') {
+            state.phase = 'lander';
+            state.wave = 4;
+            state.player.pos = { x: canvasSize.width / 2, y: 60 };
+            state.player.vel = { x: 0, y: 0 };
+            state.player.fuel = 100;
+            state.aliens = [];
+            state.bullets = [];
+          }
+          landerCheatRef.current.count = 0;
         }
       }
     };
