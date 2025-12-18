@@ -324,7 +324,7 @@ export function PoolTracker() {
                       {/* From Mints */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                         <span className="text-gray-400">From Mints ({MINT_SPLIT.TREASURY_PERCENT}%)</span>
-                        <span className="text-cyan-400 font-semibold">
+                        <span className="text-cyan-400 font-semibold" data-testid="text-mint-to-treasury">
                           {displayValue(treasuryData.mintToTreasury, 0)} $BASED
                         </span>
                       </div>
@@ -335,7 +335,7 @@ export function PoolTracker() {
                       {/* From Royalties */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                         <span className="text-gray-400">From Royalties (2%)</span>
-                        <span className="text-cyan-400 font-semibold">
+                        <span className="text-cyan-400 font-semibold" data-testid="text-royalty-to-treasury">
                           {displayValue(treasuryData.royaltyToTreasury, 0)} $BASED
                         </span>
                       </div>
@@ -346,7 +346,7 @@ export function PoolTracker() {
                       {/* From Emissions */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                         <span className="text-gray-400">From $BRAIN Emissions</span>
-                        <span className="text-purple-400 font-semibold">
+                        <span className="text-purple-400 font-semibold" data-testid="text-emissions-to-treasury">
                           {displayValue(treasuryData.passiveEmissions, 0)} $BASED
                         </span>
                       </div>
@@ -375,7 +375,7 @@ export function PoolTracker() {
                     </div>
 
                     {/* Total Ecosystem Revenue */}
-                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
+                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6" data-testid="text-total-ecosystem-revenue">
                       {displayValue(treasuryData.totalMintRevenue + treasuryData.totalRoyalties + treasuryData.platformFeeToCreator, 0)} $BASED
                     </div>
 
@@ -385,7 +385,7 @@ export function PoolTracker() {
                       <div>
                         <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                           <span className="text-gray-400">Mint Revenue</span>
-                          <span className="text-purple-400 font-semibold">
+                          <span className="text-purple-400 font-semibold" data-testid="text-total-mint-revenue">
                             {displayValue(treasuryData.totalMintRevenue, 0)} $BASED
                           </span>
                         </div>
@@ -399,7 +399,7 @@ export function PoolTracker() {
                       <div>
                         <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                           <span className="text-gray-400">Royalty Revenue (10%)</span>
-                          <span className="text-purple-400 font-semibold">
+                          <span className="text-purple-400 font-semibold" data-testid="text-total-royalties">
                             {displayValue(treasuryData.totalRoyalties, 0)} $BASED
                           </span>
                         </div>
@@ -414,7 +414,7 @@ export function PoolTracker() {
                       <div>
                         <div className="flex justify-between items-center p-2 bg-black/30 rounded">
                           <span className="text-gray-400">Platform Fee (1%)</span>
-                          <span className="text-purple-400 font-semibold">
+                          <span className="text-purple-400 font-semibold" data-testid="text-platform-fee">
                             {displayValue(treasuryData.platformFeeToCreator, 0)} $BASED
                           </span>
                         </div>
@@ -430,15 +430,15 @@ export function PoolTracker() {
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Treasury:</span>
-                          <span className="text-cyan-400 font-semibold">{displayValue(treasuryData.treasuryTotal, 0)} $BASED</span>
+                          <span className="text-cyan-400 font-semibold" data-testid="text-wallet-treasury-total">{displayValue(treasuryData.treasuryTotal, 0)} $BASED</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Creator:</span>
-                          <span className="text-purple-400 font-semibold">{displayValue(treasuryData.creatorTotal, 0)} $BASED</span>
+                          <span className="text-purple-400 font-semibold" data-testid="text-wallet-creator-total">{displayValue(treasuryData.creatorTotal, 0)} $BASED</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Royalty Wallet:</span>
-                          <span className="text-pink-400 font-semibold">{displayValue(treasuryData.royaltyWalletTotal, 0)} $BASED</span>
+                          <span className="text-pink-400 font-semibold" data-testid="text-wallet-royalty-total">{displayValue(treasuryData.royaltyWalletTotal, 0)} $BASED</span>
                         </div>
                       </div>
                     </div>
