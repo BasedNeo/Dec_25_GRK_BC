@@ -14,8 +14,18 @@ const GREETING_OPTIONS = [
   'Get ready, Guardian...',
 ];
 
-function getRandomGreeting(): string {
-  return GREETING_OPTIONS[Math.floor(Math.random() * GREETING_OPTIONS.length)];
+const GREETING_INDEX_KEY = 'guardian_greeting_index';
+
+function getNextGreeting(): string {
+  try {
+    const storedIndex = localStorage.getItem(GREETING_INDEX_KEY);
+    const lastIndex = storedIndex ? parseInt(storedIndex, 10) : -1;
+    const nextIndex = (lastIndex + 1) % GREETING_OPTIONS.length;
+    localStorage.setItem(GREETING_INDEX_KEY, nextIndex.toString());
+    return GREETING_OPTIONS[nextIndex];
+  } catch {
+    return GREETING_OPTIONS[0];
+  }
 }
 
 export function MatrixWelcomeOverlay({ 
@@ -30,7 +40,7 @@ export function MatrixWelcomeOverlay({
   const [isExiting, setIsExiting] = useState(false);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
 
-  const greeting = useMemo(() => getRandomGreeting(), []);
+  const greeting = useMemo(() => getNextGreeting(), []);
 
   const lines = useMemo(() => {
     if (isFirstVisit) {
