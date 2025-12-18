@@ -1,380 +1,298 @@
-/**
- * Governance Component - DAO Voting System
- * Binary for/against voting with admin proposal creation
- */
-
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Vote, Plus, Clock, CheckCircle2, Users, Zap, 
-  AlertCircle, Shield, Trash2, ThumbsUp, ThumbsDown
-} from 'lucide-react';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { useToast } from '@/hooks/use-toast';
-import { useGovernance } from '@/hooks/useGovernance';
-import { useProposals, useUserVote, useProposalMutations, Proposal } from '@/hooks/useProposals';
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { AlertCircle, CheckCircle, Clock, Trash2, PlusCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { CreateProposalModal } from './CreateProposalModal';
+import { useToast } from '@/hooks/use-toast';
+import { ADMIN_WALLETS } from '@/lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface Proposal {
+  id: number;
+  title: string;
+  description: string;
+  proposer: string;
+  status: string;
+  votesFor: number;
+  votesAgainst: number;
+  startDate: string;
+  endDate: string;
+  category: string;
+  requiredQuorum: number;
+}
 
 export function Governance() {
-  const { toast } = useToast();
-  const { openConnectModal } = useConnectModal();
-  const governance = useGovernance();
-  const { isAdmin, deleteProposal } = useProposalMutations();
-  
-  const { data: proposals, isLoading: loadingProposals } = useProposals();
-  
+  const { address, isConnected } = useAccount();
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
-  const [deleteConfirmState, setDeleteConfirmState] = useState<{ id: string; step: number } | null>(null);
-
-  const handleDeleteClick = (id: string) => {
-    if (!deleteConfirmState || deleteConfirmState.id !== id) {
-      setDeleteConfirmState({ id, step: 1 });
-    } else if (deleteConfirmState.step === 1) {
-      setDeleteConfirmState({ id, step: 2 });
-    } else if (deleteConfirmState.step === 2) {
-      setDeleteConfirmState({ id, step: 3 });
-    } else if (deleteConfirmState.step === 3) {
-      deleteProposal.mutate(id, {
-        onSuccess: () => setDeleteConfirmState(null),
-      });
-    }
-  };
-
-  const getDeleteButtonText = (id: string) => {
-    if (deleteConfirmState?.id === id) {
-      switch (deleteConfirmState.step) {
-        case 1: return 'Confirm?';
-        case 2: return 'Really?';
-        case 3: return 'DELETE';
-        default: return 'Delete';
-      }
-    }
-    return 'Delete';
-  };
-
-  const getDeleteButtonClass = (id: string) => {
-    if (deleteConfirmState?.id === id) {
-      switch (deleteConfirmState.step) {
-        case 1: return 'bg-orange-600 hover:bg-orange-700';
-        case 2: return 'bg-red-600 hover:bg-red-700 animate-pulse';
-        case 3: return 'bg-red-700 hover:bg-red-800 shadow-[0_0_15px_rgba(255,0,0,0.5)]';
-        default: return '';
-      }
-    }
-    return '';
-  };
-
-  return (
-    <section className="py-8 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-              <Shield className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-white font-orbitron">GUARDIAN GOVERNANCE</h1>
-              <p className="text-sm text-muted-foreground font-mono">
-                1 NFT = 1 Vote • Shape the future of Based Guardians
-              </p>
-            </div>
-          </div>
-          {governance.isConnected && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-              <Zap className="w-4 h-4 text-primary" />
-              <span className="text-sm font-mono text-white">Voting Power: <span className="text-primary font-bold">{governance.votingPower}</span></span>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={<Vote className="w-5 h-5 text-white" />} label="Active Proposals" value={proposals?.length || 0} />
-          <StatCard icon={<Users className="w-5 h-5 text-white" />} label="Quorum Required" value={`${governance.quorumPercentage}%`} />
-          <StatCard icon={<Zap className="w-5 h-5 text-white" />} label="Your NFTs" value={governance.votingPower} />
-          <StatCard icon={<CheckCircle2 className="w-5 h-5 text-white" />} label="Status" value={governance.isConnected ? 'Active' : 'Connect'} />
-        </div>
-
-        {!governance.isConnected ? (
-          <Card className="p-8 bg-white/5 border-white/10 text-center">
-            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">Connect your wallet to participate in governance</p>
-            <Button onClick={openConnectModal} className="bg-primary hover:bg-primary/90 font-orbitron text-[#35bdb2]">
-              CONNECT WALLET
-            </Button>
-          </Card>
-        ) : (
-          <>
-            {isAdmin && (
-              <div className="mb-8">
-                <Button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-cyan-500 text-white hover:bg-cyan-400 font-orbitron shadow-[0_0_15px_rgba(0,255,255,0.5)]"
-                  data-testid="create-proposal-btn"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  CREATE PROPOSAL
-                </Button>
-              </div>
-            )}
-
-            <CreateProposalModal 
-              isOpen={showCreateModal} 
-              onClose={() => setShowCreateModal(false)} 
-              walletAddress={governance.address || ''} 
-            />
-
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-white font-orbitron flex items-center gap-2">
-                <Vote className="w-5 h-5 text-cyan-400" /> ACTIVE PROPOSALS
-                <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400 ml-2">
-                  For / Against Voting
-                </Badge>
-              </h2>
-              <p className="text-xs text-muted-foreground -mt-2 mb-4">
-                Vote on community proposals. Your vote is weighted by your NFT holdings (1 NFT = 1 vote).
-              </p>
-              
-              {loadingProposals ? (
-                <div className="space-y-3">
-                  {[1, 2].map(i => (
-                    <Card key={i} className="p-4 bg-white/5 border-white/10">
-                      <div className="flex items-center gap-4">
-                        <Skeleton className="w-10 h-10 rounded" />
-                        <div className="flex-1">
-                          <Skeleton className="h-4 w-48 mb-2" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : proposals && proposals.length > 0 ? (
-                proposals.map(proposal => (
-                  <ProposalCard 
-                    key={proposal.id}
-                    proposal={proposal}
-                    isExpanded={expandedProposal === proposal.id}
-                    onToggle={() => setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)}
-                    votingPower={governance.votingPower}
-                    isAdmin={isAdmin ?? false}
-                    onDelete={() => handleDeleteClick(proposal.id)}
-                    deleteButtonText={getDeleteButtonText(proposal.id)}
-                    deleteButtonClass={getDeleteButtonClass(proposal.id)}
-                    isDeleting={deleteProposal.isPending}
-                  />
-                ))
-              ) : (
-                <Card className="p-8 bg-white/5 border-white/10 text-center">
-                  <Vote className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <p className="text-muted-foreground">No active proposals at the moment</p>
-                  {isAdmin && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Create a new proposal to get started
-                    </p>
-                  )}
-                </Card>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
-  return (
-    <Card className="bg-white/5 border-white/10 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className="text-xs text-muted-foreground font-mono uppercase">{label}</span>
-      </div>
-      <div className="text-2xl font-bold font-orbitron text-white">{value}</div>
-    </Card>
-  );
-}
-
-interface ProposalCardProps {
-  proposal: Proposal;
-  isExpanded: boolean;
-  onToggle: () => void;
-  votingPower: number;
-  isAdmin: boolean;
-  onDelete: () => void;
-  deleteButtonText: string;
-  deleteButtonClass: string;
-  isDeleting: boolean;
-}
-
-function ProposalCard({ proposal, isExpanded, onToggle, votingPower, isAdmin, onDelete, deleteButtonText, deleteButtonClass, isDeleting }: ProposalCardProps) {
+  const [userVotes, setUserVotes] = useState<Record<number, string>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteConfirmCount, setDeleteConfirmCount] = useState(0);
   const { toast } = useToast();
-  const governance = useGovernance();
-  const walletAddress = governance.address;
-  const { data: userVoteData } = useUserVote(proposal.id, walletAddress);
-  const { castVote } = useProposalMutations();
 
-  const userVote = userVoteData?.vote;
-  const totalVotes = proposal.votesFor + proposal.votesAgainst;
-  const forPercentage = totalVotes > 0 ? Math.round((proposal.votesFor / totalVotes) * 100) : 50;
-  const againstPercentage = totalVotes > 0 ? Math.round((proposal.votesAgainst / totalVotes) * 100) : 50;
+  const isAdmin = address && ADMIN_WALLETS.includes(address.toLowerCase());
 
-  const endDate = new Date(proposal.endDate);
-  const now = new Date();
-  const isExpired = now > endDate;
-  const timeRemaining = formatTimeRemaining(endDate);
+  const fetchProposals = async () => {
+    try {
+      const res = await fetch('/api/proposals');
+      const data = await res.json();
+      setProposals(data);
 
-  const handleVote = (vote: 'for' | 'against') => {
-    if (!walletAddress) {
+      if (address) {
+        for (const proposal of data) {
+          const voteRes = await fetch(`/api/proposals/${proposal.id}/vote/${address}`);
+          const voteData = await voteRes.json();
+          if (voteData.vote) {
+            setUserVotes(prev => ({ ...prev, [proposal.id]: voteData.vote }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch proposals:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProposals();
+  }, [address]);
+
+  const handleVote = async (proposalId: number, vote: 'for' | 'against') => {
+    if (!address || !isConnected) {
       toast({ title: 'Connect Wallet', description: 'Please connect your wallet to vote', variant: 'destructive' });
       return;
     }
-    if (votingPower < 1) {
-      toast({ title: 'No Voting Power', description: 'You need at least 1 NFT to vote', variant: 'destructive' });
+
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voter: address, vote }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error);
+      }
+
+      toast({ title: 'Vote Cast!', description: `You voted ${vote} on this proposal` });
+      setUserVotes(prev => ({ ...prev, [proposalId]: vote }));
+      fetchProposals();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDelete = async (proposalId: number) => {
+    if (deletingId !== proposalId) {
+      setDeletingId(proposalId);
+      setDeleteConfirmCount(1);
+      toast({ title: 'Confirm Delete', description: 'Click delete 2 more times to confirm' });
       return;
     }
-    
-    castVote.mutate({
-      proposalId: proposal.id,
-      vote,
-      votingPower: Math.max(1, votingPower),
-    });
+
+    if (deleteConfirmCount < 2) {
+      setDeleteConfirmCount(prev => prev + 1);
+      toast({ title: `Confirm ${3 - deleteConfirmCount} more time(s)`, description: 'Click delete again to confirm' });
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address, confirmations: 3 }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete proposal');
+      }
+
+      toast({ title: 'Proposal Deleted', description: 'The proposal has been removed' });
+      setDeletingId(null);
+      setDeleteConfirmCount(0);
+      fetchProposals();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const getTimeRemaining = (endDate: string) => {
+    const now = new Date().getTime();
+    const end = new Date(endDate).getTime();
+    const diff = end - now;
+
+    if (diff < 0) return 'Ended';
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    if (days > 0) return `${days}d ${hours}h remaining`;
+    return `${hours}h remaining`;
   };
 
   return (
-    <Card className="bg-white/5 border-white/10 overflow-hidden">
-      <div 
-        className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
-        onClick={onToggle}
-        data-testid={`proposal-card-${proposal.id}`}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-xs border-white/20">{proposal.category || 'General'}</Badge>
-              {isExpired ? (
-                <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">Ended</Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs border-green-500/50 text-green-400">Active</Badge>
-              )}
-              {userVote && (
-                <Badge variant="outline" className={`text-xs ${userVote === 'for' ? 'border-green-500/50 text-green-400' : 'border-red-500/50 text-red-400'}`}>
-                  Voted {userVote === 'for' ? 'For' : 'Against'}
-                </Badge>
-              )}
-            </div>
-            <h3 className="font-bold text-white mb-1">{proposal.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{proposal.description}</p>
+    <section className="py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-3xl font-orbitron font-bold text-white mb-2">Governance</h2>
+            <p className="text-gray-400">Vote on proposals to shape the future of Based Guardians</p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <div className="flex items-center gap-1 justify-end mb-1">
-              <Clock className="w-3 h-3" />
-              <span>{timeRemaining}</span>
-            </div>
-            <div>{totalVotes} votes</div>
-          </div>
+
+          {isAdmin && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Create Proposal
+            </Button>
+          )}
         </div>
-        
-        <div className="mt-4">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-green-400">For: {proposal.votesFor} ({forPercentage}%)</span>
-            <span className="text-red-400">Against: {proposal.votesAgainst} ({againstPercentage}%)</span>
+
+        {!isConnected && (
+          <Card className="bg-yellow-500/10 border-yellow-500/50 p-6 mb-8">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-yellow-400" />
+              <div>
+                <div className="text-yellow-400 font-bold">Connect Wallet to Vote</div>
+                <div className="text-yellow-200 text-sm">You need to connect your wallet to participate in governance</div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-12 text-gray-400">Loading proposals...</div>
+        ) : proposals.length === 0 ? (
+          <Card className="bg-black/60 border-white/10 p-12 text-center">
+            <div className="text-gray-500 mb-4">No active proposals</div>
+            {isAdmin && (
+              <Button onClick={() => setShowCreateModal(true)} variant="outline">
+                Create First Proposal
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            <AnimatePresence>
+              {proposals.map((proposal, index) => {
+                const totalVotes = proposal.votesFor + proposal.votesAgainst;
+                const forPercentage = totalVotes > 0 ? (proposal.votesFor / totalVotes * 100).toFixed(1) : 50;
+                const againstPercentage = totalVotes > 0 ? (proposal.votesAgainst / totalVotes * 100).toFixed(1) : 50;
+                const userVote = userVotes[proposal.id];
+                const isEnded = new Date() > new Date(proposal.endDate);
+
+                return (
+                  <motion.div
+                    key={proposal.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="bg-black/60 border-cyan-500/30 p-6 hover:border-cyan-500/50 transition-colors">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-orbitron font-bold text-white">{proposal.title}</h3>
+                            <Badge className="capitalize">{proposal.category}</Badge>
+                            {isEnded && <Badge variant="destructive">Ended</Badge>}
+                          </div>
+                          <div className="text-sm text-gray-400 mb-3">
+                            Proposed by {proposal.proposer.slice(0, 6)}...{proposal.proposer.slice(-4)}
+                          </div>
+                        </div>
+
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(proposal.id)}
+                            className={`text-red-400 hover:text-red-300 ${deletingId === proposal.id && deleteConfirmCount > 0 ? 'animate-pulse' : ''}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            {deletingId === proposal.id && deleteConfirmCount > 0 && (
+                              <span className="ml-2">({3 - deleteConfirmCount})</span>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+
+                      <p className="text-gray-300 text-sm mb-6 whitespace-pre-wrap">{proposal.description}</p>
+
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-green-400">For: {proposal.votesFor} votes ({forPercentage}%)</span>
+                            <span className="text-red-400">Against: {proposal.votesAgainst} votes ({againstPercentage}%)</span>
+                          </div>
+                          <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
+                            <div className="bg-green-500 h-full" style={{ width: `${forPercentage}%` }} />
+                            <div className="bg-red-500 h-full" style={{ width: `${againstPercentage}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <Clock className="w-4 h-4" />
+                            {getTimeRemaining(proposal.endDate)}
+                          </div>
+
+                          {!isEnded && isConnected ? (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleVote(proposal.id, 'for')}
+                                disabled={userVote === 'for'}
+                                className={`${userVote === 'for' ? 'bg-green-500' : 'bg-green-500/20'} hover:bg-green-500`}
+                              >
+                                <ThumbsUp className="w-4 h-4 mr-2" />
+                                Vote For
+                                {userVote === 'for' && <CheckCircle className="w-4 h-4 ml-2" />}
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleVote(proposal.id, 'against')}
+                                disabled={userVote === 'against'}
+                                className={`${userVote === 'against' ? 'bg-red-500' : 'bg-red-500/20'} hover:bg-red-500`}
+                              >
+                                <ThumbsDown className="w-4 h-4 mr-2" />
+                                Vote Against
+                                {userVote === 'against' && <CheckCircle className="w-4 h-4 ml-2" />}
+                              </Button>
+                            </div>
+                          ) : isEnded ? (
+                            <div className="text-sm text-gray-500">Voting ended</div>
+                          ) : null}
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                          Quorum: {totalVotes}/{proposal.requiredQuorum} votes needed
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
-            <div 
-              className="bg-green-500 transition-all duration-500" 
-              style={{ width: `${forPercentage}%` }}
-            />
-            <div 
-              className="bg-red-500 transition-all duration-500" 
-              style={{ width: `${againstPercentage}%` }}
-            />
-          </div>
-        </div>
+        )}
       </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/10"
-          >
-            <div className="p-4 space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">{proposal.description}</p>
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span>Proposer: {proposal.proposer.slice(0, 6)}...{proposal.proposer.slice(-4)}</span>
-                  <span>Quorum: {proposal.requiredQuorum || 10}%</span>
-                  <span>Created: {new Date(proposal.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              {!isExpired && (
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => handleVote('for')}
-                    disabled={castVote.isPending || votingPower < 1}
-                    className={`flex-1 h-12 ${userVote === 'for' ? 'bg-green-600' : 'bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30'}`}
-                    data-testid={`vote-for-${proposal.id}`}
-                  >
-                    <ThumbsUp className="w-4 h-4 mr-2" />
-                    Vote For
-                    {votingPower > 0 && <span className="ml-2 text-xs opacity-70">(+{votingPower})</span>}
-                  </Button>
-                  <Button
-                    onClick={() => handleVote('against')}
-                    disabled={castVote.isPending || votingPower < 1}
-                    className={`flex-1 h-12 ${userVote === 'against' ? 'bg-red-600' : 'bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30'}`}
-                    data-testid={`vote-against-${proposal.id}`}
-                  >
-                    <ThumbsDown className="w-4 h-4 mr-2" />
-                    Vote Against
-                    {votingPower > 0 && <span className="ml-2 text-xs opacity-70">(+{votingPower})</span>}
-                  </Button>
-                </div>
-              )}
-
-              {isAdmin && (
-                <div className="pt-2 border-t border-white/10">
-                  <Button 
-                    size="sm" 
-                    variant="destructive"
-                    onClick={onDelete}
-                    disabled={isDeleting}
-                    className={deleteButtonClass}
-                    data-testid={`delete-${proposal.id}`}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    {deleteButtonText}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Card>
+      {isAdmin && (
+        <CreateProposalModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          walletAddress={address || ''}
+        />
+      )}
+    </section>
   );
-}
-
-function formatTimeRemaining(endDate: Date): string {
-  const now = new Date();
-  const diff = endDate.getTime() - now.getTime();
-  
-  if (diff <= 0) return 'Ended';
-  
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  
-  if (days > 0) return `${days}d ${hours}h left`;
-  if (hours > 0) return `${hours}h left`;
-  
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  return `${minutes}m left`;
 }
