@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useInterval } from '@/hooks/useInterval';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import { 
@@ -40,14 +41,9 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [emailCount, setEmailCount] = useState<number>(0);
   const [errorLogs, setErrorLogs] = useState(errorReporter.getLogs());
   
-  useEffect(() => {
-    if (isOpen) {
-      const interval = setInterval(() => {
-        setErrorLogs(errorReporter.getLogs());
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isOpen]);
+  useInterval(() => {
+    setErrorLogs(errorReporter.getLogs());
+  }, isOpen ? 5000 : null);
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
