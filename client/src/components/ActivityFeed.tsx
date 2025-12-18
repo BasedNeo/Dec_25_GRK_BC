@@ -90,7 +90,7 @@ export function ActivityFeed({
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground font-mono">
-                Block #{lastBlock.toLocaleString()} • {stats.totalMinted} / 3,732 Minted • Auto-refreshes
+                Block #{lastBlock.toLocaleString()} • {stats.totalMinted} / 3,732 Minted • {activities.length} events • Auto-refreshes
               </p>
             </div>
           </div>
@@ -190,8 +190,14 @@ export function ActivityFeed({
             </div>
           ) : error ? (
             <div className="p-8 text-center">
-              <p className="text-red-400 mb-4">Failed to load activity</p>
+              <div className="text-red-400 mb-4">
+                <p className="font-bold mb-2">Failed to load activity</p>
+                <p className="text-xs text-red-400/70 font-mono">{error}</p>
+              </div>
               <Button variant="outline" onClick={refresh} data-testid="activity-retry-btn">Try Again</Button>
+              <p className="text-xs text-muted-foreground mt-4">
+                If this persists, check your network connection or try refreshing the page
+              </p>
             </div>
           ) : filteredActivities.length === 0 ? (
             <div className="p-8 text-center">
