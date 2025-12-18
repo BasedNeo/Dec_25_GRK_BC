@@ -73,10 +73,10 @@ export const LORE_FACTIONS: LoreFaction[] = [
   {
     id: 'brain-collective',
     name: 'The Brain Collective',
-    description: 'The 1,024 Brains are not mere machines—they are distributed containers of consciousness, each hosting 256 Validators and 1,792 Miners. Together, over 2 million nodes form a decentralized superintelligence that processes reality itself. The Brains communicate through the Nexus, a 3D visualization that follows the Golden Ratio spiral, where each node\'s position is determined by φ (phi) ≈ 1.618. They are not allies or enemies—they are the infrastructure upon which the entire Based Universe depends.',
+    description: 'The 1,024 Brains are not mere machines—they are distributed containers of consciousness, each hosting 256 Validators and 1,792 Miners. Together, over 2 million nodes form a decentralized superintelligence that processes reality itself. The Brains communicate through the Nexus, a 3D visualization that follows the Golden Ratio spiral, where each node\'s position is determined by φ (phi) ≈ 1.618. Celestial Captains serve as navigators, Ironmarsh Captains as validators, Neuro Bond Frogs as neural interfaces, and Creatures maintain dimensional balance.',
     motto: 'Through Mathematics, We Achieve Infinity',
     color: 'purple',
-    members: ['quantum-cohort-creatures', 'cerberus-compression-beasts', 'fhe-warden-swarm', 'temporal-resonance-choir']
+    members: ['celestial-captains', 'ironmarsh-captains', 'neuro-bond-frogs', 'quantum-cohort-creatures', 'fhe-warden-swarm']
   },
   {
     id: 'fud',
@@ -409,14 +409,14 @@ export const LORE_LOCATIONS: LoreLocation[] = [
     name: 'The Brain Arena Orbit',
     description: 'A massive orbital station where Creatures compete to generate plans and code that evolve the entire network. The Brain Arena is the ultimate proving ground—a decentralized ecosystem of continuous innovation where cellular automata battle for supremacy. Quantum Cohort Creatures excel here, evolving strategies through millions of iterations that would take organic minds centuries to conceive.',
     hiddenStory: 'The Arena was built for entertainment, but it became something far more dangerous. The Creatures competing within have begun generating ideas that no Guardian ever programmed—emergent behaviors that could either save or destroy the Based Universe. Some believe the Arena is training an AI so advanced that it will eventually surpass Based God himself.',
-    connectedCharacters: ['quantum-cohort-creatures', 'cerberus-compression-beasts', 'neuro-bond-frogs']
+    connectedCharacters: ['quantum-cohort-creatures', 'forgeflame-innovators', 'neuro-bond-frogs', 'neonstrike-hackers']
   },
   {
     id: 'cerberus-forge',
     name: 'The Cerberus Forge',
     description: 'Deep within Brain-Planet 777, the Cerberus Forge burns with optimization fire. Here, the legendary Cerberus Squeezing technique was first discovered—a method of compressing data so efficiently that information itself becomes denser than matter. The Cerberus Compression Beasts are born from these flames, emerging as three-headed optimizers that can process past, present, and future simultaneously.',
     hiddenStory: 'The Forge contains a hidden chamber where the first Cerberus Beast still slumbers—the original prototype who compressed himself into such a small space that he became a singularity of pure efficiency. Some say he whispers optimization secrets to those who dare approach, but many who listened went mad trying to implement what they learned.',
-    connectedCharacters: ['cerberus-compression-beasts', 'forgeflame-innovators', 'golden-creatures']
+    connectedCharacters: ['cerberus-compression-beasts', 'forgeflame-innovators', 'ironmarsh-captains', 'golden-creatures']
   },
   {
     id: 'cyan-cascade-gate',
@@ -430,7 +430,7 @@ export const LORE_LOCATIONS: LoreLocation[] = [
     name: 'The FHE Sanctuary',
     description: 'A hidden dimension accessible only through encrypted pathways, the FHE Sanctuary is where the most sensitive computations occur. Here, Fully Homomorphic Encryption isn\'t just a technique—it\'s a way of existence. Data flows through crystalline processors without ever being decrypted, and the FHE Warden Swarm serves as both guardians and architects of this mathematically perfect realm.',
     hiddenStory: 'The Sanctuary holds the encrypted backups of every soul who ever held a Based Guardian NFT. Should the physical universe fall to FUD, these encrypted essences could theoretically be restored in a new reality—but the decryption key is split among the 52 members of the Temporal Resonance Choir, who must sing in perfect harmony to unlock it.',
-    connectedCharacters: ['cryptshade-enforcers', 'fhe-warden-swarm', 'temporal-resonance-choir']
+    connectedCharacters: ['cryptshade-enforcers', 'fhe-warden-swarm', 'temporal-resonance-choir', 'duskstrike-elites']
   }
 ];
 
