@@ -388,74 +388,140 @@ export default function JaguarRunner() {
             </div>
 
             {phase === 'gate' && (
-              <div className="text-center py-8">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 border-2 border-orange-500/50 flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-orange-400" />
+              <div className="text-center py-6 relative">
+                <style>{`
+                  @keyframes neon-flicker {
+                    0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5), 0 0 20px rgba(251, 146, 60, 0.3); }
+                    92% { opacity: 1; }
+                    93% { opacity: 0.4; }
+                    94% { opacity: 1; }
+                    96% { opacity: 0.6; }
+                  }
+                  @keyframes chase-line {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(200%); }
+                  }
+                  @keyframes target-pulse {
+                    0%, 100% { transform: scale(1); border-color: rgba(239, 68, 68, 0.5); }
+                    50% { transform: scale(1.1); border-color: rgba(239, 68, 68, 0.8); }
+                  }
+                `}</style>
+                
+                <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                  <div className="absolute top-1/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500 to-transparent" style={{ animation: 'chase-line 2s linear infinite' }} />
+                  <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500 to-transparent" style={{ animation: 'chase-line 2.5s linear infinite', animationDelay: '0.5s' }} />
                 </div>
-                <p className="text-white font-orbitron text-xl mb-2">{GAME_CONFIG.name}</p>
-                <p className="text-gray-400 text-sm mb-4">{GAME_CONFIG.description}</p>
+                
+                <div className="w-20 h-20 mx-auto mb-4 relative">
+                  <div className="absolute inset-0 rounded-full border-2 border-red-500/30" style={{ animation: 'target-pulse 2s ease-in-out infinite' }} />
+                  <div className="absolute inset-2 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+                    <Zap className="w-8 h-8 text-orange-400" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-mono px-1.5 py-0.5 rounded animate-pulse">
+                    LIVE
+                  </div>
+                </div>
+                
+                <p className="text-white font-orbitron text-xl mb-1" style={{ animation: 'neon-flicker 5s ease-in-out infinite' }}>
+                  {GAME_CONFIG.name.toUpperCase()}
+                </p>
+                <p className="text-red-400/60 text-xs font-mono tracking-widest mb-4">TARGET: URBAN PURSUIT</p>
                 
                 {!access.canPlay ? (
-                  <>
-                    <p className="text-red-400 text-sm mb-2">{access.reason}</p>
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
+                    <p className="text-red-400 text-sm mb-1">{access.reason}</p>
                     {access.cooldownSeconds > 0 && (
-                      <p className="text-orange-400 text-3xl font-mono font-bold">{cooldown}s</p>
+                      <p className="text-orange-400 text-2xl font-mono font-bold">{cooldown}s</p>
                     )}
-                  </>
+                  </div>
                 ) : (
-                  <Button 
-                    onClick={() => setPhase('menu')} 
-                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold px-8 py-3 rounded-xl"
-                    data-testid="button-play-now"
-                  >
-                    <Play className="w-5 h-5 mr-2" /> PLAY NOW
-                  </Button>
+                  <div className="relative inline-block group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity" />
+                    <Button 
+                      onClick={() => setPhase('menu')} 
+                      className="relative bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold px-8 py-3 rounded-xl border-0"
+                      data-testid="button-play-now"
+                    >
+                      <Play className="w-5 h-5 mr-2" /> ENGAGE
+                    </Button>
+                  </div>
                 )}
                 
-                <p className="text-gray-600 text-xs mt-4">
-                  {access.playsRemaining} plays remaining today
+                <p className="text-gray-600 text-xs mt-4 font-mono">
+                  {access.playsRemaining} PURSUITS AVAILABLE
                 </p>
               </div>
             )}
 
             {phase === 'menu' && (
-              <div className="text-center py-10">
-                <p className="text-white font-orbitron text-2xl mb-2">READY TO RUN</p>
-                <p className="text-gray-500 text-sm mb-6">{access.playsRemaining} plays remaining today</p>
+              <div className="text-center py-6 relative">
+                <style>{`
+                  @keyframes dossier-scan {
+                    0%, 100% { background-position: 0% 0%; }
+                    50% { background-position: 100% 100%; }
+                  }
+                  @keyframes threat-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                  }
+                `}</style>
                 
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6 max-w-xs mx-auto text-left">
-                  <p className="text-orange-400 font-bold text-sm mb-2">CONTROLS:</p>
-                  <p className="text-gray-300 text-xs">↑ / SPACE / W - Jump</p>
-                  <p className="text-gray-300 text-xs">↓ / S - Duck</p>
-                  <p className="text-gray-300 text-xs mt-2">Tap screen to jump on mobile</p>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/0 via-red-500/50 to-red-500/0" />
+                
+                <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-full px-4 py-1 mb-4">
+                  <span className="w-2 h-2 bg-red-500 rounded-full" style={{ animation: 'threat-blink 1s ease-in-out infinite' }} />
+                  <span className="text-red-400 text-xs font-mono tracking-wide">CHASE DOSSIER</span>
+                </div>
+                
+                <p className="text-white font-orbitron text-2xl mb-1">PURSUIT ACTIVE</p>
+                <p className="text-orange-400/60 text-xs font-mono mb-5">{access.playsRemaining} ATTEMPTS REMAINING</p>
+                
+                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/50 border border-orange-500/20 rounded-xl p-4 mb-5 text-left relative overflow-hidden">
+                  <div className="absolute -top-2 left-3 bg-slate-900 px-2 py-0.5 rounded text-[10px] text-orange-400 font-mono border border-orange-500/30">
+                    CONTROLS
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <span className="bg-orange-500/20 border border-orange-500/40 px-2 py-0.5 rounded font-mono text-orange-300">↑</span>
+                      <span>Jump</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <span className="bg-orange-500/20 border border-orange-500/40 px-2 py-0.5 rounded font-mono text-orange-300">↓</span>
+                      <span>Duck</span>
+                    </div>
+                  </div>
+                  <p className="text-gray-500 text-[10px] mt-2 text-center">Tap screen to jump on mobile</p>
                 </div>
 
-                <Button 
-                  onClick={startGame} 
-                  className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 bg-[length:200%_100%] animate-pulse text-white font-bold px-10 py-4 text-lg rounded-xl hover:opacity-90 transition-all" 
-                  data-testid="button-start-game"
-                >
-                  <Play className="w-6 h-6 mr-2" /> START RUNNING
-                </Button>
+                <div className="relative inline-block group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 rounded-xl blur opacity-40 group-hover:opacity-70 transition-opacity" />
+                  <Button 
+                    onClick={startGame} 
+                    className="relative bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 text-white font-bold px-10 py-4 text-lg rounded-xl border-0 shadow-lg shadow-orange-500/20" 
+                    data-testid="button-start-game"
+                  >
+                    <Zap className="w-5 h-5 mr-2" /> BEGIN PURSUIT
+                  </Button>
+                </div>
 
                 {stats.gamesPlayed > 0 && (
-                  <div className="mt-8 pt-6 border-t border-white/10">
-                    <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Your Stats</p>
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-xl p-3">
-                        <Target className="w-5 h-5 mx-auto mb-1 text-orange-400" />
-                        <p className="text-orange-400 font-mono font-bold">{stats.totalScore.toLocaleString()}</p>
-                        <p className="text-gray-600 text-[10px]">LIFETIME</p>
+                  <div className="mt-6 pt-4 border-t border-orange-500/20">
+                    <p className="text-[10px] text-gray-600 mb-3 font-mono tracking-widest">PURSUIT RECORD</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-lg p-2">
+                        <Target className="w-4 h-4 mx-auto mb-1 text-orange-400" />
+                        <p className="text-orange-400 font-mono font-bold text-sm">{stats.totalScore.toLocaleString()}</p>
+                        <p className="text-gray-600 text-[8px]">TOTAL</p>
                       </div>
-                      <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
-                        <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-400" />
-                        <p className="text-yellow-400 font-mono font-bold">{stats.bestScore.toLocaleString()}</p>
-                        <p className="text-gray-600 text-[10px]">BEST</p>
+                      <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-lg p-2">
+                        <Trophy className="w-4 h-4 mx-auto mb-1 text-yellow-400" />
+                        <p className="text-yellow-400 font-mono font-bold text-sm">{stats.bestScore.toLocaleString()}</p>
+                        <p className="text-gray-600 text-[8px]">BEST</p>
                       </div>
-                      <div className="bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 rounded-xl p-3">
-                        <Gamepad2 className="w-5 h-5 mx-auto mb-1 text-red-400" />
-                        <p className="text-red-400 font-mono font-bold">{stats.gamesPlayed}</p>
-                        <p className="text-gray-600 text-[10px]">GAMES</p>
+                      <div className="bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 rounded-lg p-2">
+                        <Gamepad2 className="w-4 h-4 mx-auto mb-1 text-red-400" />
+                        <p className="text-red-400 font-mono font-bold text-sm">{stats.gamesPlayed}</p>
+                        <p className="text-gray-600 text-[8px]">RUNS</p>
                       </div>
                     </div>
                   </div>

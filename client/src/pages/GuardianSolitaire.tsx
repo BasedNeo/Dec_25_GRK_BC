@@ -1072,83 +1072,152 @@ export default function GuardianSolitaire() {
 
   if (!gameStarted) {
     return (
-      <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden">
-        <div className="fixed inset-0 pointer-events-none opacity-40">
-          {[...Array(40)].map((_, i) => (
+      <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-hidden">
+        <style>{`
+          @keyframes gradient-shift {
+            0%, 100% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+          }
+          @keyframes prison-bar-glow {
+            0%, 100% { opacity: 0.3; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+            50% { opacity: 0.6; box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+          }
+          @keyframes holo-flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.3; }
+            94% { opacity: 1; }
+            96% { opacity: 0.5; }
+            97% { opacity: 1; }
+          }
+          @keyframes card-float {
+            0%, 100% { transform: translateY(0) rotate(-5deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+          }
+          @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+          }
+          @keyframes cell-pulse {
+            0%, 100% { background-color: rgba(239, 68, 68, 0.02); }
+            50% { background-color: rgba(239, 68, 68, 0.05); }
+          }
+          @keyframes card-cascade {
+            0% { transform: translateY(-20px) rotate(-10deg); opacity: 0; }
+            100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          }
+          @keyframes urgency-pulse {
+            0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+            50% { border-color: rgba(239, 68, 68, 0.6); }
+          }
+        `}</style>
+
+        <div className="fixed inset-0 pointer-events-none animate-[cell-pulse_4s_ease-in-out_infinite]" />
+
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          {[...Array(8)].map((_, i) => (
             <motion.div
-              key={`star-bg-${i}`}
-              className="absolute w-1 h-1 bg-white rounded-full"
-              initial={{ 
-                x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920), 
-                y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1080),
-                opacity: Math.random() * 0.5 + 0.3
-              }}
-              animate={{
-                y: [null, (typeof window !== 'undefined' ? window.innerHeight : 1080) + 20],
-                opacity: [null, 0]
-              }}
-              transition={{
-                duration: 15 + Math.random() * 10,
-                repeat: Infinity,
-                ease: "linear",
-                delay: Math.random() * 8
+              key={`bar-${i}`}
+              className="absolute top-0 bottom-0 w-3 bg-gradient-to-b from-red-900/40 via-red-800/60 to-red-900/40 rounded-full"
+              style={{ 
+                left: `${8 + i * 12}%`,
+                animation: `prison-bar-glow 3s ease-in-out infinite`,
+                animationDelay: `${i * 0.2}s`
               }}
             />
           ))}
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 relative z-10 pt-20">
-          <div className="text-center mb-8">
+        <div className="fixed inset-0 pointer-events-none opacity-20">
+          {[...Array(30)].map((_, i) => (
+            <motion.div
+              key={`star-bg-${i}`}
+              className="absolute w-1 h-1 bg-cyan-400 rounded-full"
+              initial={{ 
+                x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920), 
+                y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1080),
+                opacity: Math.random() * 0.5 + 0.2
+              }}
+              animate={{
+                opacity: [0.2, 0.6, 0.2],
+                scale: [1, 1.5, 1]
+              }}
+              transition={{
+                duration: 2 + Math.random() * 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: Math.random() * 2
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="fixed inset-0 pointer-events-none opacity-10">
+          <div 
+            className="absolute inset-0 bg-gradient-to-b from-transparent via-red-500/20 to-transparent h-1"
+            style={{ animation: 'scanline 8s linear infinite' }}
+          />
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 relative z-10 pt-16">
+          <div className="text-center mb-6">
             <motion.div
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6 }}
+              className="relative"
             >
+              <motion.div
+                className="absolute -top-8 left-1/2 -translate-x-1/2 text-red-500/60 text-xs font-mono tracking-widest"
+                animate={{ opacity: [0.4, 0.8, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                ⚠ DETENTION SECTOR 7-G ⚠
+              </motion.div>
+              
               <h1 
-                className="text-6xl font-black text-transparent bg-clip-text bg-[length:200%_auto] mb-3 font-orbitron tracking-tight animate-[gradient-shift_4s_ease-in-out_infinite]"
+                className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-[length:200%_auto] mb-2 font-orbitron tracking-tight animate-[gradient-shift_4s_ease-in-out_infinite,holo-flicker_10s_ease-in-out_infinite]"
                 style={{
                   backgroundImage: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #f97316, #22d3ee)',
                 }}
               >
                 GUARDIAN SOLITAIRE
               </h1>
-              <style>{`
-                @keyframes gradient-shift {
-                  0%, 100% { background-position: 0% center; }
-                  50% { background-position: 100% center; }
-                }
-              `}</style>
-              <p className="text-gray-400 text-base mb-4">
-                Premium Klondike • Strategy Meets Style
-              </p>
+              <motion.p 
+                className="text-red-400/80 text-sm font-mono tracking-wider"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                FUD DETENTION CHAMBER • CELL BLOCK 42
+              </motion.p>
             </motion.div>
 
             {stats.gamesPlayed > 0 && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="flex items-center justify-center gap-8 text-sm flex-wrap mb-6"
+                className="flex items-center justify-center gap-6 text-sm flex-wrap mt-4 mb-4"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-yellow-500/20">
                   <Trophy className="w-4 h-4 text-yellow-400" />
-                  <span className="text-gray-300">
-                    {Math.round(stats.winRate || 0)}% Win Rate
+                  <span className="text-yellow-300 font-mono">
+                    {Math.round(stats.winRate || 0)}%
                   </span>
                 </div>
                 {stats.currentStreak > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-orange-500/20">
                     <Flame className="w-4 h-4 text-orange-400" />
-                    <span className="text-gray-300">
-                      {stats.currentStreak} Streak
+                    <span className="text-orange-300 font-mono">
+                      {stats.currentStreak}🔥
                     </span>
                   </div>
                 )}
                 {stats.bestScore > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-cyan-500/20">
                     <Star className="w-4 h-4 text-cyan-400" />
-                    <span className="text-gray-300">
-                      Best: {stats.bestScore.toLocaleString()} pts
+                    <span className="text-cyan-300 font-mono">
+                      {stats.bestScore.toLocaleString()}
                     </span>
                   </div>
                 )}
@@ -1161,96 +1230,156 @@ export default function GuardianSolitaire() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <Card className="p-10 bg-black/70 border-cyan-500/30 backdrop-blur-lg">
-              <div className="space-y-8">
+            <Card className="p-6 md:p-8 bg-black/80 border-2 border-red-900/40 backdrop-blur-xl relative overflow-hidden animate-[urgency-pulse_4s_ease-in-out_infinite]">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(239,68,68,0.05),transparent_50%)]" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+              
+              <div className="space-y-6 relative z-10">
                 <div className="flex justify-center">
-                  <motion.div
-                    animate={{ 
-                      scale: [1, 1.05, 1],
-                      rotate: [0, 2, -2, 0]
-                    }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border-2 border-white/10"
-                  >
-                    <Spade className="w-16 h-16 text-cyan-400" />
-                  </motion.div>
+                  <div className="relative">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl blur-xl"
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    />
+                    <motion.div
+                      animate={{ 
+                        scale: [1, 1.02, 1],
+                        rotateY: [0, 5, -5, 0]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      className="relative w-28 h-36 md:w-32 md:h-40 perspective-1000"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {[0, 1, 2].map((i) => (
+                          <motion.div
+                            key={`card-stack-${i}`}
+                            className="absolute w-20 h-28 md:w-24 md:h-32 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border-2 border-cyan-500/30 flex items-center justify-center"
+                            style={{
+                              transform: `translateX(${(i - 1) * 8}px) rotate(${(i - 1) * 8}deg)`,
+                              zIndex: 3 - i,
+                              animation: `card-float ${3 + i * 0.5}s ease-in-out infinite`,
+                              animationDelay: `${i * 0.3}s`
+                            }}
+                          >
+                            {i === 1 && (
+                              <div className="text-center">
+                                <Spade className="w-10 h-10 md:w-12 md:h-12 text-cyan-400 mx-auto" />
+                                <span className="text-cyan-400 text-xs font-bold mt-1 block">A</span>
+                              </div>
+                            )}
+                            {i === 0 && <Heart className="w-8 h-8 text-red-400/60" />}
+                            {i === 2 && <Diamond className="w-8 h-8 text-cyan-400/60" />}
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
 
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4, duration: 0.8 }}
-                  className="bg-gradient-to-br from-red-500/10 via-purple-500/10 to-cyan-500/10 rounded-xl p-6 border border-red-500/20 relative overflow-hidden"
+                  className="bg-gradient-to-br from-red-950/60 via-slate-900/80 to-red-950/60 rounded-xl p-5 border border-red-500/30 relative overflow-hidden"
                 >
-                  <div className="absolute top-2 right-2 text-red-400/30 text-xs font-mono">// TRANSMISSION INTERCEPTED</div>
-                  <p className="text-gray-300 text-sm leading-relaxed italic">
-                    "You've been caught by the <span className="text-red-400 font-bold">FUD</span>. While awaiting your rescue, you find yourself alone in a cell with only one thing... a deck of playing cards. This is the time to sharpen your skills and earn points."
+                  <div className="absolute top-0 left-0 w-full h-full">
+                    <div className="absolute top-2 left-2 w-2 h-2 border-t border-l border-red-500/50" />
+                    <div className="absolute top-2 right-2 w-2 h-2 border-t border-r border-red-500/50" />
+                    <div className="absolute bottom-2 left-2 w-2 h-2 border-b border-l border-red-500/50" />
+                    <div className="absolute bottom-2 right-2 w-2 h-2 border-b border-r border-red-500/50" />
+                  </div>
+                  
+                  <motion.div 
+                    className="absolute top-2 right-3 text-red-400/50 text-xs font-mono flex items-center gap-1"
+                    animate={{ opacity: [0.3, 0.7, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    INTERCEPTED
+                  </motion.div>
+                  
+                  <p className="text-gray-300 text-sm leading-relaxed italic relative z-10 pr-16">
+                    "You've been caught by the <span className="text-red-400 font-bold animate-pulse">FUD</span>. While awaiting your rescue, you find yourself alone in a cell with only one thing... a deck of playing cards. This is the time to sharpen your skills and earn points."
                   </p>
-                  <div className="mt-3 text-right">
+                  <div className="mt-3 text-right relative z-10">
                     <span className="text-cyan-400/60 text-xs font-mono">— Guardian Protocol 7.3</span>
                   </div>
                 </motion.div>
 
-                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Info className="w-5 h-5 text-cyan-400" />
-                    <h3 className="font-bold text-white text-lg">How to Play</h3>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-slate-900/60 rounded-xl p-5 border border-slate-700/50 relative"
+                >
+                  <div className="absolute -top-3 left-4 bg-slate-900 px-2 py-0.5 rounded text-xs text-cyan-400 font-mono border border-cyan-500/30">
+                    MISSION BRIEF
                   </div>
-                  <ul className="space-y-2 text-gray-300 text-sm">
-                    <li className="flex items-start gap-2">
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-2">
+                    <div className="flex items-start gap-2 text-gray-300">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Arrange cards in descending order, alternating red and black suits</span>
-                    </li>
-                    <li className="flex items-start gap-2">
+                      <span>Descending order, alternating colors</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Build foundations from Ace to King in the same suit</span>
-                    </li>
-                    <li className="flex items-start gap-2">
+                      <span>Build Ace → King by suit</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span>Only Kings can be placed on empty tableau columns</span>
-                    </li>
-                    <li className="flex items-start gap-2">
+                      <span>Kings on empty columns</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
                       <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <span><strong>Click or drag</strong> cards • <strong>Double-click</strong> to auto-move to foundation</span>
-                    </li>
-                  </ul>
-                </div>
+                      <span>Double-click to auto-move</span>
+                    </div>
+                  </div>
+                </motion.div>
 
-                <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl p-6 border border-yellow-500/20">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-yellow-400" />
-                    <h3 className="font-bold text-white text-lg">Premium Features</h3>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="bg-gradient-to-br from-cyan-950/40 to-purple-950/40 rounded-xl p-5 border border-cyan-500/20 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(0,255,255,0.03)_50%,transparent_52%)] bg-[length:10px_10px]" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 text-cyan-400" />
+                      <h3 className="font-bold text-white text-base">Cell Privileges</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-gray-300 bg-black/20 rounded-lg px-3 py-2">
+                        <Undo2 className="w-4 h-4 text-cyan-400" />
+                        <span>5 Undos</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-300 bg-black/20 rounded-lg px-3 py-2">
+                        <Lightbulb className="w-4 h-4 text-yellow-400" />
+                        <span>Smart Hints</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-300 bg-black/20 rounded-lg px-3 py-2">
+                        <Shield className="w-4 h-4 text-purple-400" />
+                        <span>Auto-Save</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-300 bg-black/20 rounded-lg px-3 py-2">
+                        <Star className="w-4 h-4 text-pink-400" />
+                        <span>Stats Track</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Undo2 className="w-4 h-4 text-cyan-400" />
-                      <span>Undo last 5 moves</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Lightbulb className="w-4 h-4 text-yellow-400" />
-                      <span>Smart hint system</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Shield className="w-4 h-4 text-purple-400" />
-                      <span>Auto-save & resume</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Star className="w-4 h-4 text-pink-400" />
-                      <span>Performance tracking</span>
-                    </div>
-                  </div>
-                </div>
+                </motion.div>
 
-                <div className="flex items-center justify-center gap-8 text-sm flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-6 text-sm flex-wrap">
+                  <div className="flex items-center gap-2 bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/20">
                     <Play className="w-4 h-4 text-purple-400" />
-                    <span className="text-gray-300">
-                      {access.playsRemaining} Plays Remaining
+                    <span className="text-purple-300 font-mono">
+                      {access.playsRemaining} PLAYS
                     </span>
                   </div>
                   <button
                     onClick={() => setSettings(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors bg-black/20 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyan-500/30"
                     data-testid="button-toggle-sound"
                   >
                     {settings.soundEnabled ? (
@@ -1258,71 +1387,87 @@ export default function GuardianSolitaire() {
                     ) : (
                       <VolumeX className="w-4 h-4" />
                     )}
-                    <span>Sound {settings.soundEnabled ? 'ON' : 'OFF'}</span>
+                    <span className="font-mono text-xs">{settings.soundEnabled ? 'ON' : 'OFF'}</span>
                   </button>
                 </div>
 
                 <div className="flex gap-4 justify-center flex-wrap">
-                  <Button
-                    onClick={() => startGame(false)}
-                    size="lg"
-                    disabled={!access.canPlay || isLoadingDeck}
-                    className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold px-10 py-6 text-lg"
-                    data-testid="button-new-game"
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative group"
                   >
-                    {isLoadingDeck ? (
-                      <>
-                        <Loader2 className="w-6 h-6 mr-2 animate-spin" />
-                        LOADING GUARDIANS...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-6 h-6 mr-2" />
-                        NEW GAME
-                      </>
-                    )}
-                  </Button>
+                    <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl blur-md opacity-40 group-hover:opacity-70 transition-opacity" />
+                    <Button
+                      onClick={() => startGame(false)}
+                      size="lg"
+                      disabled={!access.canPlay || isLoadingDeck}
+                      className="relative bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold px-8 py-5 text-base border-0 shadow-lg shadow-cyan-500/20"
+                      data-testid="button-new-game"
+                    >
+                      {isLoadingDeck ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          LOADING...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-5 h-5 mr-2" />
+                          DEAL CARDS
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
                   
                   {hasSavedGame && (
-                    <Button
-                      onClick={() => startGame(true)}
-                      size="lg"
-                      variant="outline"
-                      disabled={!access.canPlay || isLoadingDeck}
-                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 px-10 py-6 text-lg"
-                      data-testid="button-resume-game"
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <RotateCcw className="w-6 h-6 mr-2" />
-                      RESUME
-                    </Button>
+                      <Button
+                        onClick={() => startGame(true)}
+                        size="lg"
+                        variant="outline"
+                        disabled={!access.canPlay || isLoadingDeck}
+                        className="border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 px-8 py-5 text-base transition-all"
+                        data-testid="button-resume-game"
+                      >
+                        <RotateCcw className="w-5 h-5 mr-2" />
+                        RESUME
+                      </Button>
+                    </motion.div>
                   )}
                 </div>
 
                 {!isConnected && (
-                  <p className="text-center text-yellow-400 text-sm">
-                    Connect your wallet for enhanced features
-                  </p>
+                  <motion.p 
+                    className="text-center text-yellow-400/80 text-sm font-mono"
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    ⚡ Connect wallet for enhanced privileges
+                  </motion.p>
                 )}
                 {!access.canPlay && access.playsRemaining <= 0 && (
-                  <p className="text-center text-red-400 text-sm">
-                    Daily play limit reached. Return tomorrow for more!
+                  <p className="text-center text-red-400 text-sm font-mono bg-red-500/10 rounded-lg py-2 border border-red-500/20">
+                    ⛔ Daily limit reached. Return tomorrow.
                   </p>
                 )}
                 {!access.canPlay && access.cooldownSeconds > 0 && (
-                  <p className="text-center text-yellow-400 text-sm">
+                  <p className="text-center text-yellow-400 text-sm font-mono">
                     {access.reason}
                   </p>
                 )}
 
-                <div className="flex justify-center">
+                <div className="flex justify-center pt-2">
                   <Button
                     variant="ghost"
                     onClick={() => setLocation('/')}
-                    className="text-gray-400 hover:text-white"
+                    className="text-gray-500 hover:text-cyan-400 text-sm"
                     data-testid="button-back-home"
                   >
                     <Home className="w-4 h-4 mr-2" />
-                    Back to Command Center
+                    Command Center
                   </Button>
                 </div>
               </div>

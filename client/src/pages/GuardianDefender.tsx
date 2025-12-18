@@ -242,112 +242,169 @@ export function GuardianDefender() {
           </div>
 
           {phase === 'gate' && (
-            <div className="text-center py-8">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-2 border-cyan-500/50 flex items-center justify-center">
-                <GamepadIcon size={40} />
+            <div className="text-center py-6 relative">
+              <style>{`
+                @keyframes hangar-sweep {
+                  0% { transform: translateX(-100%) skewX(-15deg); }
+                  100% { transform: translateX(200%) skewX(-15deg); }
+                }
+                @keyframes ship-hover {
+                  0%, 100% { transform: translateY(0) rotate(-2deg); }
+                  50% { transform: translateY(-5px) rotate(2deg); }
+                }
+                @keyframes status-blink {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.4; }
+                }
+                @keyframes hangar-lights {
+                  0%, 100% { background-position: 0% 50%; }
+                  50% { background-position: 100% 50%; }
+                }
+              `}</style>
+              
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400 to-transparent w-1/4" style={{ animation: 'hangar-sweep 3s linear infinite' }} />
               </div>
-              <p className="text-white font-orbitron text-xl mb-2">RETRO DEFENDER</p>
-              <p className="text-gray-400 text-sm mb-4">Defend the Based Galaxy!</p>
+              
+              <div className="w-24 h-20 mx-auto mb-4 relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30" />
+                <div className="absolute inset-2 flex items-center justify-center" style={{ animation: 'ship-hover 3s ease-in-out infinite' }}>
+                  <RocketIcon size={36} />
+                </div>
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-cyan-500/20 text-cyan-400 text-[8px] font-mono px-2 py-0.5 rounded border border-cyan-500/30" style={{ animation: 'status-blink 2s ease-in-out infinite' }}>
+                  HANGAR A7
+                </div>
+              </div>
+              
+              <p className="text-white font-orbitron text-xl mb-1">RETRO DEFENDER</p>
+              <p className="text-cyan-400/60 text-xs font-mono tracking-widest mb-4">HANGAR READINESS • STANDBY</p>
               
               {!access.canPlay ? (
-                <>
-                  <p className="text-red-400 text-sm mb-2">{access.reason}</p>
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
+                  <p className="text-red-400 text-sm mb-1">{access.reason}</p>
                   {access.cooldownSeconds > 0 && (
-                    <p className="text-cyan-400 text-3xl font-mono font-bold">{cooldown}s</p>
+                    <p className="text-cyan-400 text-2xl font-mono font-bold">{cooldown}s</p>
                   )}
-                </>
+                </div>
               ) : (
-                <Button 
-                  onClick={() => setPhase('menu')} 
-                  className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3 rounded-xl"
-                  data-testid="button-play-now"
-                >
-                  <PlayIcon size={20} className="mr-2" /> PLAY NOW
-                </Button>
+                <div className="relative inline-block group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity" />
+                  <Button 
+                    onClick={() => setPhase('menu')} 
+                    className="relative bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold px-8 py-3 rounded-xl border-0"
+                    data-testid="button-play-now"
+                  >
+                    <PlayIcon size={20} className="mr-2" /> ENTER HANGAR
+                  </Button>
+                </div>
               )}
               
-              <p className="text-gray-600 text-xs mt-4">
-                {access.playsRemaining} plays remaining today
+              <p className="text-gray-600 text-xs mt-4 font-mono">
+                {access.playsRemaining} SORTIES AVAILABLE
               </p>
               
               {isConnected && isHolder && (
-                <div className="mt-4 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-lg p-3 text-xs text-[#6cff61] max-w-xs mx-auto">
-                  <p className="font-bold">HOLDER PERKS ACTIVE</p>
-                  <p>+1 Life • 1.5x Score • Green Ship</p>
+                <div className="mt-4 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-lg p-2.5 text-xs text-[#6cff61] max-w-xs mx-auto">
+                  <div className="flex items-center justify-center gap-2">
+                    <ShieldIcon size={12} />
+                    <span className="font-bold">ELITE CLEARANCE</span>
+                  </div>
+                  <p className="text-[10px] opacity-80 mt-1">+1 Life • 1.5x Score • Green Ship</p>
                 </div>
               )}
               
               {!isConnected && (
-                <p className="text-gray-500 text-[10px] mt-4">
-                  Connect wallet & own a Guardian for bonus perks!
+                <p className="text-gray-500 text-[10px] mt-4 font-mono">
+                  Wallet + Guardian NFT = Elite Perks
                 </p>
               )}
               
-              <div className="mt-6 pt-4 border-t border-purple-500/20">
-                <p className="text-purple-400 text-xs font-orbitron mb-1">COMING 2026</p>
-                <p className="text-white font-bold">Race-to-Base</p>
-                <p className="text-cyan-400 text-[10px]">It will be incredible.</p>
+              <div className="mt-5 pt-4 border-t border-purple-500/20">
+                <p className="text-purple-400/60 text-[10px] font-mono mb-1">UPCOMING MISSION</p>
+                <p className="text-white font-bold text-sm">Race-to-Base</p>
+                <p className="text-cyan-400/50 text-[10px]">2026</p>
               </div>
             </div>
           )}
 
           {phase === 'menu' && (
-            <div className="text-center py-10">
+            <div className="text-center py-6 relative">
+              <style>{`
+                @keyframes launch-ready {
+                  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+                  50% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.4); }
+                }
+                @keyframes systems-check {
+                  0% { width: 0%; }
+                  100% { width: 100%; }
+                }
+              `}</style>
+              
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+              
               {holderPerks && (
-                <div className="inline-flex items-center gap-2 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-full px-4 py-1.5 mb-5">
-                  <ShieldIcon size={14} />
-                  <span className="text-[#6cff61] text-xs font-bold tracking-wide">GUARDIAN HOLDER</span>
+                <div className="inline-flex items-center gap-2 bg-[#6cff61]/10 border border-[#6cff61]/30 rounded-full px-3 py-1 mb-4">
+                  <span className="w-1.5 h-1.5 bg-[#6cff61] rounded-full animate-pulse" />
+                  <span className="text-[#6cff61] text-[10px] font-mono tracking-wide">ELITE PILOT</span>
                 </div>
               )}
               
-              <p className="text-white font-orbitron text-2xl mb-2">READY TO LAUNCH</p>
-              <p className="text-gray-500 text-sm mb-6">{access.playsRemaining} plays remaining today</p>
+              <p className="text-white font-orbitron text-2xl mb-1">SYSTEMS READY</p>
+              <p className="text-cyan-400/60 text-xs font-mono mb-5">{access.playsRemaining} SORTIES REMAINING</p>
               
               {holderPerks && (
-                <div className="bg-gradient-to-r from-[#6cff61]/10 to-[#00ffff]/10 border border-[#6cff61]/30 rounded-xl p-4 mb-6 max-w-xs mx-auto">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <StarIcon size={16} />
-                    <p className="text-[#6cff61] font-bold text-sm">HOLDER PERKS ACTIVE</p>
-                    <StarIcon size={16} />
-                  </div>
-                  <div className="flex justify-center gap-4 text-xs text-[#6cff61]/80">
-                    <span>+1 Life</span>
-                    <span>•</span>
-                    <span>Green Ship</span>
-                    <span>•</span>
-                    <span>1.5x Score</span>
+                <div className="bg-gradient-to-r from-[#6cff61]/5 to-[#00ffff]/5 border border-[#6cff61]/20 rounded-xl p-3 mb-5 max-w-xs mx-auto">
+                  <div className="flex items-center justify-center gap-3 text-[10px]">
+                    <div className="flex flex-col items-center">
+                      <HeartIcon size={14} />
+                      <span className="text-[#6cff61] mt-0.5">+1 LIFE</span>
+                    </div>
+                    <div className="w-px h-6 bg-[#6cff61]/30" />
+                    <div className="flex flex-col items-center">
+                      <RocketIcon size={14} />
+                      <span className="text-[#6cff61] mt-0.5">ELITE SHIP</span>
+                    </div>
+                    <div className="w-px h-6 bg-[#6cff61]/30" />
+                    <div className="flex flex-col items-center">
+                      <ScoreIcon size={14} />
+                      <span className="text-[#6cff61] mt-0.5">1.5x PTS</span>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <Button 
-                onClick={startGame} 
-                className="bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-[length:200%_100%] animate-pulse text-white font-bold px-10 py-4 text-lg rounded-xl hover:opacity-90 transition-all" 
-                data-testid="button-start-game"
-              >
-                <PlayIcon size={24} className="mr-2" /> START GAME
-              </Button>
+              <div className="relative inline-block group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 rounded-xl blur opacity-40 group-hover:opacity-70 transition-opacity" />
+                <Button 
+                  onClick={startGame} 
+                  className="relative bg-gradient-to-r from-cyan-600 via-purple-600 to-cyan-600 text-white font-bold px-10 py-4 text-lg rounded-xl border-0 shadow-lg shadow-cyan-500/20" 
+                  style={{ animation: 'launch-ready 2s ease-in-out infinite' }}
+                  data-testid="button-start-game"
+                >
+                  <RocketIcon size={20} className="mr-2" /> LAUNCH
+                </Button>
+              </div>
 
-              <p className="text-gray-600 text-[10px] mt-4">Defend the galaxy from alien invaders!</p>
+              <p className="text-gray-600 text-[10px] mt-4 font-mono">Defend the Based Galaxy!</p>
               
               {myStats.gamesPlayed > 0 && (
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Your Stats</p>
-                  <div className="grid grid-cols-3 gap-3 text-xs">
-                    <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-3">
-                      <ScoreIcon size={20} className="mx-auto mb-1" />
-                      <p className="text-cyan-400 font-mono font-bold">{myStats.lifetimeScore.toLocaleString()}</p>
-                      <p className="text-gray-600 text-[10px]">LIFETIME</p>
+                <div className="mt-6 pt-4 border-t border-cyan-500/20">
+                  <p className="text-[10px] text-gray-600 mb-3 font-mono tracking-widest">PILOT RECORD</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-lg p-2">
+                      <ScoreIcon size={16} className="mx-auto mb-1" />
+                      <p className="text-cyan-400 font-mono font-bold text-sm">{myStats.lifetimeScore.toLocaleString()}</p>
+                      <p className="text-gray-600 text-[8px]">TOTAL</p>
                     </div>
-                    <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
-                      <TrophyIcon size={20} className="mx-auto mb-1" />
-                      <p className="text-yellow-400 font-mono font-bold">{myStats.bestScore.toLocaleString()}</p>
-                      <p className="text-gray-600 text-[10px]">BEST</p>
+                    <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-lg p-2">
+                      <TrophyIcon size={16} className="mx-auto mb-1" />
+                      <p className="text-yellow-400 font-mono font-bold text-sm">{myStats.bestScore.toLocaleString()}</p>
+                      <p className="text-gray-600 text-[8px]">BEST</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 rounded-xl p-3">
-                      <GamepadIcon size={20} className="mx-auto mb-1" />
-                      <p className="text-purple-400 font-mono font-bold">{myStats.gamesPlayed}</p>
-                      <p className="text-gray-600 text-[10px]">GAMES</p>
+                    <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 rounded-lg p-2">
+                      <GamepadIcon size={16} className="mx-auto mb-1" />
+                      <p className="text-purple-400 font-mono font-bold text-sm">{myStats.gamesPlayed}</p>
+                      <p className="text-gray-600 text-[8px]">SORTIES</p>
                     </div>
                   </div>
                 </div>

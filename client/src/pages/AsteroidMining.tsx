@@ -1096,22 +1096,49 @@ export default function AsteroidMining() {
 
   if (!gameStarted) {
     return (
-      <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden">
-        <div className="fixed inset-0 pointer-events-none opacity-40">
-          {[...Array(100)].map((_, i) => (
+      <section className="py-8 min-h-screen bg-gradient-to-b from-slate-950 via-orange-950/20 to-black relative overflow-hidden">
+        <style>{`
+          @keyframes telemetry-scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          @keyframes radar-sweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes engine-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(251, 146, 60, 0.3), 0 0 40px rgba(251, 146, 60, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(251, 146, 60, 0.5), 0 0 60px rgba(251, 146, 60, 0.2); }
+          }
+          @keyframes countdown-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+          }
+          @keyframes data-stream {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 0% 100%; }
+          }
+          @keyframes asteroid-drift {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(10px) rotate(180deg); }
+          }
+        `}</style>
+
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(251,146,60,0.05),transparent_70%)]" />
+          {[...Array(60)].map((_, i) => (
             <motion.div
               key={`star-${i}`}
-              className="absolute w-1 h-1 bg-white rounded-full"
+              className="absolute w-0.5 h-0.5 bg-white rounded-full"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
               }}
               animate={{
-                opacity: [0.3, 1, 0.3],
-                scale: [1, 1.5, 1],
+                opacity: [0.2, 0.8, 0.2],
               }}
               transition={{
-                duration: 2 + Math.random() * 3,
+                duration: 1.5 + Math.random() * 2,
                 repeat: Infinity,
                 ease: "easeInOut",
                 delay: Math.random() * 2,
@@ -1120,39 +1147,57 @@ export default function AsteroidMining() {
           ))}
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-8">
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400 to-transparent w-1/3"
+            style={{ animation: 'telemetry-scan 3s linear infinite' }}
+          />
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 relative z-10 pt-12">
+          <div className="text-center mb-6">
             <motion.div
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6 }}
+              className="relative"
             >
-              <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-400 mb-3 font-orbitron tracking-tight">
+              <motion.div
+                className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-2"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-400 text-xs font-mono tracking-widest">LAUNCH PAD ALPHA</span>
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              </motion.div>
+              
+              <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-300 to-orange-400 mb-2 font-orbitron tracking-tight">
                 ASTEROID MINING
               </h1>
-              <p className="text-gray-400 text-base mb-4">
-                Endless Space Survival - Mine Resources - Score Big
-              </p>
+              <motion.p 
+                className="text-orange-400/70 text-sm font-mono tracking-wider"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                FLIGHT CONTROL • MISSION BRIEFING
+              </motion.p>
             </motion.div>
 
             {stats.gamesPlayed > 0 && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="flex items-center justify-center gap-8 text-sm flex-wrap mb-6"
+                className="flex items-center justify-center gap-4 text-sm flex-wrap mt-4"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-yellow-500/30">
                   <Trophy className="w-4 h-4 text-yellow-400" />
-                  <span className="text-gray-300">
-                    Best: {stats.bestScore.toLocaleString()} pts
-                  </span>
+                  <span className="text-yellow-300 font-mono">{stats.bestScore.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-cyan-500/30">
                   <Target className="w-4 h-4 text-cyan-400" />
-                  <span className="text-gray-300">
-                    {stats.gamesPlayed} Games Played
-                  </span>
+                  <span className="text-cyan-300 font-mono">{stats.gamesPlayed} MISSIONS</span>
                 </div>
               </motion.div>
             )}
@@ -1163,138 +1208,194 @@ export default function AsteroidMining() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <Card className="p-10 bg-black/70 border-orange-500/30 backdrop-blur-lg">
-              <div className="space-y-8">
-                
+            <Card className="p-6 md:p-8 bg-black/80 border-2 border-orange-500/30 backdrop-blur-xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,146,60,0.08),transparent_60%)]" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/30 to-transparent" />
+              
+              <div className="absolute top-3 right-3 flex items-center gap-2 opacity-60">
+                <div className="w-16 h-16 relative">
+                  <div className="absolute inset-0 border-2 border-orange-500/30 rounded-full" />
+                  <div 
+                    className="absolute inset-0 border-t-2 border-orange-400 rounded-full origin-center"
+                    style={{ animation: 'radar-sweep 4s linear infinite' }}
+                  />
+                  <div className="absolute inset-2 bg-orange-500/10 rounded-full" />
+                </div>
+              </div>
+              
+              <div className="space-y-6 relative z-10">
                 <div className="flex justify-center">
-                  <motion.div
-                    animate={{ 
-                      rotate: [0, 360],
-                      scale: [1, 1.1, 1],
-                    }}
-                    transition={{ 
-                      rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className="w-32 h-32 bg-gradient-to-br from-orange-500/20 to-yellow-500/20 rounded-full flex items-center justify-center border-2 border-white/10"
-                  >
-                    <Zap className="w-16 h-16 text-orange-400" />
-                  </motion.div>
-                </div>
-
-                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Info className="w-5 h-5 text-orange-400" />
-                    <h3 className="font-bold text-white text-lg">How to Play</h3>
-                  </div>
-                  <ul className="space-y-2 text-gray-300 text-sm">
-                    <li className="flex items-start gap-2">
-                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <span><strong>Tap screen</strong> to move your ship toward that location</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <span><strong>Hold FIRE button</strong> to shoot asteroids</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <span>Destroy asteroids and <strong>collect resources</strong> they drop</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <span>Large asteroids split into smaller pieces when destroyed</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <span>Survive as long as possible and maximize your score!</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-6 border border-purple-500/20">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    <h3 className="font-bold text-white text-lg">Asteroid Types</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gray-400"></div>
-                      <span className="text-gray-300">Grey - Common</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-blue-400"></div>
-                      <span className="text-gray-300">Blue - Uncommon</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-green-400"></div>
-                      <span className="text-gray-300">Green - Rare</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-purple-400"></div>
-                      <span className="text-gray-300">Purple - Epic</span>
-                    </div>
-                    <div className="flex items-center gap-2 col-span-2">
-                      <div className="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
-                      <span className="text-gray-300 font-bold">Gold - Legendary (5000 pts!)</span>
+                  <div className="relative">
+                    <motion.div
+                      className="absolute -inset-4 bg-gradient-to-br from-orange-500/20 to-yellow-500/20 rounded-full blur-xl"
+                      animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                    <motion.div
+                      className="relative w-24 h-24 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full flex items-center justify-center border-2 border-orange-500/40"
+                      style={{ animation: 'engine-glow 2s ease-in-out infinite' }}
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Crosshair className="w-12 h-12 text-orange-400" />
+                    </motion.div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500/20 text-orange-400 text-xs font-mono px-2 py-0.5 rounded border border-orange-500/30">
+                      READY
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-8 text-sm flex-wrap">
-                  <div className="flex items-center gap-2">
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 rounded-xl p-5 border border-orange-500/20 relative overflow-hidden"
+                >
+                  <div className="absolute -top-3 left-4 bg-slate-900 px-2 py-0.5 rounded text-xs text-orange-400 font-mono border border-orange-500/30">
+                    MISSION BRIEF
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-2">
+                    <div className="flex items-start gap-2 text-gray-300">
+                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <span>Tap to navigate ship</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
+                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <span>Hold FIRE to attack</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
+                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <span>Collect dropped resources</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-300">
+                      <ChevronRight className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <span>Large rocks split apart</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-gradient-to-br from-purple-950/40 to-orange-950/40 rounded-xl p-5 border border-purple-500/20 relative overflow-hidden"
+                >
+                  <div className="absolute -top-3 left-4 bg-slate-900 px-2 py-0.5 rounded text-xs text-purple-400 font-mono border border-purple-500/30">
+                    ORE CLASSIFICATION
+                  </div>
+                  <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-xs mt-2">
+                    <div className="flex flex-col items-center gap-1 bg-black/30 rounded-lg p-2">
+                      <motion.div 
+                        className="w-5 h-5 rounded-full bg-gray-400"
+                        style={{ animation: 'asteroid-drift 4s ease-in-out infinite' }}
+                      />
+                      <span className="text-gray-400 font-mono">IRON</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-black/30 rounded-lg p-2">
+                      <motion.div 
+                        className="w-5 h-5 rounded-full bg-blue-400"
+                        style={{ animation: 'asteroid-drift 4.5s ease-in-out infinite' }}
+                      />
+                      <span className="text-blue-400 font-mono">COBALT</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-black/30 rounded-lg p-2">
+                      <motion.div 
+                        className="w-5 h-5 rounded-full bg-green-400"
+                        style={{ animation: 'asteroid-drift 5s ease-in-out infinite' }}
+                      />
+                      <span className="text-green-400 font-mono">TITANIUM</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-black/30 rounded-lg p-2">
+                      <motion.div 
+                        className="w-5 h-5 rounded-full bg-purple-400"
+                        style={{ animation: 'asteroid-drift 5.5s ease-in-out infinite' }}
+                      />
+                      <span className="text-purple-400 font-mono">PLASMA</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-black/30 rounded-lg p-2 col-span-3 md:col-span-1">
+                      <motion.div 
+                        className="w-5 h-5 rounded-full bg-yellow-400"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                      <span className="text-yellow-400 font-mono font-bold">GOLD 5K</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
+                  <div className="flex items-center gap-2 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
                     <Heart className="w-4 h-4 text-red-400" />
-                    <span className="text-gray-300">
-                      3 Lives - 5 Shield per Life
-                    </span>
+                    <span className="text-red-300 font-mono">3 LIVES</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/20">
                     <Play className="w-4 h-4 text-purple-400" />
-                    <span className="text-gray-300">
-                      {gameConfig.maxPlaysPerDay - playsToday}/{gameConfig.maxPlaysPerDay} Plays Remaining
+                    <span className="text-purple-300 font-mono">
+                      {gameConfig.maxPlaysPerDay - playsToday}/{gameConfig.maxPlaysPerDay}
                     </span>
                   </div>
                   <button
                     onClick={() => setSettings(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-gray-400 hover:text-orange-400 transition-colors bg-black/20 px-3 py-1.5 rounded-lg border border-white/10 hover:border-orange-500/30"
                     data-testid="button-toggle-sound"
                   >
-                    {settings.soundEnabled ? (
-                      <Volume2 className="w-4 h-4" />
-                    ) : (
-                      <VolumeX className="w-4 h-4" />
-                    )}
-                    <span>Sound {settings.soundEnabled ? 'ON' : 'OFF'}</span>
+                    {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                    <span className="font-mono text-xs">{settings.soundEnabled ? 'ON' : 'OFF'}</span>
                   </button>
                 </div>
 
                 <div className="flex gap-4 justify-center flex-wrap">
-                  <Button
-                    onClick={startGame}
-                    size="lg"
-                    disabled={!isConnected || !isHolder || playsToday >= gameConfig.maxPlaysPerDay}
-                    className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold px-10 py-6 text-lg"
-                    data-testid="button-start-mining"
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative group"
                   >
-                    <Play className="w-6 h-6 mr-2" />
-                    START MINING
-                  </Button>
+                    <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-xl blur-md opacity-40 group-hover:opacity-70 transition-opacity" />
+                    <Button
+                      onClick={startGame}
+                      size="lg"
+                      disabled={!isConnected || !isHolder || playsToday >= gameConfig.maxPlaysPerDay}
+                      className="relative bg-gradient-to-r from-orange-600 to-yellow-500 hover:from-orange-500 hover:to-yellow-400 text-white font-bold px-8 py-5 text-base border-0 shadow-lg shadow-orange-500/20"
+                      data-testid="button-start-mining"
+                    >
+                      <Zap className="w-5 h-5 mr-2" />
+                      LAUNCH MISSION
+                    </Button>
+                  </motion.div>
                 </div>
 
                 {!isConnected && (
-                  <p className="text-center text-red-400 text-sm">
-                    Connect your wallet to play
-                  </p>
+                  <motion.p 
+                    className="text-center text-red-400/80 text-sm font-mono"
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    ⚠ AUTHORIZATION REQUIRED - Connect Wallet
+                  </motion.p>
                 )}
                 {isConnected && !isHolder && (
-                  <p className="text-center text-red-400 text-sm">
-                    Guardian NFT required to access this game
+                  <p className="text-center text-red-400 text-sm font-mono bg-red-500/10 rounded-lg py-2 border border-red-500/20">
+                    ⛔ Guardian NFT clearance required
                   </p>
                 )}
                 {playsToday >= gameConfig.maxPlaysPerDay && (
-                  <p className="text-center text-red-400 text-sm">
-                    Daily play limit reached. Return tomorrow!
+                  <p className="text-center text-orange-400 text-sm font-mono bg-orange-500/10 rounded-lg py-2 border border-orange-500/20">
+                    Daily mission quota reached. Return tomorrow.
                   </p>
                 )}
+
+                <div className="flex justify-center pt-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate('/')}
+                    className="text-gray-500 hover:text-orange-400 text-sm"
+                    data-testid="button-back-home"
+                  >
+                    <Home className="w-4 h-4 mr-2" />
+                    Command Center
+                  </Button>
+                </div>
               </div>
             </Card>
           </motion.div>
