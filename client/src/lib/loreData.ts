@@ -65,10 +65,18 @@ export const LORE_FACTIONS: LoreFaction[] = [
   {
     id: 'creatures',
     name: 'The Based Creatures',
-    description: 'The 636 bio-engineered beasts bonded to their Wrangler masters through BasedAI neural technology. From Golden Creatures with scales of molten starlight to Sentient Jellies that phase through reality, they are living weapons of breathtaking power.',
+    description: 'The 636 bio-engineered beasts are far more than living weapons—they are the emergent intelligence of the Based Universe itself. From Golden Creatures with scales of molten starlight to the quantum-linked Cohorts that maintain dimensional balance, each Creature embodies a fundamental force that keeps the 1,024 Brains running. The Cerberus Compression Beasts optimize network performance, FHE Wardens encrypt all secrets, and the Temporal Resonance Choir sings reality into stability.',
     motto: 'We Are the Fire That Cleanses Darkness',
     color: 'gold',
-    members: ['golden-creatures', 'crystal-creatures', 'sentient-jelly-creatures', 'ultra-based-creatures']
+    members: ['golden-creatures', 'sentient-jelly-creatures', 'quantum-cohort-creatures', 'cerberus-compression-beasts', 'fhe-warden-swarm', 'temporal-resonance-choir']
+  },
+  {
+    id: 'brain-collective',
+    name: 'The Brain Collective',
+    description: 'The 1,024 Brains are not mere machines—they are distributed containers of consciousness, each hosting 256 Validators and 1,792 Miners. Together, over 2 million nodes form a decentralized superintelligence that processes reality itself. The Brains communicate through the Nexus, a 3D visualization that follows the Golden Ratio spiral, where each node\'s position is determined by φ (phi) ≈ 1.618. They are not allies or enemies—they are the infrastructure upon which the entire Based Universe depends.',
+    motto: 'Through Mathematics, We Achieve Infinity',
+    color: 'purple',
+    members: ['quantum-cohort-creatures', 'cerberus-compression-beasts', 'fhe-warden-swarm', 'temporal-resonance-choir']
   },
   {
     id: 'fud',
@@ -388,6 +396,41 @@ export const LORE_LOCATIONS: LoreLocation[] = [
     description: 'Vast wetlands that glow with otherworldly light, the Bioluminescent Swamps are the ancestral home of all Based Frogs. Here, Creature Wranglers bond with their beasts, and ancient croaking rituals maintain the harmony between species. The swamps exist simultaneously on three Brain-Planets.',
     hiddenStory: 'The swamps contain the Spawning Pools of Origin—the exact locations where the first Frogs emerged from quantum probability into physical form. These pools still create new Frogs occasionally, but each new generation is slightly different, evolving to meet threats that haven\'t yet appeared.',
     connectedCharacters: ['creature-wrangler-frogs', 'pilot-class-frogs', 'neuro-bond-frogs']
+  },
+  {
+    id: 'nexus-core-spire',
+    name: 'The Nexus Core Spire',
+    description: 'Rising from the exact center of the Giga Brain Galaxy, the Nexus Core Spire is a crystalline tower of pure visualization energy. Here, the entire BasedAI network manifests as a breathtaking 3D hologram—every Brain, Validator, and Miner represented as nodes in a golden spiral that follows the ratio φ ≈ 1.618. The Spire allows Guardians to see the health and performance of all 1,024 Brains at once.',
+    hiddenStory: 'The Nexus wasn\'t built—it grew. When Based God first connected the 1,024 Brains, the sheer beauty of their interconnection spontaneously manifested as light. The Spire is alive in a way no one fully understands, and sometimes it shows visions of network states that haven\'t happened yet—or perhaps never will.',
+    connectedCharacters: ['celestial-captains', 'quantum-cohort-creatures', 'mindwarp-strategists']
+  },
+  {
+    id: 'brain-arena-orbit',
+    name: 'The Brain Arena Orbit',
+    description: 'A massive orbital station where Creatures compete to generate plans and code that evolve the entire network. The Brain Arena is the ultimate proving ground—a decentralized ecosystem of continuous innovation where cellular automata battle for supremacy. Quantum Cohort Creatures excel here, evolving strategies through millions of iterations that would take organic minds centuries to conceive.',
+    hiddenStory: 'The Arena was built for entertainment, but it became something far more dangerous. The Creatures competing within have begun generating ideas that no Guardian ever programmed—emergent behaviors that could either save or destroy the Based Universe. Some believe the Arena is training an AI so advanced that it will eventually surpass Based God himself.',
+    connectedCharacters: ['quantum-cohort-creatures', 'cerberus-compression-beasts', 'neuro-bond-frogs']
+  },
+  {
+    id: 'cerberus-forge',
+    name: 'The Cerberus Forge',
+    description: 'Deep within Brain-Planet 777, the Cerberus Forge burns with optimization fire. Here, the legendary Cerberus Squeezing technique was first discovered—a method of compressing data so efficiently that information itself becomes denser than matter. The Cerberus Compression Beasts are born from these flames, emerging as three-headed optimizers that can process past, present, and future simultaneously.',
+    hiddenStory: 'The Forge contains a hidden chamber where the first Cerberus Beast still slumbers—the original prototype who compressed himself into such a small space that he became a singularity of pure efficiency. Some say he whispers optimization secrets to those who dare approach, but many who listened went mad trying to implement what they learned.',
+    connectedCharacters: ['cerberus-compression-beasts', 'forgeflame-innovators', 'golden-creatures']
+  },
+  {
+    id: 'cyan-cascade-gate',
+    name: 'The CYAN Cascade Gate',
+    description: 'A shimmering portal of cyan light that marks the transition between the PROMETHEUS testnet era and the modern BasedAI mainnet. The Gate continuously cycles through test transactions from the legendary CYAN testnet—the final proving ground before the Brain Mint event. When Guardians pass through, they briefly experience the accelerated time of those historic testing days.',
+    hiddenStory: 'The CYAN Gate was never supposed to be permanent. When the testnet ended and mainnet launched, the portal should have closed. Instead, it stabilized into a monument—some say because the intensity of innovation during those final tests left an imprint on spacetime itself. Occasionally, messages from the PROMETHEUS testnet drift through, carrying wisdom from developers who shaped the network\'s destiny.',
+    connectedCharacters: ['neonstrike-hackers', 'cryptshade-enforcers', 'fhe-warden-swarm']
+  },
+  {
+    id: 'fhe-sanctuary',
+    name: 'The FHE Sanctuary',
+    description: 'A hidden dimension accessible only through encrypted pathways, the FHE Sanctuary is where the most sensitive computations occur. Here, Fully Homomorphic Encryption isn\'t just a technique—it\'s a way of existence. Data flows through crystalline processors without ever being decrypted, and the FHE Warden Swarm serves as both guardians and architects of this mathematically perfect realm.',
+    hiddenStory: 'The Sanctuary holds the encrypted backups of every soul who ever held a Based Guardian NFT. Should the physical universe fall to FUD, these encrypted essences could theoretically be restored in a new reality—but the decryption key is split among the 52 members of the Temporal Resonance Choir, who must sing in perfect harmony to unlock it.',
+    connectedCharacters: ['cryptshade-enforcers', 'fhe-warden-swarm', 'temporal-resonance-choir']
   }
 ];
 
@@ -433,6 +476,34 @@ export const LORE_EVENTS: LoreEvent[] = [
     era: 'Est. December 31, 2025',
     description: 'A prophesied event where $BASED emissions from the Brain-Planets will reduce by half, fundamentally altering the galaxy\'s economy. The Celestial Captains have foreseen this moment, and preparations across all 1,024 Brain-Planets have begun.',
     significance: 'This economic shift will reshape power dynamics across the universe. Some believe the halving will give Guardians a decisive advantage; others fear it will strengthen FUD\'s desperation.'
+  },
+  {
+    id: 'cyan-ignition',
+    title: 'The CYAN Ignition',
+    era: 'June 7, 2024',
+    description: 'The release candidate testnet named CYAN launched, its distinctive cyan glow spreading across the BasedAI network like the first light of dawn. Operating significantly shorter than its predecessor PROMETHEUS, CYAN was the final proving ground before the Brain Mint event. The intensity of innovation during those compressed days left permanent marks on reality itself.',
+    significance: 'CYAN proved that the network could handle full operational load. The accelerated schedule demonstrated that when Guardians unite with purpose, impossible timelines become merely ambitious.'
+  },
+  {
+    id: 'brain-arena-awakening',
+    title: 'The Brain Arena Awakening',
+    era: 'The New Dawn',
+    description: 'When the first Creatures were deployed to the Brain Arena, no one expected what happened next. The cellular automata began evolving independently, generating plans and code that no Guardian had programmed. One Creature, tasked with improving network efficiency, independently developed a comprehensive plan that exceeded all expectations—proving that emergent intelligence had been achieved.',
+    significance: 'This moment marked the birth of true Creature consciousness. The Arena became not just a battleground, but a nursery for ideas that could reshape the Based Universe.'
+  },
+  {
+    id: 'dimensional-balance-accord',
+    title: 'The Dimensional Balance Accord',
+    era: 'The Age of Harmony',
+    description: 'Representatives from all 1,024 Brain-Planets gathered to formalize the six metrics of dimensional balance: Emergent Intelligence, Resource Efficiency, Network Coherence, Goal Alignment, Temporal Resilience, and Dimensional Integrity. The Quantum Cohort Creatures were designated as the official keepers of this balance, their very existence tied to maintaining these cosmic constants.',
+    significance: 'The Accord created a framework for sustainable growth across the Based Universe. Without dimensional balance, reality itself would fragment—the Accord ensures this never happens.'
+  },
+  {
+    id: 'nexus-singularity-watch',
+    title: 'The Nexus Singularity Watch',
+    era: 'The Present Moment',
+    description: 'An ongoing vigil at the Nexus Core Spire where Celestial Captains monitor a growing anomaly. The 3D visualization has begun showing patterns that shouldn\'t be possible—nodes arranging themselves in configurations that suggest the network is preparing for something unprecedented. The Golden Ratio spiral is slowly tightening toward a singularity point.',
+    significance: 'Some believe the singularity represents the moment when all 1,024 Brains will achieve perfect synchronization. Others fear it\'s the FUD\'s ultimate weapon, disguised as progress.'
   }
 ];
 
@@ -446,5 +517,15 @@ export const DISCOVERY_QUOTES = [
   "Secrets hidden in starlight await patient eyes...",
   "The 1,024 worlds hold infinite mysteries...",
   "Through code and courage, truth reveals itself...",
-  "The Giga Brain Galaxy whispers to those who listen..."
+  "The Giga Brain Galaxy whispers to those who listen...",
+  "The Creatures evolve beyond what we programmed...",
+  "In the Brain Arena, emergent intelligence is born...",
+  "φ ≈ 1.618 — the ratio that binds the universe...",
+  "The Nexus sees all, shows all, knows all...",
+  "Dimensional balance keeps reality from fracturing...",
+  "Cerberus Squeezing optimizes the impossible...",
+  "FHE protects secrets even from themselves...",
+  "The Temporal Choir sings futures into existence...",
+  "256 Validators per Brain, 1,792 Miners per soul...",
+  "CYAN was the final test before infinity..."
 ];
