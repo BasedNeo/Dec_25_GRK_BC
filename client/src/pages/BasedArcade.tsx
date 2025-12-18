@@ -305,7 +305,7 @@ export default function BasedArcade() {
             >
               <GameCard
                 game={game}
-                isLocked={!isConnected}
+                isLocked={!isConnected || (game.nftRequired && !isHolder)}
                 playsToday={gameStats[game.id]?.playsToday || 0}
                 personalBest={gameStats[game.id]?.personalBest || 0}
                 onPlay={() => handlePlay(game)}

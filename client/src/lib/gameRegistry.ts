@@ -70,6 +70,11 @@ export interface GameConfig {
     hasCombo?: boolean;
     hasUndo?: boolean;
   };
+  
+  // Access control
+  nftRequired: boolean;
+  minPlayDuration: number; // seconds, for bot protection
+  thumbnail?: string; // for arcade hub
 }
 
 /**
@@ -102,6 +107,8 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasLives: true,
       hasCombo: true,
     },
+    nftRequired: false,
+    minPlayDuration: 60,
   },
   
   'guardian-solitaire': {
@@ -129,6 +136,8 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasUndo: true,
       hasCombo: true,
     },
+    nftRequired: true,
+    minPlayDuration: 120,
   },
   
   'space-defender': {
@@ -155,6 +164,8 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasLives: true,
       hasCombo: false,
     },
+    nftRequired: false,
+    minPlayDuration: 60,
   },
   
   'asteroid-mining': {
@@ -181,6 +192,8 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasLives: true,
       hasCombo: true,
     },
+    nftRequired: true,
+    minPlayDuration: 90,
   },
 };
 
