@@ -143,6 +143,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },
     { id: 'game', label: t('nav.game', 'Retro Defender') },
+    { id: 'solitaire', label: t('nav.solitaire', 'Solitaire') },
   ];
 
   return (
@@ -185,6 +186,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 onClick={() => {
                   if (item.id === 'game') {
                     setLocation('/game');
+                  } else if (item.id === 'solitaire') {
+                    setLocation('/guardian-solitaire');
                   } else {
                     onTabChange(item.id);
                   }
@@ -399,6 +402,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   onClick={() => {
                     if (item.id === 'game') {
                       setLocation('/game');
+                    } else if (item.id === 'solitaire') {
+                      setLocation('/guardian-solitaire');
                     } else {
                       onTabChange(item.id);
                     }
