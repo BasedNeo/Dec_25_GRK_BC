@@ -1,0 +1,343 @@
+import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
+import { useAccount, useReadContract } from 'wagmi';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { 
+  Gamepad2, Trophy, Lock, Unlock, Star, Sparkles, 
+  Home, Zap, Clock, Target, ChevronRight
+} from 'lucide-react';
+import { getEnabledGames, GameConfig } from '@/lib/gameRegistry';
+import { GameStorageManager } from '@/lib/gameStorage';
+import { NFT_CONTRACT } from '@/lib/constants';
+import { Navbar } from '@/components/Navbar';
+
+const ERC721_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
+interface GameCardProps {
+  game: GameConfig;
+  isLocked: boolean;
+  playsToday: number;
+  personalBest: number;
+  onPlay: () => void;
+}
+
+function GameCard({ game, isLocked, playsToday, personalBest, onPlay }: GameCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const Icon = game.icon;
+  const maxPlays = game.maxPlaysPerDay;
+  const playsRemaining = maxPlays - playsToday;
+  const canPlay = !isLocked && playsRemaining > 0;
+
+  return (
+    <motion.div
+      className="relative group"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02, y: -5 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+    >
+      <div className={`absolute -inset-0.5 bg-gradient-to-r ${game.thumbnailGradient} rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-300`} />
+      
+      <Card className="relative bg-black/80 border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden">
+        <div className={`absolute inset-0 bg-gradient-to-br ${game.thumbnailGradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
+        
+        <div className="relative p-6">
+          <div className="flex items-start justify-between mb-4">
+            <motion.div
+              className={`w-16 h-16 rounded-xl bg-gradient-to-br ${game.thumbnailGradient} flex items-center justify-center shadow-lg`}
+              animate={isHovered ? { rotate: [0, -5, 5, 0], scale: 1.1 } : {}}
+              transition={{ duration: 0.5 }}
+            >
+              <Icon className="w-8 h-8 text-white" />
+            </motion.div>
+            
+            <div className="flex flex-col items-end gap-2">
+              {isLocked ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-400">
+                  <Lock className="w-3 h-3" />
+                  NFT Required
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-xs font-medium text-green-400">
+                  <Unlock className="w-3 h-3" />
+                  Free to Play
+                </span>
+              )}
+              
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono ${
+                playsRemaining > 0 
+                  ? 'bg-cyan-500/20 border border-cyan-500/30 text-cyan-400' 
+                  : 'bg-gray-500/20 border border-gray-500/30 text-gray-500'
+              }`}>
+                <Zap className="w-3 h-3" />
+                {playsToday}/{maxPlays} plays
+              </span>
+            </div>
+          </div>
+
+          <h3 className="text-xl font-orbitron font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
+            {game.name}
+          </h3>
+          
+          <p className="text-gray-400 text-sm mb-4 line-clamp-2 min-h-[40px]">
+            {game.description}
+          </p>
+
+          <div className="flex items-center gap-4 mb-4 text-sm">
+            <div className="flex items-center gap-1.5 text-purple-400">
+              <Clock className="w-4 h-4" />
+              <span>{Math.round(game.averagePlayTime / 60)}m avg</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-yellow-400">
+              <Star className="w-4 h-4" />
+              <span className="capitalize">{game.difficulty}</span>
+            </div>
+          </div>
+
+          {personalBest > 0 && (
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <Trophy className="w-4 h-4 text-yellow-400" />
+              <span className="text-yellow-400 font-mono text-sm">
+                Personal Best: {personalBest.toLocaleString()}
+              </span>
+            </div>
+          )}
+
+          <Button
+            onClick={onPlay}
+            disabled={!canPlay}
+            className={`w-full font-bold py-3 rounded-xl transition-all ${
+              canPlay
+                ? `bg-gradient-to-r ${game.thumbnailGradient} hover:shadow-lg hover:shadow-purple-500/25 text-white`
+                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            }`}
+            aria-label={`Play ${game.name}`}
+            data-testid={`button-play-${game.id}`}
+          >
+            {isLocked ? (
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                Connect Wallet
+              </>
+            ) : playsRemaining <= 0 ? (
+              <>
+                <Clock className="w-4 h-4 mr-2" />
+                Daily Limit Reached
+              </>
+            ) : (
+              <>
+                <Gamepad2 className="w-4 h-4 mr-2" />
+                Play Now
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </>
+            )}
+          </Button>
+        </div>
+
+        {isLocked && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="text-center p-6">
+              <Lock className="w-12 h-12 text-cyan-400 mx-auto mb-3" />
+              <p className="text-white font-bold mb-1">NFT Holders Only</p>
+              <p className="text-gray-400 text-sm">Connect wallet with Guardian NFT to unlock</p>
+            </div>
+          </div>
+        )}
+      </Card>
+    </motion.div>
+  );
+}
+
+export default function BasedArcade() {
+  const [, navigate] = useLocation();
+  const { address, isConnected } = useAccount();
+  const games = useMemo(() => getEnabledGames(), []);
+  const [gameStats, setGameStats] = useState<Record<string, { playsToday: number; personalBest: number }>>({});
+
+  const { data: nftBalance } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: ERC721_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const isHolder = nftBalance ? Number(nftBalance) > 0 : false;
+
+  useEffect(() => {
+    const loadStats = () => {
+      const stats: Record<string, { playsToday: number; personalBest: number }> = {};
+      games.forEach((game) => {
+        const savedStats = address 
+          ? GameStorageManager.loadStats(game.id, address)
+          : GameStorageManager.getDefaultStats();
+        stats[game.id] = {
+          playsToday: savedStats.gamesPlayed % game.maxPlaysPerDay,
+          personalBest: savedStats.bestScore,
+        };
+      });
+      setGameStats(stats);
+    };
+    loadStats();
+  }, [games, address]);
+
+  const handlePlay = (game: GameConfig) => {
+    navigate(game.path);
+  };
+
+  return (
+    <section className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] relative overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none">
+        {[...Array(80)].map((_, i) => (
+          <motion.div
+            key={`star-${i}`}
+            className="absolute w-0.5 h-0.5 bg-white rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0.2, 0.8, 0.2],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 2 + Math.random() * 4,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+        
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
+      </div>
+
+      <Navbar activeTab="game" onTabChange={() => navigate('/')} isConnected={isConnected} />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-4">
+          <button 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
+            data-testid="button-back-home"
+            aria-label="Back to Command Center"
+          >
+            <Home size={16} />
+            <span>Back to Command Center</span>
+          </button>
+        </div>
+
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full mb-6"
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-400 text-sm font-mono">GIGA BRAIN GALAXY</span>
+          </motion.div>
+          
+          <h1 className="text-4xl md:text-6xl font-orbitron font-bold mb-4">
+            <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              Welcome to the
+            </span>
+            <br />
+            <span className="text-white">Based Arcade</span>
+          </h1>
+          
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            Where Guardians Play in the Giga Brain Galaxy
+          </p>
+          
+          {!isConnected && (
+            <motion.p 
+              className="mt-4 text-cyan-400/70 text-sm"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              Connect your wallet to unlock NFT holder benefits
+            </motion.p>
+          )}
+          
+          {isConnected && isHolder && (
+            <motion.div 
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <Target className="w-4 h-4 text-green-400" />
+              <span className="text-green-400 text-sm font-mono">GUARDIAN HOLDER • ALL ACCESS</span>
+            </motion.div>
+          )}
+        </motion.div>
+
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          {games.map((game, index) => (
+            <motion.div
+              key={game.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
+              <GameCard
+                game={game}
+                isLocked={!isConnected}
+                playsToday={gameStats[game.id]?.playsToday || 0}
+                personalBest={gameStats[game.id]?.personalBest || 0}
+                onPlay={() => handlePlay(game)}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          className="mt-16 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <div className="inline-flex items-center gap-4 px-6 py-4 bg-black/40 border border-white/10 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <Gamepad2 className="w-5 h-5 text-cyan-400" />
+              <span className="text-white font-mono">{games.length} Games</span>
+            </div>
+            <div className="w-px h-6 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-400" />
+              <span className="text-white font-mono">10 plays/day each</span>
+            </div>
+            <div className="w-px h-6 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-purple-400" />
+              <span className="text-white font-mono">Compete for glory</span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
