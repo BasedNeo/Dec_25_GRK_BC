@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "lastVerified": "2025-12-17",
+  "protectedFiles": [
+    {
+      "path": "client/src/core/commerce/useMint.ts",
+      "criticality": "CRITICAL",
+      "reason": "NFT minting with fixed price (69,420 $BASED)",
+      "lastModified": "2025-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["mint-1-nft", "mint-max-affordable", "mint-soldout-check"]
+    },
+    {
+      "path": "client/src/core/commerce/useMarketplace.ts",
+      "criticality": "CRITICAL",
+      "reason": "Marketplace buy/sell/list with real money",
+      "lastModified": "2025-12-15",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["buy-nft", "list-nft", "check-balance"]
+    },
+    {
+      "path": "client/src/lib/constants.ts",
+      "criticality": "CRITICAL",
+      "reason": "Contract addresses, revenue splits, mint price",
+      "lastModified": "2025-12-17",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["verify-addresses", "verify-splits"]
+    },
+    {
+      "path": "client/src/lib/safeMath.ts",
+      "criticality": "CRITICAL",
+      "reason": "Financial calculations with BigInt",
+      "lastModified": "2025-12-17",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["safe-math-precision"]
+    },
+    {
+      "path": "client/src/core/commerce/useOffers.ts",
+      "criticality": "HIGH",
+      "reason": "Offer system with escrowed funds",
+      "lastModified": "2025-12-10",
+      "checksum": "",
+      "testRequired": true,
+      "tests": ["make-offer", "cancel-offer"]
+    },
+    {
+      "path": "server/routes.ts",
+      "criticality": "HIGH",
+      "reason": "API endpoints with rate limiting",
+      "lastModified": "2025-12-17",
+      "checksum": "",
+      "testRequired": false
+    },
+    {
+      "path": "server/storage.ts",
+      "criticality": "HIGH",
+      "reason": "Database operations for profiles and stats",
+      "lastModified": "2025-12-10",
+      "checksum": "",
+      "testRequired": false
+    }
+  ],
+  "requiredTests": {
+    "mint-1-nft": "Mint 1 NFT and verify 69,420 $BASED charged",
+    "buy-nft": "Buy listed NFT and verify transfer + payment",
+    "verify-addresses": "Check all contract addresses match deployed contracts",
+    "verify-splits": "Verify treasury=51%, creator=49% for mints",
+    "safe-math-precision": "Test BigInt calculations don't lose precision"
+  }
+}
