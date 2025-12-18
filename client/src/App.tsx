@@ -133,22 +133,84 @@ function Router() {
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/terms" component={TermsOfService} />
-        <Route path="/privacy" component={PrivacyPolicy} />
-        <Route path="/odyssey" component={Odyssey} />
-        <Route path="/creators" component={Creators} />
-        <Route path="/saga" component={Saga} />
-        <Route path="/game" component={GuardianDefender} />
-        <Route path="/games" component={BasedArcade} />
-        <Route path="/games/guardian-defense" component={GuardianDefense} />
-        <Route path="/games/guardian-solitaire" component={GuardianSolitaire} />
-        <Route path="/games/asteroid-mining" component={AsteroidMining} />
-        <Route path="/arcade" component={BasedArcade} />
-        <Route path="/guardian-defense" component={GuardianDefense} />
-        <Route path="/guardian-solitaire" component={GuardianSolitaire} />
-        <Route path="/asteroid-mining" component={AsteroidMining} />
-        <Route component={NotFound} />
+        <Route path="/">
+          <ErrorBoundary feature="Home">
+            <Home />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/terms">
+          <ErrorBoundary feature="Terms">
+            <TermsOfService />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/privacy">
+          <ErrorBoundary feature="Privacy">
+            <PrivacyPolicy />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/odyssey">
+          <ErrorBoundary feature="Odyssey">
+            <Odyssey />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/creators">
+          <ErrorBoundary feature="Creators">
+            <Creators />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/saga">
+          <ErrorBoundary feature="Saga">
+            <Saga />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/game">
+          <ErrorBoundary feature="Guardian Defender">
+            <GuardianDefender />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games">
+          <ErrorBoundary feature="Based Arcade">
+            <BasedArcade />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games/guardian-defense">
+          <ErrorBoundary feature="Guardian Defense">
+            <GuardianDefense />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games/guardian-solitaire">
+          <ErrorBoundary feature="Guardian Solitaire">
+            <GuardianSolitaire />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games/asteroid-mining">
+          <ErrorBoundary feature="Asteroid Mining">
+            <AsteroidMining />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/arcade">
+          <ErrorBoundary feature="Based Arcade">
+            <BasedArcade />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/guardian-defense">
+          <ErrorBoundary feature="Guardian Defense">
+            <GuardianDefense />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/guardian-solitaire">
+          <ErrorBoundary feature="Guardian Solitaire">
+            <GuardianSolitaire />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/asteroid-mining">
+          <ErrorBoundary feature="Asteroid Mining">
+            <AsteroidMining />
+          </ErrorBoundary>
+        </Route>
+        <Route>
+          <NotFound />
+        </Route>
       </Switch>
     </Suspense>
   );
