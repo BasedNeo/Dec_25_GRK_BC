@@ -1,0 +1,73 @@
+export class SafeMath {
+  private static readonly DECIMALS = 18;
+  private static readonly WEI_PER_TOKEN = BigInt(10) ** BigInt(SafeMath.DECIMALS);
+
+  static toWei(amount: string | number): bigint {
+    if (typeof amount === 'number') {
+      amount = amount.toString();
+    }
+    const [whole, decimal = ''] = amount.split('.');
+    const paddedDecimal = decimal.padEnd(SafeMath.DECIMALS, '0').slice(0, SafeMath.DECIMALS);
+    return BigInt(whole + paddedDecimal);
+  }
+
+  static fromWei(wei: bigint, decimals: number = 2): string {
+    const str = wei.toString().padStart(SafeMath.DECIMALS + 1, '0');
+    const whole = str.slice(0, -SafeMath.DECIMALS) || '0';
+    const fraction = str.slice(-SafeMath.DECIMALS, -SafeMath.DECIMALS + decimals);
+    return decimals > 0 ? `${whole}.${fraction}` : whole;
+  }
+
+  static format(wei: bigint, decimals: number = 2): string {
+    const value = SafeMath.fromWei(wei, decimals);
+    const [whole, fraction] = value.split('.');
+    const formatted = Number(whole).toLocaleString();
+    return fraction ? `${formatted}.${fraction}` : formatted;
+  }
+
+  static add(a: bigint, b: bigint): bigint {
+    return a + b;
+  }
+
+  static sub(a: bigint, b: bigint): bigint {
+    if (b > a) throw new Error('SafeMath: subtraction underflow');
+    return a - b;
+  }
+
+  static mul(a: bigint, b: bigint): bigint {
+    return a * b;
+  }
+
+  static div(a: bigint, b: bigint): bigint {
+    if (b === BigInt(0)) throw new Error('SafeMath: division by zero');
+    return a / b;
+  }
+
+  static mulPercent(amount: bigint, percent: number): bigint {
+    return (amount * BigInt(Math.floor(percent * 100))) / BigInt(10000);
+  }
+
+  static gte(a: bigint, b: bigint): boolean {
+    return a >= b;
+  }
+
+  static lte(a: bigint, b: bigint): boolean {
+    return a <= b;
+  }
+
+  static eq(a: bigint, b: bigint): boolean {
+    return a === b;
+  }
+
+  static parseInput(input: string): bigint {
+    const cleaned = input.replace(/[^0-9.]/g, '');
+    if (!cleaned || cleaned === '.') return BigInt(0);
+    return SafeMath.toWei(cleaned);
+  }
+
+  static validate(amount: bigint, min: bigint = BigInt(0), max?: bigint): boolean {
+    if (amount < min) return false;
+    if (max !== undefined && amount > max) return false;
+    return true;
+  }
+}
