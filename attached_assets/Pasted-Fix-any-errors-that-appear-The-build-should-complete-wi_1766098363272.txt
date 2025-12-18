@@ -1,0 +1,94 @@
+Fix any errors that appear. The build should complete with zero TypeScript errors.
+Task 2: Production Build Test
+Build the application for production:
+build
+npm run build
+Expected outcome:
+Build completes successfully
+No warnings about circular dependencies
+Bundle sizes are reasonable
+Check the generated bundle sizes:
+js
+ls -lh dist/assets/*.js
+Ideal sizes:
+Main bundle: < 500KB
+Vendor bundle: < 1MB
+Individual route chunks: < 200KB each
+If bundles are too large, investigate and optimize.
+Task 3: Security Audit
+Check for npm security vulnerabilities:
+audit
+npm audit
+Fix any high or critical vulnerabilities:
+fix
+npm audit fix
+If there are vulnerabilities that can't be auto-fixed, document them and assess if they affect the application.
+Task 4: Check for Unused Dependencies
+depcheck
+npx depcheck
+Remove any unused dependencies:
+>
+npm uninstall <package-name>
+Task 5: Verify Environment Variables
+Ensure .env.example contains all required variables that exist in the actual .env file (without the actual sensitive values).
+Add any missing variables to .env.example with placeholder values:
+your_value_here
+# Example formatVITE_YOUR_NEW_VAR=your_value_here
+Task 6: Create .gitignore (if not exists or incomplete)
+Ensure .gitignore includes:
+/
+# Dependenciesnode_modules/# Build outputdist/build/# Environment.env.env.local.env.*.local# Logs*.lognpm-debug.log*yarn-debug.log*yarn-error.log*# Editor.vscode/.idea/*.swp*.swo*~# OS.DS_StoreThumbs.db# Testingcoverage/# Misc.cache/.temp/
+Task 7: Verify Critical Files Exist
+Ensure these documentation files were created:
+ARCHITECTURE.md
+DEVELOPMENT_GUIDE.md
+CHANGELOG.md
+README.md (updated)
+.env.example
+.gitignore
+Task 8: Create Backup Timestamp
+Create a simple backup marker file at the root:
+File: LAST_BACKUP.txt
+.
+Last Major Update: 2025-12-18Status: Production ReadyVersion: 1.0.0This version includes:- Based Arcade with 3 games- Performance optimizations (memory leak fixes)- Comprehensive documentation- Type safety improvements- Code cleanupAll tests passing as of this date.
+Expected outcome: All automated checks pass, codebase is verified production-ready.
+📋 FINAL CHECKLIST
+After completing all 4 prompts above, manually verify:
+✅ Code Quality
+[ ] No console.log debug statements (except intentional logging)
+[ ] No commented-out code blocks
+[ ] All TypeScript errors resolved (npx tsc --noEmit passes)
+[ ] No any types remaining
+[ ] All functions have return types
+[ ] All components have prop interfaces
+✅ Performance
+[ ] All useEffect hooks have cleanup functions
+[ ] All game canvases clean up on unmount
+[ ] Polling hooks use isMounted flags
+[ ] Marketplace has pagination
+[ ] RPC calls are cached
+✅ Security
+[ ] No exposed secrets in code
+[ ] .env not in Git (check .gitignore)
+[ ] Error messages don't expose technical details
+[ ] SafeMath used for all financial calculations
+✅ Documentation
+[ ] ARCHITECTURE.md created and comprehensive
+[ ] DEVELOPMENT_GUIDE.md created with clear instructions
+[ ] CHANGELOG.md reflects all recent changes
+[ ] README.md updated with current features
+[ ] .env.example has all required variables
+[ ] Inline comments explain complex logic
+✅ Testing
+[ ] npm run build succeeds with no errors
+[ ] npx tsc --noEmit passes with no errors
+[ ] npm audit shows no critical vulnerabilities
+[ ] All pages load without console errors
+[ ] Wallet connection works
+[ ] All 3 games play correctly
+[ ] Mobile responsiveness verified
+✅ Files
+[ ] Old game files deleted (JaguarRunner.tsx, etc.)
+[ ] No orphaned/unused components
+[ ] .gitignore properly configured
+[ ] Documentation files present
