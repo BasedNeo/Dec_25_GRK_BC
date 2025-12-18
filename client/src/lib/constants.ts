@@ -101,12 +101,12 @@ export const GAS_SETTINGS = {
 };
 
 // === CUMULATIVE SALES BASELINE ===
-// ⚠️ LOCKED - Do NOT modify without explicit user request
-// Historical baseline for secondary sales that occurred before our activity feed window
-// Does NOT include mint volume (that's calculated from totalMinted * 69420)
-// Update this periodically by summing all historical Sold events from marketplace
+// ⚠️ LOCKED - Historical baseline for secondary sales
+// Currently set to 0 - ALL volume comes from real on-chain events
+// Update this ONLY after running the blockchain scanner script
 export const CUMULATIVE_SALES_BASELINE = {
-  volume: 2500000,        // Historical secondary sales volume in $BASED
-  asOfBlock: 1000000,
+  volume: 0,              // Start at 0, will be updated by scan script
+  salesCount: 0,          // Number of historical sales
+  asOfBlock: 0,           // Block number when last scanned
   lastUpdated: "2025-12-17"
 };
