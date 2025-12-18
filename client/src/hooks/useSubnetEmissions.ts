@@ -195,7 +195,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [blockInfo, setBlockInfo] = useState<BlockInfo | null>(null);
   
-  const cache = useRef<{ data: any; timestamp: number } | null>(null);
+  const cache = useRef<{ data: SubnetEmissionsData; timestamp: number } | null>(null);
   const CACHE_DURATION = 60000; // 1 minute cache
 
   const fetchEmissions = useCallback(async () => {

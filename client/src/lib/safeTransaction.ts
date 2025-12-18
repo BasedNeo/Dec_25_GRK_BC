@@ -32,9 +32,10 @@ export class SafeTransaction {
       
       const buffered = gasEstimate * BigInt(100 + this.GAS_BUFFER_PERCENT) / BigInt(100);
       return buffered;
-    } catch (error: any) {
+    } catch (error) {
       console.error('[SafeTx] Gas estimation failed:', error);
-      throw new Error(`Gas estimation failed: ${error.message || 'Unknown error'}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Gas estimation failed: ${message}`);
     }
   }
 
@@ -88,7 +89,7 @@ export class SafeTransaction {
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (Date.now() - startTime >= this.MAX_WAIT_TIME) {
         console.warn('[SafeTx] Transaction confirmation timeout');
         return {
@@ -138,10 +139,11 @@ export class SafeTransaction {
         gasEstimate,
         totalCost,
       };
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Pre-flight check failed';
       return {
         canProceed: false,
-        error: error.message || 'Pre-flight check failed',
+        error: message,
       };
     }
   }

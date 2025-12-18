@@ -384,7 +384,7 @@ export function useGuardians(
                         metadataUrl = `${IPFS_ROOT}${tokenId}.json`;
                     }
 
-                    let metadata = { name: `Guardian #${tokenId}`, attributes: [] as any[] };
+                    let metadata: { name: string; attributes: Array<{ trait_type: string; value: string | number }> } = { name: `Guardian #${tokenId}`, attributes: [] };
                     if (metadataUrl) {
                         try {
                             const res = await fetch(metadataUrl);
@@ -392,7 +392,7 @@ export function useGuardians(
                         } catch(e) { /* ignore */ }
                     }
 
-                    const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity');
+                    const rarityAttr = metadata.attributes?.find((a) => a.trait_type === 'Rarity');
                     
                     return {
                         id: tokenId,
@@ -401,7 +401,7 @@ export function useGuardians(
                         rarity: rarityAttr ? rarityAttr.value : 'Common',
                         price: 0, 
                         owner: owner || undefined,
-                        traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: a.value })) || []
+                        traits: metadata.attributes?.map((a) => ({ type: a.trait_type, value: a.value })) || []
                     } as Guardian;
                 } catch(e) {
                     console.error("Error fetching token at index", idx, e);

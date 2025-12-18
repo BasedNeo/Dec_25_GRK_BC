@@ -73,7 +73,7 @@ export function useOwnedNFTs() {
           if (!uri) metadataUrl = `${IPFS_ROOT}${tokenId}.json`;
           else if (uri.startsWith('ipfs://')) metadataUrl = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
 
-          let metadata: any = { name: `Guardian #${tokenId}`, attributes: [] };
+          let metadata: { name: string; image?: string; attributes?: Array<{ trait_type: string; value: string | number }> } = { name: `Guardian #${tokenId}`, attributes: [] };
           try {
             const res = await fetch(metadataUrl);
             if (res.ok) metadata = await res.json();
@@ -83,7 +83,7 @@ export function useOwnedNFTs() {
           if (imageUrl.startsWith('ipfs://')) imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
           if (!imageUrl) imageUrl = `https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeif47552u34c3r46iy3p26h7j3a7b63d333p4m4r4v3r4b6x3d3d3y/${tokenId}.png`;
 
-          const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity' || a.trait_type === 'Rarity Level');
+          const rarityAttr = metadata.attributes?.find((a) => a.trait_type === 'Rarity' || a.trait_type === 'Rarity Level');
 
           fetchedNFTs.push({
             id: tokenId,
@@ -91,7 +91,7 @@ export function useOwnedNFTs() {
             image: imageUrl,
             rarity: rarityAttr?.value || 'Common',
             owner: address,
-            traits: metadata.attributes?.map((a: any) => ({ type: a.trait_type, value: String(a.value) })) || [],
+            traits: metadata.attributes?.map((a) => ({ type: a.trait_type, value: String(a.value) })) || [],
           });
         } catch (e) {}
       }

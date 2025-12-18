@@ -139,9 +139,9 @@ export class RPCProviderManager {
         endpoint.failureCount = 0;
         endpoint.healthy = true;
         return result;
-      } catch (error: any) {
-        lastError = error;
-        console.warn(`[RPC] Failed on ${endpoint.url}:`, error.message);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.warn(`[RPC] Failed on ${endpoint.url}:`, lastError.message);
         endpoint.failureCount++;
         
         if (endpoint.failureCount >= this.FAILURE_THRESHOLD) {
@@ -176,15 +176,15 @@ export class RPCProviderManager {
           ),
         ]);
         return result;
-      } catch (error: any) {
-        lastError = error;
-        const isTimeout = error.message?.includes('Timeout') || error.message?.includes('timeout');
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        const isTimeout = lastError.message?.includes('Timeout') || lastError.message?.includes('timeout');
         
         if (retryOnlyOnTimeout && !isTimeout) {
           throw error;
         }
         
-        console.warn(`[RPC] Attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
+        console.warn(`[RPC] Attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       }
     }
 
