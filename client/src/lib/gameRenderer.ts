@@ -370,38 +370,131 @@ function drawGameOver(ctx: CanvasRenderingContext2D, state: GameState, w: number
 
 function drawLander(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, isHolder: boolean): void {
   const p = state.player;
-  const GROUND = h - 50;
-  const PAD_X = w / 2 - 40;
-  const PAD_W = 80;
+  const GROUND = h - 60;
+  const PAD_X = w / 2 - 50;
+  const PAD_W = 100;
   
-  ctx.fillStyle = '#2a0040';
-  ctx.fillRect(0, GROUND, w, 50);
-  
-  ctx.fillStyle = '#444';
-  ctx.fillRect(PAD_X, GROUND, PAD_W, 6);
-  
-  ctx.fillStyle = state.time % 30 < 15 ? '#0f0' : '#040';
+  // Draw mountain background
+  ctx.fillStyle = '#1a0030';
   ctx.beginPath();
-  ctx.arc(PAD_X + 6, GROUND + 3, 3, 0, Math.PI * 2);
-  ctx.arc(PAD_X + PAD_W - 6, GROUND + 3, 3, 0, Math.PI * 2);
-  ctx.fill();
-  
-  ctx.save();
-  ctx.translate(p.pos.x + 16, p.pos.y + 16);
-  ctx.fillStyle = isHolder ? '#6cff61' : '#00ffff';
-  ctx.beginPath();
-  ctx.moveTo(0, -12);
-  ctx.lineTo(-10, 12);
-  ctx.lineTo(10, 12);
+  ctx.moveTo(0, GROUND);
+  ctx.lineTo(0, GROUND - 80);
+  ctx.lineTo(w * 0.15, GROUND - 140);
+  ctx.lineTo(w * 0.25, GROUND - 90);
+  ctx.lineTo(w * 0.35, GROUND - 160);
+  ctx.lineTo(w * 0.5, GROUND - 100);
+  ctx.lineTo(w * 0.6, GROUND - 180);
+  ctx.lineTo(w * 0.75, GROUND - 120);
+  ctx.lineTo(w * 0.85, GROUND - 200);
+  ctx.lineTo(w, GROUND - 130);
+  ctx.lineTo(w, GROUND);
   ctx.closePath();
   ctx.fill();
+  
+  // Draw closer mountain layer
+  ctx.fillStyle = '#2a0050';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND);
+  ctx.lineTo(0, GROUND - 40);
+  ctx.lineTo(w * 0.1, GROUND - 70);
+  ctx.lineTo(w * 0.2, GROUND - 50);
+  ctx.lineTo(w * 0.3, GROUND - 90);
+  ctx.lineTo(w * 0.45, GROUND - 60);
+  ctx.lineTo(w * 0.55, GROUND - 100);
+  ctx.lineTo(w * 0.7, GROUND - 70);
+  ctx.lineTo(w * 0.8, GROUND - 110);
+  ctx.lineTo(w * 0.9, GROUND - 80);
+  ctx.lineTo(w, GROUND - 60);
+  ctx.lineTo(w, GROUND);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Draw ground
+  ctx.fillStyle = '#3a0070';
+  ctx.fillRect(0, GROUND, w, 60);
+  
+  // Draw landing base structure
+  ctx.fillStyle = '#555';
+  ctx.fillRect(PAD_X - 10, GROUND - 8, PAD_W + 20, 12);
+  
+  // Landing pad surface
+  ctx.fillStyle = '#888';
+  ctx.fillRect(PAD_X, GROUND - 10, PAD_W, 8);
+  
+  // Landing pad markings
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(PAD_X + 10, GROUND - 8, 20, 4);
+  ctx.fillRect(PAD_X + PAD_W - 30, GROUND - 8, 20, 4);
+  
+  // Blinking landing lights
+  ctx.fillStyle = state.time % 30 < 15 ? '#00ff00' : '#004400';
+  ctx.beginPath();
+  ctx.arc(PAD_X + 8, GROUND - 4, 4, 0, Math.PI * 2);
+  ctx.arc(PAD_X + PAD_W - 8, GROUND - 4, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Base buildings on sides
+  ctx.fillStyle = '#444';
+  ctx.fillRect(10, GROUND - 30, 30, 30);
+  ctx.fillRect(w - 40, GROUND - 25, 30, 25);
+  
+  // Building windows
+  ctx.fillStyle = '#00ffff44';
+  ctx.fillRect(15, GROUND - 25, 8, 8);
+  ctx.fillRect(27, GROUND - 25, 8, 8);
+  ctx.fillRect(w - 35, GROUND - 20, 8, 8);
+  
+  // Draw the ship using same style as main game
+  ctx.save();
+  ctx.translate(p.pos.x + p.size.x / 2, p.pos.y + p.size.y / 2);
+  
+  const color = isHolder ? COLORS.shipGreen : COLORS.shipCyan;
+  
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -32);
+  ctx.lineTo(-24, 24);
+  ctx.lineTo(-8, 16);
+  ctx.lineTo(-8, 32);
+  ctx.lineTo(8, 32);
+  ctx.lineTo(8, 16);
+  ctx.lineTo(24, 24);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.fillStyle = '#001133';
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 8, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Thruster flames when fuel is being used
+  if (p.fuel && p.fuel > 0 && (p.vel.y < 0 || state.time % 4 < 2)) {
+    ctx.fillStyle = `rgba(255, 136, 0, ${0.5 + 0.3 * Math.sin(state.time * 0.3)})`;
+    ctx.beginPath();
+    ctx.ellipse(-4, 36, 4, 10 + Math.random() * 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(4, 36, 4, 10 + Math.random() * 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
   ctx.restore();
   
+  // HUD display
   const vel = Math.sqrt(p.vel.x ** 2 + p.vel.y ** 2);
-  ctx.fillStyle = vel < 1 ? '#0f0' : vel < 1.5 ? '#ff0' : '#f00';
-  ctx.font = '12px monospace';
+  
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(5, h - 85, 100, 50);
+  ctx.strokeStyle = '#00ffff44';
+  ctx.strokeRect(5, h - 85, 100, 50);
+  
+  ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`VEL: ${vel.toFixed(1)}`, 10, h - 60);
-  ctx.fillStyle = (p.fuel || 0) > 30 ? '#0f0' : '#f00';
-  ctx.fillText(`FUEL: ${Math.floor(p.fuel || 0)}%`, 10, h - 45);
+  
+  ctx.fillStyle = vel < 1 ? '#00ff00' : vel < 1.5 ? '#ffff00' : '#ff0000';
+  ctx.fillText(`VEL: ${vel.toFixed(1)}`, 12, h - 68);
+  
+  ctx.fillStyle = (p.fuel || 0) > 30 ? '#00ff00' : '#ff0000';
+  ctx.fillText(`FUEL: ${Math.floor(p.fuel || 0)}%`, 12, h - 52);
+  
+  ctx.fillStyle = '#00ffff';
+  ctx.fillText('LAND SAFELY!', 12, h - 38);
 }
