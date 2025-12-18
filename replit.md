@@ -196,11 +196,11 @@ Protected folder structure to isolate core commerce and game code:
   - Messages displayed with "GUARDIAN HOLDER" badge in received offers
   - Rate limiting: max 5 offers per hour
   - Auto-cleanup prevents localStorage overflow
-- **Retro Command Game**: 5-level space arcade minigame accessible to ALL users via "Game" nav item (last menu option)
+- **Retro Defender Game**: 5-level space arcade minigame accessible to ALL users via "Game" nav item (last menu option)
   - Route: /game (GuardianDefender.tsx)
-  - Game renamed from "Guardian Defender" to "Retro Command" 
+  - Game renamed from "Guardian Defender" to "Retro Defender" 
   - Open access: No wallet or NFT required to play (20 plays/day limit, 30s cooldown)
-  - Custom entities: "FUD" text (red neon) as grunt aliens, evil robot chickens as bee aliens, FUD image for galaga bosses
+  - Custom entities: "FUD" text (red neon) as grunt aliens, custom FUD alien sprite for bee aliens
   - Guardian holders get perks: +1 life, 1.5x score multiplier, green ship
   - "Race-to-Base" teaser shown: "Coming Soon - It will be incredible"
   - Levels 1-4: Galaga-style shooter with unique alien types
@@ -213,6 +213,13 @@ Protected folder structure to isolate core commerce and game code:
   - Multi-source validation (Binance primary, CoinGecko fallback)
 - **Mobile Marketplace Fixes**: Improved touch targets for Make Offer button (min 44px height)
   - Added touch-manipulation and active states for better mobile feedback
+- **Pool Tracker Enhancement** (December 2024): Comprehensive payment structure display
+  - Community Treasury card: Shows mint revenue (51%), royalty revenue (2%), emissions (10%)
+  - New Ecosystem Revenue card: Full breakdown of all revenue streams and wallet allocations
+  - Shows mint/royalty splits to Treasury, Creator, and Royalty wallets
+  - Platform fee (1%) tracking
+  - Mobile-responsive design with proper data-testid attributes
+  - All calculations use locked 51/49 MINT_SPLIT values
 
 ## Wallet Configuration
 
