@@ -22,9 +22,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
+import { NFT_CONTRACT, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
 import { useInterval } from '@/hooks/useInterval';
 import { requestDedup } from '@/lib/requestDeduplicator';
+import { rpcManager } from '@/lib/rpcProvider';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -127,14 +128,14 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     throw new Error('Max retries exceeded');
   }
 
-  // Fetch activities from blockchain - OPTIMIZED with parallel calls
+  // Fetch activities from blockchain - OPTIMIZED with parallel calls and RPC failover
   const fetchActivities = useCallback(async () => {
     return requestDedup.execute('activity-feed', async () => {
     try {
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const provider = rpcManager.getProvider();
       
-      // Get current block
-      const currentBlock = await retryRpcCall(() => provider.getBlockNumber());
+      // Get current block with failover
+      const currentBlock = await rpcManager.executeWithFailover(p => p.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
       // Reduced from 500k to 100k blocks to prevent RPC timeout (10s limit)
@@ -144,11 +145,8 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const DISPLAY_BLOCKS = 100000; // ~2.8 days of detailed activity (prevents RPC timeout)
       const fromBlock = Math.max(0, currentBlock - DISPLAY_BLOCKS);
       
-      const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
-      const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
-      
       // ⚠️ LOCKED: Event fetching - this is the source of truth for all activity
-      // PARALLEL: Fetch all data at once from NFT and Marketplace contracts
+      // PARALLEL: Fetch all data at once from NFT and Marketplace contracts with RPC failover
       // - Transfer events: detect mints (from 0x0) and transfers
       // - Listed events: detect new marketplace listings
       // - Sold events: detect sales (used for royalty volume calculation)
@@ -161,10 +159,21 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
         listedEvents,
         soldEvents
       ] = await Promise.all([
-        retryRpcCall(() => nftContract.totalMinted()).catch((err) => { console.error('[ActivityFeed] Failed to fetch totalMinted:', err); return 0; }),
-        retryRpcCall(() => nftContract.queryFilter(nftContract.filters.Transfer(), fromBlock, currentBlock)).catch((err) => { console.error('[ActivityFeed] Failed to fetch Transfer events:', err); return []; }),
-        retryRpcCall(() => marketplaceContract.queryFilter(marketplaceContract.filters.Listed(), fromBlock, currentBlock)).catch((err) => { console.error('[ActivityFeed] Failed to fetch Listed events:', err); return []; }),
-        retryRpcCall(() => marketplaceContract.queryFilter(marketplaceContract.filters.Sold(), fromBlock, currentBlock)).catch((err) => { console.error('[ActivityFeed] Failed to fetch Sold events:', err); return []; })
+        rpcManager.executeWithFailover(p => 
+          new ethers.Contract(NFT_CONTRACT, NFT_ABI, p).totalMinted()
+        ).catch((err) => { console.error('[ActivityFeed] Failed to fetch totalMinted:', err); return 0; }),
+        rpcManager.executeWithFailover(p => {
+          const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, p);
+          return contract.queryFilter(contract.filters.Transfer(), fromBlock, currentBlock);
+        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Transfer events:', err); return []; }),
+        rpcManager.executeWithFailover(p => {
+          const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, p);
+          return contract.queryFilter(contract.filters.Listed(), fromBlock, currentBlock);
+        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Listed events:', err); return []; }),
+        rpcManager.executeWithFailover(p => {
+          const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, p);
+          return contract.queryFilter(contract.filters.Sold(), fromBlock, currentBlock);
+        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Sold events:', err); return []; })
       ]);
       
       console.log(`[ActivityFeed] Fetched ${transferEvents.length} transfers, ${listedEvents.length} listings, ${soldEvents.length} sales`);
