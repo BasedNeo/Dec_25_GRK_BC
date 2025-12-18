@@ -1,0 +1,222 @@
+import { useFeatureFlags } from '@/lib/featureFlags';
+
+export function PoolTracker() {
+  const { flags } = useFeatureFlags();
+  
+  // ... existing state and hooks ...
+  
+  const showLiveData = flags.poolShowLiveData;
+  
+  // ... existing calculations ...
+  
+  return (
+    <section className="py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl font-orbitron font-black bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+            Community Treasury
+          </h2>
+          <p className="text-gray-400 text-sm md:text-base">
+            Transparent tracking of mint revenue, royalties, and subnet emissions
+          </p>
+        </div>
+
+        {!showLiveData ? (
+          // N/A MODE - Show placeholder
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-cyan-400" />
+                  <h3 className="font-orbitron font-bold text-white">Mint Revenue</h3>
+                </div>
+              </div>
+              <div className="text-center py-8">
+                <div className="text-4xl font-orbitron font-black text-gray-500 mb-2">N/A</div>
+                <div className="text-sm text-gray-600">Coming Soon</div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-orbitron font-bold text-white">Royalty Revenue</h3>
+                </div>
+              </div>
+              <div className="text-center py-8">
+                <div className="text-4xl font-orbitron font-black text-gray-500 mb-2">N/A</div>
+                <div className="text-sm text-gray-600">Coming Soon</div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-pink-500/10 to-cyan-500/10 border border-pink-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-pink-400" />
+                  <h3 className="font-orbitron font-bold text-white">Total Treasury</h3>
+                </div>
+              </div>
+              <div className="text-center py-8">
+                <div className="text-4xl font-orbitron font-black text-gray-500 mb-2">N/A</div>
+                <div className="text-sm text-gray-600">Coming Soon</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // LIVE DATA MODE - Show actual calculations
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Mint Revenue Card */}
+            <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-6 hover:border-cyan-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-cyan-400" />
+                  <h3 className="font-orbitron font-bold text-white">Mint Revenue</h3>
+                </div>
+                <Info 
+                  className="w-4 h-4 text-gray-500 cursor-pointer hover:text-cyan-400 transition-colors" 
+                  onClick={() => setShowInfoModal(true)}
+                />
+              </div>
+              
+              {initialLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="w-6 h-6 text-cyan-400 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-center mb-4">
+                    <div className="text-4xl md:text-5xl font-orbitron font-black bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                      {treasuryData.mintRevenue.toLocaleString()}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">$BASED</div>
+                  </div>
+                  
+                  <div className="space-y-2 text-xs text-gray-400 bg-black/30 rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span>Minted:</span>
+                      <span className="text-white font-mono">{mintedCount?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>@ 69,420 each:</span>
+                      <span className="text-white font-mono">{treasuryData.totalMintRevenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-white/10 pt-2">
+                      <span>Treasury (51%):</span>
+                      <span className="text-cyan-400 font-mono font-bold">{treasuryData.mintRevenue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Royalty Revenue Card */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-6 hover:border-purple-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-orbitron font-bold text-white">Royalty Revenue</h3>
+                </div>
+                <Info 
+                  className="w-4 h-4 text-gray-500 cursor-pointer hover:text-purple-400 transition-colors" 
+                  onClick={() => setShowInfoModal(true)}
+                />
+              </div>
+              
+              {initialLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="w-6 h-6 text-purple-400 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-center mb-4">
+                    <div className="text-4xl md:text-5xl font-orbitron font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      {treasuryData.royaltyRevenue.toLocaleString()}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">$BASED</div>
+                  </div>
+                  
+                  <div className="space-y-2 text-xs text-gray-400 bg-black/30 rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span>Total Sales:</span>
+                      <span className="text-white font-mono">{salesVolume.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Royalty (10%):</span>
+                      <span className="text-white font-mono">{treasuryData.totalRoyalties.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-white/10 pt-2">
+                      <span>Treasury (2%):</span>
+                      <span className="text-purple-400 font-mono font-bold">{treasuryData.royaltyRevenue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Total Treasury Card */}
+            <div className="bg-gradient-to-br from-pink-500/10 to-cyan-500/10 border border-pink-500/30 rounded-xl p-6 hover:border-pink-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-pink-400" />
+                  <h3 className="font-orbitron font-bold text-white">Total Treasury</h3>
+                </div>
+                <Button
+                  onClick={updateData}
+                  disabled={loading}
+                  size="sm"
+                  variant="ghost"
+                  className="text-gray-400 hover:text-pink-400"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              
+              {initialLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="w-6 h-6 text-pink-400 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-center mb-4">
+                    <div className="text-4xl md:text-5xl font-orbitron font-black bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                      {treasuryData.totalTreasury.toLocaleString()}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">$BASED</div>
+                  </div>
+                  
+                  <div className="space-y-2 text-xs text-gray-400 bg-black/30 rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span>Mint Revenue:</span>
+                      <span className="text-cyan-400 font-mono">{treasuryData.mintRevenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Royalty Revenue:</span>
+                      <span className="text-purple-400 font-mono">{treasuryData.royaltyRevenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-white/10 pt-2">
+                      <span>Total:</span>
+                      <span className="text-pink-400 font-mono font-bold">{treasuryData.totalTreasury.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  
+                  {lastUpdated && (
+                    <div className="text-center mt-3">
+                      <div className="text-[10px] text-gray-600 flex items-center justify-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        Updated {lastUpdated.toLocaleTimeString()}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Rest of component (emissions section, etc.) */}
+      </div>
+    </section>
+  );
+}

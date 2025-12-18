@@ -5,14 +5,16 @@ import { ethers } from 'ethers';
 import { 
   X, Shield, RefreshCw, Trash2, Database, Activity, 
   Zap, AlertTriangle, Eye, EyeOff, Server,
-  Download, Wrench, Inbox, Mail, Bug, HardDrive
+  Download, Wrench, Inbox, Mail, Bug, HardDrive, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
 import { errorReporter } from '@/lib/errorReporter';
 import { SecureStorage } from '@/lib/secureStorage';
 import { useToast } from '@/hooks/use-toast';
+import { type FeatureFlags, updateFeatureFlag, invalidateFeatureFlagsCache } from '@/lib/featureFlags';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -46,6 +48,8 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [errorLogs, setErrorLogs] = useState(errorReporter.getLogs());
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [conversions, setConversions] = useState<any>(null);
+  const [featureFlags, setFeatureFlags] = useState<Array<{key: string; enabled: boolean; description: string | null; updatedAt: string; updatedBy: string | null}>>([]);
+  const [flagsLoading, setFlagsLoading] = useState<string | null>(null);
   
   useInterval(() => {
     setErrorLogs(errorReporter.getLogs());
@@ -62,8 +66,38 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
         .then(r => r.json())
         .then(data => setConversions(data))
         .catch(() => {});
+      
+      fetch('/api/feature-flags')
+        .then(r => r.json())
+        .then(data => setFeatureFlags(data))
+        .catch(() => {});
     }
   }, [isOpen, isAdmin]);
+  
+  const handleToggleFlag = async (key: string, currentEnabled: boolean) => {
+    if (!address) return;
+    setFlagsLoading(key);
+    
+    const success = await updateFeatureFlag(key as keyof FeatureFlags, !currentEnabled, address);
+    if (success) {
+      setFeatureFlags(prev => prev.map(f => 
+        f.key === key ? { ...f, enabled: !currentEnabled, updatedAt: new Date().toISOString(), updatedBy: address } : f
+      ));
+      toast({
+        title: `${key} ${!currentEnabled ? 'Enabled' : 'Disabled'}`,
+        description: `Feature flag updated successfully`,
+        className: 'bg-black border-cyan-500 text-cyan-400',
+      });
+      addLog(`🎚️ ${key} → ${!currentEnabled ? 'ON' : 'OFF'}`);
+    } else {
+      toast({
+        title: 'Update Failed',
+        description: 'Could not update feature flag',
+        variant: 'destructive',
+      });
+    }
+    setFlagsLoading(null);
+  };
   
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -506,6 +540,46 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
                 <span className="text-xs">Refresh Emissions</span>
               </Button>
               
+            </div>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <ToggleRight size={16} className="text-emerald-400" />
+              Feature Flags (Global)
+            </h3>
+            <div className="bg-black/40 rounded-lg p-4 border border-emerald-500/20">
+              <p className="text-[10px] text-gray-400 mb-3">Toggle features on/off for ALL users instantly. Changes take effect within 30 seconds.</p>
+              <div className="space-y-3">
+                {featureFlags.map(flag => (
+                  <div key={flag.key} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-white font-medium">{flag.key.replace('Enabled', '')}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${flag.enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {flag.enabled ? 'ON' : 'OFF'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">{flag.description}</p>
+                      {flag.updatedBy && (
+                        <p className="text-[9px] text-gray-600 mt-1">
+                          Last updated: {new Date(flag.updatedAt).toLocaleString()} by {flag.updatedBy.slice(0, 6)}...
+                        </p>
+                      )}
+                    </div>
+                    <Switch
+                      checked={flag.enabled}
+                      onCheckedChange={() => handleToggleFlag(flag.key, flag.enabled)}
+                      disabled={flagsLoading === flag.key}
+                      className={flagsLoading === flag.key ? 'opacity-50' : ''}
+                      data-testid={`toggle-${flag.key}`}
+                    />
+                  </div>
+                ))}
+                {featureFlags.length === 0 && (
+                  <p className="text-gray-500 text-xs text-center py-4">Loading feature flags...</p>
+                )}
+              </div>
             </div>
           </div>
           

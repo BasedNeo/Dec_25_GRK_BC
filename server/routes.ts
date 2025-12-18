@@ -12,6 +12,14 @@ const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN_placeholder_key_for_development';
 
+const ADMIN_WALLETS = [
+  "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
+  "0xb1362caf09189887599ed40f056712b1a138210c",
+  "0xabce9e63a9ae51e215bb10c9648f4c0f400c5847",
+  "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
+  "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
+];
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -594,6 +602,14 @@ export async function registerRoutes(
 
       if (!updatedBy || typeof updatedBy !== 'string') {
         return res.status(400).json({ error: "updatedBy wallet address required" });
+      }
+
+      const isAdmin = ADMIN_WALLETS.some(
+        admin => admin.toLowerCase() === updatedBy.toLowerCase()
+      );
+      if (!isAdmin) {
+        console.log(`[FeatureFlags] Unauthorized update attempt by ${updatedBy.slice(0, 8)}...`);
+        return res.status(403).json({ error: "Unauthorized: Admin wallet required" });
       }
 
       const success = await storage.updateFeatureFlag(key, enabled, updatedBy);
