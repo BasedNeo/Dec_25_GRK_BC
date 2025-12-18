@@ -9,12 +9,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
 import { errorReporter } from '@/lib/errorReporter';
 import { SecureStorage } from '@/lib/secureStorage';
 import { useToast } from '@/hooks/use-toast';
-import { type FeatureFlags, updateFeatureFlag, invalidateFeatureFlagsCache } from '@/lib/featureFlags';
+import { invalidateFeatureFlagsCache } from '@/lib/featureFlags';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -74,29 +73,39 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     }
   }, [isOpen, isAdmin]);
   
-  const handleToggleFlag = async (key: string, currentEnabled: boolean) => {
-    if (!address) return;
-    setFlagsLoading(key);
-    
-    const success = await updateFeatureFlag(key as keyof FeatureFlags, !currentEnabled, address);
-    if (success) {
-      setFeatureFlags(prev => prev.map(f => 
-        f.key === key ? { ...f, enabled: !currentEnabled, updatedAt: new Date().toISOString(), updatedBy: address } : f
-      ));
-      toast({
-        title: `${key} ${!currentEnabled ? 'Enabled' : 'Disabled'}`,
-        description: `Feature flag updated successfully`,
-        className: 'bg-black border-cyan-500 text-cyan-400',
-      });
-      addLog(`🎚️ ${key} → ${!currentEnabled ? 'ON' : 'OFF'}`);
-    } else {
-      toast({
-        title: 'Update Failed',
-        description: 'Could not update feature flag',
-        variant: 'destructive',
-      });
+  const fetchFeatureFlags = async () => {
+    try {
+      const res = await fetch('/api/feature-flags');
+      const data = await res.json();
+      setFeatureFlags(data);
+    } catch (error) {
+      console.error('Failed to fetch feature flags:', error);
     }
-    setFlagsLoading(null);
+  };
+
+  const toggleFeatureFlag = async (key: string, currentValue: boolean) => {
+    if (!address) return;
+    
+    setFlagsLoading(key);
+    addLog(`Updating ${key} to ${!currentValue}...`);
+
+    try {
+      const res = await fetch(`/api/feature-flags/${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !currentValue, walletAddress: address }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update');
+
+      invalidateFeatureFlagsCache();
+      await fetchFeatureFlags();
+      addLog(`✅ ${key} set to ${!currentValue}`);
+    } catch (error) {
+      addLog(`❌ Failed to update ${key}`);
+    } finally {
+      setFlagsLoading(null);
+    }
   };
   
   const addLog = (message: string) => {
@@ -545,40 +554,41 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
           
           <div className="mb-6">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <ToggleRight size={16} className="text-emerald-400" />
+              <Zap size={16} className="text-yellow-400" />
               Feature Flags (Global)
             </h3>
-            <div className="bg-black/40 rounded-lg p-4 border border-emerald-500/20">
-              <p className="text-[10px] text-gray-400 mb-3">Toggle features on/off for ALL users instantly. Changes take effect within 30 seconds.</p>
-              <div className="space-y-3">
-                {featureFlags.map(flag => (
-                  <div key={flag.key} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white font-medium">{flag.key.replace('Enabled', '')}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${flag.enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {flag.enabled ? 'ON' : 'OFF'}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500">{flag.description}</p>
-                      {flag.updatedBy && (
-                        <p className="text-[9px] text-gray-600 mt-1">
-                          Last updated: {new Date(flag.updatedAt).toLocaleString()} by {flag.updatedBy.slice(0, 6)}...
-                        </p>
-                      )}
-                    </div>
-                    <Switch
-                      checked={flag.enabled}
-                      onCheckedChange={() => handleToggleFlag(flag.key, flag.enabled)}
-                      disabled={flagsLoading === flag.key}
-                      className={flagsLoading === flag.key ? 'opacity-50' : ''}
-                      data-testid={`toggle-${flag.key}`}
-                    />
+            <div className="bg-black/40 rounded-lg p-4 space-y-3">
+              {featureFlags.map((flag) => (
+                <div key={flag.key} className="flex items-center justify-between p-3 bg-white/5 rounded border border-white/10">
+                  <div className="flex-1">
+                    <div className="text-white font-bold text-sm">{flag.description}</div>
+                    <div className="text-xs text-gray-500 font-mono">{flag.key}</div>
                   </div>
-                ))}
-                {featureFlags.length === 0 && (
-                  <p className="text-gray-500 text-xs text-center py-4">Loading feature flags...</p>
-                )}
+                  <button
+                    onClick={() => toggleFeatureFlag(flag.key, flag.enabled)}
+                    disabled={flagsLoading === flag.key}
+                    className={`
+                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                      ${flag.enabled ? 'bg-green-500' : 'bg-gray-600'}
+                      ${flagsLoading === flag.key ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                    data-testid={`toggle-${flag.key}`}
+                  >
+                    <span
+                      className={`
+                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                        ${flag.enabled ? 'translate-x-6' : 'translate-x-1'}
+                      `}
+                    />
+                  </button>
+                </div>
+              ))}
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 flex items-start gap-2 mt-4">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-yellow-200">
+                  Feature flags affect ALL users immediately. Use to disable features if there's a bug or during maintenance.
+                </div>
               </div>
             </div>
           </div>

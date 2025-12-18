@@ -591,33 +591,33 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/feature-flags/:key", writeLimiter, async (req, res) => {
+  app.post("/api/feature-flags/:key", writeLimiter, async (req, res) => {
     try {
       const { key } = req.params;
-      const { enabled, updatedBy } = req.body;
+      const { enabled, walletAddress } = req.body;
 
       if (typeof enabled !== 'boolean') {
         return res.status(400).json({ error: "enabled must be a boolean" });
       }
 
-      if (!updatedBy || typeof updatedBy !== 'string') {
-        return res.status(400).json({ error: "updatedBy wallet address required" });
+      if (!walletAddress || typeof walletAddress !== 'string') {
+        return res.status(400).json({ error: "walletAddress required" });
       }
 
       const isAdmin = ADMIN_WALLETS.some(
-        admin => admin.toLowerCase() === updatedBy.toLowerCase()
+        admin => admin.toLowerCase() === walletAddress.toLowerCase()
       );
       if (!isAdmin) {
-        console.log(`[FeatureFlags] Unauthorized update attempt by ${updatedBy.slice(0, 8)}...`);
+        console.log(`[FeatureFlags] Unauthorized update attempt by ${walletAddress.slice(0, 8)}...`);
         return res.status(403).json({ error: "Unauthorized: Admin wallet required" });
       }
 
-      const success = await storage.updateFeatureFlag(key, enabled, updatedBy);
+      const success = await storage.updateFeatureFlag(key, enabled, walletAddress);
       if (!success) {
         return res.status(500).json({ error: "Failed to update feature flag" });
       }
 
-      console.log(`[FeatureFlags] ${key} set to ${enabled} by ${updatedBy.slice(0, 8)}...`);
+      console.log(`[FeatureFlags] ${key} set to ${enabled} by ${walletAddress.slice(0, 8)}...`);
       return res.json({ success: true, key, enabled });
     } catch (error) {
       console.error("[FeatureFlags] Error updating flag:", error);
