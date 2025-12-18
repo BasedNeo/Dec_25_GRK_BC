@@ -109,9 +109,11 @@ Protected folder structure to isolate core commerce and game code:
 - Price data from CoinGecko API (free tier).
 
 ### Security Considerations
-- Input sanitization (XSS), CSP headers (helmet).
-- Wallet address validation.
-- Admin wallet gating.
+- Input sanitization (XSS, HTML stripping), CSP headers (helmet).
+- Wallet address validation (Ethereum format regex).
+- Admin wallet gating with header-based authentication.
+  - **Known Limitation**: Current admin auth uses X-Wallet-Address header which can be spoofed. For full production security, implement EIP-191 signature verification.
+- Profanity filter applied to all user-submitted content (feedback, stories).
 - Rate limiting on API endpoints (general, write, auth, game).
 - Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options).
 - CORS with origin validation.
