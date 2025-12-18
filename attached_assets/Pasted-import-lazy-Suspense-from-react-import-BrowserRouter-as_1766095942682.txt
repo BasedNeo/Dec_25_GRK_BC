@@ -1,0 +1,65 @@
+import { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { WagmiConfig } from 'wagmi';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import Navbar from '@/components/Navbar';
+
+// Lazy load all page components
+const Home = lazy(() => import('@/pages/Home'));
+const Mint = lazy(() => import('@/pages/Mint'));
+const Marketplace = lazy(() => import('@/pages/Marketplace'));
+const BasedArcade = lazy(() => import('@/pages/BasedArcade'));
+const GuardianDefense = lazy(() => import('@/pages/GuardianDefense'));
+const GuardianSolitaire = lazy(() => import('@/pages/GuardianSolitaire'));
+const AsteroidMining = lazy(() => import('@/pages/AsteroidMining'));
+const Profile = lazy(() => import('@/pages/Profile'));
+const Governance = lazy(() => import('@/pages/Governance'));
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
+
+// Premium loading component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
+    <div className="text-center">
+      <div className="relative w-20 h-20 mx-auto mb-6">
+        <div className="absolute inset-0 border-4 border-purple-500/30 rounded-full"></div>
+        <div className="absolute inset-0 border-4 border-transparent border-t-purple-500 rounded-full animate-spin"></div>
+      </div>
+      <p className="text-white text-xl font-semibold mb-2">Loading...</p>
+      <p className="text-purple-300 text-sm">Preparing the Guardian experience</p>
+    </div>
+  </div>
+);
+
+function App() {
+  return (
+    <WagmiConfig config={config}>
+      <RainbowKitProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-900">
+            <Navbar />
+            
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/mint" element={<Mint />} />
+                  <Route path="/marketplace" element={<Marketplace />} />
+                  <Route path="/games" element={<BasedArcade />} />
+                  <Route path="/games/guardian-defense" element={<GuardianDefense />} />
+                  <Route path="/games/guardian-solitaire" element={<GuardianSolitaire />} />
+                  <Route path="/games/asteroid-mining" element={<AsteroidMining />} />
+                  <Route path="/profile/:address" element={<Profile />} />
+                  <Route path="/governance" element={<Governance />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </div>
+        </Router>
+      </RainbowKitProvider>
+    </WagmiConfig>
+  );
+}
+
+export default App;
