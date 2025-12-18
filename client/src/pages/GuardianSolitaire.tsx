@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
+import { NFT_CONTRACT } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -382,6 +383,16 @@ function TableauPile({
   );
 }
 
+const ERC721_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
 export default function GuardianSolitaire() {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -389,6 +400,20 @@ export default function GuardianSolitaire() {
   const { submitScore } = useGameScoresLocal();
   const { access, recordPlay, isHolder, isLoading: accessLoading } = useGameAccess();
   const prefersReducedMotion = useReducedMotion();
+
+  const { data: nftBalance } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: ERC721_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const hasNFT = Number(nftBalance ?? 0n) > 0;
+  
+  const gameStartTimeRef = useRef<number>(Date.now());
+  const lastActionTimeRef = useRef<number>(0);
+  const MIN_ACTION_INTERVAL = 50;
 
   const gameConfig = useMemo(() => getGameConfig('guardian-solitaire'), []);
 
@@ -966,16 +991,54 @@ export default function GuardianSolitaire() {
     createParticles(window.innerWidth / 2, window.innerHeight / 2, 50);
 
     const finalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
-    const baseScore = 10000;
-    const timeBonus = Math.max(0, 500 - finalTime);
-    const moveBonus = Math.max(0, 1000 - (moves * 5));
-    const comboBonus = comboCount * 100;
-    const efficiency = moves > 0 ? Math.round((moves / (moves + invalidAttempts)) * 100) : 100;
-    const efficiencyBonus = Math.round(efficiency * 2);
-    const finalScore = Math.min(
-      baseScore + timeBonus + moveBonus + comboBonus + efficiencyBonus,
-      gameConfig.scoring.maxScore
-    );
+    
+    // Bot protection: minimum 2 minutes of play
+    const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
+    if (playDuration < gameConfig.minPlayDuration) {
+      toast({
+        title: "Play Too Fast",
+        description: `Game must be played for at least ${Math.ceil(gameConfig.minPlayDuration / 60)} minutes`,
+        variant: "destructive"
+      });
+      // Clean up state - delete save and reset UI
+      if (address) {
+        GameStorageManager.deleteSave('guardian-solitaire', address);
+      }
+      setGameWon(false);
+      setGameStarted(false);
+      return;
+    }
+
+    // Rebalanced scoring (50k cap)
+    let score = 0;
+    
+    // Foundation cards: 150 points each (max 52 cards = 7,800)
+    foundations.forEach(pile => {
+      score += pile.cards.length * 150;
+    });
+    
+    // Completed suit bonus: 5,000 per suit (max 20,000)
+    foundations.forEach(pile => {
+      if (pile.cards.length === 13) score += 5000;
+    });
+    
+    // Time bonus (tiered)
+    const minutes = Math.floor(finalTime / 60);
+    if (minutes < 5) score += 10000;
+    else if (minutes < 8) score += 7000;
+    else if (minutes < 12) score += 4000;
+    else if (minutes < 20) score += 2000;
+    
+    // Move efficiency bonus: (200 - moves) * 50 (max 10,000)
+    const efficiency = Math.max(0, 200 - moves);
+    score += efficiency * 50;
+    
+    // All complete bonus (already counted in suit bonus)
+    const allComplete = foundations.every(pile => pile.cards.length === 13);
+    if (allComplete) score += 5000;
+    
+    // Cap at 50k
+    const finalScore = Math.min(score, gameConfig.scoring.maxScore);
 
     const newStats: GameStats = {
       ...stats,
@@ -1001,7 +1064,7 @@ export default function GuardianSolitaire() {
     setShowVictory(true);
 
     trackEvent('game_complete', 'Solitaire', `Score: ${finalScore}`);
-  }, [startTime, moves, comboCount, invalidAttempts, stats, address, gameConfig.scoring.maxScore, submitScore, playSound, createParticles]);
+  }, [startTime, moves, foundations, stats, address, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, createParticles, toast]);
 
   const startGame = useCallback(async (resume: boolean = false) => {
     if (!access.canPlay) {
@@ -1032,6 +1095,7 @@ export default function GuardianSolitaire() {
     }
 
     await dealCards();
+    gameStartTimeRef.current = Date.now();
     setGameStarted(true);
     trackEvent('game_start', 'Solitaire', 'New Game');
   }, [access, recordPlay, address, dealCards, toast]);
@@ -1070,6 +1134,27 @@ export default function GuardianSolitaire() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameStarted, showVictory, drawCard, undoMove, showHintMove]);
+
+  // NFT gating check - must be after all hooks
+  if (address && !hasNFT && !accessLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
+        <div className="max-w-md bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 text-center border border-purple-500/30">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-white mb-2">NFT Required</h2>
+          <p className="text-gray-300 mb-6">
+            Guardian Solitaire is exclusive to Guardian NFT holders. Own a Guardian to unlock this premium game.
+          </p>
+          <Link to="/mint" className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:scale-105 transition">
+            Mint a Guardian
+          </Link>
+          <Link to="/arcade" className="block mt-4 text-purple-400 hover:text-purple-300">
+            ← Back to Arcade
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (accessLoading) {
     return (

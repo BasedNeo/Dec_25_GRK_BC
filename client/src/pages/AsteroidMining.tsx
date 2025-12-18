@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { motion } from 'framer-motion';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
+import { NFT_CONTRACT } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -173,12 +174,36 @@ const randomColor = (): AsteroidColor => {
   return 'grey';
 };
 
+const ERC721_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
 export default function AsteroidMining() {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { submitScore } = useGameScoresLocal();
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
+
+  const { data: nftBalance } = useReadContract({
+    address: NFT_CONTRACT as `0x${string}`,
+    abi: ERC721_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const hasNFT = Number(nftBalance ?? 0n) > 0;
+
+  const gameStartTimeRef = useRef<number>(Date.now());
+  const lastActionTimeRef = useRef<number>(0);
+  const MIN_ACTION_INTERVAL = 50;
 
   const gameConfig = useMemo(() => getGameConfig('asteroid-mining'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -962,7 +987,20 @@ export default function AsteroidMining() {
     if (!address) return;
 
     const state = gameStateRef.current;
-    const finalScore = Math.min(state.score, gameConfig.scoring.maxScore);
+    
+    // Bot protection: minimum play duration check
+    const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
+    let finalScore = Math.min(state.score, gameConfig.scoring.maxScore);
+    
+    if (playDuration < gameConfig.minPlayDuration) {
+      toast({
+        title: "Play Too Fast",
+        description: `Game must be played for at least ${gameConfig.minPlayDuration} seconds for valid score`,
+        variant: "destructive"
+      });
+      finalScore = 0;
+    }
+    
     const survivalMinutes = Math.floor(state.survivalTime / 60000);
     
     const newStats: GameStats = { ...stats };
@@ -994,7 +1032,7 @@ export default function AsteroidMining() {
     } catch (err) {
       console.error('Failed to submit score:', err);
     }
-  }, [address, stats, gameConfig.scoring.maxScore, submitScore]);
+  }, [address, stats, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, toast]);
 
   const startGame = useCallback(() => {
     if (!isConnected) {
@@ -1058,6 +1096,7 @@ export default function AsteroidMining() {
     }
     
     recordPlay();
+    gameStartTimeRef.current = Date.now();
     setGameStarted(true);
     setGameOver(false);
     setShowVictory(false);
@@ -1107,6 +1146,27 @@ export default function AsteroidMining() {
             <p className="text-cyan-400">Loading Asteroid Mining...</p>
           </div>
         </Card>
+      </div>
+    );
+  }
+
+  // NFT gating check - must be after all hooks
+  if (address && !hasNFT && !nftLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
+        <div className="max-w-md bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 text-center border border-orange-500/30">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-white mb-2">NFT Required</h2>
+          <p className="text-gray-300 mb-6">
+            Asteroid Mining is exclusive to Guardian NFT holders. Own a Guardian to unlock this premium game.
+          </p>
+          <Link to="/mint" className="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 text-white rounded-lg font-semibold hover:scale-105 transition">
+            Mint a Guardian
+          </Link>
+          <Link to="/arcade" className="block mt-4 text-orange-400 hover:text-orange-300">
+            ← Back to Arcade
+          </Link>
+        </div>
       </div>
     );
   }

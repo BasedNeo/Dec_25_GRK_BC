@@ -233,6 +233,7 @@ export default function GuardianDefense() {
   const gameLoopRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const gameStartTimeRef = useRef<number>(Date.now());
 
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -418,6 +419,9 @@ export default function GuardianDefense() {
     if (!address) return;
     const state = gameStateRef.current;
     
+    // Bot protection: minimum play duration check
+    const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
+    
     const citiesBonus = state.cities.filter(c => c.active).length * 500;
     const accuracyBonus = state.accuracy.shots > 0 
       ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 1000)
@@ -428,6 +432,15 @@ export default function GuardianDefense() {
       state.score + citiesBonus + accuracyBonus + waveBonus,
       gameConfig.scoring.maxScore
     );
+    
+    if (playDuration < gameConfig.minPlayDuration) {
+      toast({
+        title: "Play Too Fast",
+        description: `Game must be played for at least ${gameConfig.minPlayDuration} seconds for valid score`,
+        variant: "destructive"
+      });
+      finalScore = 0;
+    }
 
     const newStats: GameStats = { ...stats };
     newStats.gamesPlayed++;
@@ -460,7 +473,7 @@ export default function GuardianDefense() {
     } catch (err) {
       console.error('Failed to submit score:', err);
     }
-  }, [address, stats, gameConfig.scoring.maxScore, submitScore, playSound]);
+  }, [address, stats, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, toast]);
 
   const spawnWave = useCallback((waveNumber: number) => {
     const state = gameStateRef.current;
@@ -1126,6 +1139,7 @@ export default function GuardianDefense() {
     }
 
     gameStateRef.current = initialGameState();
+    gameStartTimeRef.current = Date.now();
     setGameStarted(true);
     setGameOver(false);
     setGameWon(false);

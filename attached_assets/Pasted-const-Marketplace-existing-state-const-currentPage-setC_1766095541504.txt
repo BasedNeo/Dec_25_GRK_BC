@@ -1,0 +1,84 @@
+const Marketplace = () => {
+  // ... existing state ...
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  // Memoize filtered NFTs to prevent recalculation on every render
+  const filteredNFTs = useMemo(() => {
+    let filtered = [...marketplaceNFTs];
+    
+    // Apply filters
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(nft => nft.status === filterStatus);
+    }
+    
+    if (sortBy === 'price-low') {
+      filtered.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sortBy === 'price-high') {
+      filtered.sort((a, b) => Number(b.price) - Number(a.price));
+    } else if (sortBy === 'newest') {
+      filtered.sort((a, b) => Number(b.tokenId) - Number(a.tokenId));
+    }
+    
+    return filtered;
+  }, [marketplaceNFTs, filterStatus, sortBy]);
+
+  // Memoize paginated NFTs
+  const paginatedNFTs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredNFTs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredNFTs, currentPage]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredNFTs.length / ITEMS_PER_PAGE);
+
+  // Memoize page change handler
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, sortBy]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900">
+      {/* ... existing header and filters ... */}
+      
+      {/* NFT Grid - render paginatedNFTs instead of all NFTs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {paginatedNFTs.map(nft => (
+          <NFTCard key={nft.tokenId} nft={nft} />
+        ))}
+      </div>
+
+      {/* Add Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8 pb-8">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-700 transition"
+          >
+            Previous
+          </button>
+          
+          <span className="text-white">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-700 transition"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
