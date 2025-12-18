@@ -457,6 +457,8 @@ export function useMarketplace() {
 
     return asyncMutex.runExclusive(`buy-${tokenId}`, async () => {
       return requestDedup.execute(`buy-nft-${tokenId}-${address}`, async () => {
+        let preFlightResult: { canProceed: boolean; gasEstimate?: bigint; totalCost?: bigint; error?: string };
+        
         try {
           toast({
             title: "Preparing Transaction",
@@ -464,28 +466,28 @@ export function useMarketplace() {
             className: "bg-black border-cyan-500 text-cyan-500",
           });
 
-          const { ethers } = await import('ethers');
-          const iface = new ethers.Interface([
-            'function buyNFT(uint256 tokenId) external payable'
-          ]);
-          const calldata = iface.encodeFunctionData('buyNFT', [BigInt(tokenId)]);
+          console.log('[Buy] Running pre-flight checks...');
+          preFlightResult = await SafeTransaction.preFlightCheck(
+            {
+              to: MARKETPLACE_CONTRACT,
+              data: '0x',
+              value: priceWei,
+              from: address,
+            },
+            priceWei
+          );
 
-          const estimatedGas = await SafeTransaction.estimateGas({
-            from: address,
-            to: MARKETPLACE_CONTRACT,
-            value: priceWei,
-            data: calldata,
-          });
-
-          const hasBalance = await SafeTransaction.verifyBalanceWithGas(address, priceWei, estimatedGas);
-          if (!hasBalance) {
+          if (!preFlightResult.canProceed) {
             toast({ 
-              title: "Insufficient Balance", 
-              description: "You don't have enough $BASED for this purchase (including gas)", 
+              title: "Cannot Proceed", 
+              description: preFlightResult.error || "Pre-flight check failed", 
               variant: "destructive" 
             });
             return;
           }
+
+          const { ethers } = await import('ethers');
+          console.log('[Buy] Pre-flight passed. Total cost:', ethers.formatEther(preFlightResult.totalCost || BigInt(0)));
 
         } catch (error: unknown) {
           const errorMsg = error instanceof Error ? error.message : "Transaction would likely fail. Please try again.";
@@ -507,6 +509,7 @@ export function useMarketplace() {
           className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
         });
 
+        console.log('[Buy] Sending transaction...');
         writeContract({
           address: MARKETPLACE_CONTRACT as `0x${string}`,
           abi: MARKETPLACE_ABI,
@@ -514,7 +517,7 @@ export function useMarketplace() {
           args: [BigInt(tokenId)],
           value: priceWei,
           chainId: CHAIN_ID,
-          gas: GAS_SETTINGS.BUY,
+          gas: preFlightResult.gasEstimate || GAS_SETTINGS.BUY,
         });
       });
     });

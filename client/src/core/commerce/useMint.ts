@@ -5,6 +5,7 @@ import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from '@/hooks/useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
+import { SafeTransaction } from '@/lib/safeTransaction';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
 
@@ -148,13 +149,31 @@ export function useMint() {
         throw new Error('Invalid mint amount');
       }
 
+      console.log('[Mint] Running pre-flight checks...');
+      const preFlightResult = await SafeTransaction.preFlightCheck(
+        {
+          to: NFT_CONTRACT,
+          data: '0x',
+          value: valueInWei,
+          from: address,
+        },
+        valueInWei
+      );
+
+      if (!preFlightResult.canProceed) {
+        throw new Error(preFlightResult.error || 'Pre-flight check failed');
+      }
+
+      console.log('[Mint] Pre-flight passed. Estimated gas:', preFlightResult.gasEstimate?.toString());
+      setStatus('Waiting for wallet approval...');
+
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
         abi: NFT_ABI,
         functionName: 'mint',
         args: [BigInt(quantity)],
         value: valueInWei,
-        gas: BigInt(8000000),
+        gas: preFlightResult.gasEstimate || BigInt(8000000),
         gasPrice: BigInt(10000000000),
       });
 
