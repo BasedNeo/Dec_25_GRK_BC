@@ -1,153 +1,155 @@
 import { ethers } from 'ethers';
-import { TimerManager } from './timerManager';
+import { RPC_ENDPOINTS } from './constants';
 
-const RPC_ENDPOINTS = [
-  'https://mainnet.basedaibridge.com/rpc/',
-  'https://rpc.basedaibridge.com/',
-];
-
-interface RPCHealth {
-  endpoint: string;
+interface RPCEndpoint {
+  url: string;
+  provider: ethers.JsonRpcProvider;
+  healthy: boolean;
   latency: number;
-  failCount: number;
-  lastFail: number;
-  working: boolean;
+  lastCheck: number;
+  failureCount: number;
 }
 
-class MultiRPCProvider {
-  private providers: Map<string, ethers.JsonRpcProvider> = new Map();
-  private health: Map<string, RPCHealth> = new Map();
-  private readonly MAX_FAILS = 3;
-  private readonly FAIL_TIMEOUT = 60000;
+export class RPCProviderManager {
+  private endpoints: RPCEndpoint[] = [];
+  private currentIndex: number = 0;
+  private readonly HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+  private readonly FAILURE_THRESHOLD = 3;
+  private readonly LATENCY_TIMEOUT = 5000;
+  private healthCheckTimer?: number;
 
   constructor() {
-    RPC_ENDPOINTS.forEach((endpoint) => {
-      this.providers.set(endpoint, new ethers.JsonRpcProvider(endpoint, undefined, {
-        staticNetwork: true,
-        batchMaxCount: 1,
-      }));
-      this.health.set(endpoint, {
-        endpoint,
-        latency: 0,
-        failCount: 0,
-        lastFail: 0,
-        working: true,
-      });
-    });
+    this.initializeEndpoints();
+    this.startHealthChecks();
+  }
+
+  private initializeEndpoints() {
+    this.endpoints = RPC_ENDPOINTS.map(url => ({
+      url,
+      provider: new ethers.JsonRpcProvider(url),
+      healthy: true,
+      latency: 0,
+      lastCheck: 0,
+      failureCount: 0,
+    }));
+
+    console.log(`[RPC] Initialized ${this.endpoints.length} endpoints`);
+  }
+
+  private async checkEndpointHealth(endpoint: RPCEndpoint): Promise<void> {
+    const start = Date.now();
     
-    if (typeof window !== 'undefined') {
-      TimerManager.setInterval(() => this.healthCheck(), 30000);
-      this.healthCheck();
+    try {
+      await Promise.race([
+        endpoint.provider.getBlockNumber(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), this.LATENCY_TIMEOUT)
+        ),
+      ]);
+
+      endpoint.latency = Date.now() - start;
+      endpoint.healthy = true;
+      endpoint.failureCount = 0;
+      endpoint.lastCheck = Date.now();
+      
+      console.log(`[RPC] ✅ ${endpoint.url} - ${endpoint.latency}ms`);
+    } catch (error) {
+      endpoint.failureCount++;
+      endpoint.lastCheck = Date.now();
+      
+      if (endpoint.failureCount >= this.FAILURE_THRESHOLD) {
+        endpoint.healthy = false;
+        console.error(`[RPC] ❌ ${endpoint.url} - marked unhealthy`);
+      } else {
+        console.warn(`[RPC] ⚠️ ${endpoint.url} - failure ${endpoint.failureCount}/${this.FAILURE_THRESHOLD}`);
+      }
     }
   }
 
   private async healthCheck() {
-    const entries = Array.from(this.providers.entries());
-    for (const [endpoint, provider] of entries) {
-      try {
-        const start = Date.now();
-        await provider.getBlockNumber();
-        const latency = Date.now() - start;
-        
-        const health = this.health.get(endpoint)!;
-        health.latency = latency;
-        health.failCount = 0;
-        health.working = true;
-      } catch {
-        const health = this.health.get(endpoint)!;
-        health.failCount++;
-        health.lastFail = Date.now();
-        health.working = health.failCount < this.MAX_FAILS;
-      }
+    console.log('[RPC] Running health checks...');
+    await Promise.all(
+      this.endpoints.map(endpoint => this.checkEndpointHealth(endpoint))
+    );
+
+    this.endpoints.sort((a, b) => {
+      if (a.healthy !== b.healthy) return a.healthy ? -1 : 1;
+      return a.latency - b.latency;
+    });
+
+    console.log('[RPC] Health check complete. Fastest healthy endpoint:', this.endpoints[0]?.url);
+  }
+
+  private startHealthChecks() {
+    this.healthCheck();
+    
+    this.healthCheckTimer = window.setInterval(() => {
+      this.healthCheck();
+    }, this.HEALTH_CHECK_INTERVAL);
+  }
+
+  public stopHealthChecks() {
+    if (this.healthCheckTimer) {
+      window.clearInterval(this.healthCheckTimer);
     }
   }
 
-  private getHealthyEndpoints(): string[] {
-    return Array.from(this.health.values())
-      .filter(h => {
-        return h.working || (Date.now() - h.lastFail > this.FAIL_TIMEOUT);
-      })
-      .sort((a, b) => a.latency - b.latency)
-      .map(h => h.endpoint);
+  public getProvider(): ethers.JsonRpcProvider {
+    const healthyEndpoints = this.endpoints.filter(e => e.healthy);
+    
+    if (healthyEndpoints.length === 0) {
+      console.error('[RPC] No healthy endpoints! Using first available...');
+      return this.endpoints[0].provider;
+    }
+
+    return healthyEndpoints[0].provider;
   }
 
-  async executeWithFailover<T>(
-    operation: (provider: ethers.JsonRpcProvider) => Promise<T>,
-    maxRetries = 3
+  public async executeWithFailover<T>(
+    fn: (provider: ethers.JsonRpcProvider) => Promise<T>,
+    maxRetries: number = 3
   ): Promise<T> {
-    const endpoints = this.getHealthyEndpoints();
+    const healthyEndpoints = this.endpoints.filter(e => e.healthy);
     
-    if (endpoints.length === 0) {
-      throw new Error('All RPC endpoints are down');
+    if (healthyEndpoints.length === 0) {
+      throw new Error('No healthy RPC endpoints available');
     }
 
     let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const endpoint = endpoints[attempt % endpoints.length];
-      const provider = this.providers.get(endpoint)!;
+
+    for (let i = 0; i < Math.min(maxRetries, healthyEndpoints.length); i++) {
+      const endpoint = healthyEndpoints[i];
       
       try {
-        const result = await operation(provider);
-        
-        const health = this.health.get(endpoint)!;
-        health.failCount = 0;
-        health.working = true;
-        
+        console.log(`[RPC] Trying ${endpoint.url}...`);
+        const result = await fn(endpoint.provider);
         return result;
-      } catch (error: unknown) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`[RPC] Failed on ${endpoint.url}:`, error.message);
+        endpoint.failureCount++;
         
-        const health = this.health.get(endpoint)!;
-        health.failCount++;
-        health.lastFail = Date.now();
-        
-        if (attempt < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        if (endpoint.failureCount >= this.FAILURE_THRESHOLD) {
+          endpoint.healthy = false;
         }
       }
     }
 
-    throw lastError || new Error('All RPC attempts failed');
+    throw lastError || new Error('All RPC endpoints failed');
   }
 
-  getProvider(): ethers.JsonRpcProvider {
-    const endpoints = this.getHealthyEndpoints();
-    if (endpoints.length === 0) {
-      const firstProvider = Array.from(this.providers.values())[0];
-      return firstProvider;
-    }
-    
-    const endpoint = endpoints[0];
-    return this.providers.get(endpoint)!;
-  }
-
-  getStatus() {
-    return Array.from(this.health.values()).map(h => ({
-      endpoint: h.endpoint.replace('https://', '').split('/')[0],
-      status: h.working ? '✅' : '❌',
-      latency: `${h.latency}ms`,
-      fails: `${h.failCount}/${this.MAX_FAILS}`
-    }));
+  public getStatus() {
+    return {
+      total: this.endpoints.length,
+      healthy: this.endpoints.filter(e => e.healthy).length,
+      endpoints: this.endpoints.map(e => ({
+        url: e.url,
+        healthy: e.healthy,
+        latency: e.latency,
+        failures: e.failureCount,
+      })),
+    };
   }
 }
 
-export const rpcProvider = new MultiRPCProvider();
-
-export function getProvider(): ethers.JsonRpcProvider {
-  return rpcProvider.getProvider();
-}
-
-export function getProviderSync(): ethers.JsonRpcProvider {
-  return rpcProvider.getProvider();
-}
-
-export function clearProviderCache(): void {
-  // No-op for compatibility
-}
-
-if (typeof window !== 'undefined') {
-  (window as any).rpcStatus = () => {
-    console.table(rpcProvider.getStatus());
-  };
-}
+export const rpcManager = new RPCProviderManager();
