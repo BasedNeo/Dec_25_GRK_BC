@@ -89,7 +89,7 @@ export function useOwnedNFTs() {
             id: tokenId,
             name: metadata.name || `Guardian #${tokenId}`,
             image: imageUrl,
-            rarity: rarityAttr?.value || 'Common',
+            rarity: String(rarityAttr?.value || 'Common'),
             owner: address,
             traits: metadata.attributes?.map((a) => ({ type: a.trait_type, value: String(a.value) })) || [],
           });

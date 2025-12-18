@@ -409,7 +409,7 @@ export default function GuardianSolitaire() {
     query: { enabled: !!address },
   });
 
-  const hasNFT = Number(nftBalance ?? 0n) > 0;
+  const hasNFT = Number(nftBalance ?? BigInt(0)) > 0;
   
   const gameStartTimeRef = useRef<number>(Date.now());
   const lastActionTimeRef = useRef<number>(0);
