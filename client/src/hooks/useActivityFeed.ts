@@ -26,6 +26,7 @@ import { NFT_CONTRACT, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@
 import { useInterval } from '@/hooks/useInterval';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { rpcManager } from '@/lib/rpcProvider';
+import { withCache } from '@/lib/cache';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -128,9 +129,10 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     throw new Error('Max retries exceeded');
   }
 
-  // Fetch activities from blockchain - OPTIMIZED with parallel calls and RPC failover
+  // Fetch activities from blockchain - OPTIMIZED with parallel calls, RPC failover, and caching
   const fetchActivities = useCallback(async () => {
-    return requestDedup.execute('activity-feed', async () => {
+    return withCache('activity-feed', async () => {
+    return requestDedup.execute('activity-feed-rpc', async () => {
     try {
       const provider = rpcManager.getProvider();
       
@@ -282,6 +284,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       setIsLoading(false);
     }
     });
+    }, 30000); // Cache for 30 seconds
   }, [limit]);
 
   // Initial fetch

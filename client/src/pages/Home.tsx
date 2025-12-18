@@ -2,7 +2,6 @@ import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { NFTGallery } from "@/components/NFTGallery";
 import { ValueEstimation } from "@/components/ValueEstimation";
-import { Governance } from "@/components/Governance";
 import { PoolTracker } from "@/components/PoolTracker";
 import { UniverseTab } from "@/components/UniverseTab";
 import { Footer } from "@/components/Footer";
@@ -12,8 +11,6 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { EscrowMarketplace } from "@/components/EscrowMarketplace";
-import { ActivityFeed } from "@/components/ActivityFeed";
 import { AdminInbox } from "@/components/AdminInbox";
 import { UserStats } from "@/components/UserStats";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -21,6 +18,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { analytics } from '@/lib/analytics';
 
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const EscrowMarketplace = lazy(() => import("@/components/EscrowMarketplace").then(m => ({ default: m.EscrowMarketplace })));
+const Governance = lazy(() => import("@/components/Governance").then(m => ({ default: m.Governance })));
+const ActivityFeed = lazy(() => import("@/components/ActivityFeed").then(m => ({ default: m.ActivityFeed })));
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -128,10 +128,12 @@ export default function Home() {
               className="pt-8"
             >
               <ErrorBoundary feature="Marketplace" isolate={true}>
-                <EscrowMarketplace 
-                  onNavigateToMint={() => setActiveTab("mint")} 
-                  onNavigateToPortfolio={() => setActiveTab("gallery")}
-                />
+                <Suspense fallback={<LoadingSpinner text="Loading Market..." />}>
+                  <EscrowMarketplace 
+                    onNavigateToMint={() => setActiveTab("mint")} 
+                    onNavigateToPortfolio={() => setActiveTab("gallery")}
+                  />
+                </Suspense>
               </ErrorBoundary>
             </motion.div>
           )}
@@ -146,7 +148,9 @@ export default function Home() {
               className="pt-8"
             >
               <ErrorBoundary feature="Governance" isolate={true}>
-                <Governance />
+                <Suspense fallback={<LoadingSpinner text="Loading Governance..." />}>
+                  <Governance />
+                </Suspense>
               </ErrorBoundary>
             </motion.div>
           )}
@@ -190,7 +194,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="pt-8"
             >
-              <ActivityFeed limit={30} showStats={true} />
+              <Suspense fallback={<LoadingSpinner text="Loading Activity..." />}>
+                <ActivityFeed limit={30} showStats={true} />
+              </Suspense>
             </motion.div>
           )}
 
