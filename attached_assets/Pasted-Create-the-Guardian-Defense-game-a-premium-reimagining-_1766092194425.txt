@@ -1,0 +1,123 @@
+Create the Guardian Defense game - a premium reimagining of Missile Command.
+
+REQUIREMENTS:
+- Mobile-first tap controls (tap screen to fire)
+- 10 waves of increasing difficulty
+- 3 defensive batteries with 10 missiles each (auto-reload)
+- 4 cities to defend
+- Chain reaction explosions
+- 5-layer parallax background with alien mountains
+- Dynamic shooting stars
+- Color-coded enemy missiles (green/red/yellow)
+- Guardian-branded Command Center
+- Scoring: casual 5-10k, advanced 30-40k, max 50k
+
+GAME MECHANICS:
+- Tap screen to launch anti-missile at that position
+- Your explosion destroys enemy missiles in blast radius
+- Destroy missiles to score points (green: +200, red: +250, yellow: +300)
+- Chain reactions add +50 pts per additional missile destroyed
+- Wave completion bonus: 1000 × cities_alive × wave_number
+- Game ends if all cities destroyed
+- Win by completing all 10 waves
+
+VISUAL FEATURES:
+- Starfield background with 3 parallax layers
+- Occasional shooting stars with trails
+- Alien mountains in purple/cyan (3 layers, different depths)
+- Guardian Command Center label at bottom
+- Glowing missile trails (color-coded)
+- Expanding explosion rings with particle effects
+- Screen shake on impacts
+- Battery reload animations
+
+FILE TO CREATE: client/src/pages/GuardianDefense.tsx
+
+Use these imports:
+- useState, useEffect, useCallback, useRef, useMemo from 'react'
+- useAccount from 'wagmi'
+- motion, AnimatePresence from 'framer-motion'
+- useNavigate from 'react-router-dom'
+- All shadcn/ui components
+- useToast, useGameScoresLocal, useNFTOwnership hooks
+- trackEvent from '@/lib/analytics'
+- GameStorageManager, GameStats from '@/lib/gameStorage'
+- getGameConfig from '@/lib/gameRegistry'
+- GameHUD, VictoryScreen components
+- Lucide icons: Play, Shield, Info, ChevronRight, Volume2, VolumeX, Home, Loader2, Trophy, Zap, Target, Flame, Star
+
+CONSTANTS:
+- CANVAS_WIDTH = 800
+- CANVAS_HEIGHT = 600
+- GROUND_Y = 550
+- Battery positions: [100, 400, 700] all at GROUND_Y
+- City positions: [200, 300, 500, 600] all at GROUND_Y - 20
+- MISSILES_PER_BATTERY = 10
+- EXPLOSION_MAX_RADIUS = 60
+- 10 waves with config: wave 1: 5 missiles at speed 60, wave 10: 30 missiles at speed 120
+
+GAME STATE:
+- wave (1-10)
+- score
+- batteries (3 with missiles, position, reloading status)
+- cities (4 with position, active status, health)
+- enemyMissiles array
+- defensiveMissiles array
+- explosions array
+- particles array
+- chainReactions counter
+- accuracy tracking
+
+RENDER LAYERS (back to front):
+1. Sky gradient (indigo to purple)
+2. 3 layers of parallax stars (different speeds)
+3. Shooting stars (occasional)
+4. 3 layers of alien mountains (purple gradients)
+5. Ground layer (dark gradient)
+6. Cities (green buildings with windows)
+7. Batteries (blue with Guardian logo)
+8. Enemy missile trails and heads (colored)
+9. Defensive missile trails and heads (cyan)
+10. Explosions (expanding rings with glow)
+11. Particles (debris)
+12. Command Center label
+
+Implement complete game loop with:
+- Missile movement (lerp from start to target)
+- Collision detection (missiles in explosion radius)
+- Chain reaction system
+- Wave spawning logic
+- Battery reload system
+- Victory/defeat conditions
+
+Add complete audio system with Web Audio API:
+- launch: 800Hz → 400Hz over 0.15s
+- explosion: 200Hz → 50Hz over 0.4s
+- chain: 400Hz → 800Hz over 0.2s
+- hit: 100Hz held for 0.3s
+- wave: chord progression (400, 500, 600, 800 Hz)
+- death: 400Hz → 50Hz over 0.8s
+
+Include full start screen with:
+- Guardian Defense title with cyan gradient
+- How to Play section
+- Missile types display (green/red/yellow with point values)
+- Stats display if games played > 0
+- START DEFENSE button
+- Sound toggle
+- NFT/wallet requirement checks
+
+Include game screen with:
+- Canvas with tap-to-fire controls
+- GameHUD showing score, wave, cities alive, missiles remaining
+- Chain reaction counter (when active)
+- Exit button
+
+Integrate with VictoryScreen component on game end showing:
+- Final score
+- Wave reached
+- Accuracy percentage
+- Max chain reaction
+- Play Again and Exit buttons
+
+Ensure mobile-responsive, 60fps performance, and full integration with GameStorageManager.
