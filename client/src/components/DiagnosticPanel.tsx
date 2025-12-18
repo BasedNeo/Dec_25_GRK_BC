@@ -7,6 +7,8 @@
 
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useInterval } from '@/hooks/useInterval';
+import { TimerManager } from '@/lib/timerManager';
 import { 
   RPC_URL, 
   NFT_CONTRACT, 
@@ -25,6 +27,11 @@ export function DiagnosticPanel() {
   const [isRunning, setIsRunning] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasRun, setHasRun] = useState(false);
+  const [timerCount, setTimerCount] = useState(0);
+
+  useInterval(() => {
+    setTimerCount(TimerManager.getActiveCount());
+  }, 1000);
 
   const isAdmin = isConnected && address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
@@ -195,6 +202,12 @@ export function DiagnosticPanel() {
         <span className="text-green-400">✓ {passCount} passed</span>
         {warnCount > 0 && <span className="text-yellow-400">⚠ {warnCount} warnings</span>}
         {failCount > 0 && <span className="text-red-400">✗ {failCount} failed</span>}
+        <span className="ml-auto">
+          <span className="text-gray-500">Timers:</span>
+          <span className={`ml-1 font-mono ${timerCount > 50 ? 'text-red-400' : 'text-green-400'}`}>
+            {timerCount}
+          </span>
+        </span>
       </div>
 
       <div className="p-3 space-y-1.5 max-h-72 overflow-y-auto">
