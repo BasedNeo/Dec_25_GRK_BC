@@ -614,11 +614,11 @@ export default function Saga() {
             <div className="bg-black/60 border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(34,211,238,0.15)]">
               <div style={{ padding: "56.25% 0 0 0", position: "relative" }}>
                 <iframe 
-                  src="https://player.vimeo.com/video/1127023633?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1" 
+                  src="https://player.vimeo.com/video/1146652270?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&background=1" 
                   frameBorder="0" 
                   allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
                   style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-                  title="Join the Ranks"
+                  title="Based Guardians Universe"
                   loading="lazy"
                 />
               </div>
