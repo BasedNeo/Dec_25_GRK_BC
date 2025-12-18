@@ -1033,8 +1033,11 @@ export default function AsteroidMining() {
       powerUpActive: null,
     };
     
+    initialSpawnTimeoutsRef.current.forEach(t => clearTimeout(t));
+    initialSpawnTimeoutsRef.current = [];
     for (let i = 0; i < 3; i++) {
-      setTimeout(() => spawnAsteroid(), i * 500);
+      const timeoutId = setTimeout(() => spawnAsteroid(), i * 500);
+      initialSpawnTimeoutsRef.current.push(timeoutId);
     }
     
     recordPlay();
@@ -1057,10 +1060,23 @@ export default function AsteroidMining() {
     return () => clearInterval(interval);
   }, [gameStarted, gameOver, isPaused, spawnAsteroid]);
 
+  const initialSpawnTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
   useEffect(() => {
     return () => {
       if (gameLoopRef.current) {
         cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+      if (shootIntervalRef.current) {
+        clearInterval(shootIntervalRef.current);
+        shootIntervalRef.current = null;
+      }
+      initialSpawnTimeoutsRef.current.forEach(t => clearTimeout(t));
+      initialSpawnTimeoutsRef.current = [];
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
       }
     };
   }, []);
