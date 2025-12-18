@@ -741,6 +741,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Actions ---
   const handleOffer = (item: MarketItem) => {
+      if (!flags.marketplaceEnabled) {
+        toast({ title: "Marketplace Disabled", description: "The marketplace is currently disabled.", variant: "destructive" });
+        return;
+      }
       setOfferItem(item);
       setShowOfferModal(true);
   };
@@ -792,6 +796,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- List/Delist NFT Functions ---
   const handleListNFT = async (tokenId: number, price: string) => {
+      if (!flags.marketplaceEnabled) {
+        toast({ title: "Marketplace Disabled", description: "The marketplace is currently disabled.", variant: "destructive" });
+        return;
+      }
       if (!marketplace.isApproved) {
           toast({
               title: "Approval Required",
@@ -849,6 +857,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   };
 
   const handleBuy = async (item: MarketItem) => {
+    if (!flags.marketplaceEnabled) {
+      toast({ title: "Marketplace Disabled", description: "The marketplace is currently disabled.", variant: "destructive" });
+      return;
+    }
     if (isBuyLocked) return;
     
     const executeBuy = async () => {

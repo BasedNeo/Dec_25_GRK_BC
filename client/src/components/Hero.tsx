@@ -133,6 +133,15 @@ export function Hero() {
 
   // Real Smart Contract Minting
   const handleMint = async () => {
+    if (!flags.mintingEnabled) {
+      toast({
+        title: "Minting Disabled",
+        description: "Minting is currently disabled.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!isConnected) {
       openConnectModal?.();
       return;
