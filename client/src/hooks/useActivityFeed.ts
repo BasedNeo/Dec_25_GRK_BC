@@ -107,20 +107,38 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     activeOffers: 0,
   });
 
+  // RPC retry helper for resilience against transient failures
+  async function retryRpcCall<T>(
+    fn: () => Promise<T>,
+    maxRetries = 3,
+    delayMs = 1000
+  ): Promise<T> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        console.warn(`[ActivityFeed] RPC call failed, retry ${i + 1}/${maxRetries}...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   // Fetch activities from blockchain - OPTIMIZED with parallel calls
   const fetchActivities = useCallback(async () => {
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       
       // Get current block
-      const currentBlock = await provider.getBlockNumber();
+      const currentBlock = await retryRpcCall(() => provider.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Look back ~2000 blocks to capture sales from the last ~1 hour
-      // BasedAI ~2 sec blocks, so 2000 blocks ≈ 1.1 hours of history
-      // Reduced from 40000 to avoid RPC timeout issues (RPC has 10s limit)
+      // Look back ~10000 blocks to capture activity from the last ~5.5 hours
+      // BasedAI ~2 sec blocks, so 10000 blocks ≈ 5.5 hours of history
+      // This provides better coverage while staying under RPC timeout limits
       // All sales volume comes from on-chain Sold events (never hardcoded)
-      const fromBlock = Math.max(0, currentBlock - 2000);
+      const fromBlock = Math.max(0, currentBlock - 10000);
       
       const nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       const marketplaceContract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, provider);
