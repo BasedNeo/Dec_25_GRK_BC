@@ -124,6 +124,7 @@ Protected folder structure to isolate core commerce and game code:
 - **Lore-Gamification Integration**: Higher game ranks (Star Commander, Fleet Admiral, Based Eternal) require lore discovery progress (25%, 50%, 75% respectively) plus at least 1 game played. Ranks are locked until requirements are met, with UI showing unlock requirements.
 - **Multi-language support**: 10 languages with a language selector.
 - **Welcome Back messages**: Rotating messages for returning users.
+- **Matrix Welcome Experience**: Premium typing animation welcome screen for new users and visitors returning after 24+ hours. Features "Wake up, Guardian..." Matrix-style reveal with beta phase messaging, skip functionality, and reduced-motion accessibility support.
 
 ## External Dependencies
 
