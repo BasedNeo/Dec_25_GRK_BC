@@ -9,6 +9,7 @@ const SECURITY_CONFIG = {
     ETH: { min: 100, max: 100000 },
   } as Record<string, { min: number; max: number }>,
   MAX_CACHE_AGE_MS: 300000,
+  STALE_THRESHOLD_MS: 120000,
 };
 
 interface TickerAsset {
@@ -63,7 +64,7 @@ function setSecureCache(data: Record<string, PriceData>): void {
   } catch { /* ignore */ }
 }
 
-function getSecureCache(): { data: Record<string, PriceData>; valid: boolean } | null {
+function getSecureCache(): { data: Record<string, PriceData>; valid: boolean; timestamp: number } | null {
   try {
     const json = localStorage.getItem(CACHE_KEY);
     const storedHash = localStorage.getItem(CACHE_HASH_KEY);
@@ -78,7 +79,7 @@ function getSecureCache(): { data: Record<string, PriceData>; valid: boolean } |
     
     const parsed = JSON.parse(json);
     const isStale = Date.now() - parsed.timestamp > SECURITY_CONFIG.MAX_CACHE_AGE_MS;
-    return { data: parsed.data, valid: !isStale };
+    return { data: parsed.data, valid: !isStale, timestamp: parsed.timestamp };
   } catch {
     return null;
   }
@@ -88,7 +89,7 @@ async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price:
   const results = new Map();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     
     const requests = symbols.map(async (symbol) => {
       try {
@@ -117,6 +118,7 @@ async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price:
     responses.forEach(r => {
       if (r) results.set(r.symbol, { price: r.price, change: r.change });
     });
+    console.log('[PriceTicker] Binance:', results.size > 0 ? '✅' : '❌');
     return results;
   } catch {
     return results;
@@ -147,6 +149,45 @@ async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: n
         results.set(id, { price: priceInfo.usd, change: priceInfo.usd_24h_change || 0 });
       }
     });
+    console.log('[PriceTicker] CoinGecko:', results.size > 0 ? '✅' : '❌');
+    return results;
+  } catch {
+    return results;
+  }
+}
+
+async function fetchFromCoinCap(): Promise<Map<string, { price: number; change: number }>> {
+  const results = new Map();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
+    const [btcRes, ethRes] = await Promise.all([
+      fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: controller.signal }),
+      fetch('https://api.coincap.io/v2/assets/ethereum', { signal: controller.signal }),
+    ]);
+    clearTimeout(timeout);
+    
+    if (btcRes.ok) {
+      const btcData = await btcRes.json();
+      if (btcData.data?.priceUsd) {
+        results.set('bitcoin', {
+          price: parseFloat(btcData.data.priceUsd),
+          change: parseFloat(btcData.data.changePercent24Hr || '0'),
+        });
+      }
+    }
+    
+    if (ethRes.ok) {
+      const ethData = await ethRes.json();
+      if (ethData.data?.priceUsd) {
+        results.set('ethereum', {
+          price: parseFloat(ethData.data.priceUsd),
+          change: parseFloat(ethData.data.changePercent24Hr || '0'),
+        });
+      }
+    }
+    console.log('[PriceTicker] CoinCap:', results.size > 0 ? '✅' : '❌');
     return results;
   } catch {
     return results;
@@ -158,7 +199,7 @@ const DEFAULT_ASSETS: TickerAsset[] = [
   { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', binanceSymbol: 'ETHUSDT', logo: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
 ];
 
-const FETCH_INTERVAL = 15000;
+const FETCH_INTERVAL = 30000;
 
 export function usePriceTicker() {
   const [prices, setPrices] = useState<Map<string, PriceData>>(new Map());
@@ -166,53 +207,80 @@ export function usePriceTicker() {
   const [securityStatus, setSecurityStatus] = useState<'verified' | 'single-source' | 'stale' | 'error'>('verified');
   const previousPrices = useRef<Map<string, number>>(new Map());
   const lastFetch = useRef<number>(0);
+  const fetchInProgress = useRef<boolean>(false);
 
   useEffect(() => {
     const cache = getSecureCache();
-    if (cache) {
+    if (cache && cache.data) {
       const priceMap = new Map<string, PriceData>();
       Object.entries(cache.data).forEach(([symbol, data]) => {
         priceMap.set(symbol, data);
         previousPrices.current.set(symbol, data.price);
       });
       setPrices(priceMap);
-      setSecurityStatus(cache.valid ? 'verified' : 'stale');
+      const isStale = Date.now() - cache.timestamp > SECURITY_CONFIG.STALE_THRESHOLD_MS;
+      setSecurityStatus(cache.valid ? 'verified' : isStale ? 'stale' : 'single-source');
       setIsLoading(false);
+      console.log('[PriceTicker] Loaded from cache:', priceMap.size, 'prices');
     }
   }, []);
 
   const fetchPrices = useCallback(async () => {
+    if (fetchInProgress.current) return;
     if (Date.now() - lastFetch.current < 5000) return;
+    
+    fetchInProgress.current = true;
     lastFetch.current = Date.now();
 
     const binanceSymbols = DEFAULT_ASSETS.map(a => a.binanceSymbol);
     const geckoIds = DEFAULT_ASSETS.map(a => a.id);
 
-    const [binanceData, geckoData] = await Promise.all([
+    const [binanceData, geckoData, coinCapData] = await Promise.all([
       fetchFromBinance(binanceSymbols),
       fetchFromCoinGecko(geckoIds),
+      fetchFromCoinCap(),
     ]);
 
     const priceMap = new Map<string, PriceData>();
     const cacheData: Record<string, PriceData> = {};
     let allVerified = true;
+    let anyNewData = false;
 
     for (const asset of DEFAULT_ASSETS) {
       const sourcePrices: { source: string; price: number; change: number }[] = [];
 
       const binance = binanceData.get(asset.binanceSymbol);
-      if (binance) sourcePrices.push({ source: 'binance', ...binance });
+      if (binance && binance.price > 0) sourcePrices.push({ source: 'binance', ...binance });
 
       const gecko = geckoData.get(asset.id);
-      if (gecko) sourcePrices.push({ source: 'coingecko', ...gecko });
+      if (gecko && gecko.price > 0) sourcePrices.push({ source: 'coingecko', ...gecko });
 
-      if (sourcePrices.length === 0) continue;
+      const coinCap = coinCapData.get(asset.id);
+      if (coinCap && coinCap.price > 0) sourcePrices.push({ source: 'coincap', ...coinCap });
 
+      if (sourcePrices.length === 0) {
+        const previousPrice = previousPrices.current.get(asset.symbol);
+        if (previousPrice) {
+          const cachedData = prices.get(asset.symbol);
+          if (cachedData) {
+            priceMap.set(asset.symbol, { ...cachedData, verified: false });
+            cacheData[asset.symbol] = { ...cachedData, verified: false };
+          }
+        }
+        allVerified = false;
+        continue;
+      }
+
+      anyNewData = true;
       let finalPrice = sourcePrices[0].price;
       let finalChange = sourcePrices[0].change;
       let verified = false;
 
-      if (!validatePriceBounds(asset.symbol, finalPrice)) continue;
+      if (!validatePriceBounds(asset.symbol, finalPrice)) {
+        const previousPrice = previousPrices.current.get(asset.symbol);
+        if (previousPrice) finalPrice = previousPrice;
+        else continue;
+      }
 
       const previousPrice = previousPrices.current.get(asset.symbol);
       if (!validatePriceChange(finalPrice, previousPrice)) {
@@ -250,18 +318,21 @@ export function usePriceTicker() {
       previousPrices.current.set(asset.symbol, finalPrice);
     }
 
-    setPrices(priceMap);
-    setSecurityStatus(priceMap.size === 0 ? 'error' : allVerified ? 'verified' : 'single-source');
-    setIsLoading(false);
-
     if (priceMap.size > 0) {
+      setPrices(priceMap);
+      setSecurityStatus(anyNewData ? (allVerified ? 'verified' : 'single-source') : 'stale');
       setSecureCache(cacheData);
+    } else {
+      setSecurityStatus('error');
     }
-  }, []);
+    
+    setIsLoading(false);
+    fetchInProgress.current = false;
+  }, [prices]);
 
   useEffect(() => {
     fetchPrices();
-  }, [fetchPrices]);
+  }, []);
 
   useInterval(fetchPrices, FETCH_INTERVAL);
 

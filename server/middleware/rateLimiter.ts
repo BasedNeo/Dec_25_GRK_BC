@@ -7,6 +7,7 @@ export const apiLimiter = rateLimit({
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   skip: (req: Request) => req.path === '/api/health' || req.path === '/_health',
   handler: (req: Request, res: Response) => {
     console.warn(`[RateLimit] IP ${req.ip} exceeded limit on ${req.path}`);
@@ -23,6 +24,7 @@ export const writeLimiter = rateLimit({
   message: { error: 'Too many write requests' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   handler: (req: Request, res: Response) => {
     console.warn(`[RateLimit] IP ${req.ip} exceeded write limit on ${req.path}`);
     res.status(429).json({ 
@@ -60,6 +62,7 @@ export const gameLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
   message: { error: 'Too many game submissions' },
+  validate: { xForwardedForHeader: false },
   handler: (req: Request, res: Response) => {
     console.warn(`[RateLimit] IP ${req.ip} game spam on ${req.path}`);
     res.status(429).json({ 

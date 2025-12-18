@@ -1,0 +1,163 @@
+import { useState, useEffect } from 'react';
+import { useInterval } from './useInterval';
+
+interface PriceData {
+  btc: number;
+  eth: number;
+  btcChange: number;
+  ethChange: number;
+  lastUpdated: number;
+  isStale: boolean;
+}
+
+const PRICE_SOURCES = [
+  {
+    name: 'CoinGecko',
+    fetch: async () => {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+      const data = await res.json();
+      return {
+        btc: data.bitcoin?.usd || 0,
+        eth: data.ethereum?.usd || 0,
+        btcChange: data.bitcoin?.usd_24h_change || 0,
+        ethChange: data.ethereum?.usd_24h_change || 0,
+      };
+    },
+  },
+  {
+    name: 'Binance',
+    fetch: async () => {
+      const [btcRes, ethRes] = await Promise.all([
+        fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+        fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT'),
+      ]);
+      const btcData = await btcRes.json();
+      const ethData = await ethRes.json();
+      return {
+        btc: parseFloat(btcData.lastPrice),
+        eth: parseFloat(ethData.lastPrice),
+        btcChange: parseFloat(btcData.priceChangePercent),
+        ethChange: parseFloat(ethData.priceChangePercent),
+      };
+    },
+  },
+  {
+    name: 'CoinCap',
+    fetch: async () => {
+      const [btcRes, ethRes] = await Promise.all([
+        fetch('https://api.coincap.io/v2/assets/bitcoin'),
+        fetch('https://api.coincap.io/v2/assets/ethereum'),
+      ]);
+      const btcData = await btcRes.json();
+      const ethData = await ethRes.json();
+      return {
+        btc: parseFloat(btcData.data.priceUsd),
+        eth: parseFloat(ethData.data.priceUsd),
+        btcChange: parseFloat(btcData.data.changePercent24Hr),
+        ethChange: parseFloat(ethData.data.changePercent24Hr),
+      };
+    },
+  },
+];
+
+const STORAGE_KEY = 'price_ticker_last_known';
+const UPDATE_INTERVAL = 30000; // 30 seconds
+const STALE_THRESHOLD = 120000; // 2 minutes
+
+export function usePriceTicker() {
+  const [priceData, setPriceData] = useState<PriceData>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          ...parsed,
+          isStale: Date.now() - parsed.lastUpdated > STALE_THRESHOLD,
+        };
+      }
+    } catch {}
+    return {
+      btc: 0,
+      eth: 0,
+      btcChange: 0,
+      ethChange: 0,
+      lastUpdated: 0,
+      isStale: true,
+    };
+  });
+
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchPrices = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    let lastError: Error | null = null;
+
+    for (const source of PRICE_SOURCES) {
+      try {
+        console.log(`[PriceTicker] Trying ${source.name}...`);
+        
+        const data = await Promise.race([
+          source.fetch(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          ),
+        ]) as any;
+
+        if (data.btc > 0 && data.eth > 0) {
+          const newData: PriceData = {
+            btc: data.btc,
+            eth: data.eth,
+            btcChange: data.btcChange,
+            ethChange: data.ethChange,
+            lastUpdated: Date.now(),
+            isStale: false,
+          };
+
+          setPriceData(newData);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+          setError(null);
+          
+          console.log(`[PriceTicker] ✅ Success from ${source.name}`, data);
+          setIsLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        console.warn(`[PriceTicker] ${source.name} failed:`, err.message);
+        lastError = err;
+      }
+    }
+
+    console.error('[PriceTicker] All sources failed:', lastError);
+    setError('All price sources unavailable');
+    
+    setPriceData(prev => ({
+      ...prev,
+      isStale: Date.now() - prev.lastUpdated > STALE_THRESHOLD,
+    }));
+    
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, []);
+
+  useInterval(() => {
+    fetchPrices();
+  }, UPDATE_INTERVAL);
+
+  return {
+    btc: priceData.btc,
+    eth: priceData.eth,
+    btcChange: priceData.btcChange,
+    ethChange: priceData.ethChange,
+    lastUpdated: priceData.lastUpdated,
+    isStale: priceData.isStale || Date.now() - priceData.lastUpdated > STALE_THRESHOLD,
+    error,
+    isLoading,
+    refresh: fetchPrices,
+  };
+}
