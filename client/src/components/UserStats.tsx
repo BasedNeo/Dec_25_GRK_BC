@@ -205,7 +205,9 @@ const GAME_RANKS_STYLE: Record<string, { color: string; bg: string }> = {
 function GameStatsSection() {
   const { myStats, leaderboard } = useGameScoresLocal();
   const hasGameData = myStats.gamesPlayed > 0;
-  const rankStyle = GAME_RANKS_STYLE[myStats.rank] || GAME_RANKS_STYLE['Cadet'];
+  const displayRank = myStats.effectiveRank || myStats.rank;
+  const rankStyle = GAME_RANKS_STYLE[displayRank] || GAME_RANKS_STYLE['Cadet'];
+  const isLocked = myStats.rankLocked;
 
   return (
     <>
@@ -250,11 +252,33 @@ function GameStatsSection() {
                     <div className="text-2xl font-orbitron text-purple-400">{myStats.gamesPlayed}</div>
                     <p className="text-[10px] text-purple-400/60 mt-1 font-mono">GAMES PLAYED</p>
                   </div>
-                  <div className="bg-black/40 rounded-lg p-3 border border-green-500/20 text-center">
-                    <div className={`text-lg font-orbitron ${rankStyle.color}`}>{myStats.rank}</div>
+                  <div className="bg-black/40 rounded-lg p-3 border border-green-500/20 text-center relative">
+                    <div className={`text-lg font-orbitron ${rankStyle.color}`}>{displayRank}</div>
                     <p className="text-[10px] text-green-400/60 mt-1 font-mono">PILOT RANK</p>
+                    {isLocked && (
+                      <div className="absolute -top-1 -right-1">
+                        <Lock className="w-3 h-3 text-orange-400" />
+                      </div>
+                    )}
                   </div>
                 </div>
+                
+                {isLocked && myStats.lockReason && (
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 mb-3">
+                    <div className="flex items-start gap-2">
+                      <Lock className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-orange-300 text-xs font-medium mb-1">Rank Locked</p>
+                        <p className="text-orange-300/70 text-[11px]">{myStats.lockReason}</p>
+                        {myStats.rank !== displayRank && (
+                          <p className="text-orange-300/50 text-[10px] mt-1">
+                            Score qualifies for {myStats.rank} - unlock by exploring lore!
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="text-center text-xs text-white/40">
                   <Sparkles className="w-3 h-3 inline mr-1" />
@@ -265,7 +289,7 @@ function GameStatsSection() {
               <div className="text-center py-6">
                 <Gamepad2 className="w-12 h-12 text-white/20 mx-auto mb-3" />
                 <p className="text-white/40 text-sm mb-2">No game stats yet</p>
-                <p className="text-white/30 text-xs mb-4">Play Retro Defender to start tracking your scores!</p>
+                <p className="text-white/30 text-xs mb-4">Play Retro Defender to unlock higher ranks!</p>
                 <Link href="/game">
                   <Button size="sm" className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30">
                     <Rocket className="w-4 h-4 mr-1" />

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { SecureStorage } from '@/lib/secureStorage';
+import { getLoreProgressStatic } from './useLoreProgress';
 
 interface ScoreEntry {
   wallet: string;
@@ -14,34 +15,115 @@ interface PlayerStats {
   bestScore: number;
   gamesPlayed: number;
   rank: string;
+  effectiveRank?: string;
+  rankLocked?: boolean;
+  lockReason?: string;
 }
 
 const SCORES_KEY = 'guardian_game_scores';
 const STATS_KEY = 'guardian_game_stats_';
 
 export const RANKS = [
-  { min: 0, title: 'Cadet', color: '#808080' },
-  { min: 1000, title: 'Pilot', color: '#00ff88' },
-  { min: 5000, title: 'Void Walker', color: '#00ffff' },
-  { min: 15000, title: 'Star Commander', color: '#bf00ff' },
-  { min: 50000, title: 'Fleet Admiral', color: '#ff8800' },
-  { min: 100000, title: 'Based Eternal', color: '#ffd700' },
+  { min: 0, title: 'Cadet', color: '#808080', loreRequired: 0, gameRequired: false },
+  { min: 1000, title: 'Pilot', color: '#00ff88', loreRequired: 0, gameRequired: false },
+  { min: 5000, title: 'Void Walker', color: '#00ffff', loreRequired: 0, gameRequired: false },
+  { min: 15000, title: 'Star Commander', color: '#bf00ff', loreRequired: 25, gameRequired: true },
+  { min: 50000, title: 'Fleet Admiral', color: '#ff8800', loreRequired: 50, gameRequired: true },
+  { min: 100000, title: 'Based Eternal', color: '#ffd700', loreRequired: 75, gameRequired: true },
 ];
+
+function calculateEffectiveRank(lifetimeScore: number, gamesPlayed: number): { 
+  rank: string; 
+  effectiveRank: string; 
+  locked: boolean; 
+  lockReason?: string;
+} {
+  const loreProgress = getLoreProgressStatic();
+  const scoreRank = RANKS.filter(r => lifetimeScore >= r.min).pop() || RANKS[0];
+  const scoreRankIndex = RANKS.findIndex(r => r.title === scoreRank.title);
+  
+  if (scoreRankIndex <= 2) {
+    return { 
+      rank: scoreRank.title, 
+      effectiveRank: scoreRank.title, 
+      locked: false 
+    };
+  }
+  
+  if (scoreRank.gameRequired && gamesPlayed < 1) {
+    const cappedRank = RANKS[2];
+    return {
+      rank: scoreRank.title,
+      effectiveRank: cappedRank.title,
+      locked: true,
+      lockReason: 'Play Retro Defender at least once to unlock higher ranks'
+    };
+  }
+  
+  if (loreProgress.percentage < scoreRank.loreRequired) {
+    let effectiveIndex = scoreRankIndex;
+    for (let i = scoreRankIndex; i >= 0; i--) {
+      if (loreProgress.percentage >= RANKS[i].loreRequired && (!RANKS[i].gameRequired || gamesPlayed >= 1)) {
+        effectiveIndex = i;
+        break;
+      }
+      effectiveIndex = i - 1;
+    }
+    effectiveIndex = Math.max(0, effectiveIndex);
+    
+    return {
+      rank: scoreRank.title,
+      effectiveRank: RANKS[effectiveIndex].title,
+      locked: true,
+      lockReason: `Discover ${scoreRank.loreRequired}% of lore to unlock ${scoreRank.title} (currently ${loreProgress.percentage}%)`
+    };
+  }
+  
+  return { 
+    rank: scoreRank.title, 
+    effectiveRank: scoreRank.title, 
+    locked: false 
+  };
+}
 
 export function useGameScoresLocal() {
   const { address } = useAccount();
   const [leaderboard, setLeaderboard] = useState<ScoreEntry[]>([]);
-  const [myStats, setMyStats] = useState<PlayerStats>({ lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' });
+  const [myStats, setMyStats] = useState<PlayerStats>({ 
+    lifetimeScore: 0, 
+    bestScore: 0, 
+    gamesPlayed: 0, 
+    rank: 'Cadet',
+    effectiveRank: 'Cadet',
+    rankLocked: false
+  });
+
+  const refreshStats = useCallback(() => {
+    if (address) {
+      const stats = SecureStorage.get<PlayerStats>(STATS_KEY + address.toLowerCase());
+      if (stats) {
+        const rankInfo = calculateEffectiveRank(stats.lifetimeScore, stats.gamesPlayed);
+        setMyStats({
+          ...stats,
+          rank: rankInfo.rank,
+          effectiveRank: rankInfo.effectiveRank,
+          rankLocked: rankInfo.locked,
+          lockReason: rankInfo.lockReason
+        });
+      }
+    }
+  }, [address]);
 
   useEffect(() => {
     const scores = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
     setLeaderboard(scores.sort((a: ScoreEntry, b: ScoreEntry) => b.score - a.score).slice(0, 10));
+    refreshStats();
+  }, [address, refreshStats]);
 
-    if (address) {
-      const stats = SecureStorage.get<PlayerStats>(STATS_KEY + address.toLowerCase());
-      if (stats) setMyStats(stats);
-    }
-  }, [address]);
+  useEffect(() => {
+    const interval = setInterval(refreshStats, 3000);
+    return () => clearInterval(interval);
+  }, [refreshStats]);
 
   const submitScore = useCallback((score: number, wave: number) => {
     if (!address || score <= 0) return;
@@ -56,11 +138,18 @@ export function useGameScoresLocal() {
     const existing: PlayerStats = SecureStorage.get<PlayerStats>(statsKey) || 
       { lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' };
     
+    const newLifetimeScore = existing.lifetimeScore + score;
+    const newGamesPlayed = existing.gamesPlayed + 1;
+    const rankInfo = calculateEffectiveRank(newLifetimeScore, newGamesPlayed);
+    
     const newStats: PlayerStats = {
-      lifetimeScore: existing.lifetimeScore + score,
+      lifetimeScore: newLifetimeScore,
       bestScore: Math.max(existing.bestScore, score),
-      gamesPlayed: existing.gamesPlayed + 1,
-      rank: RANKS.filter(r => existing.lifetimeScore + score >= r.min).pop()?.title || 'Cadet',
+      gamesPlayed: newGamesPlayed,
+      rank: rankInfo.rank,
+      effectiveRank: rankInfo.effectiveRank,
+      rankLocked: rankInfo.locked,
+      lockReason: rankInfo.lockReason
     };
     
     SecureStorage.set(statsKey, newStats);
@@ -78,5 +167,5 @@ export function useGameScoresLocal() {
     return scores.filter(s => s.score > myBest.score).length + 1;
   }, [address]);
 
-  return { leaderboard, myStats, submitScore, getGlobalRank, RANKS };
+  return { leaderboard, myStats, submitScore, getGlobalRank, refreshStats, RANKS };
 }
