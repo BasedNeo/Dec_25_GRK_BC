@@ -1,0 +1,56 @@
+. Feature Flags (Turn Features On/Off) ⭐⭐⭐⭐⭐
+Why Critical: Turn off minting if there's a bug, disable game if it's being exploited, pause marketplace during maintenance
+✅ Toggle Minting (on/off)
+✅ Toggle Marketplace (on/off)
+✅ Toggle Game (on/off)
+✅ Toggle Offers (on/off)
+✅ Toggle Custom Names (on/off)
+✅ Maintenance Mode (show banner to all users)
+Impact: Fix issues WITHOUT code deploy. Instant platform control.
+2. User Management (Ban/Unban Wallets) ⭐⭐⭐⭐⭐
+Why Critical: Block bad actors, scammers, exploiters
+✅ Ban wallet address (blocks ALL actions)
+✅ Unban wallet
+✅ View banned wallets list
+✅ Ban reason notes
+✅ Search user by wallet
+✅ View user's NFTs, offers, votes
+Impact: Protect community from bad actors instantly.
+3. Content Moderation ⭐⭐⭐⭐
+Why Critical: Approve/reject custom names manually, moderate feedback
+✅ Pending custom names (approve/reject)
+✅ Force reset a user's name
+✅ View all feedback submissions
+✅ Mark feedback as resolved
+✅ Flag inappropriate NFT listings
+Impact: Keep platform clean and professional.
+4. Treasury & Financial Dashboard ⭐⭐⭐⭐⭐
+Why Critical: See revenue, withdraw funds, track financial health
+✅ View treasury wallet balance
+✅ View total revenue (mints + fees)
+✅ View royalties collected
+✅ Button to withdraw funds (with multi-sig if available)
+✅ Transaction history
+✅ Revenue chart (daily/weekly/monthly)
+Impact: Know your business numbers in real-time.
+TIER 2: Very Important
+5. Global Announcements ⭐⭐⭐⭐
+Why Critical: Communicate with users immediately
+✅ Post announcement banner (shows on all pages)
+✅ Set severity (info/warning/critical)
+✅ Schedule announcement start/end time
+✅ Delete announcement
+Impact: Inform users of issues, updates, events instantly.
+6. Marketplace Controls ⭐⭐⭐
+✅ Force delist an NFT (if scam/inappropriate)
+✅ Cancel any listing
+✅ Cancel any offer
+✅ Pause specific NFT from trading
+Impact: Remove scams/inappropriate content quickly.
+7. Bulk Operations ⭐⭐⭐
+Why Critical: Reward community, airdrops, mass actions
+✅ Airdrop $BASED to multiple wallets (CSV upload)
+✅ Adjust game scores (if bug caused wrong scores)
+✅ Bulk approve custom names
+✅ Mass send announcements
+Impact: Community management at scale.

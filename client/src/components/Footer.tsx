@@ -134,17 +134,21 @@ export function Footer() {
             </div>
 
             <div className="flex items-center gap-4">
-              <a 
-                href={TWITTER_URL} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="inline-flex items-center justify-center"
-                data-testid="link-twitter"
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="border-white/10 hover:border-primary hover:text-primary rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                asChild
               >
-                <Button variant="outline" size="icon" className="border-white/10 hover:border-primary hover:text-primary rounded-full min-h-[44px] min-w-[44px] touch-manipulation">
+                <a 
+                  href={TWITTER_URL} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  data-testid="link-twitter"
+                >
                   <Twitter size={18} />
-                </Button>
-              </a>
+                </a>
+              </Button>
               <div className="px-3 py-1.5 bg-white/5 rounded-full border border-white/5 text-xs text-muted-foreground flex items-center gap-2">
                 <ShieldCheck size={12} className="text-green-500" />
                 Audited & Secure
