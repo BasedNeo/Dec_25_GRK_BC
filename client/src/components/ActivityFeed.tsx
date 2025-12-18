@@ -142,10 +142,10 @@ export function ActivityFeed({
               color="text-blue-400" 
             />
             
-            {/* Volume - From recent on-chain sales ONLY (not historical baseline) */}
+            {/* Total Volume - Includes ALL mints and ALL secondary sales */}
             <StatCard 
-              label="Volume" 
-              value={stats.recentVolume > 0 ? stats.recentVolume.toLocaleString() : '0'} 
+              label="Total Volume" 
+              value={stats.totalVolume > 0 ? stats.totalVolume.toLocaleString(undefined, {maximumFractionDigits: 0}) : '0'} 
               suffix="$BASED" 
               icon={<TrendingUp className="w-5 h-5 text-purple-400" />} 
               color="text-purple-400" 
