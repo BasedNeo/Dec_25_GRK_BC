@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MatrixWelcomeOverlayProps {
@@ -7,20 +7,16 @@ interface MatrixWelcomeOverlayProps {
   prefersReducedMotion?: boolean;
 }
 
-const WELCOME_LINES = [
-  { text: 'Wake up, Guardian...', delay: 800 },
-  { text: '', delay: 1200 },
-  { text: 'The Based Guardians Command Center', delay: 600 },
-  { text: 'Beta Phase Active', delay: 400 },
-  { text: '', delay: 800 },
-  { text: 'Your journey into the Giga Brain Galaxy awaits.', delay: 600 },
+const GREETING_OPTIONS = [
+  'Wake up, Guardian...',
+  'Welcome back, Guardian...',
+  "What's up, Guardian...",
+  'Get ready, Guardian...',
 ];
 
-const RETURNING_LINES = [
-  { text: 'Wake up, Guardian...', delay: 800 },
-  { text: '', delay: 1000 },
-  { text: 'Welcome back to the Command Center.', delay: 500 },
-];
+function getRandomGreeting(): string {
+  return GREETING_OPTIONS[Math.floor(Math.random() * GREETING_OPTIONS.length)];
+}
 
 export function MatrixWelcomeOverlay({ 
   isFirstVisit, 
@@ -34,8 +30,25 @@ export function MatrixWelcomeOverlay({
   const [isExiting, setIsExiting] = useState(false);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
 
-  const lines = isFirstVisit ? WELCOME_LINES : RETURNING_LINES;
-  const typingSpeed = prefersReducedMotion ? 5 : 50;
+  const greeting = useMemo(() => getRandomGreeting(), []);
+
+  const lines = useMemo(() => {
+    if (isFirstVisit) {
+      return [
+        { text: greeting, delay: 1000, slow: true },
+        { text: '', delay: 1400 },
+        { text: 'Based Guardians Command Center', delay: 700 },
+        { text: 'Beta Phase Active', delay: 500 },
+        { text: '', delay: 900 },
+        { text: 'Your journey into the Based Universe awaits.', delay: 700 },
+      ];
+    }
+    return [
+      { text: greeting, delay: 1000, slow: true },
+      { text: '', delay: 1200 },
+      { text: 'The Command Center awaits.', delay: 600 },
+    ];
+  }, [isFirstVisit, greeting]);
 
   const handleSkip = useCallback(() => {
     setIsExiting(true);
@@ -72,6 +85,9 @@ export function MatrixWelcomeOverlay({
     setCurrentText('');
     setIsTyping(true);
 
+    const isSlow = 'slow' in line && line.slow;
+    const speed = prefersReducedMotion ? 5 : (isSlow ? 80 : 45);
+
     const typeInterval = setInterval(() => {
       if (charIndex < line.text.length) {
         setCurrentText(line.text.slice(0, charIndex + 1));
@@ -85,10 +101,10 @@ export function MatrixWelcomeOverlay({
           setCurrentLineIndex(prev => prev + 1);
         }, line.delay);
       }
-    }, typingSpeed);
+    }, speed);
 
     return () => clearInterval(typeInterval);
-  }, [currentLineIndex, lines, prefersReducedMotion, onComplete, typingSpeed, handleSkip]);
+  }, [currentLineIndex, lines, prefersReducedMotion, onComplete, handleSkip]);
 
   useEffect(() => {
     const cursorInterval = setInterval(() => {
