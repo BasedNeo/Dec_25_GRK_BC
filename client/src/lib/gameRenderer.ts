@@ -1,6 +1,6 @@
 import { GameState, Alien, Bullet, Explosion, PowerUp } from './gameEngine';
 import fudImage from '@assets/generated_images/glowing_red_fud_neon_text.png';
-import robotChickenImage from '@assets/generated_images/evil_robot_chicken_game_sprite.png';
+import robotChickenImage from '../assets/fud-alien.png';
 
 // Preload game images
 let fudImageElement: HTMLImageElement | null = null;

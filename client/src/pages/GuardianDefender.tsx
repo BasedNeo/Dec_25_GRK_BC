@@ -179,7 +179,7 @@ export function GuardianDefender() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <RocketIcon size={24} />
-              <span className="font-orbitron text-white text-sm tracking-wider">RETRO COMMAND</span>
+              <span className="font-orbitron text-white text-sm tracking-wider">RETRO DEFENDER</span>
             </div>
             {phase === 'playing' && (
               <div className="flex items-center gap-4 text-xs font-mono">
@@ -203,7 +203,7 @@ export function GuardianDefender() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-2 border-cyan-500/50 flex items-center justify-center">
                 <GamepadIcon size={40} />
               </div>
-              <p className="text-white font-orbitron text-xl mb-2">RETRO COMMAND</p>
+              <p className="text-white font-orbitron text-xl mb-2">RETRO DEFENDER</p>
               <p className="text-gray-400 text-sm mb-4">Defend the Based Galaxy!</p>
               
               {!access.canPlay ? (
