@@ -18,7 +18,6 @@ export const CHAIN_ID = 32323;
 
 export const RPC_ENDPOINTS = [
   'https://mainnet.basedaibridge.com/rpc/',
-  'https://rpc.basedaibridge.com/',
 ];
 export const BLOCK_EXPLORER = "https://explorer.bf1337.org";
 export const NFT_SYMBOL = "BASED";

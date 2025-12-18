@@ -38,8 +38,7 @@ class ContractServiceClass {
     address: NFT_CONTRACT,
     chainId: CHAIN_ID,
     rpcUrls: [
-      'https://mainnet.basedaibridge.com/rpc',
-      'https://rpc.basedaibridge.com'
+      'https://mainnet.basedaibridge.com/rpc/'
     ],
     metadataBaseUri: IPFS_ROOT
   };

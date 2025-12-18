@@ -12,7 +12,6 @@ export const helmetConfig = helmet({
       connectSrc: [
         "'self'",
         "https://mainnet.basedaibridge.com",
-        "https://rpc.basedaibridge.com",
         "https://api.coingecko.com",
         "https://api.binance.com",
         "https://*.mypinata.cloud",
