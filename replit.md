@@ -220,6 +220,17 @@ Protected folder structure to isolate core commerce and game code:
   - Platform fee (1%) tracking
   - Mobile-responsive design with proper data-testid attributes
   - All calculations use locked 51/49 MINT_SPLIT values
+- **Interactive Lore Explorer** (December 2024): Discover the deep lore of the Based Universe
+  - 12 unique character backstories across 3 species (Guardians, Frogs, Creatures)
+  - 6 locations with hidden stories (unlock by clicking locked cards)
+  - 6 historical timeline events
+  - 4 factions with mottos and notable members
+  - Secret lore unlock mechanic: Each character has hidden backstory
+  - Discovery progress bar tracking unlocked content
+  - localStorage persistence for discovery state
+  - Animated discovery modal with particle effects
+  - Integrated into Universe tab as dedicated section
+  - Files: LoreExplorer.tsx, loreData.ts
 
 ## Wallet Configuration
 
