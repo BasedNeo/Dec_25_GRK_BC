@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { trackEvent } from '@/lib/analytics';
-import { IPFS_ROOT } from '@/lib/constants';
+import { fetchGuardianMetadata } from '@/lib/ipfs';
 import { GameStorageManager, GameStats } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { GameHUD } from '@/components/game/GameHUD';
@@ -309,6 +309,7 @@ export default function GuardianSolitaire() {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [showHint, setShowHint] = useState(false);
   const [comboCount, setComboCount] = useState(0);
+  const [isLoadingDeck, setIsLoadingDeck] = useState(false);
   const [draggedCard, setDraggedCard] = useState<{
     card: SolitaireCard;
     from: 'waste' | 'foundation' | 'tableau';
@@ -492,18 +493,43 @@ export default function GuardianSolitaire() {
     }
   }, [selectedCard]);
 
-  const initializeDeck = useCallback((): SolitaireCard[] => {
+  const initializeDeck = useCallback(async (): Promise<SolitaireCard[]> => {
     const newDeck: SolitaireCard[] = [];
     const usedNFTs = new Set<number>();
+    const nftIds: number[] = [];
     
+    // Generate 52 unique random NFT IDs
+    for (let i = 0; i < 52; i++) {
+      let nftId: number;
+      do {
+        nftId = Math.floor(Math.random() * 3732) + 1;
+      } while (usedNFTs.has(nftId));
+      usedNFTs.add(nftId);
+      nftIds.push(nftId);
+    }
+    
+    // Fetch metadata for all NFTs in parallel (batched)
+    const BATCH_SIZE = 10;
+    const guardianImages: Map<number, string> = new Map();
+    
+    for (let i = 0; i < nftIds.length; i += BATCH_SIZE) {
+      const batch = nftIds.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(id => fetchGuardianMetadata(id).catch(() => null))
+      );
+      results.forEach((guardian, idx) => {
+        if (guardian?.image) {
+          guardianImages.set(batch[idx], guardian.image);
+        }
+      });
+    }
+    
+    // Build deck with fetched images
+    let nftIndex = 0;
     for (let suit = 0; suit < 4; suit++) {
       for (let rank = 1; rank <= 13; rank++) {
-        let nftId: number;
-        do {
-          nftId = Math.floor(Math.random() * 3732) + 1;
-        } while (usedNFTs.has(nftId) && usedNFTs.size < 3732);
-        
-        usedNFTs.add(nftId);
+        const nftId = nftIds[nftIndex];
+        const imageUrl = guardianImages.get(nftId) || `https://via.placeholder.com/400x400/1a1a2e/00ffff?text=Guardian+${nftId}`;
         
         newDeck.push({
           id: `${SUITS[suit]}-${rank}-${nftId}`,
@@ -511,11 +537,13 @@ export default function GuardianSolitaire() {
           suit: SUITS[suit],
           rank,
           faceUp: false,
-          imageUrl: `${IPFS_ROOT}${nftId}.png`
+          imageUrl
         });
+        nftIndex++;
       }
     }
     
+    // Shuffle deck
     for (let i = newDeck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
@@ -524,34 +552,39 @@ export default function GuardianSolitaire() {
     return newDeck;
   }, []);
 
-  const dealCards = useCallback(() => {
-    const shuffledDeck = initializeDeck();
-    const newTableau: Pile[] = Array(7).fill(null).map(() => ({ cards: [] }));
-    let deckIndex = 0;
+  const dealCards = useCallback(async () => {
+    setIsLoadingDeck(true);
+    try {
+      const shuffledDeck = await initializeDeck();
+      const newTableau: Pile[] = Array(7).fill(null).map(() => ({ cards: [] }));
+      let deckIndex = 0;
 
-    for (let i = 0; i < 7; i++) {
-      for (let j = 0; j <= i; j++) {
-        const card = { ...shuffledDeck[deckIndex++] };
-        if (j === i) card.faceUp = true;
-        newTableau[i].cards.push(card);
+      for (let i = 0; i < 7; i++) {
+        for (let j = 0; j <= i; j++) {
+          const card = { ...shuffledDeck[deckIndex++] };
+          if (j === i) card.faceUp = true;
+          newTableau[i].cards.push(card);
+        }
       }
+
+      const remainingDeck = shuffledDeck.slice(deckIndex).map((c: SolitaireCard) => ({ ...c, faceUp: false }));
+
+      setTableau(newTableau);
+      setDeck(remainingDeck);
+      setWaste([]);
+      setFoundations(Array(4).fill(null).map(() => ({ cards: [] })));
+      setMoves(0);
+      setInvalidAttempts(0);
+      setStartTime(Date.now());
+      setElapsedTime(0);
+      setGameWon(false);
+      setSelectedCard(null);
+      setGameHistory([]);
+      setComboCount(0);
+      playSound('flip');
+    } finally {
+      setIsLoadingDeck(false);
     }
-
-    const remainingDeck = shuffledDeck.slice(deckIndex).map(c => ({ ...c, faceUp: false }));
-
-    setTableau(newTableau);
-    setDeck(remainingDeck);
-    setWaste([]);
-    setFoundations(Array(4).fill(null).map(() => ({ cards: [] })));
-    setMoves(0);
-    setInvalidAttempts(0);
-    setStartTime(Date.now());
-    setElapsedTime(0);
-    setGameWon(false);
-    setSelectedCard(null);
-    setGameHistory([]);
-    setComboCount(0);
-    playSound('flip');
   }, [initializeDeck, playSound]);
 
   const saveStateToHistory = useCallback(() => {
@@ -858,7 +891,7 @@ export default function GuardianSolitaire() {
     trackEvent('game_complete', 'Solitaire', `Score: ${finalScore}`);
   }, [startTime, moves, comboCount, invalidAttempts, stats, address, gameConfig.scoring.maxScore, submitScore, playSound, createParticles]);
 
-  const startGame = useCallback((resume: boolean = false) => {
+  const startGame = useCallback(async (resume: boolean = false) => {
     if (!access.canPlay) {
       toast({
         title: "Cannot Start Game",
@@ -886,7 +919,7 @@ export default function GuardianSolitaire() {
       }
     }
 
-    dealCards();
+    await dealCards();
     setGameStarted(true);
     trackEvent('game_start', 'Solitaire', 'New Game');
   }, [access, recordPlay, address, dealCards, toast]);
@@ -1109,12 +1142,21 @@ export default function GuardianSolitaire() {
                   <Button
                     onClick={() => startGame(false)}
                     size="lg"
-                    disabled={!access.canPlay}
+                    disabled={!access.canPlay || isLoadingDeck}
                     className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold px-10 py-6 text-lg"
                     data-testid="button-new-game"
                   >
-                    <Play className="w-6 h-6 mr-2" />
-                    NEW GAME
+                    {isLoadingDeck ? (
+                      <>
+                        <Loader2 className="w-6 h-6 mr-2 animate-spin" />
+                        LOADING GUARDIANS...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-6 h-6 mr-2" />
+                        NEW GAME
+                      </>
+                    )}
                   </Button>
                   
                   {hasSavedGame && (
@@ -1122,7 +1164,7 @@ export default function GuardianSolitaire() {
                       onClick={() => startGame(true)}
                       size="lg"
                       variant="outline"
-                      disabled={!access.canPlay}
+                      disabled={!access.canPlay || isLoadingDeck}
                       className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 px-10 py-6 text-lg"
                       data-testid="button-resume-game"
                     >
