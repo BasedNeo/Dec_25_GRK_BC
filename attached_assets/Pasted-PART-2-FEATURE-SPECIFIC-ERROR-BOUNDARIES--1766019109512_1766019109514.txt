@@ -1,0 +1,231 @@
+PART 2: FEATURE-SPECIFIC ERROR BOUNDARIES
+═══════════════════════════════════════════════════════════
+WRAP CRITICAL FEATURES:
+FILE: client/src/pages/Home.tsx
+FIND the component export, WRAP WITH:
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+export default function Home() {
+return (
+<ErrorBoundary
+feature="Home"
+isolate={false}
+onError={(error) => {
+console.error('[Home] Critical error:', error);
+}}
+>
+{/* Existing Home component content /}
+</ErrorBoundary>
+);
+}
+FILE: client/src/components/EscrowMarketplace.tsx
+WRAP entire component:
+export function EscrowMarketplace() {
+return (
+<ErrorBoundary
+feature="Marketplace"
+isolate={true}
+fallback={
+<div className="p-8 text-center">
+<p className="text-red-400 mb-4">Unable to load marketplace</p>
+<Button onClick={() => window.location.reload()}>Reload</Button>
+</div>
+}
+>
+{/* Existing marketplace content /}
+</ErrorBoundary>
+);
+}
+SIMILARLY WRAP:
+pages/GuardianDefender.tsx (Game)
+components/NFTGallery.tsx (Portfolio)
+components/VotingDAO.tsx (Governance)
+components/UserStats.tsx (Stats)
+═══════════════════════════════════════════════════════════
+PART 3: ERROR REPORTING UTILITY
+═══════════════════════════════════════════════════════════
+CREATE: client/src/lib/errorReporter.ts
+interface ErrorReport {
+id: string;
+timestamp: number;
+message: string;
+stack?: string;
+feature?: string;
+userAgent: string;
+url: string;
+}
+class ErrorReporter {
+private maxLogs = 20;
+/
+* Report error to tracking service
+/
+report(error: Error, context?: { feature?: string; metadata?: Record<string, any> }) {
+const report: ErrorReport = {
+id: err_${Date.now()}_${Math.random().toString(36).slice(2, 9)},
+timestamp: Date.now(),
+message: error.message,
+stack: error.stack,
+feature: context?.feature,
+userAgent: navigator.userAgent,
+url: window.location.href
+};
+// Log to console in development
+if (import.meta.env.DEV) {
+console.error('[ErrorReporter]', report, context?.metadata);
+}
+// Store locally
+this.storeLocal(report);
+// TODO: Send to remote service (Sentry, etc.) in production
+if (import.meta.env.PROD) {
+this.sendToService(report, context?.metadata);
+}
+return report.id;
+}
+private storeLocal(report: ErrorReport) {
+try {
+const logs = JSON.parse(localStorage.getItem('error_logs') || '[]');
+logs.push(report);
+// Keep only recent errors
+if (logs.length > this.maxLogs) {
+logs.splice(0, logs.length - this.maxLogs);
+}
+localStorage.setItem('error_logs', JSON.stringify(logs));
+} catch (e) {
+console.error('Failed to store error log:', e);
+}
+}
+private sendToService(report: ErrorReport, metadata?: Record<string, any>) {
+// TODO: Integrate with Sentry, LogRocket, etc.
+// Example:
+// Sentry.captureException(new Error(report.message), {
+// tags: { feature: report.feature },
+// extra: metadata
+// });
+}
+/
+* Get recent error logs (for admin debugging)
+/
+getLogs(): ErrorReport[] {
+try {
+return JSON.parse(localStorage.getItem('error_logs') || '[]');
+} catch {
+return [];
+}
+}
+/
+* Clear all logs
+/
+clearLogs() {
+localStorage.removeItem('error_logs');
+}
+/
+* Export logs for support
+/
+exportLogs(): string {
+const logs = this.getLogs();
+return JSON.stringify(logs, null, 2);
+}
+}
+export const errorReporter = new ErrorReporter();
+// Expose for debugging
+if (typeof window !== 'undefined') {
+(window as any).errorLogs = () => {
+console.table(errorReporter.getLogs().map(log => ({
+id: log.id.slice(0, 10),
+feature: log.feature || 'Unknown',
+message: log.message.slice(0, 50),
+time: new Date(log.timestamp).toLocaleString()
+})));
+};
+(window as any).exportErrors = () => {
+const data = errorReporter.exportLogs();
+const blob = new Blob([data], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = error-logs-${Date.now()}.json;
+a.click();
+};
+}
+═══════════════════════════════════════════════════════════
+PART 4: ADD ERROR LOGS TO ADMIN DASHBOARD
+═══════════════════════════════════════════════════════════
+FILE: client/src/components/AdminDashboard.tsx
+ADD new section for error logs:
+import { errorReporter } from '@/lib/errorReporter';
+import { useState, useEffect } from 'react';
+// Inside component:
+const [errorLogs, setErrorLogs] = useState(errorReporter.getLogs());
+useEffect(() => {
+const interval = setInterval(() => {
+setErrorLogs(errorReporter.getLogs());
+}, 5000);
+return () => clearInterval(interval);
+}, []);
+// Add to UI:
+<Card className="p-6">
+<div className="flex items-center justify-between mb-4">
+<h3 className="text-lg font-orbitron text-cyan-400">Recent Errors</h3>
+<Button size="sm" onClick={() => errorReporter.clearLogs()}>
+Clear Logs
+</Button>
+</div>
+{errorLogs.length === 0 ? (
+<p className="text-gray-500 text-sm">No errors logged</p>
+) : (
+<div className="space-y-2">
+{errorLogs.slice(-5).reverse().map(log => (
+<div key={log.id} className="p-3 bg-red-500/10 border border-red-500/30 rounded text-xs">
+<div className="flex items-start justify-between mb-1">
+<span className="font-mono text-red-400">{log.feature || 'Unknown'}</span>
+<span className="text-gray-500">
+{new Date(log.timestamp).toLocaleTimeString()}
+</span>
+</div>
+<p className="text-gray-300">{log.message}</p>
+</div>
+))}
+</div>
+)}
+<Button
+size="sm"
+variant="outline"
+className="w-full mt-4"
+onClick={() => (window as any).exportErrors()}
+>
+Export All Logs
+</Button>
+</Card>
+═══════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════
+Test error boundary:
+# Temporarily add throw error to a component
+throw new Error('Test error');
+# Should see custom error UI with error ID
+Test isolated boundary:
+# Add error to marketplace component
+# Should show inline error, not crash whole app
+Test error recovery:
+# Click "Try Again" button
+# Should reset and reload component
+View error logs in console:
+errorLogs()
+# Should show table of recent errors
+Export errors:
+exportErrors()
+# Should download JSON file
+Check admin dashboard:
+# Navigate to admin panel
+# Should see "Recent Errors" section
+# Should show last 5 errors
+CHECKLIST:
+□ ErrorBoundary.tsx updated with full features
+□ Feature-specific boundaries added
+□ errorReporter.ts created
+□ Error logs integrated in AdminDashboard
+□ Test error throwing/catching works
+□ Isolated errors don't crash app
+□ Error recovery works
+□ errorLogs() command works
+□ exportErrors() downloads JSON
+□ Admin panel shows recent errors
