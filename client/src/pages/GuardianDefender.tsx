@@ -28,6 +28,7 @@ export function GuardianDefender() {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayLives, setDisplayLives] = useState(3);
   const [displayLevel, setDisplayLevel] = useState(1);
+  const [showLanderControls, setShowLanderControls] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
   const { flags } = useFeatureFlags();
 
@@ -90,6 +91,16 @@ export function GuardianDefender() {
       const state = stateRef.current;
       if (!state) return;
 
+      if (state.phase === 'landerReady') {
+        render(ctx, state, width, height, isHolder, shipImageRef.current || undefined);
+        setShowLanderControls(true);
+        setDisplayScore(state.score);
+        setDisplayLives(state.player.lives);
+        setDisplayLevel(state.wave);
+        animId = requestAnimationFrame(loop);
+        return;
+      }
+
       if (state.phase === 'lander') {
         applyLanderInput(state, inputRef.current, width);
         updateLander(state, width, height);
@@ -136,7 +147,7 @@ export function GuardianDefender() {
         if (landerCheatRef.current.count >= 2) {
           const state = stateRef.current;
           if (state && state.phase === 'playing') {
-            state.phase = 'lander';
+            state.phase = 'landerReady';
             state.wave = 4;
             state.player.pos = { x: canvasSize.width / 2, y: 60 };
             state.player.vel = { x: 0, y: 0 };
@@ -177,6 +188,14 @@ export function GuardianDefender() {
   };
 
   const rankInfo = RANKS.find(r => myStats.lifetimeScore >= r.min) || RANKS[0];
+
+  const startLander = useCallback(() => {
+    const state = stateRef.current;
+    if (state && state.phase === 'landerReady') {
+      state.phase = 'lander';
+      setShowLanderControls(false);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020]">
@@ -347,6 +366,43 @@ export function GuardianDefender() {
                   style={{ touchAction: 'none' }}
                   data-testid="canvas-game"
                 />
+                
+                {showLanderControls && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl z-10">
+                    <div className="bg-gradient-to-b from-[#1a0040] to-[#0a0020] border-2 border-cyan-500/50 rounded-xl p-6 max-w-xs mx-4 text-center shadow-[0_0_40px_rgba(0,255,255,0.3)]">
+                      <h2 className="text-cyan-400 font-orbitron text-xl mb-4">LUNAR LANDER</h2>
+                      
+                      <div className="bg-black/50 rounded-lg p-4 mb-4 text-left">
+                        <p className="text-white text-sm font-bold mb-3">CONTROLS:</p>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-3">
+                            <span className="bg-purple-500/30 border border-purple-500/50 px-2 py-1 rounded text-purple-300 font-mono text-xs">↑ / W</span>
+                            <span className="text-gray-300">Thrust (slow down)</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="bg-cyan-500/30 border border-cyan-500/50 px-2 py-1 rounded text-cyan-300 font-mono text-xs">← →</span>
+                            <span className="text-gray-300">Move left/right</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+                        <p className="text-yellow-400 text-xs">
+                          <strong>GOAL:</strong> Land slowly on the pad!<br/>
+                          <span className="text-yellow-300/70">Keep velocity under 1.5 to survive</span>
+                        </p>
+                      </div>
+                      
+                      <Button
+                        onClick={startLander}
+                        className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition-all w-full"
+                        data-testid="button-start-lander"
+                      >
+                        START LANDING
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between mt-4 md:hidden">

@@ -53,7 +53,7 @@ export interface Player extends Entity {
 }
 
 export interface GameState {
-  phase: 'playing' | 'dying' | 'respawning' | 'stageComplete' | 'gameOver' | 'bonus' | 'lander' | 'complete';
+  phase: 'playing' | 'dying' | 'respawning' | 'stageComplete' | 'gameOver' | 'bonus' | 'landerReady' | 'lander' | 'complete';
   stage: number;
   wave: number;
   player: Player;
@@ -448,7 +448,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     state.spawnTimer = 90;
     
     if (state.wave > 0 && state.wave % 4 === 0) {
-      state.phase = 'lander';
+      state.phase = 'landerReady';
       state.player.pos = { x: w / 2, y: 60 };
       state.player.vel = { x: 0, y: 0 };
       state.player.fuel = 100;

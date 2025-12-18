@@ -83,7 +83,7 @@ export function render(
     drawGameOver(ctx, state, w, h);
   }
   
-  if (state.phase === 'lander') {
+  if (state.phase === 'lander' || state.phase === 'landerReady') {
     drawLander(ctx, state, w, h, isHolder);
   }
 }
