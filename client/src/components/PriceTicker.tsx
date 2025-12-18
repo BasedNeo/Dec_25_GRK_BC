@@ -1,122 +1,129 @@
-import { usePriceTicker } from '@/hooks/usePriceTicker';
-import { TrendingUp, TrendingDown, RefreshCw, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePriceTicker } from '@/hooks/usePriceTicker';
+import { useTokenPrice } from '@/hooks/useTokenPrice';
+import { useInterval } from '@/hooks/useInterval';
+
+const ROTATE_INTERVAL = 8000;
+
+const elegantTransition = {
+  initial: { opacity: 0, filter: 'blur(4px)', scale: 0.98 },
+  animate: { opacity: 1, filter: 'blur(0px)', scale: 1 },
+  exit: { opacity: 0, filter: 'blur(4px)', scale: 0.98 },
+  transition: { 
+    duration: 0.6, 
+    ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+  },
+};
 
 export function PriceTicker() {
-  const { btcPrice, ethPrice, isLoading, securityStatus, refresh } = usePriceTicker();
+  const [showBased, setShowBased] = useState(true);
+  const { btcPrice, ethPrice, isLoading: cryptoLoading, securityStatus } = usePriceTicker();
+  const { data: basedPrice } = useTokenPrice();
 
-  const btc = btcPrice?.price || 0;
-  const eth = ethPrice?.price || 0;
-  const btcChange = btcPrice?.change24h || 0;
-  const ethChange = ethPrice?.change24h || 0;
-  const lastUpdated = btcPrice?.timestamp || 0;
-  const isStale = securityStatus === 'stale';
-  const hasError = securityStatus === 'error';
+  useInterval(() => {
+    setShowBased(prev => !prev);
+  }, ROTATE_INTERVAL);
 
-  const formatPrice = (price: number) => {
-    if (!price || price === 0) return '--';
-    return price.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+  const formatPrice = (price: number, decimals: number) => {
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   };
 
-  const formatChange = (change: number) => {
-    if (!change) return '0.0%';
-    return `${change > 0 ? '↑' : '↓'}${Math.abs(change).toFixed(1)}%`;
-  };
-
-  const getTimeSinceUpdate = () => {
-    if (!lastUpdated) return 'Never';
-    const seconds = Math.floor((Date.now() - lastUpdated) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    return `${Math.floor(minutes / 60)}h ago`;
-  };
+  const isVerified = securityStatus === 'verified';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed top-20 left-4 z-40"
+    <div 
+      id="priceBadge"
+      className="flex flex-col justify-center px-3 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[175px] md:w-[190px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
+      data-testid="price-ticker"
     >
-      <div className="bg-black/95 backdrop-blur-md border border-cyan-500/30 rounded-lg p-3 shadow-lg min-w-[200px]">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full animate-pulse bg-cyan-400" />
-            <span className="text-[10px] text-gray-400 font-mono uppercase">Live Prices</span>
-          </div>
-          
-          <button
-            onClick={refresh}
-            disabled={isLoading}
-            className="text-gray-400 hover:text-cyan-400 transition-colors"
-            title={`Last updated: ${getTimeSinceUpdate()}`}
-            data-testid="button-refresh-prices"
+      <AnimatePresence mode="wait">
+        {showBased ? (
+          <motion.div
+            key="based"
+            {...elegantTransition}
           >
-            <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {hasError && !btc ? (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-red-400 text-xs py-2"
-            >
-              <AlertCircle className="w-4 h-4" />
-              <span>Price unavailable</span>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="prices"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-2"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-orange-400 font-bold text-sm">BTC</span>
-                  <span className="text-white font-mono text-sm" data-testid="text-btc-price">
-                    {formatPrice(btc)}
-                  </span>
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${btcChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {btcChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  <span className="font-mono">{formatChange(btcChange)}</span>
-                </div>
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-white/50 font-mono">BASED</span>
+                <span className="text-white/30">·</span>
+                <span className="text-white/40 text-[8px]">ETH</span>
+                <span className="font-semibold text-white font-mono tracking-tight" data-testid="text-based-eth-price">
+                  {basedPrice === undefined 
+                    ? <span className="inline-block w-12 h-3 bg-white/10 rounded animate-pulse" />
+                    : basedPrice.usdPrice > 0 
+                      ? formatPrice(basedPrice.usdPrice, 4)
+                      : '—'
+                  }
+                </span>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-purple-400 font-bold text-sm">ETH</span>
-                  <span className="text-white font-mono text-sm" data-testid="text-eth-price">
-                    {formatPrice(eth)}
-                  </span>
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${ethChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {ethChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  <span className="font-mono">{formatChange(ethChange)}</span>
-                </div>
-              </div>
-
-              {isStale && (
-                <div className="text-[9px] text-yellow-400 flex items-center gap-1 pt-1 border-t border-white/10">
-                  <AlertCircle className="w-2.5 h-2.5" />
-                  <span>Stale data ({getTimeSinceUpdate()})</span>
-                </div>
+              {basedPrice && basedPrice.usdPrice > 0 && basedPrice.change24h !== undefined && (
+                <span className={`font-medium font-mono text-[8px] ${basedPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {basedPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(basedPrice.change24h || 0).toFixed(1)}%
+                </span>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+            </div>
+            
+            <div className="flex items-center gap-1 text-[9px] leading-tight mt-0.5">
+              <span className="text-white/50 font-mono">BASED</span>
+              <span className="text-white/30">·</span>
+              <span className="text-white/40 text-[8px]">L1</span>
+              <span className="font-semibold text-cyan-400 font-mono tracking-tight" data-testid="text-based-l1-price">
+                {basedPrice === undefined 
+                  ? <span className="inline-block w-16 h-3 bg-cyan-500/10 rounded animate-pulse" />
+                  : basedPrice.basedL1Price > 0 
+                    ? formatPrice(basedPrice.basedL1Price, 7)
+                    : '—'
+                }
+              </span>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="crypto"
+            {...elegantTransition}
+          >
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight">
+              <div className="flex items-center gap-1">
+                <span className="text-orange-400/70 font-mono">BTC</span>
+                <span className="font-semibold text-orange-300 font-mono tracking-tight" data-testid="text-btc-price">
+                  {cryptoLoading || !btcPrice
+                    ? <span className="inline-block w-14 h-3 bg-orange-500/10 rounded animate-pulse" />
+                    : formatPrice(btcPrice.price, 0)
+                  }
+                </span>
+              </div>
+              {btcPrice && (
+                <span className={`font-medium font-mono text-[8px] ${btcPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {btcPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(btcPrice.change24h).toFixed(1)}%
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-between gap-1.5 text-[9px] leading-tight mt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-purple-400/70 font-mono">ETH</span>
+                <span className="font-semibold text-purple-300 font-mono tracking-tight" data-testid="text-eth-price">
+                  {cryptoLoading || !ethPrice
+                    ? <span className="inline-block w-12 h-3 bg-purple-500/10 rounded animate-pulse" />
+                    : formatPrice(ethPrice.price, 0)
+                  }
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {ethPrice && (
+                  <span className={`font-medium font-mono text-[8px] ${ethPrice.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {ethPrice.change24h >= 0 ? '↑' : '↓'}{Math.abs(ethPrice.change24h).toFixed(1)}%
+                  </span>
+                )}
+                {isVerified && (
+                  <span className="text-emerald-500/60 text-[8px]" title="Multi-source verified">✓</span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
