@@ -2,11 +2,14 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import compression from "compression";
 import { apiLimiter } from './middleware/rateLimiter';
 import { helmetConfig, corsConfig, sanitizeRequest, secureLogger } from './middleware/security';
 
 const app = express();
 const httpServer = createServer(app);
+
+app.use(compression());
 
 declare module "http" {
   interface IncomingMessage {

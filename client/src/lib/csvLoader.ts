@@ -15,7 +15,10 @@ export const clearCSVCache = () => {
 };
 
 export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
-  if (cachedGuardians) return cachedGuardians;
+  if (cachedGuardians) {
+    console.log('[CSV] Using cached guardian data');
+    return cachedGuardians;
+  }
 
   return new Promise((resolve, reject) => {
     Papa.parse('/guardians-metadata.csv', {
