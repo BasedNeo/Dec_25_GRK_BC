@@ -1,11 +1,14 @@
 import { GameState, Alien, Bullet, Explosion, PowerUp } from './gameEngine';
 import fudImage from '@assets/generated_images/glowing_red_fud_neon_text.png';
 import robotChickenImage from '@assets/fud-alien.png';
+import landerBgImage from '@assets/b303721e-ccd4-4589-848c-0e8986bad2ff_1766039912853.png';
 
 // Preload game images
 let fudImageElement: HTMLImageElement | null = null;
 let robotChickenElement: HTMLImageElement | null = null;
 let robotChickenLoaded = false;
+let landerBgElement: HTMLImageElement | null = null;
+let landerBgLoaded = false;
 
 if (typeof window !== 'undefined') {
   fudImageElement = new Image();
@@ -17,6 +20,13 @@ if (typeof window !== 'undefined') {
     robotChickenLoaded = true;
   };
   robotChickenElement.src = robotChickenImage;
+  
+  landerBgElement = new Image();
+  landerBgElement.crossOrigin = 'anonymous';
+  landerBgElement.onload = () => {
+    landerBgLoaded = true;
+  };
+  landerBgElement.src = landerBgImage;
 }
 
 const COLORS = {
@@ -374,43 +384,21 @@ function drawLander(ctx: CanvasRenderingContext2D, state: GameState, w: number, 
   const PAD_X = w / 2 - 50;
   const PAD_W = 100;
   
-  // Draw mountain background
-  ctx.fillStyle = '#1a0030';
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND);
-  ctx.lineTo(0, GROUND - 80);
-  ctx.lineTo(w * 0.15, GROUND - 140);
-  ctx.lineTo(w * 0.25, GROUND - 90);
-  ctx.lineTo(w * 0.35, GROUND - 160);
-  ctx.lineTo(w * 0.5, GROUND - 100);
-  ctx.lineTo(w * 0.6, GROUND - 180);
-  ctx.lineTo(w * 0.75, GROUND - 120);
-  ctx.lineTo(w * 0.85, GROUND - 200);
-  ctx.lineTo(w, GROUND - 130);
-  ctx.lineTo(w, GROUND);
-  ctx.closePath();
-  ctx.fill();
+  // Draw space background image
+  if (landerBgElement && landerBgLoaded) {
+    ctx.drawImage(landerBgElement, 0, 0, w, h);
+  } else {
+    // Fallback gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, '#0a0020');
+    gradient.addColorStop(0.5, '#1a0040');
+    gradient.addColorStop(1, '#2a0060');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+  }
   
-  // Draw closer mountain layer
-  ctx.fillStyle = '#2a0050';
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND);
-  ctx.lineTo(0, GROUND - 40);
-  ctx.lineTo(w * 0.1, GROUND - 70);
-  ctx.lineTo(w * 0.2, GROUND - 50);
-  ctx.lineTo(w * 0.3, GROUND - 90);
-  ctx.lineTo(w * 0.45, GROUND - 60);
-  ctx.lineTo(w * 0.55, GROUND - 100);
-  ctx.lineTo(w * 0.7, GROUND - 70);
-  ctx.lineTo(w * 0.8, GROUND - 110);
-  ctx.lineTo(w * 0.9, GROUND - 80);
-  ctx.lineTo(w, GROUND - 60);
-  ctx.lineTo(w, GROUND);
-  ctx.closePath();
-  ctx.fill();
-  
-  // Draw ground
-  ctx.fillStyle = '#3a0070';
+  // Draw ground overlay at bottom
+  ctx.fillStyle = 'rgba(30, 0, 50, 0.9)';
   ctx.fillRect(0, GROUND, w, 60);
   
   // Draw landing base structure
