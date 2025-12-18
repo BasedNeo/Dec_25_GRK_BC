@@ -102,9 +102,11 @@ export async function withCache<T>(
     : getMemoryCached<T>(key, duration);
 
   if (cached !== null) {
+    console.log(`[Cache] Hit: ${key}`);
     return cached;
   }
 
+  console.log(`[Cache] Miss: ${key}`);
   const data = await fn();
 
   if (data !== null && data !== undefined) {

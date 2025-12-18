@@ -4,14 +4,17 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import '@/lib/i18n';
+import { lazy, Suspense } from "react";
 import Home from "@/pages/Home";
-import TermsOfService from "@/pages/TermsOfService";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import Odyssey from "@/pages/Odyssey";
-import Creators from "@/pages/Creators";
-import Saga from "@/pages/Saga";
-import GuardianDefender from "@/pages/GuardianDefender";
 import NotFound from "@/pages/not-found";
+
+// Lazy load secondary pages for faster initial load
+const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
+const Odyssey = lazy(() => import("@/pages/Odyssey"));
+const Creators = lazy(() => import("@/pages/Creators"));
+const Saga = lazy(() => import("@/pages/Saga"));
+const GuardianDefender = lazy(() => import("@/pages/GuardianDefender"));
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
@@ -107,18 +110,31 @@ function GlobalErrorFallback() {
   );
 }
 
+function RouteLoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-gray-400 text-sm font-mono">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/terms" component={TermsOfService} />
-      <Route path="/privacy" component={PrivacyPolicy} />
-      <Route path="/odyssey" component={Odyssey} />
-      <Route path="/creators" component={Creators} />
-      <Route path="/saga" component={Saga} />
-      <Route path="/game" component={GuardianDefender} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/terms" component={TermsOfService} />
+        <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/odyssey" component={Odyssey} />
+        <Route path="/creators" component={Creators} />
+        <Route path="/saga" component={Saga} />
+        <Route path="/game" component={GuardianDefender} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
