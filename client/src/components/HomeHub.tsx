@@ -11,6 +11,7 @@ import {
   Shield,
   Trophy,
   Rocket,
+  Lock,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useLocation } from "wouter";
@@ -104,6 +105,15 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       color: 'from-rose-500 to-pink-500',
       glow: 'rose'
     },
+    { 
+      id: 'escrow-coming', 
+      label: 'Escrow', 
+      icon: Lock, 
+      description: 'Coming Soon',
+      color: 'from-gray-600 to-gray-700',
+      glow: 'gray',
+      disabled: true
+    },
   ];
 
   return (
@@ -164,55 +174,60 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
         <div className="space-y-2.5">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
+            const isDisabled = 'disabled' in item && item.disabled;
+            
             return (
               <motion.button
                 key={item.id}
-                onClick={() => item.isRoute ? setLocation(item.route!) : onNavigate(item.id)}
-                className="w-full group relative"
+                onClick={() => !isDisabled && (item.isRoute ? setLocation(item.route!) : onNavigate(item.id))}
+                className={`w-full group relative ${isDisabled ? 'cursor-not-allowed' : ''}`}
                 initial={{ x: -60, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
+                animate={{ x: 0, opacity: isDisabled ? 0.5 : 1 }}
                 transition={{ delay: 0.15 + index * 0.06, type: "spring", stiffness: 100 }}
-                whileHover={{ scale: 1.015, x: 4 }}
-                whileTap={{ scale: 0.99 }}
+                whileHover={isDisabled ? {} : { scale: 1.015, x: 4 }}
+                whileTap={isDisabled ? {} : { scale: 0.99 }}
                 data-testid={`hub-nav-${item.id}`}
+                disabled={isDisabled}
               >
                 <div className={`
                   absolute inset-0 bg-gradient-to-r ${item.color} opacity-0 
-                  group-hover:opacity-15 rounded-2xl transition-all duration-500
+                  ${!isDisabled ? 'group-hover:opacity-15' : ''} rounded-2xl transition-all duration-500
                   blur-2xl scale-105
                 `} />
                 
-                <div className="relative flex items-center justify-between py-3 px-4 rounded-xl 
+                <div className={`relative flex items-center justify-between py-3 px-4 rounded-xl 
                   bg-gradient-to-br from-white/[0.03] to-transparent
                   border border-white/[0.06] backdrop-blur-xl
-                  group-hover:border-white/20 group-hover:from-white/[0.06]
-                  group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
-                  transition-all duration-400 flex-nowrap">
+                  ${!isDisabled ? 'group-hover:border-white/20 group-hover:from-white/[0.06] group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
+                  transition-all duration-400 flex-nowrap`}>
                   
                   <div className="flex items-center gap-4 flex-shrink min-w-0">
                     <div className={`
                       p-2.5 rounded-xl bg-gradient-to-br ${item.color}
-                      shadow-lg group-hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] 
-                      group-hover:scale-110 transition-all duration-300 flex-shrink-0
+                      shadow-lg ${!isDisabled ? 'group-hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] group-hover:scale-110' : 'grayscale'} transition-all duration-300 flex-shrink-0
                     `}>
-                      <Icon className="w-5 h-5 text-white drop-shadow-lg" />
+                      <Icon className={`w-5 h-5 ${isDisabled ? 'text-white/50' : 'text-white'} drop-shadow-lg`} />
                     </div>
                     
                     <div className="text-left min-w-0">
-                      <h3 className="font-bold text-white/90 tracking-[0.12em] text-sm
-                        group-hover:text-white transition-colors duration-300 truncate">
+                      <h3 className={`font-bold tracking-[0.12em] text-sm truncate ${isDisabled ? 'text-white/40' : 'text-white/90 group-hover:text-white'} transition-colors duration-300`}>
                         {item.label}
                       </h3>
-                      <p className="text-[10px] text-white/30 font-mono tracking-wide
-                        group-hover:text-white/50 transition-colors duration-300 truncate">
+                      <p className={`text-[10px] font-mono tracking-wide truncate ${isDisabled ? 'text-white/20' : 'text-white/30 group-hover:text-white/50'} transition-colors duration-300`}>
                         {item.description}
                       </p>
                     </div>
                   </div>
                   
-                  <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0 ml-2
-                    group-hover:text-white/60 group-hover:translate-x-1 
-                    transition-all duration-300" />
+                  {isDisabled ? (
+                    <span className="text-[9px] font-mono text-white/30 bg-white/5 px-2 py-1 rounded-full flex-shrink-0 ml-2">
+                      SOON
+                    </span>
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0 ml-2
+                      group-hover:text-white/60 group-hover:translate-x-1 
+                      transition-all duration-300" />
+                  )}
                 </div>
               </motion.button>
             );
