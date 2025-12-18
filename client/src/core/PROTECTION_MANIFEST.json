@@ -33,7 +33,7 @@
       "criticality": "CRITICAL",
       "reason": "Contract addresses, revenue splits, mint price",
       "lastModified": "2025-12-17",
-      "checksum": "768aa2d491c395765946b2925bfac705eb325759b6bc1f9e43d3bf9e00df3f25",
+      "checksum": "433e012e267cfa07b695ea926b9bf1d38a965fc96cb65f9033900148d9c651bc",
       "testRequired": true,
       "tests": [
         "verify-addresses",
