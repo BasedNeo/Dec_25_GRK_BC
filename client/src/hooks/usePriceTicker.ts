@@ -118,7 +118,6 @@ async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price:
     responses.forEach(r => {
       if (r) results.set(r.symbol, { price: r.price, change: r.change });
     });
-    console.log('[PriceTicker] Binance:', results.size > 0 ? '✅' : '❌');
     return results;
   } catch {
     return results;
@@ -149,7 +148,6 @@ async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: n
         results.set(id, { price: priceInfo.usd, change: priceInfo.usd_24h_change || 0 });
       }
     });
-    console.log('[PriceTicker] CoinGecko:', results.size > 0 ? '✅' : '❌');
     return results;
   } catch {
     return results;
@@ -187,7 +185,6 @@ async function fetchFromCoinCap(): Promise<Map<string, { price: number; change: 
         });
       }
     }
-    console.log('[PriceTicker] CoinCap:', results.size > 0 ? '✅' : '❌');
     return results;
   } catch {
     return results;
@@ -221,7 +218,6 @@ export function usePriceTicker() {
       const isStale = Date.now() - cache.timestamp > SECURITY_CONFIG.STALE_THRESHOLD_MS;
       setSecurityStatus(cache.valid ? 'verified' : isStale ? 'stale' : 'single-source');
       setIsLoading(false);
-      console.log('[PriceTicker] Loaded from cache:', priceMap.size, 'prices');
     }
   }, []);
 

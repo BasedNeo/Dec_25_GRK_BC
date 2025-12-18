@@ -159,7 +159,6 @@ export function useMint() {
         throw new Error('Invalid mint amount');
       }
 
-      console.log('[Mint] Running pre-flight checks...');
       const preFlightResult = await SafeTransaction.preFlightCheck(
         {
           to: NFT_CONTRACT,
@@ -174,7 +173,6 @@ export function useMint() {
         throw new Error(preFlightResult.error || 'Pre-flight check failed');
       }
 
-      console.log('[Mint] Pre-flight passed. Estimated gas:', preFlightResult.gasEstimate?.toString());
       setStatus('Waiting for wallet approval...');
 
       const totalCost = Number(formatEther(valueInWei));

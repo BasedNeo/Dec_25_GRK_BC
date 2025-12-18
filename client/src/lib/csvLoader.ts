@@ -16,7 +16,6 @@ export const clearCSVCache = () => {
 
 export const loadGuardiansFromCSV = async (): Promise<Guardian[]> => {
   if (cachedGuardians) {
-    console.log('[CSV] Using cached guardian data');
     return cachedGuardians;
   }
 

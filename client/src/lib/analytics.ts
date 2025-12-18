@@ -55,7 +55,6 @@ class AnalyticsManager {
     };
 
     this.queue.push(analyticsEvent);
-    console.log(`[Analytics] ${event}`, properties);
 
     if (this.queue.length >= this.maxQueueSize) {
       this.flush();
@@ -178,7 +177,6 @@ class AnalyticsManager {
 export const analytics = new AnalyticsManager();
 
 export function initAnalytics() {
-  console.log('[Analytics] Initialized');
   analytics.pageView(window.location.pathname);
 }
 

@@ -33,7 +33,6 @@ export class RPCProviderManager {
       failureCount: 0,
     }));
 
-    console.log(`[RPC] Initialized ${this.endpoints.length} endpoints`);
   }
 
   private async checkEndpointHealth(endpoint: RPCEndpoint): Promise<void> {
@@ -52,7 +51,6 @@ export class RPCProviderManager {
       endpoint.failureCount = 0;
       endpoint.lastCheck = Date.now();
       
-      console.log(`[RPC] ✅ ${endpoint.url} - ${endpoint.latency}ms`);
     } catch (error) {
       endpoint.failureCount++;
       endpoint.lastCheck = Date.now();
@@ -67,7 +65,6 @@ export class RPCProviderManager {
   }
 
   private async healthCheck() {
-    console.log('[RPC] Running health checks...');
     await Promise.all(
       this.endpoints.map(endpoint => this.checkEndpointHealth(endpoint))
     );
@@ -77,7 +74,6 @@ export class RPCProviderManager {
       return a.latency - b.latency;
     });
 
-    console.log('[RPC] Health check complete. Fastest healthy endpoint:', this.endpoints[0]?.url);
   }
 
   private startHealthChecks() {
@@ -126,12 +122,10 @@ export class RPCProviderManager {
       const backoffDelay = i > 0 ? Math.min(1000 * Math.pow(2, i - 1), 8000) : 0;
       
       if (backoffDelay > 0) {
-        console.log(`[RPC] Waiting ${backoffDelay}ms before retry ${i + 1}...`);
         await new Promise(resolve => setTimeout(resolve, backoffDelay));
       }
       
       try {
-        console.log(`[RPC] Trying ${endpoint.url} (attempt ${i + 1}/${maxRetries})...`);
         
         // Execute with timeout
         const result = await Promise.race([

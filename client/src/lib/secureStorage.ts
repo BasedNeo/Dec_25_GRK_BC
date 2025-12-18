@@ -58,9 +58,6 @@ export class SecureStorage {
       removed++;
     }
     
-    if (removed > 0) {
-      console.log(`[SecureStorage] Cleaned up ${removed} old items`);
-    }
   }
 
   static set(key: string, value: any): boolean {
@@ -138,7 +135,6 @@ export class SecureStorage {
       }
     }
     keys.forEach(key => localStorage.removeItem(key));
-    console.log(`[SecureStorage] Cleared ${keys.length} items`);
   }
 
   static getStorageInfo() {

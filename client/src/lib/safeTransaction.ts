@@ -31,7 +31,6 @@ export class SafeTransaction {
       });
       
       const buffered = gasEstimate * BigInt(100 + this.GAS_BUFFER_PERCENT) / BigInt(100);
-      console.log(`[SafeTx] Gas estimate: ${gasEstimate.toString()} (buffered: ${buffered.toString()})`);
       return buffered;
     } catch (error: any) {
       console.error('[SafeTx] Gas estimation failed:', error);
@@ -77,16 +76,11 @@ export class SafeTransaction {
     const startTime = Date.now();
 
     try {
-      console.log(`[SafeTx] Waiting for ${confirmations} confirmations...`);
-      
       const receipt = await provider.waitForTransaction(txHash, confirmations, this.MAX_WAIT_TIME);
       
       if (!receipt) {
         throw new Error('Transaction receipt not found');
       }
-
-      const waitTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`[SafeTx] Transaction confirmed in ${waitTime}s`);
 
       return {
         hash: txHash,

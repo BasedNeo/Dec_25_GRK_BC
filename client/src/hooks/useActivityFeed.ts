@@ -155,7 +155,6 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // - Listed events: detect new marketplace listings
       // - Sold events: detect sales (used for royalty volume calculation)
       
-      console.log(`[ActivityFeed] Fetching events from block ${fromBlock} to ${currentBlock} (${currentBlock - fromBlock} blocks)`);
       
       const [
         totalMinted,
@@ -180,7 +179,6 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
         }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Sold events:', err); return []; })
       ]);
       
-      console.log(`[ActivityFeed] Fetched ${transferEvents.length} transfers, ${listedEvents.length} listings, ${soldEvents.length} sales`);
       
       setContractStats({
         totalMinted: Number(totalMinted),

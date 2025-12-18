@@ -15,11 +15,9 @@ class RPCCache {
     const cached = this.cache.get(key);
     
     if (cached && Date.now() - cached.timestamp < ttl) {
-      console.log(`[RPC Cache] Hit: ${key}`);
       return cached.data as T;
     }
 
-    console.log(`[RPC Cache] Miss: ${key}`);
     const data = await fetcher();
     
     this.cache.set(key, {

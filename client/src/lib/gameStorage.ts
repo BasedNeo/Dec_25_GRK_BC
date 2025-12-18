@@ -166,7 +166,6 @@ export class GameStorageManager {
       const maxAge = MAX_STORAGE_AGE_DAYS * 24 * 60 * 60 * 1000;
       
       if (age > maxAge) {
-        console.log(`[GameStorage] Save expired for ${gameType}, removing...`);
         this.deleteSave(gameType, address);
         return null;
       }
@@ -536,10 +535,7 @@ if (typeof window !== 'undefined') {
       try {
         const address = localStorage.getItem('last-connected-wallet');
         if (address) {
-          const cleaned = GameStorageManager.cleanupOldSaves(address);
-          if (cleaned > 0) {
-            console.log(`[GameStorage] Auto-cleaned ${cleaned} old saves`);
-          }
+          GameStorageManager.cleanupOldSaves(address);
         }
       } catch (err) {
         console.error('[GameStorage] Auto-cleanup failed:', err);

@@ -509,7 +509,6 @@ export function useMarketplace() {
             className: "bg-black border-cyan-500 text-cyan-500",
           });
 
-          console.log('[Buy] Running pre-flight checks...');
           preFlightResult = await SafeTransaction.preFlightCheck(
             {
               to: MARKETPLACE_CONTRACT,
@@ -530,8 +529,6 @@ export function useMarketplace() {
             return;
           }
 
-          const { ethers } = await import('ethers');
-          console.log('[Buy] Pre-flight passed. Total cost:', ethers.formatEther(preFlightResult.totalCost || BigInt(0)));
 
         } catch (error: unknown) {
           const errorMsg = error instanceof Error ? error.message : "Transaction would likely fail. Please try again.";
@@ -555,7 +552,6 @@ export function useMarketplace() {
           className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
         });
 
-        console.log('[Buy] Sending transaction...');
         writeContract({
           address: MARKETPLACE_CONTRACT as `0x${string}`,
           abi: MARKETPLACE_ABI,
