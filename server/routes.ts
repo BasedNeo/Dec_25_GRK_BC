@@ -7,6 +7,8 @@ import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { ethers } from "ethers";
+import crypto from "crypto";
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
@@ -35,9 +37,47 @@ const ADMIN_WALLETS = [
   "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
 ];
 
-// Admin authentication middleware - requires wallet address in header
+// Admin nonce store for EIP-191 signature verification
+// Map: wallet address -> { nonce, expiry }
+const adminNonces = new Map<string, { nonce: string; expiry: number }>();
+const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+function generateAdminNonce(wallet: string): string {
+  const nonce = crypto.randomBytes(32).toString('hex');
+  adminNonces.set(wallet.toLowerCase(), {
+    nonce,
+    expiry: Date.now() + NONCE_EXPIRY_MS
+  });
+  return nonce;
+}
+
+function verifyAdminSignature(wallet: string, signature: string): boolean {
+  const stored = adminNonces.get(wallet.toLowerCase());
+  if (!stored) return false;
+  if (Date.now() > stored.expiry) {
+    adminNonces.delete(wallet.toLowerCase());
+    return false;
+  }
+
+  try {
+    const message = `Based Guardians Admin Auth\nNonce: ${stored.nonce}`;
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    const isValid = recoveredAddress.toLowerCase() === wallet.toLowerCase();
+    
+    if (isValid) {
+      // Invalidate nonce after successful use (one-time use)
+      adminNonces.delete(wallet.toLowerCase());
+    }
+    return isValid;
+  } catch {
+    return false;
+  }
+}
+
+// Admin authentication middleware - requires EIP-191 signature verification
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const walletAddress = req.headers['x-wallet-address'] as string;
+  const signature = req.headers['x-admin-signature'] as string;
   
   if (!walletAddress) {
     return res.status(401).json({ error: "Authentication required" });
@@ -50,6 +90,15 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
     return res.status(403).json({ error: "Admin access required" });
   }
+
+  // Verify EIP-191 signature
+  if (!signature) {
+    return res.status(401).json({ error: "Signature required for admin access" });
+  }
+
+  if (!verifyAdminSignature(walletAddress, signature)) {
+    return res.status(401).json({ error: "Invalid or expired signature" });
+  }
   
   next();
 }
@@ -61,6 +110,33 @@ export async function registerRoutes(
   // Health check endpoint - must respond immediately for deployment health checks
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: Date.now() });
+  });
+
+  // Admin auth nonce endpoint - get a nonce for signing
+  app.post("/api/admin/nonce", authLimiter, async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress || !isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: "Valid wallet address required" });
+      }
+      
+      if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+        return res.status(403).json({ error: "Not an admin wallet" });
+      }
+      
+      const nonce = generateAdminNonce(walletAddress);
+      const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+      
+      return res.json({ 
+        nonce, 
+        message,
+        expiresIn: NONCE_EXPIRY_MS / 1000 
+      });
+    } catch (error) {
+      console.error("[Admin] Error generating nonce:", error);
+      return res.status(500).json({ error: "Failed to generate nonce" });
+    }
   });
 
   // Feedback submission endpoint

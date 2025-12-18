@@ -207,6 +207,7 @@ export function useMarketplace() {
   const { address, isConnected, chain } = useAccount();
   const { showTransaction, showError } = useTransactionContext();
   const lastActionRef = useRef<{ action: string; description: string; retryFn?: () => void }>({ action: 'idle', description: '' });
+  const pendingAnalyticsRef = useRef<{ action: 'list' | 'buy' | null; tokenId: number; price: number }>({ action: null, tokenId: 0, price: 0 });
 
   const checkNetwork = (): boolean => {
     if (!isConnected) {
@@ -302,6 +303,23 @@ export function useMarketplace() {
       refetchApproval();
       refetchListings();
       refetchListingCount();
+      
+      // Track analytics on confirmed transaction
+      if (pendingAnalyticsRef.current.action === 'list') {
+        analytics.listingCompleted(
+          pendingAnalyticsRef.current.tokenId,
+          pendingAnalyticsRef.current.price,
+          txHash
+        );
+        pendingAnalyticsRef.current = { action: null, tokenId: 0, price: 0 };
+      } else if (pendingAnalyticsRef.current.action === 'buy') {
+        analytics.buyCompleted(
+          pendingAnalyticsRef.current.tokenId,
+          pendingAnalyticsRef.current.price,
+          txHash
+        );
+        pendingAnalyticsRef.current = { action: null, tokenId: 0, price: 0 };
+      }
     }
   }, [isWritePending, isConfirming, isConfirmed, txHash, state.action]);
 
@@ -417,6 +435,7 @@ export function useMarketplace() {
     setState(prev => ({ ...prev, action: 'list' }));
     const priceFormatted = SafeMath.format(priceWei);
     lastActionRef.current = { action: 'list', description: `Listing Guardian #${tokenId} for ${priceFormatted} $BASED`, retryFn: () => listNFT(tokenId, priceInBased) };
+    pendingAnalyticsRef.current = { action: 'list', tokenId, price };
 
     toast({
       title: "List NFT",
@@ -433,7 +452,6 @@ export function useMarketplace() {
       gas: GAS_SETTINGS.LIST,
     });
     
-    // Analytics will be called when transaction is confirmed in useEffect
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
   const delistNFT = useCallback(async (tokenId: number) => {
@@ -513,6 +531,7 @@ export function useMarketplace() {
         setState(prev => ({ ...prev, action: 'buy' }));
         const priceFormatted = formatEther(priceWei);
         lastActionRef.current = { action: 'buy', description: `Buying Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED`, retryFn: () => buyNFT(tokenId, priceWei) };
+        pendingAnalyticsRef.current = { action: 'buy', tokenId, price };
 
         toast({
           title: "Buy NFT",
@@ -531,7 +550,6 @@ export function useMarketplace() {
           gas: preFlightResult.gasEstimate || GAS_SETTINGS.BUY,
         });
         
-        // Analytics will be called when transaction is confirmed in useEffect
       });
     });
   }, [address, checkNetwork, toast, writeContract]);
