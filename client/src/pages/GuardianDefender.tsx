@@ -123,6 +123,18 @@ export function GuardianDefender() {
       if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = true;
       if (e.key === 'ArrowDown' || e.key === 's') inputRef.current.down = true;
       if (e.key === ' ') { inputRef.current.shoot = true; e.preventDefault(); }
+      if (e.key === 'l' || e.key === 'L') {
+        const state = stateRef.current;
+        if (state && state.phase === 'playing') {
+          state.phase = 'lander';
+          state.wave = 4;
+          state.player.pos = { x: canvasSize.width / 2, y: 60 };
+          state.player.vel = { x: 0, y: 0 };
+          state.player.fuel = 100;
+          state.aliens = [];
+          state.bullets = [];
+        }
+      }
     };
     const up = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = false;
