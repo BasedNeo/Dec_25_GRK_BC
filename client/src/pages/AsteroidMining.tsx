@@ -15,8 +15,9 @@ import { VictoryScreen } from '@/components/game/VictoryScreen';
 import {
   Play, Zap, Info, ChevronRight, Volume2, VolumeX,
   Heart, Shield as ShieldIcon, Sparkles, Target,
-  Crosshair, Home, Loader2, Trophy
+  Crosshair, Home, Loader2, Trophy, RotateCcw
 } from 'lucide-react';
+import { isMobile, haptic, mobileSettings } from '@/lib/mobileUtils';
 
 type AsteroidSize = 'small' | 'medium' | 'large';
 type AsteroidColor = 'grey' | 'blue' | 'green' | 'purple' | 'gold';
@@ -194,6 +195,22 @@ export default function AsteroidMining() {
   const [playsToday, setPlaysToday] = useState(0);
   const [targetPosition, setTargetPosition] = useState<Vector2D | null>(null);
   const [isShooting, setIsShooting] = useState(false);
+  const [showOrientationWarning, setShowOrientationWarning] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const checkOrientation = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setShowOrientationWarning(isPortrait && gameStarted);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [gameStarted]);
 
   const [stats, setStats] = useState<GameStats>(() =>
     address 
@@ -1497,15 +1514,16 @@ export default function AsteroidMining() {
             }}
           />
           
-          <div className="absolute bottom-4 right-4">
+          <div className={`absolute bottom-4 right-4 ${isMobile ? 'scale-110' : ''}`}>
             <button
-              className="w-20 h-20 rounded-full bg-red-500/80 border-4 border-white/50 flex items-center justify-center active:scale-95 transition-transform shadow-lg"
+              className={`${isMobile ? 'w-24 h-24' : 'w-20 h-20'} rounded-full bg-red-500/80 border-4 border-white/50 flex items-center justify-center active:scale-95 transition-transform shadow-lg ${isShooting ? 'ring-4 ring-red-300/50 animate-pulse' : ''}`}
               onMouseDown={() => setIsShooting(true)}
               onMouseUp={() => setIsShooting(false)}
               onMouseLeave={() => setIsShooting(false)}
               onTouchStart={(e) => {
                 e.preventDefault();
                 setIsShooting(true);
+                haptic.medium();
               }}
               onTouchEnd={(e) => {
                 e.preventDefault();
@@ -1513,9 +1531,30 @@ export default function AsteroidMining() {
               }}
               data-testid="button-fire"
             >
-              <Crosshair className="w-10 h-10 text-white" />
+              <Crosshair className={`${isMobile ? 'w-12 h-12' : 'w-10 h-10'} text-white`} />
             </button>
           </div>
+          
+          {showOrientationWarning && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 flex items-center justify-center bg-black/90 rounded-lg z-20"
+              data-testid="orientation-warning"
+            >
+              <div className="text-center p-6">
+                <motion.div
+                  animate={{ rotate: [0, 90, 90, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                  className="mb-4"
+                >
+                  <RotateCcw className="w-16 h-16 text-cyan-400 mx-auto" />
+                </motion.div>
+                <p className="text-white font-orbitron text-lg mb-2">ROTATE DEVICE</p>
+                <p className="text-cyan-400/70 text-sm">For best experience, play in landscape mode</p>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         <div className="mt-4 text-center text-sm text-gray-400">

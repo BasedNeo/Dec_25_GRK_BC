@@ -14,10 +14,11 @@ import {
   FireIcon, GamepadIcon, LoadingIcon, LevelIcon, ScoreIcon, StarIcon 
 } from '@/game/components/GameIcons';
 import { Navbar } from '@/components/Navbar';
-import { Home, Shield } from 'lucide-react';
+import { Home, Shield, RotateCcw } from 'lucide-react';
 import { useLocation } from 'wouter';
 import rocketShip from '@assets/Untitled.png';
 import { useFeatureFlags } from '@/lib/featureFlags';
+import { isMobile, haptic } from '@/lib/mobileUtils';
 
 const LoadingScreen = () => (
   <motion.div
@@ -97,7 +98,23 @@ export function GuardianDefender() {
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
   const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
   const [gameLoading, setGameLoading] = useState(true);
+  const [showOrientationWarning, setShowOrientationWarning] = useState(false);
   const { flags } = useFeatureFlags();
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const checkOrientation = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setShowOrientationWarning(isPortrait && phase === 'playing');
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [phase]);
 
   useEffect(() => {
     const timer = setTimeout(() => setGameLoading(false), 800);
@@ -254,6 +271,11 @@ export function GuardianDefender() {
   const touchStart = (btn: 'left' | 'right' | 'up' | 'down' | 'shoot') => (e: React.TouchEvent) => {
     e.preventDefault();
     inputRef.current[btn] = true;
+    if (btn === 'shoot') {
+      haptic.medium();
+    } else {
+      haptic.light();
+    }
   };
   const touchEnd = (btn: 'left' | 'right' | 'up' | 'down' | 'shoot') => () => {
     inputRef.current[btn] = false;
@@ -551,6 +573,27 @@ export function GuardianDefender() {
                       </Button>
                     </div>
                   </div>
+                )}
+                
+                {showOrientationWarning && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute inset-0 flex items-center justify-center bg-black/90 rounded-xl z-20"
+                    data-testid="orientation-warning"
+                  >
+                    <div className="text-center p-6">
+                      <motion.div
+                        animate={{ rotate: [0, 90, 90, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                        className="mb-4"
+                      >
+                        <RotateCcw className="w-16 h-16 text-cyan-400 mx-auto" />
+                      </motion.div>
+                      <p className="text-white font-orbitron text-lg mb-2">ROTATE DEVICE</p>
+                      <p className="text-cyan-400/70 text-sm">For best experience, play in landscape mode</p>
+                    </div>
+                  </motion.div>
                 )}
               </div>
 

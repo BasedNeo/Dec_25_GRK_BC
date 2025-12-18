@@ -19,6 +19,7 @@ import {
   Settings, Shield, Loader2, Home, Maximize2,
   Spade, Heart, Diamond, Club, Trophy, LogOut, Save
 } from 'lucide-react';
+import { isMobile, haptic } from '@/lib/mobileUtils';
 
 function ExitConfirmationModal({ 
   isOpen, 
@@ -217,10 +218,20 @@ function CardComponent({
   const suitColor = SUIT_COLORS[card.suit];
   const rankLabels = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   
+  const cardSizeClass = isMobile ? 'w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-32' : 'w-24 h-32';
+  const imageSizeClass = isMobile ? 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14' : 'w-14 h-14';
+  const textSizeClass = isMobile ? 'text-xs' : 'text-sm';
+  const iconSizeClass = isMobile ? 'w-2 h-2' : 'w-3 h-3';
+
+  const handleClick = () => {
+    if (isMobile) haptic.light();
+    onClick?.();
+  };
+  
   if (!card.faceUp) {
     return (
       <motion.div
-        className="w-24 h-32 rounded-lg cursor-pointer"
+        className={`${cardSizeClass} rounded-lg cursor-pointer`}
         whileHover={{ scale: 1.02 }}
       >
         <CardBack />
@@ -230,12 +241,12 @@ function CardComponent({
 
   return (
     <motion.div
-      className={`w-24 h-32 rounded-lg cursor-pointer bg-white relative overflow-hidden transition-all duration-200 ${
+      className={`${cardSizeClass} rounded-lg cursor-pointer bg-white relative overflow-hidden transition-all duration-200 ${
         isSelected ? glowClass : ''
       } ${isHinted ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
-      onClick={onClick}
+      onClick={handleClick}
       onDoubleClick={onDoubleClick}
       draggable
       onDragStart={onDragStart}
@@ -243,18 +254,18 @@ function CardComponent({
       data-testid={`card-${card.id}`}
     >
       <div className="absolute top-1 left-1 flex flex-col items-center">
-        <span className={`text-sm font-bold ${suitColor}`}>{rankLabels[card.rank]}</span>
-        <SuitIcon className={`w-3 h-3 ${suitColor}`} />
+        <span className={`${textSizeClass} font-bold ${suitColor}`}>{rankLabels[card.rank]}</span>
+        <SuitIcon className={`${iconSizeClass} ${suitColor}`} />
       </div>
       <div className="absolute bottom-1 right-1 flex flex-col items-center rotate-180">
-        <span className={`text-sm font-bold ${suitColor}`}>{rankLabels[card.rank]}</span>
-        <SuitIcon className={`w-3 h-3 ${suitColor}`} />
+        <span className={`${textSizeClass} font-bold ${suitColor}`}>{rankLabels[card.rank]}</span>
+        <SuitIcon className={`${iconSizeClass} ${suitColor}`} />
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <img 
           src={card.imageUrl} 
           alt={`Guardian ${card.nftId}`}
-          className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
+          className={`${imageSizeClass} rounded-full object-cover border-2 border-gray-200`}
           loading="lazy"
         />
       </div>
@@ -274,9 +285,12 @@ function FoundationPile({ foundation, index, isTarget, onClick, onDrop }: Founda
   const SuitIcon = SUIT_ICONS[SUITS[index]];
   const topCard = foundation.cards[foundation.cards.length - 1];
   
+  const pileClass = isMobile ? 'w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-32' : 'w-24 h-32';
+  const iconClass = isMobile ? 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10' : 'w-10 h-10';
+  
   return (
     <motion.div
-      className={`w-24 h-32 rounded-lg border-2 ${
+      className={`${pileClass} rounded-lg border-2 ${
         isTarget ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/20 bg-black/20'
       } relative flex items-center justify-center transition-colors`}
       onClick={onClick}
@@ -288,7 +302,7 @@ function FoundationPile({ foundation, index, isTarget, onClick, onDrop }: Founda
       {topCard ? (
         <CardComponent card={topCard} />
       ) : (
-        <SuitIcon className="w-10 h-10 text-white/20" />
+        <SuitIcon className={`${iconClass} text-white/20`} />
       )}
       {foundation.cards.length > 0 && (
         <div className="absolute -bottom-1 -right-1 bg-cyan-500 text-black text-xs font-bold px-1.5 py-0.5 rounded">
