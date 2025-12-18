@@ -4,6 +4,7 @@ import { formatEther } from 'viem';
 import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from '@/hooks/useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
+import { SafeMath } from '@/lib/safeMath';
 
 const NFT_ABI = [
   {
