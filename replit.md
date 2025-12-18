@@ -121,6 +121,7 @@ Protected folder structure to isolate core commerce and game code:
 - **Retro Defender Game**: 5-level space arcade minigame accessible to all users (`/game`). Guardian holders receive perks. Includes lifetime score tracking.
 - **Pool Tracker Enhancements**: Comprehensive display of payment structure, including community treasury and ecosystem revenue breakdowns.
 - **Interactive Lore Explorer**: Discover character backstories, locations, historical events, and factions of the Based Universe.
+- **Lore-Gamification Integration**: Higher game ranks (Star Commander, Fleet Admiral, Based Eternal) require lore discovery progress (25%, 50%, 75% respectively) plus at least 1 game played. Ranks are locked until requirements are met, with UI showing unlock requirements.
 - **Multi-language support**: 10 languages with a language selector.
 - **Welcome Back messages**: Rotating messages for returning users.
 
