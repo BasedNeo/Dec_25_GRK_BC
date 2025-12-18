@@ -45,6 +45,7 @@ import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
 import { parseEther } from "viem";
 import { MyOffersPanel } from "./MyOffersPanel";
 import { SafeMath } from "@/lib/safeMath";
+import { useButtonLock } from "@/hooks/useButtonLock";
 
 interface EscrowMarketplaceProps {
   onNavigateToMint?: () => void;
@@ -65,6 +66,9 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
 
   // --- Real Marketplace Contract Integration ---
   const marketplace = useMarketplace();
+  
+  // --- Button Lock for Buy (prevents double-clicks) ---
+  const { isLocked: isBuyLocked, withLock: withBuyLock } = useButtonLock(5000);
   
   // --- V3 Off-Chain Offers (gasless, like Aftermint) ---
   const offersV3 = useOffersV3();
@@ -842,7 +846,10 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   };
 
   const handleBuy = async (item: MarketItem) => {
+    if (isBuyLocked) return;
+    
     const executeBuy = async () => {
+      await withBuyLock(async () => {
         if (isPaused) {
             toast({ title: "Market Paused", description: "Trading halted by admin.", variant: "destructive" });
             return;
@@ -886,6 +893,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                 variant: "destructive" 
             });
         }
+      });
     };
 
     if (!isConnected) { openConnectModal?.(); return; }
