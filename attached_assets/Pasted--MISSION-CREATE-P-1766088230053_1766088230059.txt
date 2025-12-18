@@ -1,0 +1,1566 @@
+═══════════════════════════════════════════════════════════════════════════════
+🎯 MISSION: CREATE PREMIUM GUARDIAN SOLITAIRE GAME
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTEXT:
+Build a professional, premium Klondike Solitaire game using Guardian NFT images 
+as card faces. This must feel like a AAA desktop card game with sophisticated 
+animations, intelligent gameplay features, and seamless integration with your 
+existing game infrastructure.
+
+ARCHITECTURE INTEGRATION:
+✓ Uses GameStorageManager for saves/stats/settings
+✓ Uses GameHUD for consistent in-game display
+✓ Uses VictoryScreen for end-game celebration
+✓ Follows gameRegistry scoring framework
+✓ Integrates with existing analytics
+✓ Matches app theme and design patterns
+
+PREMIUM FEATURES:
+✓ Classic Klondike Solitaire rules (52-card deck)
+✓ Guardian NFT images as card faces
+✓ Elegant custom card backs (traditional style, Guardian branded)
+✓ 3D card flip animations with spring physics
+✓ Drag-and-drop OR click-to-move mechanics
+✓ Double-click to auto-move cards to foundation
+✓ Undo last 5 moves with full state restoration
+✓ Smart hint system (prioritizes best moves)
+✓ Combo system for consecutive foundation moves
+✓ Move validation with helpful error messages
+✓ Auto-save/resume per wallet
+✓ Comprehensive stats tracking
+✓ Keyboard shortcuts (Space, U, H, Esc)
+✓ Performance-based victory messaging
+✓ Smooth sound effects (synthesized)
+✓ Particle effects on successful moves
+✓ Animated starfield background
+✓ Mobile-optimized touch controls
+✓ Accessibility (ARIA labels, keyboard nav)
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: CREATE GUARDIAN SOLITAIRE COMPONENT
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE PATH: client/src/pages/GuardianSolitaire.tsx
+
+CREATE this complete, production-ready file:
+
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useAccount } from 'wagmi';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
+import { useNFTOwnership } from '@/hooks/useNFTOwnership';
+import { trackEvent } from '@/lib/analytics';
+import { IPFS_ROOT } from '@/lib/constants';
+import { GameStorageManager, GameStats } from '@/lib/gameStorage';
+import { getGameConfig } from '@/lib/gameRegistry';
+import { GameHUD } from '@/components/game/GameHUD';
+import { VictoryScreen } from '@/components/game/VictoryScreen';
+import { 
+  Play, RotateCcw, Sparkles, Info, Undo2, Lightbulb, 
+  Volume2, VolumeX, Star, Flame, ChevronRight,
+  Settings, Shield, Loader2, Home, Maximize2,
+  Spade, Heart, Diamond, Club
+} from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════
+// TYPE DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+
+type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
+
+interface SolitaireCard {
+  id: string;
+  nftId: number;
+  suit: Suit;
+  rank: number; // 1-13 (Ace to King)
+  faceUp: boolean;
+  imageUrl: string;
+}
+
+interface Pile {
+  cards: SolitaireCard[];
+}
+
+interface GameState {
+  deck: SolitaireCard[];
+  waste: SolitaireCard[];
+  foundations: Pile[];
+  tableau: Pile[];
+  moves: number;
+  startTime: number;
+  invalidAttempts: number;
+}
+
+interface GameSettings {
+  soundEnabled: boolean;
+  soundVolume: number;
+  animationSpeed: 'slow' | 'normal' | 'fast' | 'instant';
+  particleIntensity: 'off' | 'low' | 'medium' | 'high';
+}
+
+interface Particle {
+  id: string;
+  x: number;
+  y: number;
+  color: string;
+  size: number;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+
+const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+const MAX_UNDO_HISTORY = 5;
+const COMBO_TIMEOUT = 3000;
+
+const SUIT_ICONS = {
+  hearts: Heart,
+  diamonds: Diamond,
+  clubs: Club,
+  spades: Spade,
+};
+
+const SUIT_COLORS = {
+  hearts: 'text-red-500',
+  diamonds: 'text-red-500',
+  clubs: 'text-gray-900',
+  spades: 'text-gray-900',
+};
+
+// Elegant glow colors for selected cards
+const GLOW_COLORS = [
+  'ring-4 ring-yellow-400/60 shadow-[0_0_25px_rgba(251,191,36,0.5)]',
+  'ring-4 ring-blue-400/60 shadow-[0_0_25px_rgba(59,130,246,0.5)]',
+  'ring-4 ring-purple-400/60 shadow-[0_0_25px_rgba(168,85,247,0.5)]',
+  'ring-4 ring-pink-400/60 shadow-[0_0_25px_rgba(236,72,153,0.5)]',
+];
+
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
+
+export default function GuardianSolitaire() {
+  const { address, isConnected } = useAccount();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { submitScore, getTodayPlays } = useGameScoresLocal();
+  const { ownsNFT, isLoading: nftLoading } = useNFTOwnership();
+  const prefersReducedMotion = useReducedMotion();
+
+  const gameConfig = useMemo(() => getGameConfig('guardian-solitaire'), []);
+
+  // ═══════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════
+
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
+  const [showVictory, setShowVictory] = useState(false);
+  
+  const [deck, setDeck] = useState<SolitaireCard[]>([]);
+  const [waste, setWaste] = useState<SolitaireCard[]>([]);
+  const [foundations, setFoundations] = useState<Pile[]>(
+    Array(4).fill(null).map(() => ({ cards: [] }))
+  );
+  const [tableau, setTableau] = useState<Pile[]>(
+    Array(7).fill(null).map(() => ({ cards: [] }))
+  );
+  
+  const [moves, setMoves] = useState(0);
+  const [invalidAttempts, setInvalidAttempts] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [selectedCard, setSelectedCard] = useState<{
+    card: SolitaireCard;
+    from: 'waste' | 'foundation' | 'tableau';
+    index: number;
+  } | null>(null);
+  
+  const [playsToday, setPlaysToday] = useState(0);
+  const [gameHistory, setGameHistory] = useState<GameState[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [showHint, setShowHint] = useState(false);
+  const [comboCount, setComboCount] = useState(0);
+  const [draggedCard, setDraggedCard] = useState<{
+    card: SolitaireCard;
+    from: 'waste' | 'foundation' | 'tableau';
+    index: number;
+  } | null>(null);
+
+  const [stats, setStats] = useState<GameStats>(() =>
+    address 
+      ? GameStorageManager.loadStats('guardian-solitaire', address)
+      : GameStorageManager.getDefaultStats()
+  );
+
+  const [settings, setSettings] = useState<GameSettings>(() =>
+    GameStorageManager.loadSettings('guardian-solitaire', {
+      soundEnabled: true,
+      soundVolume: 70,
+      animationSpeed: 'normal',
+      particleIntensity: 'medium',
+    })
+  );
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentGlow, setCurrentGlow] = useState(0);
+
+  // ═══════════════════════════════════════════════════════════
+  // LOAD PLAYS TODAY
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!address) return;
+    const plays = getTodayPlays(address, 'guardian-solitaire');
+    setPlaysToday(plays);
+    
+    const loadedStats = GameStorageManager.loadStats('guardian-solitaire', address);
+    setStats(loadedStats);
+  }, [address, getTodayPlays]);
+
+  // ═══════════════════════════════════════════════════════════
+  // PERSIST SETTINGS
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    GameStorageManager.saveSettings('guardian-solitaire', settings);
+  }, [settings]);
+
+  // ═══════════════════════════════════════════════════════════
+  // AUTO-SAVE GAME STATE
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!gameStarted || gameWon || !address || !startTime) return;
+
+    const timeoutId = setTimeout(() => {
+      const state: GameState = {
+        deck,
+        waste,
+        foundations,
+        tableau,
+        moves,
+        startTime,
+        invalidAttempts,
+      };
+      
+      GameStorageManager.saveSave('guardian-solitaire', address, state);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [deck, waste, foundations, tableau, moves, gameStarted, gameWon, address, startTime, invalidAttempts]);
+
+  // ═══════════════════════════════════════════════════════════
+  // AUDIO CONTEXT
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !settings.soundEnabled) return;
+
+    try {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch (err) {
+      console.error('AudioContext not supported:', err);
+    }
+
+    return () => {
+      audioContextRef.current?.close();
+    };
+  }, [settings.soundEnabled]);
+
+  // ═══════════════════════════════════════════════════════════
+  // SOUND SYSTEM
+  // ═══════════════════════════════════════════════════════════
+
+  const playSound = useCallback((type: 'flip' | 'slide' | 'snap' | 'invalid' | 'combo' | 'victory') => {
+    if (!settings.soundEnabled || !audioContextRef.current) return;
+    
+    try {
+      const ctx = audioContextRef.current;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const volume = settings.soundVolume / 100;
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      switch (type) {
+        case 'flip':
+          oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.08);
+          gainNode.gain.setValueAtTime(0.1 * volume, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+          oscillator.stop(ctx.currentTime + 0.08);
+          break;
+        
+        case 'slide':
+          oscillator.frequency.setValueAtTime(350, ctx.currentTime);
+          oscillator.frequency.linearRampToValueAtTime(450, ctx.currentTime + 0.12);
+          gainNode.gain.setValueAtTime(0.07 * volume, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+          oscillator.stop(ctx.currentTime + 0.12);
+          break;
+        
+        case 'snap':
+          oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.12 * volume, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
+          oscillator.stop(ctx.currentTime + 0.06);
+          break;
+        
+        case 'invalid':
+          oscillator.frequency.setValueAtTime(180, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.08 * volume, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+          oscillator.stop(ctx.currentTime + 0.15);
+          break;
+        
+        case 'combo':
+          oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.18);
+          gainNode.gain.setValueAtTime(0.14 * volume, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+          oscillator.stop(ctx.currentTime + 0.18);
+          break;
+        
+        case 'victory':
+          const frequencies = [523, 659, 784, 1047]; // C-E-G-C chord
+          frequencies.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
+            gain.gain.setValueAtTime(0.15 * volume, ctx.currentTime + i * 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.15 + 0.4);
+            osc.start(ctx.currentTime + i * 0.15);
+            osc.stop(ctx.currentTime + i * 0.15 + 0.4);
+          });
+          return;
+      }
+      
+      oscillator.start(ctx.currentTime);
+    } catch (err) {
+      console.error('Sound playback error:', err);
+    }
+  }, [settings.soundEnabled, settings.soundVolume]);
+
+  // ═══════════════════════════════════════════════════════════
+  // PARTICLE SYSTEM
+  // ═══════════════════════════════════════════════════════════
+
+  const createParticles = useCallback((x: number, y: number, count: number = 10) => {
+    if (settings.particleIntensity === 'off' || prefersReducedMotion) return;
+    
+    const intensityMultiplier = {
+      low: 0.3,
+      medium: 0.7,
+      high: 1.0,
+      off: 0,
+    }[settings.particleIntensity];
+    
+    const adjustedCount = Math.round(count * intensityMultiplier);
+    const colors = ['#fbbf24', '#60a5fa', '#a78bfa', '#f472b6'];
+    const newParticles: Particle[] = [];
+    
+    for (let i = 0; i < adjustedCount; i++) {
+      newParticles.push({
+        id: `particle-${Date.now()}-${i}`,
+        x: x + (Math.random() - 0.5) * 50,
+        y: y + (Math.random() - 0.5) * 50,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 4 + 2,
+      });
+    }
+    
+    setParticles(prev => [...prev, ...newParticles]);
+    
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
+    }, 1000);
+  }, [settings.particleIntensity, prefersReducedMotion]);
+
+  // ═══════════════════════════════════════════════════════════
+  // TIMER
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!gameStarted || gameWon || !startTime) return;
+    
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameStarted, gameWon, startTime]);
+
+  // ═══════════════════════════════════════════════════════════
+  // GLOW ROTATION
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (selectedCard) {
+      setCurrentGlow(prev => (prev + 1) % GLOW_COLORS.length);
+    }
+  }, [selectedCard]);
+
+  // ═══════════════════════════════════════════════════════════
+  // DECK INITIALIZATION
+  // ═══════════════════════════════════════════════════════════
+
+  const initializeDeck = useCallback((): SolitaireCard[] => {
+    const newDeck: SolitaireCard[] = [];
+    const usedNFTs = new Set<number>();
+    
+    for (let suit = 0; suit < 4; suit++) {
+      for (let rank = 1; rank <= 13; rank++) {
+        let nftId: number;
+        do {
+          nftId = Math.floor(Math.random() * 3732) + 1;
+        } while (usedNFTs.has(nftId) && usedNFTs.size < 3732);
+        
+        usedNFTs.add(nftId);
+        
+        newDeck.push({
+          id: `${SUITS[suit]}-${rank}-${nftId}`,
+          nftId,
+          suit: SUITS[suit],
+          rank,
+          faceUp: false,
+          imageUrl: `${IPFS_ROOT}${nftId}.png`
+        });
+      }
+    }
+    
+    // Fisher-Yates shuffle
+    for (let i = newDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+    }
+    
+    return newDeck;
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════
+  // DEAL CARDS
+  // ═══════════════════════════════════════════════════════════
+
+  const dealCards = useCallback(() => {
+    const shuffledDeck = initializeDeck();
+    const newTableau: Pile[] = Array(7).fill(null).map(() => ({ cards: [] }));
+    let deckIndex = 0;
+
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j <= i; j++) {
+        const card = { ...shuffledDeck[deckIndex++] };
+        if (j === i) card.faceUp = true;
+        newTableau[i].cards.push(card);
+      }
+    }
+
+    const remainingDeck = shuffledDeck.slice(deckIndex).map(c => ({ ...c, faceUp: false }));
+
+    setTableau(newTableau);
+    setDeck(remainingDeck);
+    setWaste([]);
+    setFoundations(Array(4).fill(null).map(() => ({ cards: [] })));
+    setMoves(0);
+    setInvalidAttempts(0);
+    setStartTime(Date.now());
+    setElapsedTime(0);
+    setGameWon(false);
+    setSelectedCard(null);
+    setGameHistory([]);
+    setComboCount(0);
+    playSound('flip');
+  }, [initializeDeck, playSound]);
+
+  // ═══════════════════════════════════════════════════════════
+  // STATE HISTORY (UNDO)
+  // ═══════════════════════════════════════════════════════════
+
+  const saveStateToHistory = useCallback(() => {
+    const state: GameState = {
+      deck: JSON.parse(JSON.stringify(deck)),
+      waste: JSON.parse(JSON.stringify(waste)),
+      foundations: JSON.parse(JSON.stringify(foundations)),
+      tableau: JSON.parse(JSON.stringify(tableau)),
+      moves,
+      startTime: startTime || Date.now(),
+      invalidAttempts,
+    };
+    
+    setGameHistory(prev => {
+      const newHistory = [...prev, state];
+      return newHistory.slice(-MAX_UNDO_HISTORY);
+    });
+  }, [deck, waste, foundations, tableau, moves, startTime, invalidAttempts]);
+
+  // ═══════════════════════════════════════════════════════════
+  // UNDO MOVE
+  // ═══════════════════════════════════════════════════════════
+
+  const undoMove = useCallback(() => {
+    if (gameHistory.length === 0) {
+      toast({ 
+        title: "No Moves to Undo", 
+        description: "You're at the start of the game",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    const previousState = gameHistory[gameHistory.length - 1];
+    setDeck(previousState.deck);
+    setWaste(previousState.waste);
+    setFoundations(previousState.foundations);
+    setTableau(previousState.tableau);
+    setMoves(previousState.moves);
+    setInvalidAttempts(previousState.invalidAttempts);
+    setGameHistory(prev => prev.slice(0, -1));
+    playSound('slide');
+    
+    trackEvent('game_action', 'Solitaire', 'Undo Move');
+  }, [gameHistory, playSound, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // VALIDATION
+  // ═══════════════════════════════════════════════════════════
+
+  const canPlaceOnTableau = useCallback((card: SolitaireCard, targetPile: Pile): boolean => {
+    if (targetPile.cards.length === 0) {
+      return card.rank === 13; // Only Kings
+    }
+    const topCard = targetPile.cards[targetPile.cards.length - 1];
+    const differentColor = 
+      (['hearts', 'diamonds'].includes(card.suit) !== ['hearts', 'diamonds'].includes(topCard.suit));
+    return differentColor && card.rank === topCard.rank - 1;
+  }, []);
+
+  const canPlaceOnFoundation = useCallback((card: SolitaireCard, foundation: Pile): boolean => {
+    if (foundation.cards.length === 0) {
+      return card.rank === 1; // Ace starts
+    }
+    const topCard = foundation.cards[foundation.cards.length - 1];
+    return card.suit === topCard.suit && card.rank === topCard.rank + 1;
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════
+  // FIND VALID MOVES (HINT)
+  // ═══════════════════════════════════════════════════════════
+
+  const findValidMoves = useCallback(() => {
+    const moves: { from: string; to: string; card: SolitaireCard; priority: number }[] = [];
+    
+    // Priority: Foundation > Expose cards > General moves
+    
+    if (waste.length > 0) {
+      foundations.forEach((f, idx) => {
+        if (canPlaceOnFoundation(waste[0], f)) {
+          moves.push({ from: 'waste', to: `foundation-${idx}`, card: waste[0], priority: 3 });
+        }
+      });
+    }
+    
+    tableau.forEach((pile, pileIdx) => {
+      if (pile.cards.length > 0) {
+        const topCard = pile.cards[pile.cards.length - 1];
+        if (topCard.faceUp) {
+          foundations.forEach((f, fIdx) => {
+            if (canPlaceOnFoundation(topCard, f)) {
+              moves.push({ from: `tableau-${pileIdx}`, to: `foundation-${fIdx}`, card: topCard, priority: 3 });
+            }
+          });
+        }
+      }
+    });
+    
+    tableau.forEach((pile, pileIdx) => {
+      if (pile.cards.length > 1) {
+        const topCard = pile.cards[pile.cards.length - 1];
+        const secondCard = pile.cards[pile.cards.length - 2];
+        if (topCard.faceUp && !secondCard.faceUp) {
+          tableau.forEach((targetPile, targetIdx) => {
+            if (targetIdx !== pileIdx && canPlaceOnTableau(topCard, targetPile)) {
+              moves.push({ from: `tableau-${pileIdx}`, to: `tableau-${targetIdx}`, card: topCard, priority: 2 });
+            }
+          });
+        }
+      }
+    });
+    
+    if (waste.length > 0) {
+      tableau.forEach((pile, idx) => {
+        if (canPlaceOnTableau(waste[0], pile)) {
+          moves.push({ from: 'waste', to: `tableau-${idx}`, card: waste[0], priority: 1 });
+        }
+      });
+    }
+    
+    moves.sort((a, b) => b.priority - a.priority);
+    return moves;
+  }, [waste, foundations, tableau, canPlaceOnFoundation, canPlaceOnTableau]);
+
+  // ═══════════════════════════════════════════════════════════
+  // SHOW HINT
+  // ═══════════════════════════════════════════════════════════
+
+  const showHintMove = useCallback(() => {
+    const validMoves = findValidMoves();
+    
+    if (validMoves.length === 0) {
+      toast({ 
+        title: "No Immediate Moves", 
+        description: deck.length > 0 ? "Try drawing from the deck" : "No moves available",
+        variant: "destructive" 
+      });
+      playSound('invalid');
+      return;
+    }
+    
+    setShowHint(true);
+    playSound('combo');
+    
+    const bestMove = validMoves[0];
+    const priority = bestMove.priority === 3 ? "Foundation move available" : 
+                    bestMove.priority === 2 ? "Move to expose card" : "Valid move found";
+    
+    toast({
+      title: "Hint",
+      description: `${priority} (${validMoves.length} move${validMoves.length > 1 ? 's' : ''} total)`,
+      className: "bg-black border-yellow-500 text-yellow-400"
+    });
+    
+    setTimeout(() => setShowHint(false), 3000);
+    trackEvent('game_action', 'Solitaire', 'Used Hint');
+  }, [findValidMoves, deck.length, playSound, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // DRAW FROM DECK
+  // ═══════════════════════════════════════════════════════════
+
+  const drawCard = useCallback(() => {
+    saveStateToHistory();
+    
+    if (deck.length === 0) {
+      if (waste.length === 0) {
+        toast({
+          title: "Deck Empty",
+          description: "No cards left to draw",
+          variant: "destructive"
+        });
+        return;
+      }
+      setDeck(waste.reverse().map(c => ({ ...c, faceUp: false })));
+      setWaste([]);
+      playSound('flip');
+    } else {
+      const newCard = { ...deck[0], faceUp: true };
+      setWaste([newCard, ...waste]);
+      setDeck(deck.slice(1));
+      setMoves(m => m + 1);
+      playSound('flip');
+    }
+    
+    trackEvent('game_action', 'Solitaire', 'Draw Card');
+  }, [deck, waste, saveStateToHistory, playSound, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // MOVE TO TABLEAU
+  // ═══════════════════════════════════════════════════════════
+
+  const moveToTableau = useCallback((targetIndex: number) => {
+    if (!selectedCard) return;
+    
+    const targetPile = tableau[targetIndex];
+    
+    if (!canPlaceOnTableau(selectedCard.card, targetPile)) {
+      setInvalidAttempts(prev => prev + 1);
+      playSound('invalid');
+      
+      let reason = "Invalid move";
+      if (targetPile.cards.length === 0) {
+        reason = "Only Kings can go on empty piles";
+      } else {
+        const topCard = targetPile.cards[targetPile.cards.length - 1];
+        const sameColor = (['hearts', 'diamonds'].includes(selectedCard.card.suit) === ['hearts', 'diamonds'].includes(topCard.suit));
+        if (sameColor) {
+          reason = "Must alternate red and black cards";
+        } else {
+          reason = "Must place in descending order";
+        }
+      }
+      
+      toast({ 
+        title: "Invalid Move", 
+        description: reason,
+        variant: "destructive" 
+      });
+      setSelectedCard(null);
+      return;
+    }
+
+    saveStateToHistory();
+    createParticles(window.innerWidth / 2, window.innerHeight / 2, 12);
+
+    const newTableau = [...tableau];
+
+    if (selectedCard.from === 'waste') {
+      newTableau[targetIndex] = { cards: [...targetPile.cards, selectedCard.card] };
+      setWaste(waste.slice(1));
+    } else if (selectedCard.from === 'tableau') {
+      const sourcePile = tableau[selectedCard.index];
+      const cardIndex = sourcePile.cards.findIndex(c => c.id === selectedCard.card.id);
+      const cardsToMove = sourcePile.cards.slice(cardIndex);
+      
+      newTableau[selectedCard.index] = { cards: sourcePile.cards.slice(0, cardIndex) };
+      
+      if (newTableau[selectedCard.index].cards.length > 0) {
+        const lastCard = newTableau[selectedCard.index].cards[newTableau[selectedCard.index].cards.length - 1];
+        if (!lastCard.faceUp) {
+          lastCard.faceUp = true;
+          playSound('flip');
+        }
+      }
+      
+      newTableau[targetIndex] = { cards: [...targetPile.cards, ...cardsToMove] };
+    }
+
+    setTableau(newTableau);
+    setMoves(m => m + 1);
+    setSelectedCard(null);
+    playSound('snap');
+    
+    setComboCount(0);
+    if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+    
+    trackEvent('game_action', 'Solitaire', 'Move to Tableau');
+  }, [selectedCard, tableau, waste, canPlaceOnTableau, playSound, toast, saveStateToHistory, createParticles]);
+
+  // ═══════════════════════════════════════════════════════════
+  // MOVE TO FOUNDATION
+  // ═══════════════════════════════════════════════════════════
+
+  const moveToFoundation = useCallback((foundationIndex: number) => {
+    if (!selectedCard) return;
+    
+    const targetFoundation = foundations[foundationIndex];
+    
+    if (!canPlaceOnFoundation(selectedCard.card, targetFoundation)) {
+      setInvalidAttempts(prev => prev + 1);
+      playSound('invalid');
+      
+      const reason = targetFoundation.cards.length === 0 
+        ? "Foundation must start with an Ace" 
+        : "Must follow suit in ascending order";
+      
+      toast({ 
+        title: "Invalid Move", 
+        description: reason,
+        variant: "destructive" 
+      });
+      setSelectedCard(null);
+      return;
+    }
+
+    saveStateToHistory();
+    createParticles(window.innerWidth / 2, 150, 18);
+
+    const newFoundations = [...foundations];
+    newFoundations[foundationIndex] = { 
+      cards: [...targetFoundation.cards, selectedCard.card] 
+    };
+    setFoundations(newFoundations);
+
+    if (selectedCard.from === 'waste') {
+      setWaste(waste.slice(1));
+    } else if (selectedCard.from === 'tableau') {
+      const sourcePile = tableau[selectedCard.index];
+      const newTableau = [...tableau];
+      newTableau[selectedCard.index] = { cards: sourcePile.cards.slice(0, -1) };
+      
+      if (newTableau[selectedCard.index].cards.length > 0) {
+        const lastCard = newTableau[selectedCard.index].cards[newTableau[selectedCard.index].cards.length - 1];
+        if (!lastCard.faceUp) {
+          lastCard.faceUp = true;
+          playSound('flip');
+        }
+      }
+      
+      setTableau(newTableau);
+    }
+
+    setMoves(m => m + 1);
+    
+    // Combo system
+    const newComboCount = comboCount + 1;
+    setComboCount(newComboCount);
+    
+    if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+    comboTimerRef.current = setTimeout(() => setComboCount(0), COMBO_TIMEOUT);
+    
+    setSelectedCard(null);
+    playSound('combo');
+    
+    if (newComboCount >= 5) {
+      toast({
+        title: `${newComboCount}x Combo!`,
+        description: "Foundation combo streak!",
+        className: "bg-black border-orange-500 text-orange-400"
+      });
+    }
+    
+    trackEvent('game_action', 'Solitaire', 'Move to Foundation');
+    
+    // Check win
+    setTimeout(() => {
+      const allComplete = newFoundations.every(f => f.cards.length === 13);
+      if (allComplete && !gameWon) {
+        setGameWon(true);
+        setShowVictory(true);
+        endGame(true);
+      }
+    }, 100);
+  }, [selectedCard, foundations, waste, tableau, comboCount, gameWon, canPlaceOnFoundation, playSound, toast, saveStateToHistory, createParticles]);
+
+  // ═══════════════════════════════════════════════════════════
+  // DOUBLE-CLICK AUTO-MOVE
+  // ═══════════════════════════════════════════════════════════
+
+  const handleDoubleClick = useCallback((card: SolitaireCard, from: 'waste' | 'tableau', index: number) => {
+    for (let i = 0; i < foundations.length; i++) {
+      if (canPlaceOnFoundation(card, foundations[i])) {
+        setSelectedCard({ card, from, index });
+        setTimeout(() => moveToFoundation(i), 0);
+        return;
+      }
+    }
+    
+    toast({
+      title: "No Auto-Move Available",
+      description: "Card cannot be placed on any foundation",
+      variant: "destructive"
+    });
+  }, [foundations, canPlaceOnFoundation, moveToFoundation, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // START GAME
+  // ═══════════════════════════════════════════════════════════
+
+  const startGame = useCallback((resumeSaved: boolean = false) => {
+    if (!isConnected) {
+      toast({ 
+        title: "Wallet Required", 
+        description: "Please connect your wallet to play", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    if (!ownsNFT) {
+      toast({ 
+        title: "Guardian NFT Required", 
+        description: "You must own a Guardian NFT to access this game", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    if (playsToday >= gameConfig.maxPlaysPerDay) {
+      toast({ 
+        title: "Daily Limit Reached", 
+        description: `You've used all ${gameConfig.maxPlaysPerDay} plays today. Return tomorrow!`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (resumeSaved && address) {
+      const savedGame = GameStorageManager.loadSave<GameState>('guardian-solitaire', address);
+      if (savedGame) {
+        const state = savedGame.state;
+        setDeck(state.deck);
+        setWaste(state.waste);
+        setFoundations(state.foundations);
+        setTableau(state.tableau);
+        setMoves(state.moves);
+        setInvalidAttempts(state.invalidAttempts);
+        setStartTime(state.startTime);
+        setGameStarted(true);
+        playSound('flip');
+        
+        toast({
+          title: "Game Resumed",
+          description: "Your previous game has been restored",
+          className: "bg-black border-cyan-500 text-cyan-400"
+        });
+        return;
+      }
+    }
+
+    setGameStarted(true);
+    dealCards();
+    trackEvent('game_start', 'Game', 'Guardian Solitaire');
+  }, [isConnected, ownsNFT, playsToday, gameConfig.maxPlaysPerDay, address, dealCards, playSound, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // END GAME
+  // ═══════════════════════════════════════════════════════════
+
+  const endGame = useCallback(async (won: boolean) => {
+    if (!address || !startTime) return;
+
+    const finalTime = Math.floor((Date.now() - startTime) / 1000);
+    
+    // Scoring algorithm aligned with gameConfig
+    const baseScore = won ? 10000 : 0;
+    const timeBonus = won ? Math.max(0, 500 - finalTime) : 0;
+    const moveBonus = won ? Math.max(0, 1000 - (moves * 5)) : 0;
+    const comboBonus = comboCount * 100;
+    const efficiency = moves > 0 ? Math.round((moves / (moves + invalidAttempts)) * 100) : 100;
+    const efficiencyBonus = won ? Math.round(efficiency * 2) : 0;
+    
+    const finalScore = Math.min(
+      baseScore + timeBonus + moveBonus + comboBonus + efficiencyBonus,
+      gameConfig.scoring.maxScore
+    );
+
+    // Update stats
+    const newStats: GameStats = { ...stats };
+    newStats.gamesPlayed++;
+    newStats.totalMoves += moves;
+    newStats.totalTime += finalTime;
+    
+    if (won) {
+      newStats.gamesWon++;
+      newStats.currentStreak++;
+      newStats.longestStreak = Math.max(newStats.longestStreak, newStats.currentStreak);
+      
+      if (finalTime < newStats.bestTime || newStats.bestTime === 0) {
+        newStats.bestTime = finalTime;
+      }
+      if (moves < (newStats.bestMoves || Infinity)) {
+        newStats.bestMoves = moves;
+      }
+      if (finalScore > newStats.bestScore) {
+        newStats.bestScore = finalScore;
+      }
+      
+      playSound('victory');
+      createParticles(window.innerWidth / 2, window.innerHeight / 2, 60);
+    } else {
+      newStats.currentStreak = 0;
+    }
+    
+    newStats.lastPlayed = Date.now();
+    newStats.totalScore += finalScore;
+    
+    GameStorageManager.saveStats('guardian-solitaire', address, newStats);
+    setStats(newStats);
+
+    try {
+      await submitScore(address, 'guardian-solitaire', finalScore);
+      setPlaysToday(prev => prev + 1);
+      trackEvent('game_complete', 'Game', `Solitaire - ${won ? 'Won' : 'Lost'} - ${finalScore} pts`);
+      
+      GameStorageManager.deleteSave('guardian-solitaire', address);
+    } catch (err) {
+      console.error('Failed to submit score:', err);
+      toast({
+        title: "Score Save Failed",
+        description: "Could not save your score. Check your connection.",
+        variant: "destructive"
+      });
+    }
+  }, [address, startTime, moves, invalidAttempts, comboCount, stats, gameConfig.scoring.maxScore, submitScore, playSound, createParticles, toast]);
+
+  // ═══════════════════════════════════════════════════════════
+  // FORMAT TIME
+  // ═══════════════════════════════════════════════════════════
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // CHECK FOR SAVED GAME
+  // ═══════════════════════════════════════════════════════════
+
+  const hasSavedGame = address && GameStorageManager.hasSave('guardian-solitaire', address);
+
+  // ═══════════════════════════════════════════════════════════
+  // KEYBOARD SHORTCUTS
+  // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!gameStarted || showVictory) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+          e.preventDefault();
+          drawCard();
+          break;
+        case 'u':
+          undoMove();
+          break;
+        case 'h':
+          showHintMove();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameStarted, showVictory, drawCard, undoMove, showHintMove]);
+
+  // ═══════════════════════════════════════════════════════════
+  // LOADING STATE
+  // ═══════════════════════════════════════════════════════════
+
+  if (nftLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-black">
+        <Card className="p-8 bg-white/5 border-cyan-500/30 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+            <p className="text-cyan-400">Loading Guardian Solitaire...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // RENDER: START SCREEN
+  // ═══════════════════════════════════════════════════════════
+
+  if (!gameStarted) {
+    return (
+      <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden">
+        {/* Starfield */}
+        <div className="fixed inset-0 pointer-events-none opacity-40">
+          {[...Array(40)].map((_, i) => (
+            <motion.div
+              key={`star-bg-${i}`}
+              className="absolute w-1 h-1 bg-white rounded-full"
+              initial={{ 
+                x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920), 
+                y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1080),
+                opacity: Math.random() * 0.5 + 0.3
+              }}
+              animate={{
+                y: [null, (typeof window !== 'undefined' ? window.innerHeight : 1080) + 20],
+                opacity: [null, 0]
+              }}
+              transition={{
+                duration: 15 + Math.random() * 10,
+                repeat: Infinity,
+                ease: "linear",
+                delay: Math.random() * 8
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 relative z-10">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            >
+              <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-3 font-orbitron tracking-tight">
+                GUARDIAN SOLITAIRE
+              </h1>
+              <p className="text-gray-400 text-base mb-4">
+                Premium Klondike • Strategy Meets Style
+              </p>
+            </motion.div>
+
+            {/* Quick Stats */}
+            {stats.gamesPlayed > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-center gap-8 text-sm flex-wrap mb-6"
+              >
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  <span className="text-gray-300">
+                    {Math.round(stats.winRate || 0)}% Win Rate
+                  </span>
+                </div>
+                {stats.currentStreak > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-400" />
+                    <span className="text-gray-300">
+                      {stats.currentStreak} Streak
+                    </span>
+                  </div>
+                )}
+                {stats.bestScore > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-cyan-400" />
+                    <span className="text-gray-300">
+                      Best: {stats.bestScore.toLocaleString()} pts
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </div>
+
+          {/* Main Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Card className="p-10 bg-black/70 border-cyan-500/30 backdrop-blur-lg">
+              <div className="space-y-8">
+                
+                {/* Icon Display */}
+                <div className="flex justify-center">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.05, 1],
+                      rotate: [0, 2, -2, 0]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    className="w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border-2 border-white/10"
+                  >
+                    <Spade className="w-16 h-16 text-cyan-400" />
+                  </motion.div>
+                </div>
+
+                {/* How to Play */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Info className="w-5 h-5 text-cyan-400" />
+                    <h3 className="font-bold text-white text-lg">How to Play</h3>
+                  </div>
+                  <ul className="space-y-2 text-gray-300 text-sm">
+                    <li className="flex items-start gap-2">
+                      <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <span>Arrange cards in descending order, alternating red and black suits</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <span>Build foundations from Ace to King in the same suit</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <span>Only Kings can be placed on empty tableau columns</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Click or drag</strong> cards • <strong>Double-click</strong> to auto-move to foundation</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Premium Features */}
+                <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl p-6 border border-yellow-500/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-yellow-400" />
+                    <h3 className="font-bold text-white text-lg">Premium Features</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Undo2 className="w-4 h-4 text-cyan-400" />
+                      <span>Undo last 5 moves</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Lightbulb className="w-4 h-4 text-yellow-400" />
+                      <span>Smart hint system</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Shield className="w-4 h-4 text-purple-400" />
+                      <span>Auto-save & resume</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Star className="w-4 h-4 text-pink-400" />
+                      <span>Performance tracking</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Play Info */}
+                <div className="flex items-center justify-center gap-8 text-sm flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Play className="w-4 h-4 text-purple-400" />
+                    <span className="text-gray-300">
+                      {gameConfig.maxPlaysPerDay - playsToday}/{gameConfig.maxPlaysPerDay} Plays Remaining
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
+                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {settings.soundEnabled ? (
+                      <Volume2 className="w-4 h-4" />
+                    ) : (
+                      <VolumeX className="w-4 h-4" />
+                    )}
+                    <span>Sound {settings.soundEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 justify-center flex-wrap">
+                  <Button
+                    onClick={() => startGame(false)}
+                    size="lg"
+                    disabled={!isConnected || !ownsNFT || playsToday >= gameConfig.maxPlaysPerDay}
+                    className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold px-10 py-6 text-lg"
+                  >
+                    <Play className="w-6 h-6 mr-2" />
+                    NEW GAME
+                  </Button>
+                  
+                  {hasSavedGame && (
+                    <Button
+                      onClick={() => startGame(true)}
+                      size="lg"
+                      variant="outline"
+                      disabled={!isConnected || !ownsNFT || playsToday >= gameConfig.maxPlaysPerDay}
+                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 px-10 py-6 text-lg"
+                    >
+                      <RotateCcw className="w-6 h-6 mr-2" />
+                      RESUME
+                    </Button>
+                  )}
+                </div>
+
+                {/* Warnings */}
+                {!isConnected && (
+                  <p className="text-center text-red-400 text-sm">
+                    Connect your wallet to play
+                  </p>
+                )}
+                {isConnected && !ownsNFT && (
+                  <p className="text-center text-red-400 text-sm">
+                    Guardian NFT required to access this game
+                  </p>
+                )}
+                {playsToday >= gameConfig.maxPlaysPerDay && (
+                  <p className="text-center text-red-400 text-sm">
+                    Daily play limit reached. Return tomorrow for more!
+                  </p>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // RENDER: GAME SCREEN (CONTINUES IN NEXT PART - 1200+ LINES)
+  // ═══════════════════════════════════════════════════════════
+
+  return (
+    <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden">
+      {/* Starfield Background */}
+      <div className="fixed inset-0 pointer-events-none opacity-30">
+        {[...Array(50)].map((_, i) => (
+          <motion.div
+            key={`star-${i}`}
+            className="absolute w-1 h-1 bg-white rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0.3, 1, 0.3],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 2 + Math.random() * 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Particles */}
+      <AnimatePresence>
+        {particles.map(particle => (
+          <motion.div
+            key={particle.id}
+            className="fixed rounded-full pointer-events-none z-50"
+            style={{ 
+              left: particle.x, 
+              top: particle.y,
+              width: particle.size,
+              height: particle.size,
+              backgroundColor: particle.color
+            }}
+            initial={{ scale: 1, opacity: 1 }}
+            animate={{ 
+              scale: 0, 
+              opacity: 0,
+              y: -50,
+              x: (Math.random() - 0.5) * 100
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1 }}
+          />
+        ))}
+      </AnimatePresence>
+
+      <div className="max-w-7xl mx-auto px-4 relative z-10">
+        
+        {/* Game HUD */}
+        <div className="mb-4">
+          <GameHUD
+            score={moves * 10} // Live score approximation
+            time={elapsedTime}
+            moves={moves}
+            combo={comboCount > 0 ? comboCount : undefined}
+          />
+        </div>
+
+        {/* Controls */}
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={undoMove}
+              disabled={gameHistory.length === 0}
+              className="border-white/20 hover:border-cyan-500"
+              title="Undo last move (U)"
+            >
+              <Undo2 className="w-4 h-4 mr-1" />
+              Undo ({gameHistory.length}/{MAX_UNDO_HISTORY})
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={showHintMove}
+              className="border-white/20 hover:border-yellow-500"
+              title="Show hint (H)"
+            >
+              <Lightbulb className="w-4 h-4 mr-1" />
+              Hint
+            </Button>
+            
+            <button
+              onClick={() => setSettings(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
+              className="p-2 rounded border border-white/20 hover:border-white/40 transition-colors"
+              title="Toggle sound"
+            >
+              {settings.soundEnabled ? (
+                <Volume2 className="w-4 h-4 text-white" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-white" />
+              )}
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (confirm('Exit to main menu? Progress will be saved.')) {
+                navigate('/');
+              }
+            }}
+            className="border-white/20 hover:border-white/40"
+          >
+            <Home className="w-4 h-4 mr-1" />
+            Exit
+          </Button>
+        </div>
+
+        {/* Game Board */}
+        <div className="bg-black/40 rounded-lg p-6 border border-white/10 backdrop-blur-md min-h-[700px]">
+          
+          {/* Top Row: Deck, Waste, Foundations */}
+          <div className="flex gap-4 mb-8 flex-wrap justify-between">
+            <div className="flex gap-4">
+              {/* Deck */}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={drawCard}
+                className="w-24 h-32 rounded-lg cursor-pointer relative"
+                title="Draw card (Space)"
+              >
+                {deck.length > 0 ? (
+                  <>
+                    <CardBack />
+                    <div className="absolute bottom-1 right-1 text-[10px] text-white bg-black/70 px-1.5 py-0.5 rounded font-mono">
+                      {deck.length}
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full rounded-lg border-2 border-dashed border-white/30 bg-white/5 flex items-center justify-center">
+                    <RotateCcw className="w-6 h-6 text-white/30" />
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Waste */}
+              <div className="w-24 h-32 rounded-lg border-2 border-white/20 bg-black/20 relative">
+                {waste.length > 0 && (
+                  <CardComponent
+                    card={waste[0]}
+                    isSelected={selectedCard?.card.id === waste[0].id}
+                    isHinted={showHint && findValidMoves().some(m => m.card.id === waste[0].id)}
+                    glowClass={GLOW_COLORS[currentGlow]}
+                    onClick={() => setSelectedCard({ card: waste[0], from: 'waste', index: 0 })}
+                    onDoubleClick={() => handleDoubleClick(waste[0], 'waste', 0)}
+                    onDragStart={() => setDraggedCard({ card: waste[0], from: 'waste', index: 0 })}
+                    onDragEnd={() => setDraggedCard(null)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Foundations */}
+            <div className="flex gap-4">
+              {foundations.map((foundation, idx) => (
+                <FoundationPile
+                  key={idx}
+                  foundation={foundation}
+                  index={idx}
+                  isTarget={Boolean(selectedCard || draggedCard)}
+                  onClick={() => selectedCard && moveToFoundation(idx)}
+                  onDrop={() => {
+                    if (draggedCard) {
+                      setSelectedCard(draggedCard);
+                      setTimeout(() => moveToFoundation(idx), 0);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Tableau */}
+          <div className="grid grid-cols-7 gap-4">
+            {tableau.map((pile, pileIdx) => (
+              <TableauPile
+                key={pileIdx}
+                pile={pile}
+                index={pileIdx}
+                isTarget={Boolean(selectedCard || draggedCard)}
+                selectedCardId={selectedCard?.card.id}
+                hintedCardIds={showHint ? findValidMoves().map(m => m.card.id) : []}
+                glowClass={GLOW_COLORS[currentGlow]}
+                onCardClick={(card) => setSelectedCard({ card, from: 'tableau', index: pileIdx })}
+                onCardDoubleClick={(card) => handleDoubleClick(card, 'tableau', pileIdx)}
+                onCardDragStart={(card) => setDraggedCard({ card, from: 'tableau', index: pileIdx })}
+                onCardDragEnd={() => setDraggedCard(null)}
+                onPileClick={() => {
+                  if (selectedCard || draggedCard) {
+                    const cardToMove = selectedCard || draggedCard;
+                    if (cardToMove) {
+                      setSelectedCard(cardToMove);
+                      setTimeout(() => moveToTableau(pileIdx), 0);
+                    }
+                  }
+                }}
+                onDrop={() => {
+                  if (draggedCard) {
+                    setSelectedCard(draggedCard);
+                    setTimeout(() => moveToTableau(pileIdx), 0);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Victory Screen */}
+      {showVictory && (
+        <VictoryScreen
+          gameType="guardian-solitaire"
+          score={(() => {
+            const finalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+            const baseScore = 10000;
+            const timeBonus = Math.max(0, 500 - finalTime);
+            const moveBonus = Math.max(0, 1000 - (moves * 5));
+            const comboBonus = comboCount * 100;
+            const efficiency = moves > 0 ? Math.round((moves / (moves + invalidAttempts)) * 100) : 100;
+            const efficiencyBonus = Math.round(efficiency * 2);
+            return Math.min(
+              baseScore + timeBonus + moveBonus + comboBonus + efficiencyBonus,
+              gameConfig.scoring.maxScore
+            );
+          })()}
+          time={elapsedTime}
+          moves={moves}
+          playsRemaining={gameConfig.maxPlaysPerDay - playsToday}
+          maxPlays={gameConfig.maxPlaysPerDay}
+          isNewBest={(() => {
+            const finalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+            const score = 10000 + Math.max(0, 500 - finalTime) + Math.max(0, 1000 - (moves * 5));
+            return score > stats.bestScore;
+          })()}
+          personalBest={stats.bestScore}
+          onPlayAgain={() => {
+            setShowVictory(false);
+            setGameStarted(false);
+          }}
+          onExit={() => navigate('/')}
+          formatTime={formatTime}
+        />
+      )}
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD BACK COMPONENT (ELEGANT GUARDIAN PATTERN)
+// ═══════════════════════════════════════════════════════════
+
+function CardBack() {
+  return (
+    <div className="w-24 h-32 rounded-lg overflow-hidden relative shadow-xl border-2 border-white/20">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-700 to-indigo-800" />
+      
+      {/* Outer border pattern */}
+      <div className="absolute inset-[3px] border-2 border-white/30 rounded-md">
+        {/* Inner border */}
+        <div className="absolute inset-[3px] border border-white/20 rounded-sm">
+          {/* Center pattern */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Guardian shield icon */}
+            <div className="relative">
+              <Shield className="w-12 h-12 text-cyan-400/60" strokeWidth={1.5} />
+              {/* Sparkle accent */}
+              <motion.div
+                className="absolute -top-1 -right-1"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <Star className="w-3 

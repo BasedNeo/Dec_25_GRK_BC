@@ -1,0 +1,148 @@
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+VISUAL & UX:
+[ ] Card backs show elegant Guardian pattern (shield, borders, sparkle)
+[ ] Card backs have traditional playing card feel (ornate borders)
+[ ] Cards flip with smooth 3D animation when dealt
+[ ] Selected cards have elegant colored glow (rotates through 4 colors)
+[ ] Starfield animates smoothly in background
+[ ] Particles burst on successful moves (12 for tableau, 18 for foundation)
+[ ] Hover effects work on cards (scale + brightness)
+[ ] Drag-and-drop shows dashed borders on valid targets
+[ ] Foundation piles show sparkle icon when empty
+[ ] Tableau piles show "King Here" or "Empty" text
+GAME MECHANICS:
+[ ] Deck shuffles randomly on each new game (52 unique NFTs)
+[ ] Tableau dealt correctly (1-7 cards, last card face-up)
+[ ] Drawing from deck moves card to waste pile
+[ ] Empty deck recycles waste pile back to deck
+[ ] Kings (rank 13) only on empty tableau piles
+[ ] Tableau follows descending rank + alternating color rule
+[ ] Foundations start with Ace (rank 1)
+[ ] Foundations follow ascending rank + same suit rule
+[ ] Multiple cards can be moved between tableau piles
+[ ] Face-down cards flip when exposed
+[ ] Win detected when all 4 foundations have 13 cards
+PREMIUM FEATURES:
+[ ] Undo button works (restores last 1-5 moves)
+[ ] Undo counter shows available undos
+[ ] Hint button highlights best move with yellow glow
+[ ] Hint prioritizes foundation > expose > general moves
+[ ] Double-click auto-moves card to foundation (if valid)
+[ ] Auto-save works (refresh page, resume button appears)
+[ ] Resume button loads saved game correctly
+[ ] Combo counter increments on consecutive foundation placements
+[ ] Combo counter resets after 3 seconds or tableau move
+[ ] Combo toast appears at 5+ combos
+SOUNDS:
+[ ] Card flip sound when drawing from deck
+[ ] Slide sound when moving cards (undo)
+[ ] Snap sound when placing successfully
+[ ] Invalid beep for wrong moves
+[ ] Combo chime for foundation placements
+[ ] Victory fanfare (chord progression) on win
+[ ] Sound toggle works and persists
+[ ] No audio errors in console
+INTEGRATION:
+[ ] Uses GameStorageManager for saves/stats
+[ ] Stats persist between sessions
+[ ] Uses GameHUD component
+[ ] Uses VictoryScreen component
+[ ] Score aligns with gameConfig (max 50k)
+[ ] 10 plays per day limit enforced
+[ ] Wallet connection required
+[ ] Guardian NFT ownership required
+[ ] Analytics events tracked
+[ ] Route works (/guardian-solitaire)
+[ ] Nav link appears in menu
+MOBILE:
+[ ] Touch drag works on cards
+[ ] Touch click works to select/move cards
+[ ] Cards are touch-sized (80x112px minimum)
+[ ] No performance lag
+[ ] Particles don't slow down game
+[ ] Layout adapts to smaller screens
+[ ] Control buttons accessible
+ACCESSIBILITY:
+[ ] All buttons have aria-labels
+[ ] Card actions work with keyboard (Space, U, H)
+[ ] Tab navigation works
+[ ] Focus indicators visible
+[ ] Screen reader announcements (would need testing)
+PERFORMANCE:
+[ ] Game runs at 60fps
+[ ] No memory leaks (check DevTools)
+[ ] Auto-save doesn't cause lag (500ms debounce)
+[ ] localStorage doesn't exceed quota
+ERROR HANDLING:
+[ ] Broken NFT images show properly
+[ ] Audio errors handled gracefully
+[ ] LocalStorage quota handled
+[ ] Failed score submission shows toast
+[ ] Invalid moves show helpful messages
+═══════════════════════════════════════════════════════════════════════════════
+EXPECTED BEHAVIOR
+═══════════════════════════════════════════════════════════════════════════════
+START SCREEN:
+✓ Shows spade icon in gradient box with subtle animation
+✓ Displays player stats if games played > 0 (win rate, streak, best score)
+✓ "How to Play" section with 4 key rules
+✓ "Premium Features" section highlighting undo, hint, auto-save, tracking
+✓ Play counter shows X/10 plays remaining
+✓ Sound toggle with current state
+✓ NEW GAME button (disabled if no wallet/NFT/plays)
+✓ RESUME button (only if saved game exists)
+✓ Warning messages for missing requirements
+GAME SCREEN:
+✓ GameHUD shows time, score estimate, moves, optional combo
+✓ Controls: Undo (with count), Hint, Sound toggle, Exit
+✓ Deck (left) shows card back + count, click to draw
+✓ Waste (next to deck) shows top card face-up, clickable
+✓ Foundations (right) show 4 piles, count X/13
+✓ Tableau (bottom) shows 7 columns, cascading 24px offset
+✓ Starfield with 50 twinkling stars
+✓ Particles burst on moves
+INTERACTIONS:
+✓ Click card to select (elegant glow appears, rotates color)
+✓ Click destination to move selected card
+✓ OR drag card to destination
+✓ Double-click card to auto-move to foundation
+✓ Invalid moves show red toast + reason (helpful)
+✓ Valid moves show particles + snap sound
+✓ Foundation moves increment combo counter
+✓ 5+ combos show orange flame toast
+✓ Hint shows yellow glow on best card for 3 seconds
+✓ Keyboard: Space (draw), U (undo), H (hint)
+VICTORY SCREEN:
+✓ Full-screen overlay with gradient backdrop
+✓ Animated award icon (rotating + scaling loop)
+✓ Performance-based title (Legendary / Outstanding / etc.)
+✓ Final score with star icon
+✓ Time and move stats in separate cards
+✓ "NEW PERSONAL BEST!" badge if applicable
+✓ Plays remaining today
+✓ Play Again button (disabled if no plays left)
+✓ Exit button (returns to home)
+SCORING (ALIGNED WITH GAMECONFIG):
+✓ Base: 10,000 points for winning
+✓ Time bonus: 500 - elapsed_seconds (min 0)
+✓ Move bonus: 1000 - (moves × 5) (min 0)
+✓ Combo bonus: comboCount × 100
+✓ Efficiency bonus: (moves / (moves + invalid)) × 200
+✓ Capped at 50,000 (gameConfig.scoring.maxScore)
+═══════════════════════════════════════════════════════════════════════════════
+CARD BACK DESIGN DETAILS
+═══════════════════════════════════════════════════════════════════════════════
+The custom card back features:
+✓ Gradient background (indigo → purple → indigo)
+✓ Outer decorative border (white 30% opacity)
+✓ Inner decorative border (white 20% opacity)
+✓ Center Guardian shield icon (cyan, 60% opacity)
+✓ Small animated sparkle accent (yellow star, pulse animation)
+✓ Four corner decorations (L-shaped borders, cyan 40%)
+✓ Subtle dot pattern overlay (20% opacity for texture)
+✓ Professional rounded corners matching card faces
+✓ 2px white border for definition
+This design evokes traditional playing cards while maintaining the Guardian
+space theme. It's elegant, recognizable, and complements the NFT card faces.
+══════════════════════
