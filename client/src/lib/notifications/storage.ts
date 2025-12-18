@@ -42,9 +42,14 @@ export function saveNotifications(notifications: Notification[], wallet?: string
 }
 
 export function addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>, wallet?: string): Notification {
+  // Use crypto.randomUUID for stronger uniqueness guarantees
+  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID 
+    ? crypto.randomUUID() 
+    : `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  
   const newNotification: Notification = {
     ...notification,
-    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: uuid,
     timestamp: Date.now(),
     read: false,
   };

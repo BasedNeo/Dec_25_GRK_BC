@@ -27,6 +27,8 @@ export const ALCHEMY_KEY = import.meta.env.VITE_ALCHEMY_KEY;
 
 // === CONTRACTS ===
 export const NFT_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59";
+// Marketplace V1 - old escrow-based (deprecated, for retrieval only)
+export const OLD_MARKETPLACE_V1 = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c";
 // Marketplace V2 - approval-based (NFT stays in wallet when listed, like OpenSea)
 export const MARKETPLACE_CONTRACT = "0x2836f07Ed31a6DEc09E0d62Fb15D7c6c6Ddb139c";
 // Marketplace V3 - off-chain offers (gasless offers like Aftermint)

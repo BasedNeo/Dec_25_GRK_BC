@@ -553,7 +553,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                       />
                       <Button 
                         className="bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron text-sm h-10 px-4"
-                        onClick={() => marketplace.listNFT(nft.id, listPrice)}
+                        onClick={() => marketplace.listNFT(nft.id, String(listPrice))}
                         disabled={listPrice < 1 || marketplace.state.isPending}
                       >
                         LIST
@@ -896,7 +896,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
                         </p>
                         <Button 
                           className="w-full bg-green-500 text-black hover:bg-green-400 font-bold font-orbitron shadow-[0_0_15px_rgba(34,197,94,0.4)]"
-                          onClick={() => marketplace.listNFT(nft.id, listPrice)}
+                          onClick={() => marketplace.listNFT(nft.id, String(listPrice))}
                           disabled={listPrice < 1 || marketplace.state.isPending}
                           data-testid="button-list-nft"
                         >

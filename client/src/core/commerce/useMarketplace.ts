@@ -433,7 +433,7 @@ export function useMarketplace() {
       gas: GAS_SETTINGS.LIST,
     });
     
-    analytics.listingCompleted(tokenId, price);
+    // Analytics will be called when transaction is confirmed in useEffect
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
   const delistNFT = useCallback(async (tokenId: number) => {
@@ -531,7 +531,7 @@ export function useMarketplace() {
           gas: preFlightResult.gasEstimate || GAS_SETTINGS.BUY,
         });
         
-        analytics.buyCompleted(tokenId, price);
+        // Analytics will be called when transaction is confirmed in useEffect
       });
     });
   }, [address, checkNetwork, toast, writeContract]);
