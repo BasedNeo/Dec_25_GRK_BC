@@ -5,7 +5,14 @@ interface UseCooldownOptions {
   cooldownMs?: number;
 }
 
-export function useButtonCooldown(options: UseCooldownOptions = {}) {
+interface ButtonCooldownResult {
+  isCoolingDown: boolean;
+  remainingTime: number;
+  startCooldown: () => void;
+  wrapAction: <T extends (...args: unknown[]) => unknown>(action: T) => T;
+}
+
+export function useButtonCooldown(options: UseCooldownOptions = {}): ButtonCooldownResult {
   const { cooldownMs = 5000 } = options;
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
@@ -44,7 +51,7 @@ export function useButtonCooldown(options: UseCooldownOptions = {}) {
     }, cooldownMs);
   }, [cooldownMs]);
 
-  const wrapAction = useCallback(<T extends (...args: any[]) => any>(action: T) => {
+  const wrapAction = useCallback(<T extends (...args: unknown[]) => unknown>(action: T): T => {
     return ((...args: Parameters<T>) => {
       if (isCoolingDown) return;
       startCooldown();

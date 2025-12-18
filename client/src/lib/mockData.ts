@@ -238,7 +238,14 @@ export const MINT_PRICE = 69420;
 export const NFT_MINT_TREASURY_PERCENT = 0.51;
 
 // Helper to get total passive emissions based on schedule
-export const calculatePassiveEmissions = () => {
+interface PassiveEmissionsResult {
+  total: number;
+  currentDailyRate: number;
+  nextHalvingIn: number | null;
+  nextHalvingRate: number | null;
+}
+
+export const calculatePassiveEmissions = (): PassiveEmissionsResult => {
   const now = Date.now();
   let totalEmissions = ANCHOR_VALUE;
   let currentDailyRate = EMISSION_SCHEDULE[0].dailyRate;
@@ -292,10 +299,10 @@ export const calculatePassiveEmissions = () => {
 };
 
 // Deprecate old calculateEmissions in favor of this new logic
-export const calculateEmissions = () => calculatePassiveEmissions().total;
+export const calculateEmissions = (): number => calculatePassiveEmissions().total;
 
 // ⚠️ LOCKED: calculateBackedValue - Do NOT modify without explicit user request
-export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
+export const calculateBackedValue = (rarityLevel: string = 'Most Common'): number => {
   // LOCKED FORMULA: backedValue = mintShare + boostedPoolShare
   // 1. Base per-NFT from mints: 51% of 69,420 = 35,404.20
   const mintShare = MINT_PRICE * NFT_MINT_TREASURY_PERCENT; 
@@ -313,7 +320,7 @@ export const calculateBackedValue = (rarityLevel: string = 'Most Common') => {
   return Math.floor(mintShare + boostedPoolShare);
 };
 
-export const calculatePoolBalance = () => {
+export const calculatePoolBalance = (): number => {
     // Pool Balance = (Total Minted * Price * 0.51) + Passive Emissions
     // Assuming all minted for the "Total Pool" view or just the current minted count?
     // The provided snippet uses "totalMinted" passed to it.
@@ -334,8 +341,22 @@ export const calculatePoolBalance = () => {
     return mintRevenue + passive;
 };
 
+interface TreasuryMetrics {
+  total: number;
+  breakdown: {
+    fromMint: number;
+    passiveEmissions: number;
+    stakingEmissions: number;
+  };
+  rates: {
+    currentDaily: number;
+    nextHalvingIn: number | null;
+    nextHalvingRate: number | null;
+  };
+}
+
 // Expose full treasury metrics for UI
-export const getTreasuryMetrics = () => {
+export const getTreasuryMetrics = (): TreasuryMetrics => {
   const passive = calculatePassiveEmissions();
   const mintRevenue = TOTAL_NFTS * MINT_PRICE * NFT_MINT_TREASURY_PERCENT;
   

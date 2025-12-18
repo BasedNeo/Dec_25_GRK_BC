@@ -4,7 +4,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
  * Button lock - prevents double-click transactions
  * Uses refs for synchronous locking (state updates are async and can miss rapid clicks)
  */
-export function useButtonLock(cooldownMs = 2000) {
+interface ButtonLockResult {
+  isLocked: boolean;
+  withLock: <T>(fn: () => Promise<T>) => Promise<T | null>;
+}
+
+export function useButtonLock(cooldownMs = 2000): ButtonLockResult {
   const [isLocked, setIsLocked] = useState(false);
   const lockedRef = useRef(false);
   const lastClickRef = useRef(0);

@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ContractService, ContractStats, NFTData } from '@/lib/contractService';
 
-export function useContractStats() {
+interface ContractStatsResult {
+  stats: ContractStats | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useContractStats(): ContractStatsResult {
   const [stats, setStats] = useState<ContractStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +37,16 @@ export function useContractStats() {
   return { stats, loading, error, refetch: fetchStats };
 }
 
-export function useMintedNFTs(limit: number = 20, offset: number = 0) {
+interface MintedNFTsResult {
+  nfts: NFTData[];
+  total: number;
+  hasMore: boolean;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useMintedNFTs(limit: number = 20, offset: number = 0): MintedNFTsResult {
   const [nfts, setNfts] = useState<NFTData[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -59,7 +75,14 @@ export function useMintedNFTs(limit: number = 20, offset: number = 0) {
   return { nfts, total, hasMore, loading, error, refetch: fetchNFTs };
 }
 
-export function useUserNFTs(userAddress: string | undefined) {
+interface UserNFTsResult {
+  nfts: NFTData[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useUserNFTs(userAddress: string | undefined): UserNFTsResult {
   const [nfts, setNfts] = useState<NFTData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +112,14 @@ export function useUserNFTs(userAddress: string | undefined) {
   return { nfts, loading, error, refetch: fetchNFTs };
 }
 
-export function useTotalMinted() {
+interface TotalMintedResult {
+  total: number;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useTotalMinted(): TotalMintedResult {
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

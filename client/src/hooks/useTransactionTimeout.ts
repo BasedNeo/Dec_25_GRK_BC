@@ -6,10 +6,15 @@ interface UseTransactionTimeoutOptions {
   onTimeout?: () => void;
 }
 
+interface TransactionTimeoutResult {
+  hasTimedOut: boolean;
+  elapsedTime: number;
+}
+
 export function useTransactionTimeout(
   isConfirming: boolean,
   options: UseTransactionTimeoutOptions = {}
-) {
+): TransactionTimeoutResult {
   const { timeoutMs = 60000, onTimeout } = options;
   const { toast } = useToast();
   const [hasTimedOut, setHasTimedOut] = useState(false);

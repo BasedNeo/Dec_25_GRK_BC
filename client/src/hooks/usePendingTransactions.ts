@@ -17,7 +17,7 @@ export interface PendingTransaction {
   status: 'pending' | 'confirmed' | 'failed';
 }
 
-export function savePendingTx(hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }) {
+export function savePendingTx(hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }): void {
   try {
     const existing = getPendingTxs();
     if (existing.some(tx => tx.hash === hash)) return;
@@ -36,7 +36,7 @@ export function getPendingTxs(): PendingTransaction[] {
   } catch (e) { return []; }
 }
 
-export function updateTxStatus(hash: string, status: 'confirmed' | 'failed') {
+export function updateTxStatus(hash: string, status: 'confirmed' | 'failed'): void {
   try {
     const txs = getPendingTxs();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(txs.map(tx => tx.hash === hash ? { ...tx, status } : tx)));
@@ -44,25 +44,37 @@ export function updateTxStatus(hash: string, status: 'confirmed' | 'failed') {
   } catch (e) {}
 }
 
-export function removePendingTx(hash: string) {
+export function removePendingTx(hash: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(getPendingTxs().filter(tx => tx.hash !== hash)));
   } catch (e) {}
 }
 
-export function clearCompletedTxs() {
+export function clearCompletedTxs(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(getPendingTxs().filter(tx => tx.status === 'pending')));
   } catch (e) {}
 }
 
-export function clearAllTxs() {
+export function clearAllTxs(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
   } catch (e) {}
 }
 
-export function usePendingTransactions() {
+interface PendingTransactionsResult {
+  transactions: PendingTransaction[];
+  pendingTxs: PendingTransaction[];
+  pendingCount: number;
+  hasPending: boolean;
+  addTransaction: (hash: `0x${string}`, type: TxType, description: string, extra?: { tokenId?: number; amount?: string }) => void;
+  dismissTransaction: (hash: string) => void;
+  clearCompleted: () => void;
+  clearAll: () => void;
+  getExplorerLink: (hash: string) => string;
+}
+
+export function usePendingTransactions(): PendingTransactionsResult {
   const [transactions, setTransactions] = useState<PendingTransaction[]>([]);
   
   useEffect(() => {
@@ -87,7 +99,7 @@ export function usePendingTransactions() {
   };
 }
 
-export function useWatchTransaction(hash: `0x${string}` | undefined) {
+export function useWatchTransaction(hash: `0x${string}` | undefined): void {
   const { isSuccess, isError } = useWaitForTransactionReceipt({ hash });
   useEffect(() => {
     if (!hash) return;

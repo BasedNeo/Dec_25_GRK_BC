@@ -1,11 +1,11 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
 }
 
-export function getRarityClass(rarity: string) {
+export function getRarityClass(rarity: string): string {
   // Normalize rarity keys first
   let key = rarity;
   if (rarity === 'Rarest (1/1s)' || rarity === 'Legendary') key = 'Rarest-Legendary';

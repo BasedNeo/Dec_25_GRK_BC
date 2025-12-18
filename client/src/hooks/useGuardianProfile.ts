@@ -28,7 +28,21 @@ const FREQUENT_MESSAGES = [
   "Another day, another check-in. You're built different.",
 ];
 
-export function useGuardianProfile() {
+interface GuardianProfileResult {
+  profile: GuardianProfile | null;
+  loading: boolean;
+  isNewUser: boolean;
+  welcomeMessage: string | null;
+  showNamePrompt: boolean;
+  getDisplayName: () => string | null;
+  setCustomName: (name: string | null) => Promise<{ success: boolean; error?: string }>;
+  checkNameAvailable: (name: string) => Promise<{ available: boolean; error?: string }>;
+  dismissNamePrompt: () => void;
+  dismissWelcome: () => void;
+  walletSuffix: string;
+}
+
+export function useGuardianProfile(): GuardianProfileResult {
   const { address, isConnected } = useAccount();
   const [profile, setProfile] = useState<GuardianProfile | null>(null);
   const [loading, setLoading] = useState(false);

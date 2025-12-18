@@ -6,7 +6,13 @@ interface UseRateLimitOptions {
   message?: string;
 }
 
-export function useRateLimit(options: UseRateLimitOptions = {}) {
+interface RateLimitResult {
+  checkRateLimit: () => boolean;
+  wrapAction: <T extends (...args: unknown[]) => unknown>(action: T) => T;
+  isRateLimited: boolean;
+}
+
+export function useRateLimit(options: UseRateLimitOptions = {}): RateLimitResult {
   const { minInterval = 2000, message = 'Please wait before trying again' } = options;
   const { toast } = useToast();
   const lastActionRef = useRef<number>(0);
@@ -31,7 +37,7 @@ export function useRateLimit(options: UseRateLimitOptions = {}) {
     return true;
   }, [minInterval, message, toast]);
 
-  const wrapAction = useCallback(<T extends (...args: any[]) => any>(action: T) => {
+  const wrapAction = useCallback(<T extends (...args: unknown[]) => unknown>(action: T): T => {
     return ((...args: Parameters<T>) => {
       if (!checkRateLimit()) return;
       return action(...args);
