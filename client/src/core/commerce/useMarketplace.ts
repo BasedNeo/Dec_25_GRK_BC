@@ -337,6 +337,22 @@ export function useMarketplace() {
         const txType = state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list';
         showError(friendlyError, txType, lastActionRef.current.description, lastActionRef.current.retryFn);
       }
+      
+      // Track analytics failure and clear pending ref
+      if (pendingAnalyticsRef.current.action === 'list') {
+        analytics.listingFailed(
+          pendingAnalyticsRef.current.tokenId,
+          pendingAnalyticsRef.current.price,
+          friendlyError
+        );
+      } else if (pendingAnalyticsRef.current.action === 'buy') {
+        analytics.buyFailed(
+          pendingAnalyticsRef.current.tokenId,
+          pendingAnalyticsRef.current.price,
+          friendlyError
+        );
+      }
+      pendingAnalyticsRef.current = { action: null, tokenId: 0, price: 0 };
     }
   }, [isWriteError, isReceiptError, writeError, receiptError]);
 

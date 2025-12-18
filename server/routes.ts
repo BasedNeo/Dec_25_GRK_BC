@@ -54,21 +54,18 @@ function generateAdminNonce(wallet: string): string {
 function verifyAdminSignature(wallet: string, signature: string): boolean {
   const stored = adminNonces.get(wallet.toLowerCase());
   if (!stored) return false;
+  
+  // ALWAYS consume nonce on any verification attempt (prevents replay attacks)
+  adminNonces.delete(wallet.toLowerCase());
+  
   if (Date.now() > stored.expiry) {
-    adminNonces.delete(wallet.toLowerCase());
     return false;
   }
 
   try {
     const message = `Based Guardians Admin Auth\nNonce: ${stored.nonce}`;
     const recoveredAddress = ethers.verifyMessage(message, signature);
-    const isValid = recoveredAddress.toLowerCase() === wallet.toLowerCase();
-    
-    if (isValid) {
-      // Invalidate nonce after successful use (one-time use)
-      adminNonces.delete(wallet.toLowerCase());
-    }
-    return isValid;
+    return recoveredAddress.toLowerCase() === wallet.toLowerCase();
   } catch {
     return false;
   }

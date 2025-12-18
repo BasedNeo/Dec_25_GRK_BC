@@ -122,6 +122,10 @@ class AnalyticsManager {
     this.track('listing_completed', { tokenId, price, txHash });
   }
 
+  listingFailed(tokenId: number, price: number, error: string) {
+    this.track('listing_failed', { tokenId, price, error });
+  }
+
   buyStarted(tokenId: number, price: number) {
     this.track('buy_started', { tokenId, price });
   }
