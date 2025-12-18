@@ -304,8 +304,8 @@ export function PoolTracker() {
             ) : (
               <>
                 {/* === COMMUNITY TREASURY CARD === */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-5xl mx-auto">
-                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-lg p-6 border border-cyan-500/30 backdrop-blur-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 w-full max-w-5xl mx-auto px-2 md:px-0">
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-lg p-4 md:p-6 border border-cyan-500/30 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Coins className="w-6 h-6 text-cyan-400" />
@@ -315,7 +315,7 @@ export function PoolTracker() {
                     </div>
 
                     {/* Total Balance */}
-                    <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-6" data-testid="text-total-treasury">
+                    <div className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-6" data-testid="text-total-treasury">
                       {displayValue(treasuryData.totalTreasury, 0)} $BASED
                     </div>
 
@@ -365,7 +365,7 @@ export function PoolTracker() {
                   </div>
 
                   {/* === ECOSYSTEM REVENUE CARD (NEW) === */}
-                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-6 border border-purple-500/30 backdrop-blur-sm">
+                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-4 md:p-6 border border-purple-500/30 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-6 h-6 text-purple-400" />
@@ -375,7 +375,7 @@ export function PoolTracker() {
                     </div>
 
                     {/* Total Ecosystem Revenue */}
-                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6" data-testid="text-total-ecosystem-revenue">
+                    <div className="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6" data-testid="text-total-ecosystem-revenue">
                       {displayValue(treasuryData.totalMintRevenue + treasuryData.totalRoyalties + treasuryData.platformFeeToCreator, 0)} $BASED
                     </div>
 
