@@ -1,0 +1,384 @@
+═══════════════════════════════════════════════════════════════════════════════
+MOBILE OPTIMIZATION & UX REFINEMENT - ALL 3 GAMES
+═══════════════════════════════════════════════════════════════════════════════
+
+MISSION: Ensure all games provide premium mobile experience with perfect touch 
+controls, responsive layouts, and optimized performance for mobile devices.
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 1: RESPONSIVE CANVAS SCALING
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR Guardian Defense & Asteroid Mining:
+
+CURRENT: Fixed canvas size (800x600)
+IMPROVE: Scale to fit screen while maintaining aspect ratio
+
+ADD this canvas wrapper:
+
+<div className="relative w-full max-w-4xl mx-auto">
+  <div className="relative w-full" style={{ paddingBottom: '75%' }}> {/* 4:3 aspect ratio */}
+    <canvas
+      ref={canvasRef}
+      width={800}
+      height={600}
+      className="absolute inset-0 w-full h-full rounded-lg border-2 border-cyan-500/30"
+      style={{
+        touchAction: 'none',
+        imageRendering: 'pixelated'
+      }}
+      {...eventHandlers}
+    />
+  </div>
+</div>
+
+UPDATE touch event handlers to account for scaling:
+
+const getScaledCoordinates = (clientX: number, clientY: number) => {
+  const rect = canvasRef.current!.getBoundingClientRect();
+  const scaleX = CANVAS_WIDTH / rect.width;
+  const scaleY = CANVAS_HEIGHT / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+  };
+};
+
+onTouchStart={(e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const coords = getScaledCoordinates(touch.clientX, touch.clientY);
+  handleGameInput(coords.x, coords.y);
+}}
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 2: TOUCH-OPTIMIZED CONTROLS
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR Asteroid Mining fire button:
+
+IMPROVE button size and positioning:
+
+<motion.button
+  whileTap={{ scale: 0.9 }}
+  className="fixed bottom-8 right-8 w-24 h-24 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-red-500 to-red-600 border-4 border-white/50 flex items-center justify-center shadow-2xl z-50"
+  style={{
+    touchAction: 'none',
+    WebkitTapHighlightColor: 'transparent',
+  }}
+  onTouchStart={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShooting(true);
+    navigator.vibrate?.(50); // Haptic feedback
+  }}
+  onTouchEnd={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShooting(false);
+  }}
+>
+  <Crosshair className="w-12 h-12 md:w-10 md:h-10 text-white" />
+  
+  {/* Visual feedback ring */}
+  {isShooting && (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 1 }}
+      animate={{ scale: 1.5, opacity: 0 }}
+      transition={{ duration: 0.5, repeat: Infinity }}
+      className="absolute inset-0 border-4 border-white rounded-full"
+    />
+  )}
+</motion.button>
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 3: PREVENT ZOOM & SCROLL ON TOUCH
+═══════════════════════════════════════════════════════════════════════════════
+
+ADD to each game component:
+
+useEffect(() => {
+  // Prevent zoom on double-tap
+  let lastTouchEnd = 0;
+  const preventZoom = (e: TouchEvent) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  };
+  
+  // Prevent pull-to-refresh
+  let startY = 0;
+  const preventPullToRefresh = (e: TouchEvent) => {
+    if (e.type === 'touchstart') {
+      startY = e.touches[0].pageY;
+    } else if (e.type === 'touchmove') {
+      const currentY = e.touches[0].pageY;
+      if (startY < currentY && window.scrollY === 0) {
+        e.preventDefault();
+      }
+    }
+  };
+  
+  document.addEventListener('touchend', preventZoom, { passive: false });
+  document.addEventListener('touchstart', preventPullToRefresh, { passive: false });
+  document.addEventListener('touchmove', preventPullToRefresh, { passive: false });
+  
+  return () => {
+    document.removeEventListener('touchend', preventZoom);
+    document.removeEventListener('touchstart', preventPullToRefresh);
+    document.removeEventListener('touchmove', preventPullToRefresh);
+  };
+}, [gameStarted]);
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 4: MOBILE PERFORMANCE MODE
+═══════════════════════════════════════════════════════════════════════════════
+
+DETECT mobile and reduce effects:
+
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const isLowEnd = isMobile && window.devicePixelRatio < 2;
+
+// Adjust settings for mobile
+const mobileSettings = {
+  particleIntensity: isLowEnd ? 'low' : 'medium',
+  maxParticles: isLowEnd ? 30 : 100,
+  starfieldDensity: isLowEnd ? 0.5 : 1,
+};
+
+// Apply in render:
+const particleCount = isMobile ? 
+  Math.round(baseCount * 0.5) : 
+  baseCount;
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 5: GUARDIAN SOLITAIRE MOBILE IMPROVEMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+IMPROVE card size for mobile:
+
+<div className="grid grid-cols-7 gap-2 md:gap-4">
+  {tableau.map((pile, idx) => (
+    <div className="min-h-[300px] md:min-h-[400px]">
+      {pile.cards.map((card, cardIdx) => (
+        <img
+          className="w-16 h-24 md:w-20 md:h-28 object-cover rounded-md md:rounded-lg"
+          style={{ 
+            top: `${cardIdx * 20}px`,  // Tighter spacing on mobile
+            zIndex: cardIdx 
+          }}
+          {...cardProps}
+        />
+      ))}
+    </div>
+  ))}
+</div>
+
+ADD long-press for card details on mobile:
+
+const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
+
+const handleTouchStart = (card) => {
+  const timer = setTimeout(() => {
+    // Show card details
+    toast({
+      title: `${card.rank} of ${card.suit}`,
+      description: `Guardian #${card.nftId}`,
+      duration: 2000,
+    });
+    navigator.vibrate?.(100);
+  }, 500);
+  setPressTimer(timer);
+};
+
+const handleTouchEnd = () => {
+  if (pressTimer) {
+    clearTimeout(pressTimer);
+    setPressTimer(null);
+  }
+};
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 6: IMPROVE START SCREEN MOBILE LAYOUT
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR all games, improve mobile layout:
+
+<div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+  <div className="text-center mb-6 md:mb-8">
+    <h1 className="text-4xl md:text-6xl font-black ...">
+      {/* Game Title */}
+    </h1>
+  </div>
+  
+  <Card className="p-6 md:p-10 ...">
+    <div className="space-y-6 md:space-y-8">
+      
+      {/* Icon */}
+      <div className="w-24 h-24 md:w-32 md:h-32 mx-auto">
+        {/* Icon content */}
+      </div>
+      
+      {/* How to Play */}
+      <div className="text-sm md:text-base">
+        {/* Instructions */}
+      </div>
+      
+      {/* Action Buttons */}
+      <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+        <Button size="lg" className="w-full md:w-auto">
+          START GAME
+        </Button>
+      </div>
+    </div>
+  </Card>
+</div>
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 7: ADD ORIENTATION WARNING
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR games that work better in landscape:
+
+const [isPortrait, setIsPortrait] = useState(
+  window.innerHeight > window.innerWidth
+);
+
+useEffect(() => {
+  const handleResize = () => {
+    setIsPortrait(window.innerHeight > window.innerWidth);
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
+{isPortrait && isMobile && gameStarted && (
+  <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-6">
+    <div className="text-center">
+      <motion.div
+        animate={{ rotate: [0, 90, 90, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="w-16 h-16 mx-auto mb-4"
+      >
+        <Smartphone className="w-full h-full text-cyan-400" />
+      </motion.div>
+      <h3 className="text-xl font-bold text-white mb-2">
+        Rotate Device
+      </h3>
+      <p className="text-gray-400 text-sm">
+        This game works best in landscape mode
+      </p>
+    </div>
+  </div>
+)}
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 8: HAPTIC FEEDBACK (MOBILE)
+═══════════════════════════════════════════════════════════════════════════════
+
+ADD haptic feedback for key actions:
+
+const haptic = {
+  light: () => navigator.vibrate?.(10),
+  medium: () => navigator.vibrate?.(25),
+  heavy: () => navigator.vibrate?.(50),
+  success: () => navigator.vibrate?.([30, 10, 30]),
+  error: () => navigator.vibrate?.([50, 30, 50]),
+};
+
+// Use throughout:
+- Button press: haptic.light()
+- Card select: haptic.medium()
+- Successful move: haptic.success()
+- Invalid move: haptic.error()
+- Game over: haptic.heavy()
+- Combo/chain: haptic.success()
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 9: REDUCE BANDWIDTH ON MOBILE
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR Guardian Solitaire NFT images:
+
+const getOptimizedImageUrl = (nftId: number) => {
+  const baseUrl = `${IPFS_ROOT}${nftId}.png`;
+  
+  // Use lower resolution on mobile
+  if (isMobile) {
+    // Add query param for image optimization (if IPFS gateway supports)
+    return `${baseUrl}?w=200&q=75`;
+  }
+  
+  return baseUrl;
+};
+
+ADD image loading states:
+
+const [imageLoaded, setImageLoaded] = useState(false);
+
+<div className="relative">
+  {!imageLoaded && (
+    <div className="absolute inset-0 bg-gray-800 animate-pulse rounded-lg" />
+  )}
+  <img
+    src={getOptimizedImageUrl(card.nftId)}
+    onLoad={() => setImageLoaded(true)}
+    className={imageLoaded ? 'opacity-100' : 'opacity-0'}
+    style={{ transition: 'opacity 0.3s' }}
+  />
+</div>
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIMIZATION 10: OFFLINE SUPPORT (PWA-READY)
+═══════════════════════════════════════════════════════════════════════════════
+
+ADD connection status indicator:
+
+const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+useEffect(() => {
+  const handleOnline = () => setIsOnline(true);
+  const handleOffline = () => setIsOnline(false);
+  
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+  
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+  };
+}, []);
+
+{!isOnline && (
+  <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 text-sm z-50">
+    Offline - Scores won't be submitted until connection restored
+  </div>
+)}
+
+═══════════════════════════════════════════════════════════════════════════════
+MOBILE TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Test on actual devices (or Chrome DevTools mobile emulation):
+
+[ ] iPhone SE (small screen)
+[ ] iPhone 12/13/14 (standard)
+[ ] iPhone 14 Pro Max (large)
+[ ] Android phone (Chrome)
+[ ] iPad (tablet)
+
+For each device:
+[ ] Touch controls responsive
+[ ] No accidental zooms
+[ ] No pull-to-refresh interference
+[ ] Canvas scales correctly
+[ ] Text readable at all sizes
+[ ] Buttons thumb-reachable
+[ ] Performance smooth (30+ fps minimum)
+[ ] Haptic feedback works (if supported)
+[ ] Orientation handling works
+[ ] Game playable start to finish
+
+═══════════════════════════════════════════════════════════════════════════════

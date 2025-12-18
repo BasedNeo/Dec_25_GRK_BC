@@ -269,7 +269,7 @@ export function GuardianDefender() {
               <div className="w-24 h-20 mx-auto mb-4 relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30" />
                 <div className="absolute inset-2 flex items-center justify-center" style={{ animation: 'ship-hover 3s ease-in-out infinite' }}>
-                  <RocketIcon size={36} />
+                  <img src={rocketShip} alt="Ship" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-cyan-500/20 text-cyan-400 text-[8px] font-mono px-2 py-0.5 rounded border border-cyan-500/30" style={{ animation: 'status-blink 2s ease-in-out infinite' }}>
                   HANGAR A7
@@ -288,7 +288,6 @@ export function GuardianDefender() {
                 </div>
               ) : (
                 <div className="relative inline-block group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity" />
                   <Button 
                     onClick={() => setPhase('menu')} 
                     className="relative bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold px-8 py-3 rounded-xl border-0"
@@ -300,7 +299,7 @@ export function GuardianDefender() {
               )}
               
               <p className="text-gray-600 text-xs mt-4 font-mono">
-                {access.playsRemaining} SORTIES AVAILABLE
+                {access.playsRemaining} PLAYS REMAINING
               </p>
               
               {isConnected && isHolder && (
@@ -552,7 +551,7 @@ export function GuardianDefender() {
             </div>
           )}
 
-          <p className="text-center text-gray-700 text-[10px] mt-3 hidden md:block font-mono">
+          <p className="text-center text-gray-500 text-sm mt-3 hidden md:block font-mono">
             ← → MOVE  •  ↑ THRUST  •  SPACE FIRE
           </p>
         </div>

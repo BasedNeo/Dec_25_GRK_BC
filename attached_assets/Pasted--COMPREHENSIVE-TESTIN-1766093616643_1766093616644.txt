@@ -1,0 +1,289 @@
+═══════════════════════════════════════════════════════════════════════════════
+COMPREHENSIVE TESTING & BUG FIXING - ALL 3 GAMES
+═══════════════════════════════════════════════════════════════════════════════
+
+MISSION: Systematically test all 3 games, identify bugs, and implement fixes.
+
+TEST PROTOCOL: Run each test and document results. Fix any issues found.
+
+═══════════════════════════════════════════════════════════════════════════════
+TEST SUITE 1: GUARDIAN DEFENSE
+═══════════════════════════════════════════════════════════════════════════════
+
+CORE GAMEPLAY TESTS:
+[ ] Tap screen to fire missile - trajectory correct?
+[ ] Defensive missile reaches target position accurately?
+[ ] Explosion appears at target location?
+[ ] Explosion radius detects enemy missiles correctly?
+[ ] Chain reactions trigger (enemy missile in blast radius)?
+[ ] Score increases correctly (base + color multiplier + chain bonus)?
+[ ] Wave spawns correct number of missiles?
+[ ] Enemy missiles target cities/batteries correctly?
+[ ] City health decreases on hit?
+[ ] City destroyed when health reaches 0?
+[ ] Battery missiles decrease on fire?
+[ ] Battery reloads after 3 seconds when empty?
+[ ] Game ends when all cities destroyed?
+[ ] Victory achieved after wave 10 completion?
+
+VISUAL TESTS:
+[ ] Parallax stars animate smoothly?
+[ ] Shooting stars appear occasionally?
+[ ] Alien mountains render correctly (3 layers)?
+[ ] Ground gradient displays properly?
+[ ] Enemy missiles show colored trails (green/red/yellow)?
+[ ] Defensive missiles show cyan trails?
+[ ] Explosions expand/hold/shrink smoothly?
+[ ] Particles animate and fade correctly?
+[ ] Cities render with windows?
+[ ] Batteries show Guardian logo?
+[ ] Command Center label visible?
+
+AUDIO TESTS:
+[ ] Launch sound plays on fire?
+[ ] Explosion sound on impact?
+[ ] Chain sound on chain reaction?
+[ ] Hit sound when city/battery damaged?
+[ ] Wave sound on new wave?
+[ ] Death sound on game over?
+[ ] Sound toggle works?
+[ ] Volume setting applies correctly?
+
+MOBILE TESTS:
+[ ] Tap-to-fire works on touch devices?
+[ ] Canvas scales correctly on mobile?
+[ ] No lag or stuttering on mobile?
+[ ] UI elements thumb-reachable?
+
+COMMON BUGS TO FIX:
+
+BUG: Missiles sometimes miss target
+FIX: Ensure lerp calculation uses correct progress (0 to 1)
+CHECK: missile.position = lerp(start, target, progress)
+
+BUG: Explosions don't detect missiles
+FIX: Verify collision detection uses correct radius
+CHECK: getDistance(explosion.position, missile.position) < explosion.radius
+
+BUG: Score doesn't update
+FIX: Ensure state updates trigger re-render
+CHECK: Use setRenderTrigger(prev => prev + 1) after score change
+
+BUG: Game doesn't end when cities destroyed
+FIX: Check game over logic runs after collision detection
+CHECK: Count active cities, trigger game over if 0
+
+BUG: Canvas doesn't scale on mobile
+FIX: Add CSS max-width and height auto
+CHECK: className="w-full max-w-full h-auto"
+
+═══════════════════════════════════════════════════════════════════════════════
+TEST SUITE 2: GUARDIAN SOLITAIRE
+═══════════════════════════════════════════════════════════════════════════════
+
+CORE GAMEPLAY TESTS:
+[ ] Cards deal correctly (7 tableau piles, 1-7 cards each)?
+[ ] Top card in each tableau pile face-up?
+[ ] 24 cards remain in deck after deal?
+[ ] Click deck draws card to waste?
+[ ] Empty deck recycles waste pile?
+[ ] Click card to select (glow appears)?
+[ ] Click destination moves selected card?
+[ ] Drag-and-drop works?
+[ ] Double-click auto-moves to foundation (if valid)?
+[ ] Kings only on empty tableau piles?
+[ ] Tableau follows descending + alternating color rule?
+[ ] Foundations start with Ace?
+[ ] Foundations follow ascending + same suit rule?
+[ ] Face-down cards flip when exposed?
+[ ] Win detected when all 4 foundations complete (13 cards each)?
+
+UNDO SYSTEM TESTS:
+[ ] Undo button restores previous state?
+[ ] Undo counter shows available undos (max 5)?
+[ ] Undo works for deck draw?
+[ ] Undo works for card moves?
+[ ] Undo works for multiple moves in sequence?
+
+HINT SYSTEM TESTS:
+[ ] Hint highlights valid moves with yellow glow?
+[ ] Hint prioritizes foundation moves?
+[ ] Hint shows toast with move count?
+[ ] Hint glow disappears after 3 seconds?
+
+AUTO-SAVE TESTS:
+[ ] Game state saves to localStorage?
+[ ] Resume button appears when saved game exists?
+[ ] Resume loads correct game state?
+[ ] Saved game cleared on completion?
+
+SCORING TESTS:
+[ ] Base score 10,000 for win?
+[ ] Time bonus calculated correctly?
+[ ] Move bonus calculated correctly?
+[ ] Combo bonus for foundation streaks?
+[ ] Efficiency bonus calculated?
+[ ] Final score capped at 50,000?
+
+COMMON BUGS TO FIX:
+
+BUG: Cards don't flip when exposed
+FIX: Check that lastCard.faceUp is set to true
+CHECK: After removing top card, flip new top card
+
+BUG: Undo doesn't work
+FIX: Ensure saveStateToHistory called before each move
+CHECK: Call saveStateToHistory() at start of moveToTableau/moveToFoundation
+
+BUG: Double-click doesn't auto-move
+FIX: Verify canPlaceOnFoundation check for all 4 foundations
+CHECK: Loop through foundations[i] and check validity
+
+BUG: Resume loads corrupted state
+FIX: Add try-catch around JSON.parse
+CHECK: 
+try {
+  const state = JSON.parse(savedGame);
+} catch {
+  localStorage.removeItem(saveKey);
+  return null;
+}
+
+BUG: Score doesn't save
+FIX: Ensure GameStorageManager.saveStats called on game end
+CHECK: Call before setShowVictory(true)
+
+═══════════════════════════════════════════════════════════════════════════════
+TEST SUITE 3: ASTEROID MINING
+═══════════════════════════════════════════════════════════════════════════════
+
+CORE GAMEPLAY TESTS:
+[ ] Tap screen moves ship toward that position?
+[ ] Ship wraps around screen edges?
+[ ] Fire button shoots bullets?
+[ ] Hold fire button for continuous shooting?
+[ ] Bullets collide with asteroids?
+[ ] Large asteroids split into 2 medium?
+[ ] Medium asteroids split into 4 small?
+[ ] Small asteroids destroyed completely?
+[ ] Resources drop from destroyed asteroids?
+[ ] Resources can be collected by flying through?
+[ ] Power-ups drop occasionally?
+[ ] Shield power-up restores health?
+[ ] Rapid fire shoots 3 bullets?
+[ ] Magnet attracts resources?
+[ ] Extra life adds a life?
+[ ] Ship takes damage on asteroid collision?
+[ ] Ship invulnerable for 3 seconds after hit?
+[ ] Game ends when all lives lost?
+
+VISUAL TESTS:
+[ ] 3-layer parallax starfield?
+[ ] Asteroids rotate continuously?
+[ ] Asteroids scale for 3D depth illusion?
+[ ] 5 asteroid colors render correctly?
+[ ] Gold asteroids have glow effect?
+[ ] Particle explosions match asteroid color?
+[ ] Resources have sparkle effect?
+[ ] Power-ups have pulsing aura?
+[ ] Bullets have white trails?
+[ ] Ship has engine glow when moving?
+[ ] Shield bar shows 5 segments?
+[ ] Lives display as heart icons?
+
+SCORING TESTS:
+[ ] Grey asteroids: small 50, medium 100, large 200?
+[ ] Blue asteroids: 2.5x multiplier?
+[ ] Green asteroids: 5x multiplier?
+[ ] Purple asteroids: 10x multiplier?
+[ ] Gold asteroids: 5000 pts (no split)?
+[ ] Resources give +50% of asteroid value?
+[ ] Combo multipliers work (2x, 3x, 4x)?
+
+COMMON BUGS TO FIX:
+
+BUG: Ship doesn't move to tap position
+FIX: Ensure targetPosition state updates on tap
+CHECK: onClick sets setTargetPosition({ x, y })
+
+BUG: Asteroids spawn off-screen
+FIX: Verify spawn positions at edges with margin
+CHECK: position = { x: side === 'left' ? -50 : ... }
+
+BUG: Power-ups don't activate
+FIX: Check collision detection radius
+CHECK: getDistance(powerUp.position, ship.position) < SHIP_SIZE + 15
+
+BUG: Rapid fire doesn't work
+FIX: Verify powerUpActive state check
+CHECK: const fireRate = state.powerUpActive?.type === 'rapidFire' ? 3 : 1;
+
+BUG: Game loop doesn't stop on exit
+FIX: Cancel animation frame on unmount
+CHECK: 
+useEffect(() => {
+  return () => {
+    if (gameLoopRef.current) {
+      cancelAnimationFrame(gameLoopRef.current);
+    }
+  };
+}, []);
+
+═══════════════════════════════════════════════════════════════════════════════
+CROSS-GAME CONSISTENCY TESTS
+═══════════════════════════════════════════════════════════════════════════════
+
+[ ] All games use GameStorageManager correctly?
+[ ] All games integrate with GameHUD component?
+[ ] All games use VictoryScreen component?
+[ ] All games respect 10 plays per day limit?
+[ ] All games require wallet connection?
+[ ] All games require NFT ownership?
+[ ] All games track analytics events?
+[ ] All games have sound toggle that persists?
+[ ] All games cap score at 50,000?
+[ ] All games have consistent Guardian branding?
+
+═══════════════════════════════════════════════════════════════════════════════
+PERFORMANCE TESTS
+═══════════════════════════════════════════════════════════════════════════════
+
+MEASURE & OPTIMIZE:
+[ ] All games run at 60fps consistently?
+[ ] No memory leaks (check DevTools Memory tab)?
+[ ] No excessive re-renders (check React DevTools)?
+[ ] LocalStorage usage under 100KB per game?
+[ ] Canvas rendering optimized (no unnecessary draws)?
+[ ] Particle systems limited (max 100 active particles)?
+[ ] Audio context closed on unmount?
+[ ] Event listeners removed on unmount?
+
+IF FPS < 60:
+- Reduce particle count
+- Decrease animation complexity
+- Use requestAnimationFrame correctly
+- Debounce expensive operations
+
+IF MEMORY LEAK DETECTED:
+- Clear all intervals/timeouts on unmount
+- Remove all event listeners on unmount
+- Cancel animation frames on unmount
+- Null out large data structures
+
+═══════════════════════════════════════════════════════════════════════════════
+FINAL VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+After all tests and fixes, verify:
+[ ] All 3 games load without console errors
+[ ] All 3 games playable start to finish
+[ ] Victory/defeat screens work in all 3 games
+[ ] Stats persist correctly for all 3 games
+[ ] Leaderboards show scores from all 3 games
+[ ] Mobile experience smooth on all 3 games
+[ ] Sound works correctly in all 3 games
+[ ] Guardian branding consistent across all 3 games
+
+Document any remaining issues and create fix list.
+
+═══════════════════════════════════════════════════════════════════════════════
