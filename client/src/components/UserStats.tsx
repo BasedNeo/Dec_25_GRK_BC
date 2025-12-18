@@ -8,6 +8,7 @@ import {
   Sparkles, Users, Flame, Calendar, TrendingUp,
   Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2, Trophy
 } from 'lucide-react';
+import { useFeatureFlags } from '@/lib/featureFlags';
 import { useGuardianProfileContext } from './GuardianProfileProvider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -315,6 +316,7 @@ export function UserStats() {
   const { t } = useTranslation();
   const { address, isConnected } = useAccount();
   const { profile, getDisplayName, setCustomName, checkNameAvailable, walletSuffix } = useGuardianProfileContext();
+  const { flags } = useFeatureFlags();
   const [nftCount, setNftCount] = useState(0);
   const [nftBreakdown, setNftBreakdown] = useState({ guardians: 0, frogs: 0, creatures: 0 });
   const [votesCount, setVotesCount] = useState(0);
@@ -837,11 +839,16 @@ export function UserStats() {
                   variant="outline"
                   size="sm"
                   onClick={startEditing}
-                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                  disabled={!flags.customNamesEnabled}
+                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10 disabled:opacity-50"
                   data-testid="button-edit-name"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
-                  {getDisplayName() ? t('profile.editName', 'Edit Name') : t('profile.setName', 'Set Name')}
+                  {!flags.customNamesEnabled 
+                    ? t('profile.namesDisabled', 'Names Disabled') 
+                    : getDisplayName() 
+                      ? t('profile.editName', 'Edit Name') 
+                      : t('profile.setName', 'Set Name')}
                 </Button>
               )}
             </div>

@@ -16,6 +16,7 @@ import { Navbar } from '@/components/Navbar';
 import { Home } from 'lucide-react';
 import { useLocation } from 'wouter';
 import rocketShip from '@assets/Untitled.png';
+import { useFeatureFlags } from '@/lib/featureFlags';
 
 export function GuardianDefender() {
   const [, setLocation] = useLocation();
@@ -28,6 +29,24 @@ export function GuardianDefender() {
   const [displayLives, setDisplayLives] = useState(3);
   const [displayLevel, setDisplayLevel] = useState(1);
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
+  const { flags } = useFeatureFlags();
+
+  if (!flags.gameEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Game Temporarily Unavailable</h2>
+          <p className="text-gray-400">The game is currently disabled. Please check back soon.</p>
+          <Button 
+            onClick={() => setLocation('/')}
+            className="mt-6 bg-cyan-500 hover:bg-cyan-600 text-black"
+          >
+            <Home className="w-4 h-4 mr-2" /> Return Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Load ship image
   useEffect(() => {

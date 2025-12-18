@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, useMotionValue, useTransform, animate, useScroll } from "framer-motion";
-import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw, Wallet } from "lucide-react";
+import { Minus, Plus, Zap, CheckCircle, Fingerprint, TrendingUp, Loader2, RefreshCw, Wallet, AlertTriangle } from "lucide-react";
 import { calculateBackedValue, Guardian } from "@/lib/mockData";
 import { useInterval } from "@/hooks/useInterval";
+import { useFeatureFlags } from "@/lib/featureFlags";
 const MINT_PRICE = 69420;
 const TOTAL_SUPPLY = 3732;
 import { NFT_SYMBOL, BLOCK_EXPLORER } from "@/lib/constants";
@@ -33,6 +34,7 @@ export function Hero() {
   const [maxAffordable, setMaxAffordable] = useState(0);
   const { toast } = useToast();
   const { isPaused } = useSecurity();
+  const { flags } = useFeatureFlags();
   const mintButtonColor = useABTest('mint-button-color', ['cyan', 'purple']);
   const { isConnected, chain } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -402,7 +404,7 @@ export function Hero() {
             <Button 
               id="hero-mint-section"
               onClick={handleMint}
-              disabled={isPaused || isMinting || (isConnected && !canAfford(mintQuantity))}
+              disabled={!flags.mintingEnabled || isPaused || isMinting || (isConnected && !canAfford(mintQuantity))}
               className={`relative w-full py-5 sm:py-6 text-sm sm:text-lg font-orbitron tracking-wider sm:tracking-widest disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-300 overflow-hidden
                 ${!isConnected 
                   ? 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500 text-black hover:shadow-[0_0_40px_rgba(0,255,255,0.5)]'
@@ -420,7 +422,11 @@ export function Hero() {
                 animate={{ x: ['-200%', '200%'] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
               />
-              {isPaused ? (
+              {!flags.mintingEnabled ? (
+                <span className="flex items-center justify-center text-red-400">
+                  <AlertTriangle className="mr-2 h-4 w-4" /> MINTING DISABLED
+                </span>
+              ) : isPaused ? (
                 <span className="flex items-center text-red-500">
                   <Zap className="mr-2 h-4 w-4" /> PAUSED
                 </span>
@@ -451,6 +457,13 @@ export function Hero() {
               )}
             </Button>
             </motion.div>
+
+            {!flags.mintingEnabled && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded p-3 text-sm text-red-400 mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Minting is temporarily disabled
+              </div>
+            )}
             
             {/* Transaction Status */}
             {isMinting && status && status !== 'idle' && (

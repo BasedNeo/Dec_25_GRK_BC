@@ -9,6 +9,7 @@ import { SafeTransaction } from '@/lib/safeTransaction';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
 import { analytics } from '@/lib/analytics';
+import { useFeatureFlags } from '@/lib/featureFlags';
 
 const NFT_ABI = [
   {
@@ -26,6 +27,7 @@ export function useMint() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('idle');
+  const { flags } = useFeatureFlags();
 
   const { 
     writeContract, 
@@ -122,6 +124,11 @@ export function useMint() {
   }, [isConfirmError, confirmationError]);
 
   const mint = useCallback(async (quantity: number = 1) => {
+    if (!flags.mintingEnabled) {
+      setError('Minting is currently disabled');
+      return;
+    }
+
     if (!isConnected || !address) {
       setError('Please connect your wallet');
       return;
@@ -189,7 +196,7 @@ export function useMint() {
       setIsLoading(false);
       setStatus('idle');
     }
-  }, [isConnected, address, writeContract, canMint, isPaused, isSoldOut, publicMintEnabled, canAfford, mintPriceWei]);
+  }, [flags.mintingEnabled, isConnected, address, writeContract, canMint, isPaused, isSoldOut, publicMintEnabled, canAfford, mintPriceWei]);
 
   const checkTransaction = useCallback(async () => {
     if (!hash || !publicClient) return null;

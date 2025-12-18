@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsGuardianHolder } from '@/hooks/useIsGuardianHolder';
+import { useFeatureFlags } from "@/lib/featureFlags";
 import { 
   ShieldCheck, ShoppingBag, Plus, RefreshCw, AlertTriangle, CheckCircle2, Check,
   Wallet, Clock, Filter, ArrowUpDown, Search, Fingerprint, X, Gavel, Timer, Infinity as InfinityIcon,
@@ -59,6 +60,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isPaused } = useSecurity();
+  const { flags } = useFeatureFlags();
   const [activeTab, setActiveTab] = useState("buy");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<MarketItem | null>(null);
@@ -949,6 +951,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
       
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {!flags.marketplaceEnabled && (
+          <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-6 text-center mb-6">
+            <h3 className="text-xl font-bold text-red-400 mb-2">Marketplace Temporarily Unavailable</h3>
+            <p className="text-red-200">The marketplace is currently disabled for maintenance. Please check back soon.</p>
+          </div>
+        )}
         
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-end mb-8 gap-6">
