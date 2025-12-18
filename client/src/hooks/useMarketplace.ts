@@ -21,6 +21,7 @@ import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
 import { rpcCache } from '@/lib/rpcCache';
+import { perfMonitor } from '@/lib/performanceMonitor';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -618,6 +619,7 @@ export function useFloorPrice() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchFloorPrice = useCallback(async () => {
+    const endTimer = perfMonitor.startTimer('Marketplace:fetchListings');
     try {
       setIsLoading(true);
       const { ethers } = await import('ethers');
@@ -683,6 +685,7 @@ export function useFloorPrice() {
       setFloorPrice(null);
     } finally {
       setIsLoading(false);
+      endTimer();
     }
   }, []);
 

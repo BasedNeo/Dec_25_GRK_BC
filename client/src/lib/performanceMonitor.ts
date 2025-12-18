@@ -1,0 +1,88 @@
+interface PerformanceMetric {
+  durations: number[];
+  count: number;
+  totalTime: number;
+}
+
+class PerformanceMonitor {
+  private metrics = new Map<string, PerformanceMetric>();
+  private readonly SLOW_THRESHOLD = 1000; // 1 second
+
+  startTimer(label: string): () => void {
+    const start = performance.now();
+    
+    return () => {
+      const duration = performance.now() - start;
+      
+      // Get or create metric
+      const metric = this.metrics.get(label) || {
+        durations: [],
+        count: 0,
+        totalTime: 0
+      };
+      
+      // Update metric
+      metric.durations.push(duration);
+      metric.count++;
+      metric.totalTime += duration;
+      
+      // Keep only last 100 measurements
+      if (metric.durations.length > 100) {
+        metric.durations.shift();
+      }
+      
+      this.metrics.set(label, metric);
+      
+      // Warn on slow operations
+      if (duration > this.SLOW_THRESHOLD) {
+        console.warn(`⚠️ Slow operation: ${label} took ${duration.toFixed(2)}ms`);
+      }
+    };
+  }
+
+  getReport(): Record<string, {
+    avg: number;
+    max: number;
+    min: number;
+    count: number;
+    total: number;
+  }> {
+    const report: Record<string, any> = {};
+    
+    this.metrics.forEach((metric, label) => {
+      const durations = metric.durations;
+      report[label] = {
+        avg: metric.totalTime / metric.count,
+        max: Math.max(...durations),
+        min: Math.min(...durations),
+        count: metric.count,
+        total: metric.totalTime
+      };
+    });
+    
+    return report;
+  }
+
+  getSlowestOperations(limit: number = 5) {
+    const report = this.getReport();
+    return Object.entries(report)
+      .sort(([, a], [, b]) => b.avg - a.avg)
+      .slice(0, limit);
+  }
+
+  clear(): void {
+    this.metrics.clear();
+  }
+
+  logReport(): void {
+    const report = this.getReport();
+    console.table(report);
+    
+    console.log('\n🐌 Slowest Operations:');
+    this.getSlowestOperations().forEach(([label, stats]) => {
+      console.log(`  ${label}: ${stats.avg.toFixed(2)}ms avg (${stats.count} calls)`);
+    });
+  }
+}
+
+export const perfMonitor = new PerformanceMonitor();

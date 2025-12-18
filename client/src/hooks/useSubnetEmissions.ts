@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useInterval } from '@/hooks/useInterval';
+import { perfMonitor } from '@/lib/performanceMonitor';
 
 // ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
@@ -203,6 +204,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
       return;
     }
 
+    const endTimer = perfMonitor.startTimer('Emissions:fetch');
     try {
       setLoading(true);
       setError(null);
@@ -331,6 +333,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
       setError(e instanceof Error ? e.message : 'Failed to fetch emission data');
     } finally {
       setLoading(false);
+      endTimer();
     }
   }, []);
 

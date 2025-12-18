@@ -27,6 +27,7 @@ import { useInterval } from '@/hooks/useInterval';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { rpcManager } from '@/lib/rpcProvider';
 import { withCache } from '@/lib/cache';
+import { perfMonitor } from '@/lib/performanceMonitor';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -131,6 +132,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
 
   // Fetch activities from blockchain - OPTIMIZED with parallel calls, RPC failover, and caching
   const fetchActivities = useCallback(async () => {
+    const endTimer = perfMonitor.startTimer('ActivityFeed:fetch');
     return withCache('activity-feed', async () => {
     return requestDedup.execute('activity-feed-rpc', async () => {
     try {
@@ -282,6 +284,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       setError(error.message || 'Failed to fetch activity');
     } finally {
       setIsLoading(false);
+      endTimer();
     }
     });
     }, 30000); // Cache for 30 seconds

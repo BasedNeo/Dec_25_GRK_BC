@@ -14,6 +14,7 @@ import { errorReporter } from '@/lib/errorReporter';
 import { SecureStorage } from '@/lib/secureStorage';
 import { useToast } from '@/hooks/use-toast';
 import { invalidateFeatureFlagsCache } from '@/lib/featureFlags';
+import { perfMonitor } from '@/lib/performanceMonitor';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -49,6 +50,13 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [conversions, setConversions] = useState<any>(null);
   const [featureFlags, setFeatureFlags] = useState<Array<{key: string; enabled: boolean; description: string | null; updatedAt: string; updatedBy: string | null}>>([]);
   const [flagsLoading, setFlagsLoading] = useState<string | null>(null);
+  const [perfReport, setPerfReport] = useState<any>(null);
+
+  const loadPerfReport = () => {
+    const report = perfMonitor.getReport();
+    const slowest = perfMonitor.getSlowestOperations(10);
+    setPerfReport({ report, slowest });
+  };
   
   useInterval(() => {
     setErrorLogs(errorReporter.getLogs());
@@ -852,6 +860,73 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
                 ⚠️ Secure storage has size limits (4.5MB) and auto-cleanup. Old items are removed when storage is full.
               </div>
             </div>
+          </Card>
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4">
+              ⚡ Performance Monitoring
+            </h3>
+            
+            <div className="flex gap-2 mb-4">
+              <Button
+                size="sm"
+                onClick={loadPerfReport}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                Load Performance Report
+              </Button>
+              
+              <Button
+                size="sm"
+                onClick={() => {
+                  perfMonitor.logReport();
+                  toast({ title: 'Performance report logged to console' });
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Log to Console
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  perfMonitor.clear();
+                  setPerfReport(null);
+                  toast({ title: 'Performance data cleared' });
+                }}
+                className="border-gray-600 text-gray-400 hover:bg-gray-800"
+              >
+                Clear Data
+              </Button>
+            </div>
+            
+            {perfReport && perfReport.slowest.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-white mb-2">Slowest Operations:</h4>
+                {perfReport.slowest.map(([label, stats]: [string, any]) => (
+                  <div key={label} className="bg-white/5 p-3 rounded">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white font-mono text-sm">{label}</span>
+                      <span className={`font-bold ${stats.avg > 1000 ? 'text-red-400' : stats.avg > 500 ? 'text-yellow-400' : 'text-green-400'}`}>
+                        {stats.avg.toFixed(2)}ms
+                      </span>
+                    </div>
+                    <div className="text-gray-400 text-xs mt-1">
+                      {stats.count} calls | Max: {stats.max.toFixed(2)}ms | Min: {stats.min.toFixed(2)}ms
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {perfReport && perfReport.slowest.length === 0 && (
+              <div className="text-gray-500 text-sm">No performance data yet. Navigate around to collect metrics.</div>
+            )}
+            
+            {!perfReport && (
+              <div className="text-gray-500 text-sm">Click "Load Performance Report" to see timing data for RPC calls and other operations.</div>
+            )}
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
