@@ -299,22 +299,21 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   const MINT_PRICE = 69420;
   const totalMintVolume = contractStats.totalMinted * MINT_PRICE;
     
-  // LOCKED: totalVolume = CUMULATIVE_SALES_BASELINE.volume (0) + recentVolume (from on-chain)
   const stats = {
     // CUMULATIVE from CONTRACT (real total)
     totalMinted: contractStats.totalMinted,
     
-    // FROM EVENTS (recent activity only - last 50000 blocks)
+    // FROM EVENTS (recent activity only - last 500k blocks for display)
     recentMints: activities.filter(a => a.type === 'mint').length,
     totalSales: activities.filter(a => a.type === 'sale').length,
     totalListings: activities.filter(a => a.type === 'list').length,
     totalTransfers: activities.filter(a => a.type === 'transfer').length,
     
-    // VOLUME: Historical baseline + recent on-chain activity
-    // This provides accurate cumulative volume for royalty calculations
-    totalVolume: CUMULATIVE_SALES_BASELINE.volume + recentVolume,
+    // VOLUME: Total mint volume + cumulative sales volume + recent on-chain sales
+    // This includes ALL mints (from contract state) and ALL sales (baseline + recent)
+    totalVolume: totalMintVolume + CUMULATIVE_SALES_BASELINE.volume + recentVolume,
     recentVolume, // Just the recent activity for display purposes
-    totalMintVolume, // Total $BASED spent on mints (totalMinted * 69420)
+    totalMintVolume, // Total volume from all mints
       
     // FROM CONTRACT (real-time)
     activeListings: contractStats.activeListings,
