@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { initAnalytics } from "@/lib/analytics";
+
+// Initialize analytics
+initAnalytics();
 
 // Global error handler for wallet extension errors (MetaMask, etc.)
 // These errors come from browser extensions and should not crash the app

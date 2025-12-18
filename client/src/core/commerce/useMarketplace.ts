@@ -23,6 +23,7 @@ import { SafeTransaction } from '@/lib/safeTransaction';
 import { SafeMath } from '@/lib/safeMath';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
+import { analytics } from '@/lib/analytics';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -355,6 +356,9 @@ export function useMarketplace() {
       });
       return;
     }
+    
+    const price = Number(priceInBased);
+    analytics.listingStarted(tokenId, price);
 
     // Pre-flight check: Verify NFT is not already listed
     try {
@@ -428,6 +432,8 @@ export function useMarketplace() {
       chainId: CHAIN_ID,
       gas: GAS_SETTINGS.LIST,
     });
+    
+    analytics.listingCompleted(tokenId, price);
   }, [checkNetwork, isApproved, toast, writeContract, refetchApproval, address]);
 
   const delistNFT = useCallback(async (tokenId: number) => {
@@ -454,6 +460,9 @@ export function useMarketplace() {
 
   const buyNFT = useCallback(async (tokenId: number, priceWei: bigint) => {
     if (!checkNetwork() || !address) return;
+    
+    const price = Number(formatEther(priceWei));
+    analytics.buyStarted(tokenId, price);
 
     return asyncMutex.runExclusive(`buy-${tokenId}`, async () => {
       return requestDedup.execute(`buy-nft-${tokenId}-${address}`, async () => {
@@ -478,6 +487,7 @@ export function useMarketplace() {
           );
 
           if (!preFlightResult.canProceed) {
+            analytics.buyFailed(tokenId, price, preFlightResult.error || "Pre-flight check failed");
             toast({ 
               title: "Cannot Proceed", 
               description: preFlightResult.error || "Pre-flight check failed", 
@@ -491,6 +501,7 @@ export function useMarketplace() {
 
         } catch (error: unknown) {
           const errorMsg = error instanceof Error ? error.message : "Transaction would likely fail. Please try again.";
+          analytics.buyFailed(tokenId, price, errorMsg);
           toast({
             title: "Pre-flight Check Failed",
             description: errorMsg,
@@ -519,6 +530,8 @@ export function useMarketplace() {
           chainId: CHAIN_ID,
           gas: preFlightResult.gasEstimate || GAS_SETTINGS.BUY,
         });
+        
+        analytics.buyCompleted(tokenId, price);
       });
     });
   }, [address, checkNetwork, toast, writeContract]);

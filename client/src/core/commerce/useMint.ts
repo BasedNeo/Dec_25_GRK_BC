@@ -8,6 +8,7 @@ import { SafeMath } from '@/lib/safeMath';
 import { SafeTransaction } from '@/lib/safeTransaction';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
+import { analytics } from '@/lib/analytics';
 
 const NFT_ABI = [
   {
@@ -138,6 +139,8 @@ export function useMint() {
       return;
     }
 
+    analytics.mintStarted(quantity);
+
     try {
       setIsLoading(true);
       setError(null);
@@ -167,6 +170,8 @@ export function useMint() {
       console.log('[Mint] Pre-flight passed. Estimated gas:', preFlightResult.gasEstimate?.toString());
       setStatus('Waiting for wallet approval...');
 
+      const totalCost = Number(formatEther(valueInWei));
+      
       writeContract({
         address: NFT_CONTRACT as `0x${string}`,
         abi: NFT_ABI,
@@ -179,6 +184,7 @@ export function useMint() {
 
     } catch (e: unknown) {
       const parsedError = parseContractError(e);
+      analytics.mintFailed(quantity, parsedError);
       setError(parsedError);
       setIsLoading(false);
       setStatus('idle');
