@@ -121,8 +121,10 @@ export function useGameScoresLocal() {
   }, [address, refreshStats]);
 
   useEffect(() => {
-    const interval = setInterval(refreshStats, 3000);
-    return () => clearInterval(interval);
+    // Only refresh on storage events, not constant polling
+    const handleStorage = () => refreshStats();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [refreshStats]);
 
   const submitScore = useCallback((score: number, wave: number) => {

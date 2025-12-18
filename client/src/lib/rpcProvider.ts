@@ -13,7 +13,7 @@ interface RPCEndpoint {
 export class RPCProviderManager {
   private endpoints: RPCEndpoint[] = [];
   private currentIndex: number = 0;
-  private readonly HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+  private readonly HEALTH_CHECK_INTERVAL = 120000; // 120 seconds - reduced for performance
   private readonly FAILURE_THRESHOLD = 3;
   private readonly LATENCY_TIMEOUT = 5000;
   private healthCheckTimer?: number;
