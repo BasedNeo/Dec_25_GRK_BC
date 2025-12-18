@@ -1,0 +1,81 @@
+   useEffect(() => {
+     let isMounted = true;
+     
+     // async logic...
+     
+     return () => {
+       isMounted = false;
+     };
+   }, [deps]);T Platform
+- **Minting**: Mint Guardian NFTs with optional custom names
+- **Marketplace**: Buy, sell, and trade with 1% platform fee
+- **Offers**: Make and accept offers (on-chain V2 and off-chain V3 with signatures)
+- **Activity Feed**: Real-time on-chain event tracking (60-day history)
+- **Custom Profiles**: Personalize your Guardian with unique names
+
+### Based Arcade (Games)
+- **Guardian Defense** 🚀 - Free-to-play Missile Command style defense game
+- **Guardian Solitaire** 🃏 - NFT-exclusive Klondike Solitaire with NFT cards
+- **Asteroid Mining** 💎 - NFT-exclusive space shooter/resource collector
+
+All games feature:
+- Balanced points economy (50K max per game)
+- Bot protection (minimum duration, action throttling)
+- Daily play limits (10 plays per day)
+- Premium alien-themed visuals
+- Mobile-optimized controls
+
+### Governance
+- **Proposals**: Community-driven governance
+- **Voting**: NFT-weighted on-chain voting
+- **Admin Tools**: Proposal management with safety checks
+
+### Analytics & Tracking
+- **Pool Tracker**: Real-time emissions and volume data
+- **Price Ticker**: Live BTC/ETH prices with fallback sources
+- **User Profiles**: View NFT collections and stats
+
+## 🛠️ Tech Stack
+
+**Frontend**
+- React 18 + TypeScript
+- Vite (build tool)
+- TailwindCSS + Framer Motion (animations)
+- Wagmi + RainbowKit (wallet connectivity)
+- Ethers.js v6
+
+**Backend**
+- Express.js
+- PostgreSQL + Drizzle ORM
+- Helmet + CORS (security)
+- Express Rate Limit (DoS protection)
+
+**Blockchain**
+- BasedAI Layer 1 (Chain ID: 8453)
+- Multi-RPC failover for reliability
+- Intelligent caching (10-30s TTL)
+
+## 🚀 Quick Start
+
+### Installation
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Setup database
+npm run db:push
+
+# Start development server
+npm run dev### Environment Variables
+
+See `.env.example` for all required variables. Key ones:
+- `VITE_GUARDIAN_NFT_ADDRESS` - Guardian NFT contract
+- `VITE_MARKETPLACE_ADDRESS` - Marketplace contract  
+- `VITE_RPC_ENDPOINT_PRIMARY` - Primary RPC endpoint
+- `VITE_WALLETCONNECT_PROJECT_ID` - WalletConnect ID
+
+## 📁 Project Structure
