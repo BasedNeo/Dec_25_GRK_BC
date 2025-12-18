@@ -1,0 +1,268 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface CreateProposalModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  walletAddress: string;
+}
+
+export function CreateProposalModal({ isOpen, onClose, walletAddress }: CreateProposalModalProps) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [durationDays, setDurationDays] = useState('7');
+  const [category, setCategory] = useState('general');
+  const [requiredQuorum, setRequiredQuorum] = useState('10');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!title || title.length < 10) {
+      newErrors.title = 'Title must be at least 10 characters';
+    }
+    if (title.length > 200) {
+      newErrors.title = 'Title must be less than 200 characters';
+    }
+    if (!description || description.length < 50) {
+      newErrors.description = 'Description must be at least 50 characters';
+    }
+    if (description.length > 2000) {
+      newErrors.description = 'Description must be less than 2000 characters';
+    }
+    const duration = parseInt(durationDays);
+    if (!duration || duration < 1 || duration > 30) {
+      newErrors.duration = 'Duration must be between 1 and 30 days';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePreSubmit = () => {
+    if (!validate()) {
+      toast({ title: 'Validation Error', description: 'Please fix the errors before submitting', variant: 'destructive' });
+      return;
+    }
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmedSubmit = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description,
+          proposer: walletAddress,
+          durationDays: parseInt(durationDays),
+          category,
+          requiredQuorum: parseInt(requiredQuorum),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create proposal');
+      }
+
+      toast({ title: 'Proposal Created!', description: `Proposal #${data.proposal.id} is now live` });
+      setTitle('');
+      setDescription('');
+      setDurationDays('7');
+      setCategory('general');
+      setRequiredQuorum('10');
+      setShowConfirmation(false);
+      onClose();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (showConfirmation) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="bg-black/95 border-cyan-500/50 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-orbitron text-cyan-400">Confirm New Proposal</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Please review your proposal before submitting. This will go live immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="bg-white/5 rounded-lg p-4 border border-cyan-500/30">
+              <div className="text-sm text-gray-400 mb-2">Title:</div>
+              <div className="text-white font-bold">{title}</div>
+            </div>
+
+            <div className="bg-white/5 rounded-lg p-4 border border-cyan-500/30">
+              <div className="text-sm text-gray-400 mb-2">Description:</div>
+              <div className="text-white text-sm whitespace-pre-wrap">{description}</div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Duration</div>
+                <div className="text-white font-bold">{durationDays} days</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Category</div>
+                <div className="text-white font-bold capitalize">{category}</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Quorum</div>
+                <div className="text-white font-bold">{requiredQuorum} votes</div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-200">
+                This proposal will be visible to all users immediately and they will be able to vote on it. Make sure all details are correct.
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>
+              Go Back & Edit
+            </Button>
+            <Button
+              onClick={handleConfirmedSubmit}
+              disabled={isSubmitting}
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black"
+            >
+              {isSubmitting ? 'Creating...' : 'Confirm & Create Proposal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-black/95 border-cyan-500/50 max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-orbitron text-cyan-400">Create New Proposal</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Fill out all fields to create a new governance proposal
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          <div>
+            <Label htmlFor="title" className="text-white">Proposal Title *</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Increase Community Treasury Allocation to 60%"
+              className="bg-white/5 border-white/10 text-white mt-2"
+              maxLength={200}
+            />
+            <div className="flex justify-between mt-1">
+              {errors.title && <span className="text-red-400 text-xs">{errors.title}</span>}
+              <span className="text-xs text-gray-500 ml-auto">{title.length}/200</span>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="description" className="text-white">Description *</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Provide detailed explanation of the proposal, its benefits, and implementation plan..."
+              className="bg-white/5 border-white/10 text-white mt-2 min-h-[150px]"
+              maxLength={2000}
+            />
+            <div className="flex justify-between mt-1">
+              {errors.description && <span className="text-red-400 text-xs">{errors.description}</span>}
+              <span className="text-xs text-gray-500 ml-auto">{description.length}/2000</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="duration" className="text-white">Voting Duration *</Label>
+              <Select value={durationDays} onValueChange={setDurationDays}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="3">3 days</SelectItem>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.duration && <span className="text-red-400 text-xs">{errors.duration}</span>}
+            </div>
+
+            <div>
+              <Label htmlFor="category" className="text-white">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="treasury">Treasury</SelectItem>
+                  <SelectItem value="technical">Technical</SelectItem>
+                  <SelectItem value="community">Community</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="quorum" className="text-white">Required Quorum</Label>
+              <Input
+                id="quorum"
+                type="number"
+                value={requiredQuorum}
+                onChange={(e) => setRequiredQuorum(e.target.value)}
+                min="1"
+                max="100"
+                className="bg-white/5 border-white/10 text-white mt-2"
+              />
+            </div>
+          </div>
+
+          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-cyan-200">
+              All Guardian NFT holders can vote. Voting power = number of NFTs held. Proposals pass if votes FOR exceed votes AGAINST and quorum is met.
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handlePreSubmit} className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black">
+            Next: Review Proposal
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

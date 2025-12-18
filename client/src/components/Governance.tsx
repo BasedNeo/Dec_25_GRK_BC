@@ -47,6 +47,8 @@ export function Governance() {
   const [optionB, setOptionB] = useState('');
   const [optionC, setOptionC] = useState('');
   const [optionD, setOptionD] = useState('');
+  
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{ id: string; step: number } | null>(null);
 
   const handleCreateProposal = async () => {
     if (!checkRateLimit()) return;
@@ -97,10 +99,42 @@ export function Governance() {
     updateStatus.mutate({ id, status: 'active' });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this proposal?')) {
-      deleteProposal.mutate(id);
+  const handleDeleteClick = (id: string) => {
+    if (!deleteConfirmState || deleteConfirmState.id !== id) {
+      setDeleteConfirmState({ id, step: 1 });
+    } else if (deleteConfirmState.step === 1) {
+      setDeleteConfirmState({ id, step: 2 });
+    } else if (deleteConfirmState.step === 2) {
+      setDeleteConfirmState({ id, step: 3 });
+    } else if (deleteConfirmState.step === 3) {
+      deleteProposal.mutate(id, {
+        onSuccess: () => setDeleteConfirmState(null),
+      });
     }
+  };
+
+  const getDeleteButtonText = (id: string) => {
+    if (deleteConfirmState?.id === id) {
+      switch (deleteConfirmState.step) {
+        case 1: return 'Confirm?';
+        case 2: return 'Really?';
+        case 3: return 'DELETE';
+        default: return 'Delete';
+      }
+    }
+    return 'Delete';
+  };
+
+  const getDeleteButtonClass = (id: string) => {
+    if (deleteConfirmState?.id === id) {
+      switch (deleteConfirmState.step) {
+        case 1: return 'bg-orange-600 hover:bg-orange-700';
+        case 2: return 'bg-red-600 hover:bg-red-700 animate-pulse';
+        case 3: return 'bg-red-700 hover:bg-red-800 shadow-[0_0_15px_rgba(255,0,0,0.5)]';
+        default: return '';
+      }
+    }
+    return '';
   };
 
   const handleCloseProposal = (id: string) => {
@@ -331,11 +365,13 @@ export function Governance() {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => handleDelete(proposal.id)}
+                            onClick={() => handleDeleteClick(proposal.id)}
                             disabled={deleteProposal.isPending}
+                            className={getDeleteButtonClass(proposal.id)}
                             data-testid={`delete-${proposal.id}`}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            {getDeleteButtonText(proposal.id)}
                           </Button>
                         </div>
                       </div>

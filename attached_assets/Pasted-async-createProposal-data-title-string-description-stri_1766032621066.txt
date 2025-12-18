@@ -1,0 +1,101 @@
+async createProposal(data: {
+  title: string;
+  description: string;
+  proposer: string;
+  endDate: Date;
+  category?: string;
+  requiredQuorum?: number;
+}): Promise<any> {
+  const [proposal] = await this.db.insert(proposals).values({
+    title: data.title,
+    description: data.description,
+    proposer: data.proposer,
+    endDate: data.endDate,
+    category: data.category || 'general',
+    requiredQuorum: data.requiredQuorum || 10,
+    status: 'active',
+  }).returning();
+  return proposal;
+}
+
+async getActiveProposals(): Promise<any[]> {
+  return this.db
+    .select()
+    .from(proposals)
+    .where(eq(proposals.status, 'active'))
+    .orderBy(desc(proposals.createdAt));
+}
+
+async getProposalById(id: number): Promise<any | null> {
+  const [proposal] = await this.db
+    .select()
+    .from(proposals)
+    .where(eq(proposals.id, id));
+  return proposal || null;
+}
+
+async deleteProposal(id: number): Promise<boolean> {
+  try {
+    await this.db.delete(proposals).where(eq(proposals.id, id));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async castVote(proposalId: number, voter: string, voteType: 'for' | 'against', votingPower: number = 1): Promise<boolean> {
+  try {
+    const existingVote = await this.db
+      .select()
+      .from(votes)
+      .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter)));
+
+    if (existingVote.length > 0) {
+      await this.db
+        .delete(votes)
+        .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter)));
+      
+      const proposal = await this.getProposalById(proposalId);
+      if (existingVote[0].vote === 'for') {
+        await this.db.update(proposals).set({ votesFor: proposal.votesFor - existingVote[0].votingPower }).where(eq(proposals.id, proposalId));
+      } else {
+        await this.db.update(proposals).set({ votesAgainst: proposal.votesAgainst - existingVote[0].votingPower }).where(eq(proposals.id, proposalId));
+      }
+    }
+
+    await this.db.insert(votes).values({
+      proposalId,
+      voter,
+      vote: voteType,
+      votingPower,
+    });
+
+    const proposal = await this.getProposalById(proposalId);
+    if (voteType === 'for') {
+      await this.db.update(proposals).set({ votesFor: proposal.votesFor + votingPower }).where(eq(proposals.id, proposalId));
+    } else {
+      await this.db.update(proposals).set({ votesAgainst: proposal.votesAgainst + votingPower }).where(eq(proposals.id, proposalId));
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[Storage] Error casting vote:', error);
+    return false;
+  }
+}
+
+async getUserVote(proposalId: number, voter: string): Promise<string | null> {
+  const [vote] = await this.db
+    .select()
+    .from(votes)
+    .where(and(eq(votes.proposalId, proposalId), eq(votes.voter, voter)));
+  return vote?.vote || null;
+}
+
+async getProposalVotes(proposalId: number): Promise<any[]> {
+  return this.db
+    .select()
+    .from(votes)
+    .where(eq(votes.proposalId, proposalId))
+    .orderBy(desc(votes.timestamp));
+}

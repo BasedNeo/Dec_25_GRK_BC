@@ -1,0 +1,143 @@
+app.get("/api/proposals", async (req, res) => {
+  try {
+    const proposals = await storage.getActiveProposals();
+    res.json(proposals);
+  } catch (error: any) {
+    console.error("[Proposals] Error fetching:", error);
+    res.status(500).json({ error: "Failed to fetch proposals" });
+  }
+});
+
+app.get("/api/proposals/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const proposal = await storage.getProposalById(id);
+    if (!proposal) {
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+    res.json(proposal);
+  } catch (error: any) {
+    console.error("[Proposals] Error fetching proposal:", error);
+    res.status(500).json({ error: "Failed to fetch proposal" });
+  }
+});
+
+app.post("/api/proposals", writeLimiter, async (req, res) => {
+  try {
+    const { title, description, proposer, durationDays, category, requiredQuorum } = req.body;
+    
+    if (!ADMIN_WALLETS.includes(proposer.toLowerCase())) {
+      return res.status(403).json({ error: "Only admins can create proposals" });
+    }
+
+    if (!title || title.length < 10) {
+      return res.status(400).json({ error: "Title must be at least 10 characters" });
+    }
+
+    if (!description || description.length < 50) {
+      return res.status(400).json({ error: "Description must be at least 50 characters" });
+    }
+
+    if (!durationDays || durationDays < 1 || durationDays > 30) {
+      return res.status(400).json({ error: "Duration must be between 1 and 30 days" });
+    }
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + durationDays);
+
+    const proposal = await storage.createProposal({
+      title,
+      description,
+      proposer,
+      endDate,
+      category: category || 'general',
+      requiredQuorum: requiredQuorum || 10,
+    });
+
+    console.log(`[Proposals] Created new proposal #${proposal.id} by ${proposer}`);
+    res.json({ success: true, proposal });
+  } catch (error: any) {
+    console.error("[Proposals] Error creating:", error);
+    res.status(500).json({ error: "Failed to create proposal" });
+  }
+});
+
+app.delete("/api/proposals/:id", writeLimiter, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { walletAddress, confirmations } = req.body;
+
+    if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+      return res.status(403).json({ error: "Only admins can delete proposals" });
+    }
+
+    if (confirmations !== 3) {
+      return res.status(400).json({ error: "Must confirm deletion 3 times" });
+    }
+
+    const success = await storage.deleteProposal(id);
+    if (!success) {
+      return res.status(500).json({ error: "Failed to delete proposal" });
+    }
+
+    console.log(`[Proposals] Deleted proposal #${id} by ${walletAddress}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Proposals] Error deleting:", error);
+    res.status(500).json({ error: "Failed to delete proposal" });
+  }
+});
+
+app.post("/api/proposals/:id/vote", writeLimiter, async (req, res) => {
+  try {
+    const proposalId = parseInt(req.params.id);
+    const { voter, vote } = req.body;
+
+    if (!voter || !vote) {
+      return res.status(400).json({ error: "Missing voter or vote" });
+    }
+
+    if (vote !== 'for' && vote !== 'against') {
+      return res.status(400).json({ error: "Vote must be 'for' or 'against'" });
+    }
+
+    const proposal = await storage.getProposalById(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    if (proposal.status !== 'active') {
+      return res.status(400).json({ error: "Proposal is not active" });
+    }
+
+    if (new Date() > new Date(proposal.endDate)) {
+      return res.status(400).json({ error: "Voting period has ended" });
+    }
+
+    const nftBalance = 1;
+    
+    const success = await storage.castVote(proposalId, voter, vote, nftBalance);
+    if (!success) {
+      return res.status(500).json({ error: "Failed to cast vote" });
+    }
+
+    console.log(`[Proposals] ${voter} voted ${vote} on proposal #${proposalId}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Proposals] Error voting:", error);
+    res.status(500).json({ error: "Failed to cast vote" });
+  }
+});
+
+app.get("/api/proposals/:id/vote/:voter", async (req, res) => {
+  try {
+    const proposalId = parseInt(req.params.id);
+    const voter = req.params.voter;
+
+    const vote = await storage.getUserVote(proposalId, voter);
+    res.json({ vote });
+  } catch (error: any) {
+    console.error("[Proposals] Error fetching user vote:", error);
+    res.status(500).json({ error: "Failed to fetch vote" });
+  }
+});
