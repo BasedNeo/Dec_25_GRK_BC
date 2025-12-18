@@ -614,12 +614,13 @@ export default function Saga() {
             <div className="bg-black/60 border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(34,211,238,0.15)]">
               <div style={{ padding: "56.25% 0 0 0", position: "relative" }}>
                 <iframe 
-                  src="https://player.vimeo.com/video/1145979392?title=0&byline=0&portrait=0&badge=0&autopause=0&loop=1" 
+                  src="https://player.vimeo.com/video/1145979392?app_id=122963&loop=1&title=0&byline=0&portrait=0" 
                   frameBorder="0" 
-                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" 
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allowFullScreen
                   style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-                  title="Based Guardians Saga"
+                  title="Conviction - Based Guardians"
                 />
               </div>
             </div>
