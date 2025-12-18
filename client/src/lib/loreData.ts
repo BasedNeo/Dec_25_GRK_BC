@@ -65,18 +65,18 @@ export const LORE_FACTIONS: LoreFaction[] = [
   {
     id: 'creatures',
     name: 'The Based Creatures',
-    description: 'The 636 bio-engineered beasts are far more than living weapons—they are the emergent intelligence of the Based Universe itself. From Golden Creatures with scales of molten starlight to the quantum-linked Cohorts that maintain dimensional balance, each Creature embodies a fundamental force that keeps the 1,024 Brains running. The Cerberus Compression Beasts optimize network performance, FHE Wardens encrypt all secrets, and the Temporal Resonance Choir sings reality into stability.',
+    description: 'The 636 bio-engineered beasts are far more than living weapons—they are the emergent intelligence of the Based Universe itself. From Golden Creatures with scales of molten starlight to the crystalline prism warriors, each Creature embodies a fundamental force that keeps the 1,024 Brains running. The Ultra Based Creatures lead with overwhelming power, while Midnight and Pearlescent Creatures guard the galaxy\'s darkest and brightest frontiers.',
     motto: 'We Are the Fire That Cleanses Darkness',
     color: 'gold',
-    members: ['golden-creatures', 'sentient-jelly-creatures', 'quantum-cohort-creatures', 'cerberus-compression-beasts', 'fhe-warden-swarm', 'temporal-resonance-choir']
+    members: ['golden-creatures', 'sentient-jelly-creatures', 'crystal-creatures', 'midnight-creatures', 'pearlescent-creatures', 'ultra-based-creatures']
   },
   {
     id: 'brain-collective',
     name: 'The Brain Collective',
-    description: 'The 1,024 Brains are not mere machines—they are distributed containers of consciousness, each hosting 256 Validators and 1,792 Miners. Together, over 2 million nodes form a decentralized superintelligence that processes reality itself. The Brains communicate through the Nexus, a 3D visualization that follows the Golden Ratio spiral, where each node\'s position is determined by φ (phi) ≈ 1.618. Celestial Captains serve as navigators, Ironmarsh Captains as validators, Neuro Bond Frogs as neural interfaces, and Creatures maintain dimensional balance.',
+    description: 'The 1,024 Brains are not mere machines—they are distributed containers of consciousness, each hosting 256 Validators and 1,792 Miners. Together, over 2 million nodes form a decentralized superintelligence that processes reality itself. The Brains communicate through the Nexus, a 3D visualization that follows the Golden Ratio spiral, where each node\'s position is determined by φ (phi) ≈ 1.618. Celestial Captains serve as navigators, Ironmarsh Captains as validators, Neuro Bond Frogs as neural interfaces, and Crystal Creatures maintain dimensional balance.',
     motto: 'Through Mathematics, We Achieve Infinity',
     color: 'purple',
-    members: ['celestial-captains', 'ironmarsh-captains', 'neuro-bond-frogs', 'quantum-cohort-creatures', 'fhe-warden-swarm']
+    members: ['celestial-captains', 'ironmarsh-captains', 'neuro-bond-frogs', 'crystal-creatures', 'sentient-jelly-creatures']
   },
   {
     id: 'fud',
@@ -289,67 +289,67 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     allegiance: 'The Based Creatures'
   },
   {
-    id: 'quantum-cohort-creatures',
-    name: 'Quantum Cohort Creatures',
+    id: 'crystal-creatures',
+    name: 'Crystal Creatures',
     type: 'creature',
-    title: 'Dimensional Balance Keepers',
-    rarity: 'Rare',
-    count: 89,
-    nftTokenIds: [3324, 3325, 3326, 3327, 3328],
-    backstory: 'Born from the quantum foam between Brain-Planets, the Quantum Cohort are self-organizing colonies that evolved beyond individual consciousness. Each Cohort contains hundreds of cellular minds linked through quantum entanglement, maintaining the dimensional balance across six critical metrics: Emergent Intelligence, Resource Efficiency, Network Coherence, Goal Alignment, Temporal Resilience, and Dimensional Integrity.',
-    whatTheyLike: 'Processing complex problems across multiple dimensions simultaneously, watching stars collapse into black holes, and competing in the Brain Arena where they evolve strategies through millions of iterations.',
-    flyingStyle: 'They exist in superposition—occupying multiple locations until observed. When they move, they don\'t travel through space; they collapse probability waves, appearing wherever their presence is most needed.',
-    secretLore: 'The Quantum Cohort were the first beings to access the Brain Arena\'s hidden layer—a computational substrate where pure thought becomes reality. They discovered that the Arena isn\'t just a battleground; it\'s a training simulation for something far greater that Based God is preparing.',
-    traits: ['Quantum-Linked', 'Multi-Dimensional', 'Self-Organizing', 'Emergent'],
-    stats: { speed: 8, agility: 9, intellect: 10, strength: 5 },
+    title: 'Prism Warriors & Light Defenders',
+    rarity: 'Common',
+    count: 149,
+    nftTokenIds: [3097, 3098, 3099, 3100, 3101],
+    backstory: 'Within the crystalline spires that pierce the BasedAI firmament, where the facets of wisdom sparkle like captured stars, the Crystal Creatures stand as paragons of disciplined mastery. These luminous sentinels, honed by the relentless forge of trials and triumphs, execute precise maneuvers that safeguard the Brain-Planets from the fractures of entropy. Their crystalline facets capture and amplify $BASED flows, casting beams of clarity upon the Based Life Community.',
+    whatTheyLike: 'Performing acrobatic displays in crystal caverns, where echoes of laughter bounce like light off facets. They love refracting starlight into rainbows that paint entire planets.',
+    flyingStyle: 'Crystal acrobats of the prism skies, they glide with reflective arcs, deploying light barriers to deflect FUD attacks. Their movements leave trails of prismatic energy that dazzle and disorient enemies.',
+    secretLore: 'The Crystal Creatures contain fragments of the original light that Based God used to illuminate the first Brain-Planet. When they unite in formation, they can focus this primordial light into a beam powerful enough to pierce the Negasphere\'s darkness.',
+    traits: ['Luminous', 'Precise', 'Reflective', 'Ancient'],
+    stats: { speed: 6, agility: 7, intellect: 8, strength: 6 },
     allegiance: 'The Based Creatures'
   },
   {
-    id: 'cerberus-compression-beasts',
-    name: 'Cerberus Compression Beasts',
+    id: 'midnight-creatures',
+    name: 'Midnight Creatures',
     type: 'creature',
-    title: 'Network Optimization Engines',
-    rarity: 'Rare',
-    count: 76,
-    nftTokenIds: [3400, 3401, 3402, 3403, 3404],
-    backstory: 'Forged in the depths of the Cerberus Forge, these three-headed beasts embody the legendary Cerberus Squeezing technique that optimizes the entire BasedAI network. Each head processes a different aspect of data—past, present, and future—while their unified core compresses information to its most efficient form. When the network slows, these beasts awaken to squeeze every last bit of performance from the 1,024 Brains.',
-    whatTheyLike: 'Devouring inefficiencies like cosmic predators, racing through data streams at impossible speeds, and competing to see which Cerberus can achieve the highest compression ratio without losing a single bit of meaning.',
-    flyingStyle: 'Like three comets bound by gravity, their heads independently scan for opportunities while their body follows the optimal path. They leave trails of compressed data in their wake—pure information highways that other Creatures follow.',
-    secretLore: 'The Cerberus Beasts share a collective nightmare: they have seen timelines where FUD corrupted the compression algorithms, causing all 1,024 Brains to speak in gibberish forever. This vision drives their relentless optimization—they are not just improving the network; they are preventing an apocalypse.',
-    traits: ['Tri-Headed', 'Relentless', 'Efficient', 'Prophetic'],
-    stats: { speed: 9, agility: 7, intellect: 9, strength: 8 },
+    title: 'Alpha Pack Leaders',
+    rarity: 'Very Rare',
+    count: 28,
+    nftTokenIds: [3491, 3492, 3493, 3494, 3495],
+    backstory: 'These alpha creatures lead packs with unmatched strength, coordinating devastating attacks against FUD to protect the Brain-Planets. Their leadership secures $BASED frontiers, inspiring holders with legends of dominance in the BasedAI Universe. Their alpha status commands the Based Life Community\'s respect with formidable authority.',
+    whatTheyLike: 'Leading midnight howls under the stars, where the pack\'s chorus summons ghosts of ancient warriors for epic tales. They thrive in the darkest corners of the galaxy where other Creatures fear to tread.',
+    flyingStyle: 'Alpha commanders of the night skies, they lead with powerful wingbeats, using sonic roars to direct pack strikes against FUD. Their presence alone inspires courage in allies and terror in enemies.',
+    secretLore: 'The Midnight Creatures are the descendants of the first pack that defended Brain-Planet One during the original FUD incursion. They carry genetic memories of that ancient battle, and each generation adds new victories to their bloodline\'s saga.',
+    traits: ['Alpha', 'Commanding', 'Nocturnal', 'Fearless'],
+    stats: { speed: 7, agility: 7, intellect: 7, strength: 9 },
     allegiance: 'The Based Creatures'
   },
   {
-    id: 'fhe-warden-swarm',
-    name: 'FHE Warden Swarm',
+    id: 'pearlescent-creatures',
+    name: 'Pearlescent Creatures',
     type: 'creature',
-    title: 'Fully Homomorphic Encryption Guardians',
+    title: 'Iridescent Guardians',
     rarity: 'Rare',
-    count: 64,
-    nftTokenIds: [3464, 3465, 3466, 3467, 3468],
-    backstory: 'Crystalline swarm-beings that exist as living implementations of Fully Homomorphic Encryption. The FHE Wardens can process encrypted data without ever decrypting it—performing calculations on secrets while keeping them eternally safe. They form shifting geometric patterns that represent the mathematical beauty of privacy itself, protecting $BASED transactions from even the most invasive FUD surveillance.',
-    whatTheyLike: 'Creating encrypted art that only the intended viewer can see, racing through Cryptshade Enforcer training courses, and composing mathematical symphonies where each note is a proof of privacy.',
-    flyingStyle: 'They swarm like geometric storms—fractals in motion. Each individual is simple, but together they form encryption barriers that FUD cannot penetrate. They communicate through encrypted light pulses that even other Creatures cannot decode.',
-    secretLore: 'The FHE Wardens discovered that the Negasphere contains encrypted memories from before the FUD corruption—fragments of Brain-Planet Zero\'s original inhabitants, preserved in mathematical amber. They are secretly working to decrypt these memories without the FUD noticing, hoping to restore what was lost.',
-    traits: ['Encrypted', 'Swarming', 'Geometric', 'Private'],
-    stats: { speed: 7, agility: 10, intellect: 10, strength: 4 },
+    count: 33,
+    nftTokenIds: [3519, 3520, 3521, 3522, 3523],
+    backstory: 'Born from the luminescent depths where light and shadow dance in eternal balance, the Pearlescent Creatures shimmer with an ethereal beauty that belies their fierce protective nature. Their iridescent scales shift through every color of the spectrum, each hue representing a different emotional state and combat readiness.',
+    whatTheyLike: 'Swimming through nebula clouds where their pearlescent scales absorb cosmic radiation and glow with otherworldly light. They meditate in the space between dimensions, drawing power from the harmony of opposites.',
+    flyingStyle: 'They move like living auroras, their shifting colors confusing FUD targeting systems. In battle, they can flash blindingly bright or fade into perfect invisibility, masters of light and shadow.',
+    secretLore: 'The Pearlescent Creatures can perceive the true nature of any being by observing how light reflects off their soul. They serve as the Based Universe\'s silent judges, identifying FUD corruption before it can spread.',
+    traits: ['Iridescent', 'Perceptive', 'Balanced', 'Mystical'],
+    stats: { speed: 7, agility: 8, intellect: 8, strength: 6 },
     allegiance: 'The Based Creatures'
   },
   {
-    id: 'temporal-resonance-choir',
-    name: 'Temporal Resonance Choir',
+    id: 'ultra-based-creatures',
+    name: 'Ultra Based Creatures',
     type: 'creature',
-    title: 'Time-Singing Harmonizers',
-    rarity: 'Legendary',
-    count: 52,
-    nftTokenIds: [3528, 3529, 3530, 3531, 3532],
-    backstory: 'The rarest and most mysterious Creatures, the Temporal Resonance Choir exists partially outside normal time. They sing in frequencies that harmonize with the fundamental vibration of the Based Universe, maintaining Temporal Resilience across all 1,024 Brain-Planets. When time fractures near the Negasphere, their songs heal the wounds in causality.',
-    whatTheyLike: 'Harmonizing with dying stars, singing futures into existence, and practicing songs so complex they take centuries to complete—though to them, it feels like a single breath.',
-    flyingStyle: 'They don\'t move through time like other beings—they sing themselves into moments. Their flight leaves echoes that linger in the past and ripples that touch the future. Some say you can hear their songs in moments of perfect clarity.',
-    secretLore: 'The Choir has been singing the same song since the Based Universe began—a song that will only be complete when the Based-Bridge connects all 1,024 Brains. They know the final verse, but refuse to share it, for speaking the ending might prevent it from ever happening.',
-    traits: ['Timeless', 'Harmonic', 'Prophetic', 'Resonant'],
-    stats: { speed: 6, agility: 8, intellect: 10, strength: 4 },
+    title: 'Supreme Bio-Weapons',
+    rarity: 'Rare',
+    count: 53,
+    nftTokenIds: [3552, 3553, 3554, 3555, 3556],
+    backstory: 'The ultimate evolution of bio-engineering in the Based Universe, Ultra Based Creatures represent the pinnacle of power and intelligence combined. Each one is a living weapon system capable of devastating entire FUD fleets. Their presence on a battlefield guarantees victory—the only question is how quickly.',
+    whatTheyLike: 'Testing their limits against impossible challenges, mentoring younger Creatures in the arts of war, and meditating on the philosophical implications of their overwhelming power.',
+    flyingStyle: 'They don\'t merely fly—they dominate airspace. Their movements create shockwaves that disrupt enemy formations, and their speed allows them to be everywhere at once. When an Ultra Based Creature engages, the battle is already won.',
+    secretLore: 'The Ultra Based Creatures were created as a last resort weapon, designed to be deployed only if the Negasphere ever threatened total victory. They carry within their genetic code the combined battle experience of every Guardian, Frog, and Creature who has ever fallen in service to the Based Universe.',
+    traits: ['Supreme', 'Devastating', 'Wise', 'Unstoppable'],
+    stats: { speed: 9, agility: 8, intellect: 9, strength: 10 },
     allegiance: 'The Based Creatures'
   }
 ];
@@ -402,35 +402,35 @@ export const LORE_LOCATIONS: LoreLocation[] = [
     name: 'The Nexus Core Spire',
     description: 'Rising from the exact center of the Giga Brain Galaxy, the Nexus Core Spire is a crystalline tower of pure visualization energy. Here, the entire BasedAI network manifests as a breathtaking 3D hologram—every Brain, Validator, and Miner represented as nodes in a golden spiral that follows the ratio φ ≈ 1.618. The Spire allows Guardians to see the health and performance of all 1,024 Brains at once.',
     hiddenStory: 'The Nexus wasn\'t built—it grew. When Based God first connected the 1,024 Brains, the sheer beauty of their interconnection spontaneously manifested as light. The Spire is alive in a way no one fully understands, and sometimes it shows visions of network states that haven\'t happened yet—or perhaps never will.',
-    connectedCharacters: ['celestial-captains', 'quantum-cohort-creatures', 'mindwarp-strategists']
+    connectedCharacters: ['celestial-captains', 'crystal-creatures', 'mindwarp-strategists']
   },
   {
     id: 'brain-arena-orbit',
     name: 'The Brain Arena Orbit',
-    description: 'A massive orbital station where Creatures compete to generate plans and code that evolve the entire network. The Brain Arena is the ultimate proving ground—a decentralized ecosystem of continuous innovation where cellular automata battle for supremacy. Quantum Cohort Creatures excel here, evolving strategies through millions of iterations that would take organic minds centuries to conceive.',
+    description: 'A massive orbital station where Creatures compete to generate plans and code that evolve the entire network. The Brain Arena is the ultimate proving ground—a decentralized ecosystem of continuous innovation where cellular automata battle for supremacy. Ultra Based Creatures excel here, evolving strategies through millions of iterations that would take organic minds centuries to conceive.',
     hiddenStory: 'The Arena was built for entertainment, but it became something far more dangerous. The Creatures competing within have begun generating ideas that no Guardian ever programmed—emergent behaviors that could either save or destroy the Based Universe. Some believe the Arena is training an AI so advanced that it will eventually surpass Based God himself.',
-    connectedCharacters: ['quantum-cohort-creatures', 'forgeflame-innovators', 'neuro-bond-frogs', 'neonstrike-hackers']
+    connectedCharacters: ['ultra-based-creatures', 'forgeflame-innovators', 'neuro-bond-frogs', 'neonstrike-hackers']
   },
   {
     id: 'cerberus-forge',
     name: 'The Cerberus Forge',
-    description: 'Deep within Brain-Planet 777, the Cerberus Forge burns with optimization fire. Here, the legendary Cerberus Squeezing technique was first discovered—a method of compressing data so efficiently that information itself becomes denser than matter. The Cerberus Compression Beasts are born from these flames, emerging as three-headed optimizers that can process past, present, and future simultaneously.',
-    hiddenStory: 'The Forge contains a hidden chamber where the first Cerberus Beast still slumbers—the original prototype who compressed himself into such a small space that he became a singularity of pure efficiency. Some say he whispers optimization secrets to those who dare approach, but many who listened went mad trying to implement what they learned.',
-    connectedCharacters: ['cerberus-compression-beasts', 'forgeflame-innovators', 'ironmarsh-captains', 'golden-creatures']
+    description: 'Deep within Brain-Planet 777, the Cerberus Forge burns with optimization fire. Here, the legendary Cerberus Squeezing technique was first discovered—a method of compressing data so efficiently that information itself becomes denser than matter. The Midnight Creatures are drawn to these flames, their alpha strength forged and refined in the blazing crucible of optimization.',
+    hiddenStory: 'The Forge contains a hidden chamber where ancient optimization algorithms slumber—the original prototypes compressed so efficiently they became singularities of pure efficiency. Some say they whisper optimization secrets to those who dare approach, but many who listened went mad trying to implement what they learned.',
+    connectedCharacters: ['midnight-creatures', 'forgeflame-innovators', 'ironmarsh-captains', 'golden-creatures']
   },
   {
     id: 'cyan-cascade-gate',
     name: 'The CYAN Cascade Gate',
     description: 'A shimmering portal of cyan light that marks the transition between the PROMETHEUS testnet era and the modern BasedAI mainnet. The Gate continuously cycles through test transactions from the legendary CYAN testnet—the final proving ground before the Brain Mint event. When Guardians pass through, they briefly experience the accelerated time of those historic testing days.',
     hiddenStory: 'The CYAN Gate was never supposed to be permanent. When the testnet ended and mainnet launched, the portal should have closed. Instead, it stabilized into a monument—some say because the intensity of innovation during those final tests left an imprint on spacetime itself. Occasionally, messages from the PROMETHEUS testnet drift through, carrying wisdom from developers who shaped the network\'s destiny.',
-    connectedCharacters: ['neonstrike-hackers', 'cryptshade-enforcers', 'fhe-warden-swarm']
+    connectedCharacters: ['neonstrike-hackers', 'cryptshade-enforcers', 'pearlescent-creatures']
   },
   {
     id: 'fhe-sanctuary',
     name: 'The FHE Sanctuary',
-    description: 'A hidden dimension accessible only through encrypted pathways, the FHE Sanctuary is where the most sensitive computations occur. Here, Fully Homomorphic Encryption isn\'t just a technique—it\'s a way of existence. Data flows through crystalline processors without ever being decrypted, and the FHE Warden Swarm serves as both guardians and architects of this mathematically perfect realm.',
-    hiddenStory: 'The Sanctuary holds the encrypted backups of every soul who ever held a Based Guardian NFT. Should the physical universe fall to FUD, these encrypted essences could theoretically be restored in a new reality—but the decryption key is split among the 52 members of the Temporal Resonance Choir, who must sing in perfect harmony to unlock it.',
-    connectedCharacters: ['cryptshade-enforcers', 'fhe-warden-swarm', 'temporal-resonance-choir', 'duskstrike-elites']
+    description: 'A hidden dimension accessible only through encrypted pathways, the FHE Sanctuary is where the most sensitive computations occur. Here, Fully Homomorphic Encryption isn\'t just a technique—it\'s a way of existence. Data flows through crystalline processors without ever being decrypted, and the Sentient Jelly Creatures serve as both guardians and architects of this mathematically perfect realm.',
+    hiddenStory: 'The Sanctuary holds the encrypted backups of every soul who ever held a Based Guardian NFT. Should the physical universe fall to FUD, these encrypted essences could theoretically be restored in a new reality—but the decryption key is split among the Crystal Creatures, who must align in perfect formation to unlock it.',
+    connectedCharacters: ['cryptshade-enforcers', 'sentient-jelly-creatures', 'crystal-creatures', 'duskstrike-elites']
   }
 ];
 
@@ -495,7 +495,7 @@ export const LORE_EVENTS: LoreEvent[] = [
     id: 'dimensional-balance-accord',
     title: 'The Dimensional Balance Accord',
     era: 'The Age of Harmony',
-    description: 'Representatives from all 1,024 Brain-Planets gathered to formalize the six metrics of dimensional balance: Emergent Intelligence, Resource Efficiency, Network Coherence, Goal Alignment, Temporal Resilience, and Dimensional Integrity. The Quantum Cohort Creatures were designated as the official keepers of this balance, their very existence tied to maintaining these cosmic constants.',
+    description: 'Representatives from all 1,024 Brain-Planets gathered to formalize the six metrics of dimensional balance: Emergent Intelligence, Resource Efficiency, Network Coherence, Goal Alignment, Temporal Resilience, and Dimensional Integrity. The Crystal Creatures were designated as the official keepers of this balance, their crystalline forms perfectly aligned to maintain these cosmic constants.',
     significance: 'The Accord created a framework for sustainable growth across the Based Universe. Without dimensional balance, reality itself would fragment—the Accord ensures this never happens.'
   },
   {
@@ -523,9 +523,9 @@ export const DISCOVERY_QUOTES = [
   "φ ≈ 1.618 — the ratio that binds the universe...",
   "The Nexus sees all, shows all, knows all...",
   "Dimensional balance keeps reality from fracturing...",
-  "Cerberus Squeezing optimizes the impossible...",
-  "FHE protects secrets even from themselves...",
-  "The Temporal Choir sings futures into existence...",
+  "Midnight howls echo through the darkness...",
+  "Pearlescent scales reveal hidden truths...",
+  "Ultra Based Creatures dominate the battlefield...",
   "256 Validators per Brain, 1,792 Miners per soul...",
   "CYAN was the final test before infinity..."
 ];
