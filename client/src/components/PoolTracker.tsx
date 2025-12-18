@@ -49,6 +49,7 @@ export function PoolTracker() {
   
   const salesVolume = activityStats?.totalVolume ?? 0;
   const isDataReady = mintedCount !== null;
+  const isEmissionsReady = !subnetEmissions.loading && subnetEmissions.status !== 'inactive';
 
   const fetchMintedCount = useCallback(async () => {
     try {
@@ -167,17 +168,25 @@ export function PoolTracker() {
     };
   }, [mintedCount, salesVolume, subnetEmissions]);
 
-  const displayValue = (value: number, decimals: number = 0) => {
-    if (!isDataReady) return "---";
+  const displayValue = (value: number, decimals: number = 0, requiresEmissions: boolean = false) => {
+    if (!isDataReady) return "-";
+    if (requiresEmissions && !isEmissionsReady) return "-";
+    if (value === 0 && !isDataReady) return "-";
     return formatNumber(value, decimals);
   };
 
   const formatNumber = (num: number | null | undefined, decimals: number = 0) => {
-    if (num === null || num === undefined) return "---";
+    if (num === null || num === undefined) return "-";
     return num.toLocaleString(undefined, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals
     });
+  };
+  
+  const displayEmissionValue = (value: number, decimals: number = 0) => {
+    if (!isEmissionsReady) return "-";
+    if (subnetEmissions.loading) return "-";
+    return formatNumber(value, decimals);
   };
 
   return (
@@ -316,7 +325,7 @@ export function PoolTracker() {
 
                     {/* Total Balance */}
                     <div className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-6" data-testid="text-total-treasury">
-                      {displayValue(treasuryData.totalTreasury, 0)} $BASED
+                      {displayValue(treasuryData.totalTreasury, 0, true)} $BASED
                     </div>
 
                     {/* Treasury Breakdown */}
@@ -329,7 +338,7 @@ export function PoolTracker() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 pl-2 -mt-2">
-                        {isDataReady ? `${formatNumber(treasuryData.minted)} minted × ${formatNumber(MINT_PRICE)} × ${MINT_SPLIT.TREASURY_PERCENT}%` : '---'}
+                        {isDataReady ? `${formatNumber(treasuryData.minted)} minted × ${formatNumber(MINT_PRICE)} × ${MINT_SPLIT.TREASURY_PERCENT}%` : '-'}
                       </div>
 
                       {/* From Royalties */}
@@ -340,18 +349,18 @@ export function PoolTracker() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 pl-2 -mt-2">
-                        {isDataReady ? `${formatNumber(treasuryData.salesVolume)} sales × 2%` : '---'}
+                        {isDataReady ? `${formatNumber(treasuryData.salesVolume)} sales × 2%` : '-'}
                       </div>
 
                       {/* From Emissions */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
-                        <span className="text-gray-400">From $BRAIN Emissions</span>
+                        <span className="text-gray-400">From $BRAIN Emissions (10%)</span>
                         <span className="text-purple-400 font-semibold" data-testid="text-emissions-to-treasury">
-                          {displayValue(treasuryData.passiveEmissions, 0)} $BASED
+                          {displayEmissionValue(treasuryData.passiveEmissions, 0)} $BASED
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 pl-2 -mt-2">
-                        Community share: {displayValue(treasuryData.currentDailyRate, 0)}/day
+                        Community share: {displayEmissionValue(treasuryData.currentDailyRate, 0)}/day
                       </div>
                     </div>
 
@@ -453,10 +462,10 @@ export function PoolTracker() {
                       <h3 className="text-xs font-bold text-white font-orbitron uppercase">Daily Community Rate</h3>
                     </div>
                     <span className="text-xl font-mono font-bold text-amber-400" data-testid="text-daily-emissions">
-                      ~{formatNumber(treasuryData.currentDailyRate, 0)} $BASED/day
+                      ~{displayEmissionValue(treasuryData.currentDailyRate, 0)} $BASED/day
                     </span>
                     <span className="text-[9px] text-muted-foreground font-mono mt-1">
-                      10% of ~{formatNumber(subnetEmissions.brainTotalDaily, 0)}/day brain output
+                      10% of ~{displayEmissionValue(subnetEmissions.brainTotalDaily, 0)}/day brain output
                     </span>
                   </div>
                   
@@ -466,7 +475,7 @@ export function PoolTracker() {
                       <h3 className="text-xs font-bold text-white font-orbitron uppercase">Monthly Projection</h3>
                     </div>
                     <span className="text-xl font-mono font-bold text-purple-400" data-testid="text-monthly-projection">
-                      ~{formatNumber(treasuryData.monthlyProjection || 0)} $BASED
+                      ~{displayEmissionValue(treasuryData.monthlyProjection || 0, 0)} $BASED
                     </span>
                     <span className="text-[9px] text-muted-foreground font-mono mt-1">
                       Community share at current rate
