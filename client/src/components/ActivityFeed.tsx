@@ -42,7 +42,7 @@ import {
   getActivityDisplay, 
   formatTimeAgo 
 } from '@/hooks/useActivityFeed';
-import { BLOCK_EXPLORER } from '@/lib/constants';
+import { BLOCK_EXPLORER, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
 import { DiamondHandsLeaderboard } from './DiamondHandsLeaderboard';
 
 interface ActivityFeedProps {
@@ -150,6 +150,29 @@ export function ActivityFeed({
               icon={<TrendingUp className="w-5 h-5 text-purple-400" />} 
               color="text-purple-400" 
             />
+          </div>
+        )}
+
+        {showStats && !compact && (
+          <div className="mb-6 bg-black/40 border border-white/10 rounded-lg p-4">
+            <div className="text-xs text-muted-foreground font-mono space-y-1">
+              <div className="flex justify-between">
+                <span>Mint Volume ({stats.totalMinted} NFTs × 69,420):</span>
+                <span className="text-white">{stats.totalMintVolume?.toLocaleString() || 0} $BASED</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Historical Secondary Sales:</span>
+                <span className="text-white">{CUMULATIVE_SALES_BASELINE.volume.toLocaleString()} $BASED</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Recent Secondary Sales (last 5.7 days):</span>
+                <span className="text-white">{stats.recentVolume.toLocaleString()} $BASED</span>
+              </div>
+              <div className="flex justify-between border-t border-white/10 pt-1 mt-1 font-bold">
+                <span>TOTAL VOLUME:</span>
+                <span className="text-purple-400">{stats.totalVolume.toLocaleString()} $BASED</span>
+              </div>
+            </div>
           </div>
         )}
 
