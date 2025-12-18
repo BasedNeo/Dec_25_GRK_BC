@@ -5,12 +5,17 @@ import robotChickenImage from '@assets/fud-alien.png';
 // Preload game images
 let fudImageElement: HTMLImageElement | null = null;
 let robotChickenElement: HTMLImageElement | null = null;
+let robotChickenLoaded = false;
 
 if (typeof window !== 'undefined') {
   fudImageElement = new Image();
   fudImageElement.src = fudImage;
   
   robotChickenElement = new Image();
+  robotChickenElement.crossOrigin = 'anonymous';
+  robotChickenElement.onload = () => {
+    robotChickenLoaded = true;
+  };
   robotChickenElement.src = robotChickenImage;
 }
 
@@ -151,9 +156,9 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       break;
       
     case 'bee':
-      // Robot Chicken alien - use image
-      if (robotChickenElement && robotChickenElement.complete) {
-        const imgSize = 36;
+      // FUD alien sprite - use image
+      if (robotChickenElement && robotChickenLoaded) {
+        const imgSize = 40;
         ctx.drawImage(robotChickenElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
       } else {
         // Fallback: Draw sinister chicken if image not loaded
