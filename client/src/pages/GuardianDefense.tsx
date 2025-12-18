@@ -1033,11 +1033,11 @@ export default function GuardianDefense() {
     ctx.fillStyle = '#00ffff';
     ctx.font = 'bold 12px Orbitron, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('GUARDIAN COMMAND CENTER', CANVAS_WIDTH / 2, GROUND_Y + 28);
+    ctx.fillText('CREATURE COMMAND CENTER', CANVAS_WIDTH / 2, GROUND_Y + 28);
     
     ctx.fillStyle = '#6b7280';
     ctx.font = '9px monospace';
-    ctx.fillText('BRAIN PLANET 77 • GIGA BRAIN GALAXY', CANVAS_WIDTH / 2, GROUND_Y + 42);
+    ctx.fillText('BASED CREATURES • LEGENDARY DEFENDERS', CANVAS_WIDTH / 2, GROUND_Y + 42);
     
     if (state.waveTransition && !gameOver) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
