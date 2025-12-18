@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════════════════════════════════
+UPDATE GAME REGISTRY - REPLACE JAGUAR RUNNER WITH GUARDIAN DEFENSE
+═══════════════════════════════════════════════════════════════════════════════
+
+TASK: Update the game registry to replace 'jaguar-runner' with 'guardian-defense'
+and update all necessary routing and navigation.
+
+STEP 1: UPDATE GAME REGISTRY
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE: client/src/lib/gameRegistry.ts
+
+FIND this line (around line 8):
+export type GameType = 'jaguar-runner' | 'guardian-solitaire' | 'asteroid-mining';
+
+REPLACE with:
+export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'asteroid-mining';
+
+FIND the 'jaguar-runner' entry in GAME_REGISTRY (should be around line 30-60)
+
+REPLACE THE ENTIRE 'jaguar-runner' ENTRY with:
+
+'guardian-defense': {
+  id: 'guardian-defense',
+  name: 'Guardian Defense',
+  description: 'Defend your Command Center from incoming missiles. A premium reimagining of the classic Missile Command.',
+  path: '/guardian-defense',
+  icon: Shield,
+  iconColor: 'text-cyan-400',
+  thumbnailGradient: 'from-cyan-500 to-blue-600',
+  category: 'action',
+  difficulty: 'medium',
+  averagePlayTime: 360, // 6 minutes (10 waves)
+  maxPlaysPerDay: 10,
+  enabled: true,
+  scoring: {
+    maxScore: 50000,
+    goodScore: 8000,     // Complete 5-6 waves, decent accuracy
+    greatScore: 20000,   // Complete 8-9 waves, good chains
+    legendaryScore: 40000, // Complete all 10 waves, high accuracy
+  },
+  features: {
+    hasTimer: false,
+    hasMoves: false,
+    hasLives: false,
+    hasCombo: true,
+  },
+},
+
+ENSURE the Shield icon is imported at the top:
+import { Shield, Spade, Zap } from 'lucide-react';
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: UPDATE ROUTING
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE: client/src/App.tsx
+
+FIND this import (if it exists):
+import JaguarRunner from './pages/JaguarRunner';
+
+REPLACE with:
+import GuardianDefense from './pages/GuardianDefense';
+
+FIND this route (if it exists):
+<Route path="/jaguar-runner" element={<JaguarRunner />} />
+
+REPLACE with:
+<Route path="/guardian-defense" element={<GuardianDefense />} />
+
+IF the route doesn't exist yet, ADD it with the other game routes:
+<Route path="/guardian-defense" element={<GuardianDefense />} />
+<Route path="/guardian-solitaire" element={<GuardianSolitaire />} />
+<Route path="/asteroid-mining" element={<AsteroidMining />} />
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 3: UPDATE NAVIGATION
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE: client/src/components/Navbar.tsx
+
+FIND any reference to '/jaguar-runner' or 'Jaguar Runner'
+
+REPLACE with:
+<Link 
+  to="/guardian-defense"
+  className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded transition-colors"
+>
+  <Shield className="w-4 h-4 text-cyan-400" />
+  Guardian Defense
+</Link>
+
+ENSURE Shield icon is imported at the top:
+import { Shield, Spade, Zap, /* other icons */ } from 'lucide-react';
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 4: DELETE OLD JAGUAR RUNNER FILE (IF IT EXISTS)
+═══════════════════════════════════════════════════════════════════════════════
+
+IF this file exists: client/src/pages/JaguarRunner.tsx
+DELETE IT (it's being replaced by Guardian Defense)
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 5: UPDATE STORAGE REFERENCES (IF ANY)
+═══════════════════════════════════════════════════════════════════════════════
+
+SEARCH the entire codebase for 'jaguar-runner' string references
+
+REPLACE any found instances with 'guardian-defense' (except in comments/docs)
+
+Common places to check:
+- Analytics tracking
+- LocalStorage keys
+- Database queries
+- Test files
+
+═══════════════════════════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+After making these changes, verify:
+[ ] gameRegistry.ts exports 'guardian-defense' in GameType
+[ ] GAME_REGISTRY has 'guardian-defense' entry with Shield icon
+[ ] App.tsx imports GuardianDefense component
+[ ] App.tsx has /guardian-defense route
+[ ] Navbar.tsx has Guardian Defense link with Shield icon
+[ ] No references to 'jaguar-runner' remain in active code
+[ ] Old JaguarRunner.tsx file is deleted (if it existed)
+
+Run the app and check:
+[ ] Navigation link appears in games menu
+[ ] Clicking link navigates to /guardian-defense
+[ ] Game loads without errors
+[ ] No console errors about missing imports
+
+═══════════════════════════════════════════════════════════════════════════════

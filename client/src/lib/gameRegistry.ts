@@ -1,10 +1,10 @@
 import { LucideIcon } from 'lucide-react';
-import { Zap, Spade, Shield, Rocket } from 'lucide-react';
+import { Target, Spade, Shield, Rocket } from 'lucide-react';
 
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'jaguar-runner' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining';
+export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining';
 
 /**
  * Game difficulty levels
@@ -77,29 +77,30 @@ export interface GameConfig {
  * Add new games here - single source of truth
  */
 export const GAME_REGISTRY: Record<GameType, GameConfig> = {
-  'jaguar-runner': {
-    id: 'jaguar-runner',
-    name: 'Jaguar Runner',
-    description: 'Endless runner on an alien planet. Jump over obstacles and survive as long as you can!',
-    path: '/jaguar-runner',
-    icon: Zap,
-    iconColor: 'text-orange-400',
-    thumbnailGradient: 'from-orange-500 to-red-600',
+  'guardian-defense': {
+    id: 'guardian-defense',
+    name: 'Guardian Defense',
+    description: 'Defend Brain Planet 77 in the Giga Brain Galaxy! Classic missile defense with stunning visuals, chain reactions, and 10 waves of alien missiles.',
+    path: '/guardian-defense',
+    icon: Target,
+    iconColor: 'text-cyan-400',
+    thumbnailGradient: 'from-indigo-500 to-purple-600',
     category: 'action',
-    difficulty: 'easy',
-    averagePlayTime: 120,
+    difficulty: 'medium',
+    averagePlayTime: 300,
     maxPlaysPerDay: 10,
     enabled: true,
     scoring: {
-      maxScore: 50000,      // Perfect run: 5000 distance
-      goodScore: 5000,      // 500 distance, decent performance
-      greatScore: 15000,    // 1500 distance, strong performance
-      legendaryScore: 30000, // 3000+ distance, top 5%
+      maxScore: 50000,       // Perfect 10-wave defense with chains
+      goodScore: 8000,       // Casual play, few waves cleared
+      greatScore: 25000,     // Advanced, most waves with good chains
+      legendaryScore: 40000, // Near-perfect defense mastery
     },
     features: {
       hasTimer: false,
       hasMoves: false,
       hasLives: true,
+      hasCombo: true,
     },
   },
   

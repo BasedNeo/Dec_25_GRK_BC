@@ -17,7 +17,7 @@ const Odyssey = lazy(() => import("@/pages/Odyssey"));
 const Creators = lazy(() => import("@/pages/Creators"));
 const Saga = lazy(() => import("@/pages/Saga"));
 const GuardianDefender = lazy(() => import("@/pages/GuardianDefender"));
-const JaguarRunner = lazy(() => import("@/pages/JaguarRunner"));
+const GuardianDefense = lazy(() => import("@/pages/GuardianDefense"));
 const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
 const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
 import { WagmiProvider } from "wagmi";
@@ -139,7 +139,7 @@ function Router() {
         <Route path="/creators" component={Creators} />
         <Route path="/saga" component={Saga} />
         <Route path="/game" component={GuardianDefender} />
-        <Route path="/jaguar-runner" component={JaguarRunner} />
+        <Route path="/guardian-defense" component={GuardianDefense} />
         <Route path="/guardian-solitaire" component={GuardianSolitaire} />
         <Route path="/asteroid-mining" component={AsteroidMining} />
         <Route component={NotFound} />
