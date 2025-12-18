@@ -341,11 +341,11 @@ export function useMarketplace() {
     });
   }, [checkNetwork, toast, writeContract]);
 
-  const listNFT = useCallback(async (tokenId: number, priceInBased: number) => {
-    if (!checkNetwork()) return;
+  const listNFT = useCallback(async (tokenId: number, priceInBased: string) => {
+    if (!checkNetwork() || !address) return;
 
-    // Validate price - must be at least 1 $BASED
-    if (priceInBased < 1) {
+    const priceWei = SafeMath.parseInput(priceInBased);
+    if (!priceWei || !SafeMath.validate(priceWei).valid || priceWei < SafeMath.toWei('1')) {
       toast({ 
         title: "Price Too Low", 
         description: "Minimum listing price is 1 $BASED", 
@@ -409,15 +409,14 @@ export function useMarketplace() {
     }
 
     setState(prev => ({ ...prev, action: 'list' }));
-    lastActionRef.current = { action: 'list', description: `Listing Guardian #${tokenId} for ${priceInBased.toLocaleString()} $BASED`, retryFn: () => listNFT(tokenId, priceInBased) };
+    const priceFormatted = SafeMath.format(priceWei);
+    lastActionRef.current = { action: 'list', description: `Listing Guardian #${tokenId} for ${priceFormatted} $BASED`, retryFn: () => listNFT(tokenId, priceInBased) };
 
     toast({
       title: "List NFT",
-      description: `Listing Guardian #${tokenId} for ${priceInBased.toLocaleString()} $BASED...`,
+      description: `Listing Guardian #${tokenId} for ${priceFormatted} $BASED...`,
       className: "bg-black border-cyan-500 text-cyan-500 font-orbitron",
     });
-
-    const priceWei = parseEther(String(priceInBased));
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
