@@ -24,6 +24,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { NFT_CONTRACT, RPC_URL, MARKETPLACE_CONTRACT, CUMULATIVE_SALES_BASELINE } from '@/lib/constants';
 import { useInterval } from '@/hooks/useInterval';
+import { requestDedup } from '@/lib/requestDeduplicator';
 
 // Activity Types
 export type ActivityType = 'mint' | 'transfer' | 'list' | 'sale' | 'offer' | 'delist';
@@ -128,6 +129,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
 
   // Fetch activities from blockchain - OPTIMIZED with parallel calls
   const fetchActivities = useCallback(async () => {
+    return requestDedup.execute('activity-feed', async () => {
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       
@@ -270,6 +272,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     } finally {
       setIsLoading(false);
     }
+    });
   }, [limit]);
 
   // Initial fetch

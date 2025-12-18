@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { requestDedup } from '@/lib/requestDeduplicator';
 
 export interface GuardianProfile {
   id: string;
@@ -47,41 +48,43 @@ export function useGuardianProfile() {
   const login = useCallback(async () => {
     if (!address || !isConnected) return;
     
-    setLoading(true);
-    try {
-      const res = await fetch('/api/profile/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data.profile);
-        setIsNewUser(data.isNew);
+    return requestDedup.execute(`profile-login-${address}`, async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/profile/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: address }),
+        });
         
-        if (data.isNew) {
-          const hasSeenPrompt = localStorage.getItem(`namePromptSeen_${address.toLowerCase()}`);
-          if (!hasSeenPrompt) {
-            setShowNamePrompt(true);
-          }
-        } else if (data.showWelcomeBack) {
-          const visitCountKey = `visitCount_${address.toLowerCase()}`;
-          const visitCount = parseInt(localStorage.getItem(visitCountKey) || '0') + 1;
-          localStorage.setItem(visitCountKey, visitCount.toString());
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data.profile);
+          setIsNewUser(data.isNew);
           
-          const messages = visitCount >= 5 ? FREQUENT_MESSAGES : RETURNING_MESSAGES;
-          const lastWelcome = localStorage.getItem(`lastWelcomeIndex_${address.toLowerCase()}`);
-          const lastIndex = lastWelcome ? parseInt(lastWelcome) : -1;
-          const nextIndex = (lastIndex + 1) % messages.length;
-          setWelcomeMessage(messages[nextIndex]);
-          localStorage.setItem(`lastWelcomeIndex_${address.toLowerCase()}`, nextIndex.toString());
+          if (data.isNew) {
+            const hasSeenPrompt = localStorage.getItem(`namePromptSeen_${address.toLowerCase()}`);
+            if (!hasSeenPrompt) {
+              setShowNamePrompt(true);
+            }
+          } else if (data.showWelcomeBack) {
+            const visitCountKey = `visitCount_${address.toLowerCase()}`;
+            const visitCount = parseInt(localStorage.getItem(visitCountKey) || '0') + 1;
+            localStorage.setItem(visitCountKey, visitCount.toString());
+            
+            const messages = visitCount >= 5 ? FREQUENT_MESSAGES : RETURNING_MESSAGES;
+            const lastWelcome = localStorage.getItem(`lastWelcomeIndex_${address.toLowerCase()}`);
+            const lastIndex = lastWelcome ? parseInt(lastWelcome) : -1;
+            const nextIndex = (lastIndex + 1) % messages.length;
+            setWelcomeMessage(messages[nextIndex]);
+            localStorage.setItem(`lastWelcomeIndex_${address.toLowerCase()}`, nextIndex.toString());
+          }
         }
+      } catch {
+        // Login failed silently
       }
-    } catch {
-      // Login failed silently
-    }
-    setLoading(false);
+      setLoading(false);
+    });
   }, [address, isConnected]);
 
   const setCustomName = useCallback(async (name: string | null): Promise<{ success: boolean; error?: string }> => {
