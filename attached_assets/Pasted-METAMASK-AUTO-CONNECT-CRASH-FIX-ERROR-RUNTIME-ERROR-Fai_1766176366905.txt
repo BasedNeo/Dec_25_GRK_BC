@@ -1,0 +1,167 @@
+METAMASK AUTO-CONNECT CRASH FIX
+
+ERROR: [RUNTIME_ERROR] "Failed to connect to MetaMask"
+at Object.connect (chrome-extension://nkbihfbeogaeaoehlefnkodbe...)
+
+ROOT CAUSE: App tries to auto-connect to MetaMask on page load before MetaMask is ready, causing browser crash.
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX: DISABLE AUTO-CONNECT IN WAGMI
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/wagmi.ts
+
+Add autoConnect: false to prevent automatic wallet connection:
+
+// If using getDefaultConfig:
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: process.env.VITE_WALLET_CONNECT_ID || 'YOUR_PROJECT_ID',
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http('https://rpc.basedai.network', {
+      timeout: 10000,
+      retryCount: 3,
+    }),
+  },
+  ssr: false,
+  autoConnect: false, // CRITICAL - prevents auto-connect crash
+});
+
+// If using createConfig:
+export const config = createConfig({
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http('https://rpc.basedai.network'),
+  },
+  ssr: false,
+  autoConnect: false, // CRITICAL
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: ADD GLOBAL ERROR HANDLER FOR WALLET ERRORS
+═══════════════════════════════════════════════════════════════════
+
+2. UPDATE FILE: client/src/App.tsx
+
+Add this at the top of the App component:
+
+useEffect(() => {
+  const handleError = (event: ErrorEvent) => {
+    // Suppress MetaMask/wallet errors to prevent crash
+    if (event.error?.message?.includes('MetaMask') || 
+        event.error?.message?.includes('wallet')) {
+      event.preventDefault();
+      console.warn('Wallet error suppressed:', event.error.message);
+      return;
+    }
+  };
+  
+  const handleRejection = (event: PromiseRejectionEvent) => {
+    // Suppress wallet promise rejections
+    if (event.reason?.message?.includes('MetaMask') || 
+        event.reason?.message?.includes('wallet')) {
+      event.preventDefault();
+      console.warn('Wallet rejection suppressed:', event.reason.message);
+      return;
+    }
+  };
+  
+  window.addEventListener('error', handleError);
+  window.addEventListener('unhandledrejection', handleRejection);
+  
+  return () => {
+    window.removeEventListener('error', handleError);
+    window.removeEventListener('unhandledrejection', handleRejection);
+  };
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: WRAP WALLET PROVIDER IN ERROR BOUNDARY
+═══════════════════════════════════════════════════════════════════
+
+3. UPDATE FILE: client/src/main.tsx
+
+Wrap WagmiProvider with error boundary:
+
+import { ErrorBoundary } from 'react-error-boundary';
+
+function WalletErrorFallback({ resetErrorBoundary }: any) {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+      <div className="text-center p-8">
+        <div className="text-6xl mb-4">🔌</div>
+        <h1 className="text-2xl font-bold mb-4">Wallet Connection Issue</h1>
+        <p className="text-gray-400 mb-6">
+          There was a problem with wallet initialization. You can still browse the app.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 bg-cyan-500 rounded-lg hover:bg-cyan-600"
+        >
+          Reload App
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Wrap providers:
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary FallbackComponent={WalletErrorFallback}>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          <App />
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  </ErrorBoundary>
+);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: REMOVE ANY AUTO-RECONNECT CODE
+═══════════════════════════════════════════════════════════════════
+
+4. SEARCH AND REMOVE in client/src/App.tsx:
+
+// FIND AND DELETE/COMMENT OUT any code like:
+/*
+useEffect(() => {
+  reconnect();
+}, []);
+*/
+
+// Or:
+/*
+useEffect(() => {
+  if (connector) {
+    connector.connect();
+  }
+}, [connector]);
+*/
+
+
+═══════════════════════════════════════════════════════════════════
+WHY THIS FIXES THE CRASH
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM: App tries to connect to MetaMask immediately on load
+- MetaMask extension not ready yet
+- User hasn't approved connection
+- Connection times out and crashes browser
+
+SOLUTION: 
+- Don't auto-connect (autoConnect: false)
+- Only connect when user clicks "Connect Wallet" button
+- Catch and suppress wallet errors if they occur
+- Prevent browser crash with error boundary
+
+RESULT:
+✅ App loads without crash
+✅ Users can browse without wallet connected
+✅ Users click "Connect Wallet" when ready
+✅ No more browser crashes

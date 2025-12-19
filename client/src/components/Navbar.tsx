@@ -137,8 +137,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'mint', label: t('nav.mint', 'Mint') },
     { id: 'gallery', label: t('nav.gallery', 'Portfolio') },
     { id: 'escrow', label: t('nav.escrow', 'Market') },
-    { id: 'marketplace', label: t('nav.marketplace', 'Browse') },
-    { id: 'collections', label: t('nav.collections', 'Collections') },
+    { id: 'collections', label: t('nav.collections', 'All Collections') },
     { id: 'universe', label: t('nav.universe', 'Universe') },
     { id: 'pool', label: t('nav.pool', 'Pool') },
     { id: 'stats', label: t('nav.stats', 'Stats') },
@@ -191,8 +190,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     setLocation('/guardian-solitaire');
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
-                  } else if (item.id === 'marketplace') {
-                    setLocation('/marketplace');
                   } else {
                     // Navigate to home page and set the tab
                     setLocation('/');
@@ -415,8 +412,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       setLocation('/games');
                     } else if (item.id === 'collections') {
                       setLocation('/collections');
-                    } else if (item.id === 'marketplace') {
-                      setLocation('/marketplace');
                     } else {
                       // Navigate to home page and set the tab
                       setLocation('/');
