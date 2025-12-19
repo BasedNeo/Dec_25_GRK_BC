@@ -4,11 +4,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { AlertCircle, CheckCircle, Clock, Trash2, PlusCircle, ThumbsUp, ThumbsDown, Vote, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Trash2, PlusCircle, ThumbsUp, ThumbsDown, Vote, FileText, Shield, Zap } from 'lucide-react';
 import { CreateProposalModal } from './CreateProposalModal';
 import { useToast } from '@/hooks/use-toast';
 import { ADMIN_WALLETS } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 
 interface Proposal {
   id: number;
@@ -26,6 +27,7 @@ interface Proposal {
 
 export function Governance() {
   const { address, isConnected } = useAccount();
+  const { balance: votingPower } = useOwnedNFTs();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -140,22 +142,62 @@ export function Governance() {
   return (
     <section className="py-6 sm:py-12 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-orbitron font-bold text-white mb-1 sm:mb-2">Governance</h2>
-            <p className="text-sm sm:text-base text-gray-400">Vote on proposals to shape the future</p>
+        {/* Hero Header - Guardian Governance */}
+        <div className="relative mb-8 sm:mb-12 py-8 sm:py-12 px-4 sm:px-8 rounded-2xl bg-gradient-to-br from-black via-gray-900 to-black border border-white/10 overflow-hidden">
+          {/* Star field background */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-white/40 rounded-full animate-pulse"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${2 + Math.random() * 3}s`
+                }}
+              />
+            ))}
+          </div>
+          
+          <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+            {/* Shield Icon */}
+            <div className="p-3 sm:p-4 border-2 border-white/30 rounded-xl">
+              <Shield className="w-8 h-8 sm:w-12 sm:h-12 text-white" strokeWidth={1.5} />
+            </div>
+            
+            {/* Title and Tagline */}
+            <div className="flex-1">
+              <h1 className="text-3xl sm:text-5xl font-orbitron font-bold text-white tracking-wider mb-2 sm:mb-3">
+                GUARDIAN<br className="sm:hidden" /> GOVERNANCE
+              </h1>
+              <p className="text-sm sm:text-lg text-gray-300 font-mono tracking-wide">
+                1 NFT = 1 Vote • Shape the future of Based Guardians
+              </p>
+            </div>
+
+            {/* Admin Create Button */}
+            {isAdmin && (
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black min-h-[44px] touch-manipulation font-bold"
+                data-testid="create-proposal-btn"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Create Proposal
+              </Button>
+            )}
           </div>
 
-          {isAdmin && (
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-purple-500 text-black min-h-[44px] touch-manipulation"
-              data-testid="create-proposal-btn"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Proposal
-            </Button>
-          )}
+          {/* Voting Power Badge */}
+          <div className="relative z-10 mt-6 sm:mt-8">
+            <div className="inline-flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-2 border-white/20 rounded-xl bg-black/40 backdrop-blur-sm">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <span className="text-base sm:text-xl font-mono text-white tracking-wider" data-testid="voting-power">
+                Voting Power: <span className="font-bold">{isConnected ? votingPower : 0}</span>
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Stats Section */}
