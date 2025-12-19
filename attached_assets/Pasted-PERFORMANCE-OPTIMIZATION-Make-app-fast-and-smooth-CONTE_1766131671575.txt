@@ -1,0 +1,511 @@
+PERFORMANCE OPTIMIZATION - Make app fast and smooth
+
+CONTEXT: User confirmed "app is not running smooth" and "glitching a lot". This fixes all performance issues through lazy loading, reduced polling, caching, and optimization.
+
+TARGET: <3 second initial load, smooth navigation, no lag
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: IMPLEMENT LAZY LOADING FOR GAMES
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/App.tsx
+
+The games are already lazy loaded! Verify this is in place:
+
+Around line 13-24, you should see:
+const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
+const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
+const GuardianDefense = lazy(() => import("@/pages/GuardianDefense"));
+const BasedArcade = lazy(() => import("@/pages/BasedArcade"));
+
+If NOT lazy loaded, change from:
+import GuardianSolitaire from "@/pages/GuardianSolitaire";
+
+To:
+const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
+
+Do this for ALL game pages.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: REDUCE POLLING INTERVALS (CRITICAL)
+═══════════════════════════════════════════════════════════════════
+
+2. UPDATE FILE: client/src/hooks/useSubnetEmissions.ts
+
+Find the polling interval constant (around line 10-20) and change:
+
+FROM:
+const POLLING_INTERVAL = 30000; // 30 seconds
+
+TO:
+const POLLING_INTERVAL = 180000; // 3 minutes - reduces server load 6x
+
+
+3. UPDATE FILE: client/src/components/PriceTicker.tsx
+
+Find the useEffect that fetches prices and increase interval:
+
+Find:
+const interval = setInterval(fetchPrices, 60000); // 1 minute
+
+Change to:
+const interval = setInterval(fetchPrices, 300000); // 5 minutes
+
+
+4. UPDATE FILE: client/src/hooks/useActivityFeed.ts
+
+Find the refresh interval and increase:
+
+Find:
+const REFRESH_INTERVAL = 60000; // 1 minute
+
+Change to:
+const REFRESH_INTERVAL = 300000; // 5 minutes
+
+
+5. UPDATE FILE: client/src/lib/connectionManager.ts
+
+Already updated in PROMPT 1, verify:
+private readonly CHECK_INTERVAL = 60000; // Should be 60s not 30s
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: IMPLEMENT REQUEST CACHING
+═══════════════════════════════════════════════════════════════════
+
+6. CREATE FILE: client/src/lib/simpleCache.ts
+
+Create a simple in-memory cache for API requests:
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+class SimpleCache {
+  private cache: Map<string, CacheEntry<any>> = new Map();
+  
+  set<T>(key: string, data: T, ttlSeconds: number = 300): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl: ttlSeconds * 1000
+    });
+  }
+  
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    
+    if (!entry) {
+      return null;
+    }
+    
+    const age = Date.now() - entry.timestamp;
+    
+    if (age > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data as T;
+  }
+  
+  has(key: string): boolean {
+    return this.get(key) !== null;
+  }
+  
+  clear(): void {
+    this.cache.clear();
+  }
+  
+  clearOld(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+export const apiCache = new SimpleCache();
+
+// Auto-cleanup every 5 minutes
+setInterval(() => apiCache.clearOld(), 5 * 60 * 1000);
+
+
+7. UPDATE FILE: client/src/hooks/useContractData.ts
+
+Add caching to reduce RPC calls:
+
+Add import at top:
+import { apiCache } from '@/lib/simpleCache';
+
+In the fetch function, add caching:
+
+async function fetchContractData() {
+  // Check cache first
+  const cacheKey = 'contract_data';
+  const cached = apiCache.get(cacheKey);
+  
+  if (cached) {
+    setTotalMinted(cached.totalMinted);
+    setPublicMintEnabled(cached.publicMintEnabled);
+    setIsPaused(cached.isPaused);
+    // ... set other cached values
+    return;
+  }
+  
+  try {
+    // ... existing fetch logic
+    
+    // Cache the results for 2 minutes
+    apiCache.set(cacheKey, {
+      totalMinted,
+      publicMintEnabled,
+      isPaused,
+      // ... other values
+    }, 120);
+    
+  } catch (error) {
+    // ... existing error handling
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: OPTIMIZE IMAGE LOADING
+═══════════════════════════════════════════════════════════════════
+
+8. CREATE FILE: client/src/components/OptimizedImage.tsx
+
+Create optimized image component with lazy loading:
+
+import { useState } from 'react';
+
+interface OptimizedImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  fallback?: string;
+}
+
+export default function OptimizedImage({ 
+  src, 
+  alt, 
+  className = '',
+  fallback = '/placeholder.png'
+}: OptimizedImageProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div className={`relative ${className}`}>
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-muted animate-pulse rounded-lg" />
+      )}
+      <img
+        src={hasError ? fallback : src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => {
+          setHasError(true);
+          setIsLoaded(true);
+        }}
+        className={`${className} transition-opacity duration-300 ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+    </div>
+  );
+}
+
+9. Replace <img> tags with <OptimizedImage> in key pages:
+- Marketplace NFT cards
+- Profile NFTs
+- Collections page
+- Any NFT displays
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: REDUCE BUNDLE SIZE WITH CODE SPLITTING
+═══════════════════════════════════════════════════════════════════
+
+10. UPDATE FILE: client/src/App.tsx
+
+Ensure ALL heavy components are lazy loaded:
+
+// These should already be lazy from PROMPT 1, verify:
+const Home = lazy(() => import("@/pages/Home"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
+const TransactionHistory = lazy(() => import("@/pages/TransactionHistory"));
+const Collections = lazy(() => import("@/pages/Collections"));
+
+// Add lazy loading for heavy UI components:
+const WalletProviders = lazy(() => import("@/components/WalletProviders"));
+const AppContent = lazy(() => import("@/components/AppContent"));
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: OPTIMIZE RPC CALLS WITH DEBOUNCING
+═══════════════════════════════════════════════════════════════════
+
+11. UPDATE FILE: client/src/hooks/useDebouncedCallback.ts
+
+Ensure this hook exists and is robust:
+
+import { useCallback, useRef, useEffect } from 'react';
+
+export function useDebouncedCallback<T extends (...args: any[]) => any>(
+  callback: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return useCallback(
+    (...args: Parameters<T>) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        callback(...args);
+      }, delay);
+    },
+    [callback, delay]
+  );
+}
+
+12. USE debouncing for search inputs and filters in Marketplace
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: ADD PRODUCTION BUILD OPTIMIZATIONS
+═══════════════════════════════════════════════════════════════════
+
+13. UPDATE FILE: package.json
+
+Verify build script is optimized:
+
+"scripts": {
+  "dev": "NODE_ENV=development tsx server/index.ts",
+  "build": "NODE_ENV=production tsx script/build.ts",
+  "start": "NODE_ENV=production node dist/index.cjs",
+}
+
+14. UPDATE FILE: script/build.ts
+
+Ensure it's building with optimizations. If the file is simple, verify it runs:
+- vite build (should be in there)
+- esbuild for server (should be in there)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: REDUCE MEMORY LEAKS
+═══════════════════════════════════════════════════════════════════
+
+15. UPDATE FILE: client/src/hooks/useInterval.ts
+
+Verify this exists and is used everywhere instead of raw setInterval:
+
+import { useEffect, useRef } from 'react';
+
+export function useInterval(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (delay === null) return;
+
+    const id = setInterval(() => savedCallback.current(), delay);
+    return () => clearInterval(id);
+  }, [delay]);
+}
+
+export function useTimeout(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (delay === null) return;
+
+    const id = setTimeout(() => savedCallback.current(), delay);
+    return () => clearTimeout(id);
+  }, [delay]);
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: OPTIMIZE MARKETPLACE RENDERING
+═══════════════════════════════════════════════════════════════════
+
+16. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+Add React.memo to NFT cards to prevent unnecessary re-renders:
+
+import { memo } from 'react';
+
+// Wrap your NFT card component:
+const NFTCard = memo(({ nft, onBuy }: { nft: any, onBuy: (id: number) => void }) => {
+  // Your NFT card JSX
+  return (
+    <Card>
+      {/* ... */}
+    </Card>
+  );
+});
+
+NFTCard.displayName = 'NFTCard';
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: ADD RPC FAILOVER (CRITICAL FOR UPTIME)
+═══════════════════════════════════════════════════════════════════
+
+17. UPDATE FILE: client/src/lib/constants.ts
+
+Add multiple RPC endpoints:
+
+export const RPC_ENDPOINTS = [
+  'https://mainnet.basedaibridge.com/rpc/',
+  'https://rpc.basedai.network/', // Add if available
+  'https://rpc-basedai.alt.technology/', // Add if available
+];
+
+If you don't have alternative RPCs, keep one but add retry logic.
+
+
+18. CREATE FILE: client/src/lib/rpcFailover.ts
+
+Create RPC failover logic:
+
+import { RPC_ENDPOINTS } from './constants';
+
+class RPCFailover {
+  private currentIndex = 0;
+  private failureCounts = new Map<string, number>();
+  private readonly MAX_FAILURES = 3;
+
+  getCurrentRPC(): string {
+    return RPC_ENDPOINTS[this.currentIndex];
+  }
+
+  async executeWithFailover<T>(
+    operation: (rpcUrl: string) => Promise<T>,
+    maxRetries: number = RPC_ENDPOINTS.length
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const rpcUrl = this.getCurrentRPC();
+
+      try {
+        const result = await operation(rpcUrl);
+        this.failureCounts.set(rpcUrl, 0);
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+        this.recordFailure(rpcUrl);
+        this.switchToNextRPC();
+      }
+    }
+
+    throw new Error(`All RPC endpoints failed. Last error: ${lastError?.message}`);
+  }
+
+  private recordFailure(rpcUrl: string): void {
+    const count = (this.failureCounts.get(rpcUrl) || 0) + 1;
+    this.failureCounts.set(rpcUrl, count);
+
+    if (count >= this.MAX_FAILURES) {
+      console.warn(`[RPC Failover] ${rpcUrl} has failed ${count} times`);
+    }
+  }
+
+  private switchToNextRPC(): void {
+    this.currentIndex = (this.currentIndex + 1) % RPC_ENDPOINTS.length;
+    console.log(`[RPC Failover] Switching to RPC: ${this.getCurrentRPC()}`);
+  }
+
+  getStats() {
+    return {
+      currentRPC: this.getCurrentRPC(),
+      currentIndex: this.currentIndex,
+      failures: Object.fromEntries(this.failureCounts)
+    };
+  }
+}
+
+export const rpcFailover = new RPCFailover();
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 11: REBUILD AND TEST
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Clear everything
+rm -rf node_modules/.vite dist client/dist
+
+# Rebuild with optimizations
+npm run build
+
+# Start and test
+npm run dev
+
+# Wait for "serving on port 5000"
+# Test the app - should feel MUCH faster
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 12: MEASURE PERFORMANCE
+═══════════════════════════════════════════════════════════════════
+
+Open your app in Chrome:
+1. Press F12 (DevTools)
+2. Go to "Lighthouse" tab
+3. Click "Analyze page load"
+4. Check Performance score
+
+TARGET: >70 Performance Score
+
+If <70, check:
+- Network tab - any requests >1s?
+- Are images optimized?
+- Is JavaScript bundle <500KB?
+
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+✅ Initial load <3 seconds
+✅ Page navigation instant
+✅ No lag when scrolling
+✅ Games load quickly
+✅ No "app glitching" as user described
+✅ Lighthouse Performance >70
+✅ Network requests reduced by 50%+
+✅ Console shows no memory warnings
+
+If all ✅ above, proceed to PROMPT 4.
+If still slow, share Lighthouse report.

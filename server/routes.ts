@@ -2,9 +2,10 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema, analyticsEvents, collections } from "@shared/schema";
-import { CollectionService } from './lib/collectionService';
-import { GatingService } from './lib/gatingService';
-import { searchService, type SearchFilters } from './lib/searchService';
+// STRIPPED FOR LAUNCH: Advanced features commented out
+// import { CollectionService } from './lib/collectionService';
+// import { GatingService } from './lib/gatingService';
+// import { searchService, type SearchFilters } from './lib/searchService';
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
@@ -29,16 +30,18 @@ import { SignatureVerifier } from './lib/signatureVerifier';
 import { NonceManager } from './lib/nonceManager';
 import { OriginValidator } from './lib/originValidator';
 import { CSRFProtection } from './lib/csrfProtection';
-import { EncryptionService } from './lib/encryption';
-import { EncryptedStorageService } from './lib/encryptedStorage';
-import { SecurityMonitor } from './lib/securityMonitor';
-import { ThreatDetection } from './lib/threatDetection';
-import { IncidentResponse } from './lib/incidentResponse';
+// STRIPPED FOR LAUNCH: Enterprise security features
+// import { EncryptionService } from './lib/encryption';
+// import { EncryptedStorageService } from './lib/encryptedStorage';
+// import { SecurityMonitor } from './lib/securityMonitor';
+// import { ThreatDetection } from './lib/threatDetection';
+// import { IncidentResponse } from './lib/incidentResponse';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
-import { WalletScanner } from './lib/walletScanner';
+// STRIPPED FOR LAUNCH: Wallet scanner too slow
+// import { WalletScanner } from './lib/walletScanner';
 import crypto from "crypto";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -1454,6 +1457,7 @@ export async function registerRoutes(
     }
   });
 
+  /* STRIPPED FOR LAUNCH: Encryption routes
   app.post('/api/admin/encryption/test', requireAdmin, async (req, res) => {
     try {
       const { data } = req.body;
@@ -1647,6 +1651,7 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message });
     }
   });
+  // END OF STRIPPED ENCRYPTION/SECURITY ROUTES */
 
   // =============================================
   // Database Backup Management Endpoints
@@ -1708,6 +1713,7 @@ export async function registerRoutes(
     }
   });
 
+  /* STRIPPED FOR LAUNCH: Security health route uses SecurityMonitor
   app.get('/api/health/security', async (req, res) => {
     try {
       const metrics = SecurityMonitor.getMetrics();
@@ -1727,7 +1733,9 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message });
     }
   });
+  */
 
+  /* STRIPPED FOR LAUNCH: PITR, Disaster Recovery, Snapshots, Runbooks, Incidents routes
   const { PointInTimeRecovery } = await import('./lib/pointInTimeRecovery');
   const { TransactionLogService } = await import('./lib/transactionLog');
 
@@ -2124,7 +2132,9 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message });
     }
   });
+  END OF STRIPPED PITR/DISASTER/SNAPSHOTS/RUNBOOKS/INCIDENTS ROUTES */
 
+  /* STRIPPED FOR LAUNCH: Collection, Gating, Wallet Scanner, and Search routes
   // Collection routes
   
   // Seed default Based Guardians collection on startup
@@ -2463,6 +2473,7 @@ export async function registerRoutes(
       res.status(500).json({ error: 'Failed to get popular searches' });
     }
   });
+  END OF STRIPPED COLLECTION/GATING/SCANNER/SEARCH ROUTES */
 
   return httpServer;
 }
