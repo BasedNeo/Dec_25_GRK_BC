@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Loader2, 
   TrendingUp, 
   Users, 
   Store,
@@ -20,8 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
 import { useAccount } from 'wagmi';
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
+import { GuardianLoader } from '@/components/ui/LoadingSpinner';
 import { SearchBar } from '@/components/SearchBar';
 import { FilterSidebar, type FilterState } from '@/components/FilterSidebar';
 import { TrendingCollections } from '@/components/TrendingCollections';
@@ -217,27 +215,8 @@ export default function Collections() {
           onTabChange={handleTabChange}
           isConnected={isConnected}
         />
-        <div className="container mx-auto px-4 py-8" data-testid="collections-loading">
-          <div className="mb-12">
-            <Skeleton width={300} height={48} baseColor="#1f2937" highlightColor="#374151" />
-            <Skeleton width={400} height={24} baseColor="#1f2937" highlightColor="#374151" className="mt-4" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
-                <Skeleton height={192} baseColor="#1f2937" highlightColor="#374151" />
-                <div className="p-4">
-                  <Skeleton width="70%" height={24} baseColor="#1f2937" highlightColor="#374151" />
-                  <Skeleton width="50%" baseColor="#1f2937" highlightColor="#374151" className="mt-2" />
-                  <div className="grid grid-cols-3 gap-4 mt-4">
-                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
-                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
-                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center" data-testid="collections-loading">
+          <GuardianLoader text="Loading Collections..." />
         </div>
       </>
     );
@@ -434,24 +413,8 @@ export default function Collections() {
                 )}
 
                 {guardiansLoading ? (
-                  <div className={`grid gap-4 ${
-                    gridSize === 'large' 
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
-                      : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
-                  }`}>
-                    {[...Array(6)].map((_, i) => (
-                      <div key={i} className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
-                        <Skeleton 
-                          height={gridSize === 'large' ? 280 : 180} 
-                          baseColor="#1f2937" 
-                          highlightColor="#374151"
-                        />
-                        <div className="p-4">
-                          <Skeleton width="60%" baseColor="#1f2937" highlightColor="#374151" />
-                          <Skeleton width="40%" baseColor="#1f2937" highlightColor="#374151" className="mt-2" />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-center py-16">
+                    <GuardianLoader text="Loading Guardians..." />
                   </div>
                 ) : error ? (
                   <div className="text-center py-20">
@@ -551,12 +514,16 @@ export default function Collections() {
                           variant="outline"
                           size="sm"
                           onClick={handleNextPage}
-                          disabled={!hasNextPage && page >= totalPages}
+                          disabled={!hasNextPage}
                           className="border-gray-700"
                           data-testid="button-next-page"
                         >
                           {isFetchingNextPage ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="flex items-center gap-1">
+                              <span className="w-1 h-3 bg-cyan-400 rounded-full animate-pulse" />
+                              <span className="w-1 h-3 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
+                              <span className="w-1 h-3 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                            </span>
                           ) : (
                             <>
                               Next
