@@ -2197,11 +2197,22 @@ export async function registerRoutes(
 
   // Collection routes
   
-  // Seed default Based Guardians collection on startup
-  const NFT_CONTRACT = '0xaE51dc5fD1499A129f8654963560f9340773ad59';
-  CollectionService.seedDefaultCollection(NFT_CONTRACT).catch(err => {
-    console.error('[Routes] Failed to seed default collection:', err);
-  });
+  // Auto-sync all BasedAI collections on startup if needed
+  (async () => {
+    try {
+      const existingCollections = await CollectionService.getAllCollections();
+      if (existingCollections.length < 18) {
+        console.log(`[Routes] Only ${existingCollections.length} collections found, syncing all BasedAI collections...`);
+        const { CollectionSync } = await import('./lib/collectionSync');
+        const results = await CollectionSync.syncAll();
+        console.log('[Routes] Collection sync complete:', results);
+      } else {
+        console.log('[Routes] Collections are up to date');
+      }
+    } catch (err) {
+      console.error('[Routes] Failed to sync collections:', err);
+    }
+  })();
   
   app.get('/api/collections', async (_req, res) => {
     try {
