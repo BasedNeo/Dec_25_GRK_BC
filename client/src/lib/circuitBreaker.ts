@@ -26,6 +26,7 @@ export class CircuitBreaker {
   private totalCalls: number = 0;
   private openedAt: number | null = null;
   private halfOpenAttempts: number = 0;
+  private lastLoggedState: CircuitState | null = null;
   
   constructor(
     private name: string,
@@ -37,6 +38,13 @@ export class CircuitBreaker {
     }
   ) {}
   
+  private logStateChange(newState: CircuitState, message: string): void {
+    if (this.lastLoggedState !== newState) {
+      console.log(message);
+      this.lastLoggedState = newState;
+    }
+  }
+  
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     this.totalCalls++;
     
@@ -44,8 +52,8 @@ export class CircuitBreaker {
       const timeSinceOpen = Date.now() - (this.openedAt || 0);
       
       if (timeSinceOpen >= this.options.resetTimeout) {
-        console.log(`[CIRCUIT:${this.name}] Moving to HALF_OPEN state`);
         this.state = 'HALF_OPEN';
+        this.logStateChange('HALF_OPEN', `[CIRCUIT:${this.name}] Moving to HALF_OPEN state`);
         this.halfOpenAttempts = 0;
       } else {
         throw new Error(`Circuit breaker ${this.name} is OPEN`);
@@ -74,8 +82,8 @@ export class CircuitBreaker {
       this.halfOpenAttempts++;
       
       if (this.halfOpenAttempts >= 2) {
-        console.log(`[CIRCUIT:${this.name}] Moving to CLOSED state (recovered)`);
         this.state = 'CLOSED';
+        this.logStateChange('CLOSED', `[CIRCUIT:${this.name}] Moving to CLOSED state (recovered)`);
         this.failures = 0;
         this.openedAt = null;
         this.halfOpenAttempts = 0;
@@ -90,8 +98,8 @@ export class CircuitBreaker {
     this.lastFailureTime = Date.now();
     
     if (this.state === 'HALF_OPEN') {
-      console.log(`[CIRCUIT:${this.name}] Failed in HALF_OPEN, moving back to OPEN`);
       this.state = 'OPEN';
+      this.logStateChange('OPEN', `[CIRCUIT:${this.name}] Failed in HALF_OPEN, moving back to OPEN`);
       this.openedAt = Date.now();
       this.halfOpenAttempts = 0;
       return;
@@ -101,8 +109,8 @@ export class CircuitBreaker {
       this.cleanOldFailures();
       
       if (this.failures >= this.options.failureThreshold) {
-        console.log(`[CIRCUIT:${this.name}] Failure threshold exceeded, moving to OPEN`);
         this.state = 'OPEN';
+        this.logStateChange('OPEN', `[CIRCUIT:${this.name}] Failure threshold exceeded, moving to OPEN`);
         this.openedAt = Date.now();
       }
     }
@@ -136,6 +144,7 @@ export class CircuitBreaker {
     this.lastFailureTime = null;
     this.openedAt = null;
     this.halfOpenAttempts = 0;
+    this.lastLoggedState = null;
   }
   
   forceOpen(): void {
