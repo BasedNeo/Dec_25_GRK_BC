@@ -12,7 +12,6 @@
  */
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -231,19 +230,11 @@ export function ActivityFeed({
               </p>
             </div>
           ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredActivities.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <ActivityRow activity={activity} compact={compact} />
-                </motion.div>
+            <div>
+              {filteredActivities.map((activity) => (
+                <ActivityRow key={activity.id} activity={activity} compact={compact} />
               ))}
-            </AnimatePresence>
+            </div>
           )}
         </Card>
 
