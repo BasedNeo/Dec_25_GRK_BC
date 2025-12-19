@@ -36,3 +36,9 @@ coverage/
 .temp/
 vite.config.ts.*
 *.tar.gz
+
+# Database backups
+/backups
+*.sql
+*.sql.gz
+backup.log

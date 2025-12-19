@@ -51,6 +51,8 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   const [featureFlags, setFeatureFlags] = useState<Array<{key: string; enabled: boolean; description: string | null; updatedAt: string; updatedBy: string | null}>>([]);
   const [flagsLoading, setFlagsLoading] = useState<string | null>(null);
   const [perfReport, setPerfReport] = useState<any>(null);
+  const [backupStatus, setBackupStatus] = useState<{lastBackup: {name: string; size: number; created: string} | null; backups: Array<{name: string; size: number; created: string}>} | null>(null);
+  const [backupLoading, setBackupLoading] = useState(false);
 
   const loadPerfReport = () => {
     const report = perfMonitor.getReport();
@@ -78,8 +80,77 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
         .then(r => r.json())
         .then(data => setFeatureFlags(data))
         .catch(() => {});
+      
+      fetch('/api/admin/backup/status')
+        .then(r => r.json())
+        .then(data => setBackupStatus(data))
+        .catch(() => {});
     }
   }, [isOpen, isAdmin]);
+  
+  const fetchBackupStatus = async () => {
+    try {
+      const res = await fetch('/api/admin/backup/status');
+      const data = await res.json();
+      setBackupStatus(data);
+    } catch (error) {
+      console.error('Failed to fetch backup status:', error);
+    }
+  };
+  
+  const runBackup = async () => {
+    if (!address) return;
+    
+    setBackupLoading(true);
+    addLog('Starting database backup...');
+    
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      
+      if (!nonceRes.ok) throw new Error('Failed to get nonce');
+      const { nonce } = await nonceRes.json();
+      
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+      const signature = await signer.signMessage(message);
+      
+      const res = await fetch('/api/admin/backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        }
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Backup failed');
+      }
+      
+      addLog('✅ Database backup completed successfully');
+      toast({ title: 'Backup Complete', description: 'Database has been backed up successfully.' });
+      await fetchBackupStatus();
+    } catch (error: any) {
+      addLog(`❌ Backup failed: ${error.message}`);
+      toast({ title: 'Backup Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+  
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
   
   const fetchFeatureFlags = async () => {
     try {
@@ -994,6 +1065,82 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
             {!conversions && !analyticsData && (
               <div className="text-gray-500 text-sm">No analytics data yet. Analytics will appear as users interact with the app.</div>
             )}
+          </Card>
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Database Backups
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={runBackup}
+                  disabled={backupLoading}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  data-testid="button-run-backup"
+                >
+                  {backupLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Backing up...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Run Backup Now
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={fetchBackupStatus}
+                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                  data-testid="button-refresh-backup-status"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {backupStatus?.lastBackup && (
+                <div className="bg-white/5 rounded p-4">
+                  <div className="text-sm text-gray-400 mb-2">Last Backup</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-mono text-sm" data-testid="text-last-backup-name">
+                        {backupStatus.lastBackup.name}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1" data-testid="text-last-backup-info">
+                        {formatBytes(backupStatus.lastBackup.size)} • {new Date(backupStatus.lastBackup.created).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-2xl text-green-400">✅</div>
+                  </div>
+                </div>
+              )}
+              
+              {backupStatus?.backups && backupStatus.backups.length > 1 && (
+                <div className="mt-4">
+                  <div className="text-sm text-gray-400 mb-2">Recent Backups ({backupStatus.backups.length})</div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {backupStatus.backups.slice(1, 5).map((backup, i) => (
+                      <div key={i} className="flex justify-between text-xs bg-white/5 rounded p-2">
+                        <span className="text-white font-mono">{backup.name}</span>
+                        <span className="text-gray-400">{formatBytes(backup.size)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {!backupStatus?.lastBackup && (
+                <div className="text-gray-500 text-sm">No backups yet. Click "Run Backup Now" to create your first backup.</div>
+              )}
+            </div>
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">

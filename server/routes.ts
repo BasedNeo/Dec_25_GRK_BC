@@ -9,6 +9,12 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
 import crypto from "crypto";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { stat, readdir } from "fs/promises";
+import path from "path";
+
+const execAsync = promisify(exec);
 
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
@@ -843,6 +849,67 @@ export async function registerRoutes(
     } catch (error) {
       console.error('[Analytics] Error fetching conversions:', error);
       res.status(500).json({ error: 'Failed to fetch conversions' });
+    }
+  });
+
+  app.post("/api/admin/backup", writeLimiter, requireAdmin, async (req, res) => {
+    try {
+      console.log('[Backup] Starting database backup...');
+      const { stdout, stderr } = await execAsync('tsx script/backup-database.ts', {
+        timeout: 120000,
+        cwd: process.cwd()
+      });
+      
+      if (stderr && !stderr.includes('Backup completed')) {
+        console.error('[Backup] Error:', stderr);
+      }
+      
+      console.log('[Backup] Backup completed successfully');
+      res.json({ success: true, output: stdout });
+    } catch (error: any) {
+      console.error('[Backup] Failed:', error.message);
+      res.status(500).json({ error: 'Backup failed', details: error.message });
+    }
+  });
+
+  app.get("/api/admin/backup/status", async (req, res) => {
+    try {
+      const backupsDir = path.join(process.cwd(), 'backups');
+      
+      try {
+        await stat(backupsDir);
+      } catch {
+        return res.json({ lastBackup: null, backups: [] });
+      }
+      
+      const files = await readdir(backupsDir);
+      const sqlFiles = files.filter(f => f.endsWith('.sql.gz'));
+      
+      if (sqlFiles.length === 0) {
+        return res.json({ lastBackup: null, backups: [] });
+      }
+      
+      const backupDetails = await Promise.all(
+        sqlFiles.map(async (file) => {
+          const filePath = path.join(backupsDir, file);
+          const fileStat = await stat(filePath);
+          return {
+            name: file,
+            size: fileStat.size,
+            created: fileStat.mtime.toISOString()
+          };
+        })
+      );
+      
+      backupDetails.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+      
+      res.json({
+        lastBackup: backupDetails[0] || null,
+        backups: backupDetails.slice(0, 10)
+      });
+    } catch (error: any) {
+      console.error('[Backup] Status check failed:', error.message);
+      res.status(500).json({ error: 'Failed to get backup status' });
     }
   });
 
