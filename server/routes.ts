@@ -1808,5 +1808,67 @@ export async function registerRoutes(
     }
   });
 
+  const { DisasterRecoveryService } = await import('./lib/disasterRecovery');
+  const { HealthCheckService } = await import('./lib/healthCheck');
+
+  app.post('/api/admin/disaster-recovery/plan', requireAdmin, async (req, res) => {
+    try {
+      const { disasterType } = req.body;
+      
+      if (!disasterType) {
+        return res.status(400).json({ error: 'Disaster type required' });
+      }
+      
+      const plan = await DisasterRecoveryService.createRecoveryPlan(disasterType);
+      
+      res.json({ plan });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/disaster-recovery/execute', requireAdmin, async (req, res) => {
+    try {
+      const { plan, automated } = req.body;
+      
+      if (!plan) {
+        return res.status(400).json({ error: 'Recovery plan required' });
+      }
+      
+      await DisasterRecoveryService.executeRecoveryPlan(plan, automated);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/disaster-recovery/test', requireAdmin, async (req, res) => {
+    try {
+      const results = await DisasterRecoveryService.testDisasterRecovery();
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/health/system', async (req, res) => {
+    try {
+      const health = await HealthCheckService.getSystemHealth();
+      res.json(health);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/health/detailed', requireAdmin, async (req, res) => {
+    try {
+      const checks = await HealthCheckService.runAllChecks();
+      res.json({ checks });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

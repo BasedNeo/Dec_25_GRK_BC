@@ -23,6 +23,7 @@ import { SecurityMonitor } from './SecurityMonitor';
 import { SecurityDashboard } from './SecurityDashboard';
 import { BackupManager } from './BackupManager';
 import { PointInTimeRecovery } from './PointInTimeRecovery';
+import { DisasterRecoveryPanel } from './DisasterRecoveryPanel';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1422,6 +1423,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Point-in-Time Recovery
             </h3>
             <PointInTimeRecovery />
+          </Card>
+          
+          <Card className="bg-black/60 border-red-500/30 p-6 mb-6" data-testid="disaster-recovery-card">
+            <h3 className="text-xl font-orbitron font-bold text-red-400 mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              Disaster Recovery
+            </h3>
+            <DisasterRecoveryPanel />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">
