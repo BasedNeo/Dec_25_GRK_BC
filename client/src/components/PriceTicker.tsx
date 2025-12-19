@@ -34,7 +34,7 @@ export function PriceTicker() {
   return (
     <div 
       id="priceBadge"
-      className="flex flex-col justify-center px-3 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[175px] md:w-[190px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
+      className="flex flex-col justify-center px-2.5 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-500 w-[140px] md:w-[150px] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(0,255,255,0.12)]"
       data-testid="price-ticker"
     >
       <AnimatePresence mode="wait">
