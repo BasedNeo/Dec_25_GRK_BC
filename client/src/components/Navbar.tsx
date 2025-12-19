@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle, LogOut } from "lucide-react";
@@ -19,6 +19,7 @@ import { NotificationBell } from "./NotificationCenter";
 import { PriceTicker } from "./PriceTicker";
 import Untitled from "@/assets/Untitled.png";
 import { useTranslation } from "react-i18next";
+import { prefetchHandlers } from "@/lib/lazyWithRetry";
 
 interface NavbarProps {
   activeTab: string;
@@ -183,6 +184,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               <button
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
+                onMouseEnter={() => {
+                  if (item.id === 'games' && prefetchHandlers.BasedArcade) prefetchHandlers.BasedArcade();
+                  if (item.id === 'collections' && prefetchHandlers.Collections) prefetchHandlers.Collections();
+                }}
                 onClick={() => {
                   if (item.id === 'games') {
                     setLocation('/games');
@@ -191,7 +196,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
                   } else {
-                    // Navigate to home page and set the tab
                     setLocation('/');
                     onTabChange(item.id);
                   }
