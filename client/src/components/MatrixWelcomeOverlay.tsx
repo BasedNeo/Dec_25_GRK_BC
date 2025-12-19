@@ -161,7 +161,6 @@ export function MatrixWelcomeOverlay({
           data-testid="matrix-welcome-overlay"
         >
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent" />
             <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
           </div>
 
