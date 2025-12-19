@@ -37,6 +37,7 @@ import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './m
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
+import { WalletScanner } from './lib/walletScanner';
 import crypto from "crypto";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -2269,6 +2270,58 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to initialize gating rules' });
+    }
+  });
+
+  // Wallet Scanner routes
+  const RPC_URL = 'https://mainnet.basedaibridge.com/rpc/';
+  
+  app.get('/api/wallet/scan/:address', async (req, res) => {
+    try {
+      const { address } = req.params;
+      
+      if (!ethers.isAddress(address)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      
+      const collections = await WalletScanner.scanWalletCollections(address, RPC_URL);
+      
+      res.json({ 
+        address, 
+        collections,
+        scannedAt: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Wallet scan failed:', error);
+      res.status(500).json({ error: 'Failed to scan wallet' });
+    }
+  });
+
+  app.get('/api/nft/metadata/:contractAddress/:tokenId', async (req, res) => {
+    try {
+      const { contractAddress, tokenId } = req.params;
+      
+      if (!ethers.isAddress(contractAddress)) {
+        return res.status(400).json({ error: 'Invalid contract address' });
+      }
+      
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const metadata = await WalletScanner.getNFTMetadata(
+        contractAddress,
+        parseInt(tokenId),
+        provider
+      );
+      
+      if (!metadata) {
+        return res.status(404).json({ error: 'Metadata not found' });
+      }
+      
+      res.json(metadata);
+      
+    } catch (error) {
+      console.error('Metadata fetch failed:', error);
+      res.status(500).json({ error: 'Failed to fetch metadata' });
     }
   });
 
