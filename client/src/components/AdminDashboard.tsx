@@ -21,6 +21,7 @@ import { RateLimitMonitor } from './RateLimitMonitor';
 import { SessionMonitor } from './SessionMonitor';
 import { SecurityMonitor } from './SecurityMonitor';
 import { SecurityDashboard } from './SecurityDashboard';
+import { BackupManager } from './BackupManager';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1406,80 +1407,12 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
             <SecurityMonitor />
           </Card>
           
-          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6" data-testid="backup-manager-card">
             <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
               <Database className="w-5 h-5" />
-              Database Backups
+              Database Backup & Restore
             </h3>
-            
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={runBackup}
-                  disabled={backupLoading}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                  data-testid="button-run-backup"
-                >
-                  {backupLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Backing up...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Run Backup Now
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={fetchBackupStatus}
-                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
-                  data-testid="button-refresh-backup-status"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              {backupStatus?.lastBackup && (
-                <div className="bg-white/5 rounded p-4">
-                  <div className="text-sm text-gray-400 mb-2">Last Backup</div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white font-mono text-sm" data-testid="text-last-backup-name">
-                        {backupStatus.lastBackup.name}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1" data-testid="text-last-backup-info">
-                        {formatBytes(backupStatus.lastBackup.size)} • {new Date(backupStatus.lastBackup.created).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="text-2xl text-green-400">✅</div>
-                  </div>
-                </div>
-              )}
-              
-              {backupStatus?.backups && backupStatus.backups.length > 1 && (
-                <div className="mt-4">
-                  <div className="text-sm text-gray-400 mb-2">Recent Backups ({backupStatus.backups.length})</div>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {backupStatus.backups.slice(1, 5).map((backup, i) => (
-                      <div key={i} className="flex justify-between text-xs bg-white/5 rounded p-2">
-                        <span className="text-white font-mono">{backup.name}</span>
-                        <span className="text-gray-400">{formatBytes(backup.size)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {!backupStatus?.lastBackup && (
-                <div className="text-gray-500 text-sm">No backups yet. Click "Run Backup Now" to create your first backup.</div>
-              )}
-            </div>
+            <BackupManager />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">

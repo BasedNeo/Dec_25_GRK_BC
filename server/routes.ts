@@ -1644,6 +1644,66 @@ export async function registerRoutes(
     }
   });
 
+  // =============================================
+  // Database Backup Management Endpoints
+  // =============================================
+  const { BackupScheduler } = await import('./lib/backupScheduler');
+  const backupService = BackupScheduler.getService();
+
+  app.post('/api/admin/backup/create', requireAdmin, async (req, res) => {
+    try {
+      const { type } = req.body;
+      const metadata = await backupService.backup(type || 'full');
+      
+      res.json({ 
+        success: true,
+        backup: metadata
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/backup/list', requireAdmin, async (req, res) => {
+    try {
+      const backups = await backupService.listBackups();
+      res.json({ backups });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/backup/restore/:backupId', requireAdmin, async (req, res) => {
+    try {
+      const { backupId } = req.params;
+      await backupService.restore(backupId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/backup/verify/:backupId', requireAdmin, async (req, res) => {
+    try {
+      const { backupId } = req.params;
+      const valid = await backupService.verifyBackup(backupId);
+      
+      res.json({ valid });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/backup/stats', requireAdmin, async (req, res) => {
+    try {
+      const stats = await backupService.getBackupStats();
+      res.json({ stats });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/health/security', async (req, res) => {
     try {
       const metrics = SecurityMonitor.getMetrics();

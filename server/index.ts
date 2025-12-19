@@ -113,6 +113,10 @@ app.use(decryptSensitiveRequest);
 
   await registerRoutes(httpServer, app);
 
+  // Initialize backup scheduler for automated daily backups
+  const { BackupScheduler } = await import('./lib/backupScheduler');
+  BackupScheduler.initialize();
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

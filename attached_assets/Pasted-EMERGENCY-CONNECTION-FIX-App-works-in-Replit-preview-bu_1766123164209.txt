@@ -1,0 +1,433 @@
+EMERGENCY CONNECTION FIX - App works in Replit preview but fails on remote connection with spinning loader then "Relaunch" error.
+
+STEP 1: CHECK BUILD ERRORS
+
+1. In Replit terminal, run:
+npm run build
+
+Look for any errors in the output. If you see errors, copy them and we'll fix them.
+
+
+STEP 2: CHECK SERVER STATUS
+
+1. In Replit terminal, check if server is running:
+ps aux | grep node
+
+2. Check server logs:
+npm run dev
+
+Look for any errors in red. Common issues:
+- Database connection failed
+- Port already in use
+- Missing environment variables
+- RPC connection timeout
+
+
+STEP 3: EMERGENCY ROLLBACK (IF NEEDED)
+
+If you recently implemented prompts that may have caused this, we can quickly disable them:
+
+1. UPDATE FILE: client/src/App.tsx
+
+Comment out any new routes added recently:
+// <Route path="/collections" component={Collections} />
+
+2. UPDATE FILE: server/routes.ts
+
+Comment out any new API routes added in the last session:
+// app.get('/api/collections', async (req, res) => { ... });
+
+
+STEP 4: FIX MOST COMMON REMOTE CONNECTION ISSUES
+
+1. UPDATE FILE: client/src/main.tsx
+
+Add connection timeout protection at the very top, BEFORE everything else:
+
+// CONNECTION TIMEOUT FIX
+const CONNECTION_TIMEOUT = 30000; // 30 seconds
+
+const timeoutId = setTimeout(() => {
+  console.error('App initialization timeout - forcing reload');
+  if (!document.querySelector('#root')?.hasChildNodes()) {
+    window.location.reload();
+  }
+}, CONNECTION_TIMEOUT);
+
+window.addEventListener('load', () => {
+  clearTimeout(timeoutId);
+});
+
+// Add error boundary for initialization
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  if (event.error?.message?.includes('fetch') || event.error?.message?.includes('network')) {
+    console.error('Network error detected during initialization');
+  }
+});
+
+// Keep rest of existing code below
+
+
+2. UPDATE FILE: client/src/lib/wagmi.ts
+
+Reduce timeouts for remote connections:
+
+export const config = createConfig({
+  chains: [basedChain],
+  connectors: [
+    injected({ target: 'metaMask' }),
+    walletConnect({ 
+      projectId: WALLET_CONNECT_PROJECT_ID,
+      metadata: {
+        name: 'Based Command',
+        description: 'Guardian NFT DApp',
+        url: 'https://basedcommand.ai',
+        icons: ['https://basedcommand.ai/logo.png']
+      },
+      qrModalOptions: {
+        themeMode: 'dark'
+      }
+    }),
+  ],
+  transports: {
+    [basedChain.id]: http(RPC_ENDPOINTS[0], {
+      timeout: 10_000, // Reduce from 30s to 10s
+      retryCount: 2,    // Reduce retry attempts
+      retryDelay: 1000  // Faster retry
+    })
+  },
+  ssr: false,
+  batch: {
+    multicall: false  // Disable batching for faster initial load
+  }
+});
+
+
+3. UPDATE FILE: client/src/components/HealthCheckBanner.tsx
+
+Add aggressive timeout and fallback:
+
+export default function HealthCheckBanner() {
+  const [health, setHealth] = useState<HealthStatus>({ 
+    rpc: 'checking', 
+    api: 'checking', 
+    db: 'checking' 
+  });
+  const [showBanner, setShowBanner] = useState(false);
+  const [checkComplete, setCheckComplete] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    // Aggressive timeout - assume healthy if check takes too long
+    const timeoutId = setTimeout(() => {
+      if (mounted && !checkComplete) {
+        console.warn('Health check timeout - assuming healthy');
+        setCheckComplete(true);
+        setShowBanner(false);
+      }
+    }, 5000); // Only wait 5 seconds
+
+    async function checkHealth() {
+      try {
+        const controller = new AbortController();
+        const fetchTimeout = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch('/api/health', {
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        
+        clearTimeout(fetchTimeout);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) {
+            setHealth(data);
+            setShowBanner(
+              data.rpc === 'error' || 
+              data.api === 'error' || 
+              data.db === 'error'
+            );
+            setCheckComplete(true);
+          }
+        } else {
+          throw new Error('Health check failed');
+        }
+      } catch (error) {
+        console.warn('Health check failed, assuming operational:', error);
+        if (mounted) {
+          // Don't show banner on health check failure - let app try to work
+          setShowBanner(false);
+          setCheckComplete(true);
+        }
+      }
+    }
+
+    checkHealth();
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Don't render anything until check is complete
+  if (!checkComplete || !showBanner) {
+    return null;
+  }
+
+  // Rest of component remains the same
+}
+
+
+4. CREATE FILE: client/src/lib/connectionManager.ts
+
+NEW FILE for managing remote connections:
+
+class ConnectionManager {
+  private static instance: ConnectionManager;
+  private connectionAttempts = 0;
+  private maxAttempts = 3;
+  private isConnected = false;
+
+  static getInstance() {
+    if (!ConnectionManager.instance) {
+      ConnectionManager.instance = new ConnectionManager();
+    }
+    return ConnectionManager.instance;
+  }
+
+  async testConnection(): Promise<boolean> {
+    if (this.isConnected) return true;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch('/api/health', {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: { 'X-Health-Check': 'true' }
+      });
+
+      clearTimeout(timeout);
+      this.isConnected = response.ok;
+      this.connectionAttempts = 0;
+      return response.ok;
+    } catch (error) {
+      this.connectionAttempts++;
+      console.error(`Connection attempt ${this.connectionAttempts} failed:`, error);
+
+      if (this.connectionAttempts >= this.maxAttempts) {
+        console.error('Max connection attempts reached');
+        return false;
+      }
+
+      // Exponential backoff
+      await new Promise(resolve => 
+        setTimeout(resolve, Math.min(1000 * Math.pow(2, this.connectionAttempts), 5000))
+      );
+
+      return this.testConnection();
+    }
+  }
+
+  markConnected() {
+    this.isConnected = true;
+    this.connectionAttempts = 0;
+  }
+
+  reset() {
+    this.isConnected = false;
+    this.connectionAttempts = 0;
+  }
+}
+
+export const connectionManager = ConnectionManager.getInstance();
+
+
+5. UPDATE FILE: client/src/App.tsx
+
+Add connection manager at the top of App component:
+
+import { connectionManager } from '@/lib/connectionManager';
+
+function App() {
+  const [connectionReady, setConnectionReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function initializeConnection() {
+      try {
+        const connected = await connectionManager.testConnection();
+        if (mounted) {
+          setConnectionReady(true);
+          if (connected) {
+            connectionManager.markConnected();
+          }
+        }
+      } catch (error) {
+        console.error('Connection initialization failed:', error);
+        if (mounted) {
+          // Allow app to load even if connection test fails
+          setConnectionReady(true);
+        }
+      }
+    }
+
+    // Add a maximum wait time
+    const maxWaitTimeout = setTimeout(() => {
+      if (mounted && !connectionReady) {
+        console.warn('Connection timeout - loading app anyway');
+        setConnectionReady(true);
+      }
+    }, 8000);
+
+    initializeConnection();
+
+    return () => {
+      mounted = false;
+      clearTimeout(maxWaitTimeout);
+    };
+  }, []);
+
+  if (!connectionReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Establishing connection...</p>
+          <p className="text-xs text-muted-foreground">If this takes too long, try refreshing</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Rest of existing App component code
+}
+
+
+STEP 5: CLEAR CACHE AND FORCE REBUILD
+
+1. In Replit terminal, run these commands in order:
+
+# Clear all caches
+rm -rf node_modules/.vite
+rm -rf dist
+rm -rf .cache
+
+# Reinstall dependencies (in case something got corrupted)
+npm install
+
+# Rebuild
+npm run build
+
+# Restart server
+npm run dev
+
+
+STEP 6: CHECK ENVIRONMENT VARIABLES
+
+1. In Replit, go to "Tools" > "Secrets" and verify these exist:
+- DATABASE_URL
+- RPC_URL (or ensure default RPC is working)
+- WALLET_CONNECT_PROJECT_ID
+
+If any are missing, add them.
+
+
+STEP 7: DATABASE CONNECTION FIX
+
+1. UPDATE FILE: server/db.ts
+
+Add connection retry logic:
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pkg from 'pg';
+const { Pool } = pkg;
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+
+async function createPool(retries = MAX_RETRIES): Promise<pkg.Pool> {
+  try {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    // Test connection
+    const client = await pool.connect();
+    client.release();
+    console.log('✅ Database connected successfully');
+    
+    return pool;
+  } catch (error) {
+    console.error(`Database connection attempt failed (${MAX_RETRIES - retries + 1}/${MAX_RETRIES}):`, error);
+    
+    if (retries > 0) {
+      console.log(`Retrying in ${RETRY_DELAY}ms...`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return createPool(retries - 1);
+    }
+    
+    throw new Error('Failed to connect to database after multiple attempts');
+  }
+}
+
+export const pool = await createPool();
+export const db = drizzle(pool);
+
+
+STEP 8: ADD DEPLOYMENT HEALTH CHECK
+
+1. CREATE FILE: .replit
+
+Add or update with:
+
+run = "npm run dev"
+hidden = [".config", "package-lock.json"]
+
+[deployment]
+run = ["sh", "-c", "npm run build && npm start"]
+deploymentTarget = "cloudrun"
+
+[env]
+NODE_ENV = "production"
+
+
+TESTING STEPS:
+
+1. After making these changes, in Replit terminal:
+   - Stop the server (Ctrl+C)
+   - Run: npm run dev
+   - Wait for "Server running on port..."
+   - Test the preview in Replit first
+   - Then test remote URL
+
+2. If still not working, check Replit console for errors and share them with me
+
+3. Try accessing these URLs directly in browser:
+   - https://your-app.replit.app/api/health
+   - https://your-app.replit.app
+
+If you see JSON from /api/health, server is working but frontend has issues.
+If both timeout, server isn't starting properly.
+
+
+EMERGENCY ROLLBACK (IF ALL ELSE FAILS):
+
+If nothing works, we can roll back to last working state:
+
+1. In Replit, click "History" in left sidebar
+2. Find a commit from before the issues started (2+ hours ago)
+3. Click "Restore" on that commit
+4. Run: npm install && npm run dev
+
+This will restore to working state, then we can re-apply changes one at a time.

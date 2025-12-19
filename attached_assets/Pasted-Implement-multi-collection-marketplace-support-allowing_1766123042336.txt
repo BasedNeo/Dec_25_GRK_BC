@@ -1,0 +1,711 @@
+Implement multi-collection marketplace support allowing users to trade NFTs from different collections on your platform, with organized Collections page, portfolio collection toggle, and admin collection management.
+
+STEP 1: CREATE COLLECTIONS DATABASE SCHEMA
+
+1. UPDATE FILE: shared/schema.ts
+
+Add new collections table after existing tables:
+
+export const collections = pgTable('collections', {
+  id: serial('id').primaryKey(),
+  contractAddress: text('contract_address').notNull().unique(),
+  name: text('name').notNull(),
+  symbol: text('symbol').notNull(),
+  description: text('description'),
+  bannerImage: text('banner_image'),
+  thumbnailImage: text('thumbnail_image'),
+  totalSupply: integer('total_supply').default(0),
+  floorPrice: text('floor_price').default('0'),
+  volumeTraded: text('volume_traded').default('0'),
+  isActive: boolean('is_active').default(true),
+  isFeatured: boolean('is_featured').default(false),
+  royaltyPercent: integer('royalty_percent').default(0),
+  royaltyAddress: text('royalty_address'),
+  creatorAddress: text('creator_address'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+Add collectionId to existing listings table:
+
+// Add this column to your existing listings table
+collectionId: integer('collection_id').references(() => collections.id),
+
+2. Run database migration:
+npm run db:push
+
+
+STEP 2: CREATE COLLECTION SERVICE
+
+1. CREATE FILE: server/lib/collectionService.ts
+
+import { ethers } from 'ethers';
+import { db } from '../db';
+import { collections } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+export class CollectionService {
+  static async addCollection(contractAddress: string, rpcUrl: string) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      
+      // ERC721 ABI for basic info
+      const abi = [
+        'function name() view returns (string)',
+        'function symbol() view returns (string)',
+        'function totalSupply() view returns (uint256)',
+        'function royaltyInfo(uint256 tokenId, uint256 salePrice) view returns (address, uint256)'
+      ];
+      
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      
+      const [name, symbol, totalSupply] = await Promise.all([
+        contract.name(),
+        contract.symbol(),
+        contract.totalSupply().catch(() => 0n)
+      ]);
+      
+      // Try to get royalty info (ERC2981)
+      let royaltyAddress = null;
+      let royaltyPercent = 0;
+      try {
+        const [receiver, amount] = await contract.royaltyInfo(1, ethers.parseEther('1'));
+        royaltyAddress = receiver;
+        royaltyPercent = Number(amount) / 10000; // Convert basis points to percent
+      } catch (e) {
+        console.log('No ERC2981 royalty support');
+      }
+      
+      const collection = await db.insert(collections).values({
+        contractAddress: contractAddress.toLowerCase(),
+        name,
+        symbol,
+        totalSupply: Number(totalSupply),
+        royaltyAddress,
+        royaltyPercent,
+        isActive: true,
+        isFeatured: false
+      }).returning();
+      
+      return collection[0];
+      
+    } catch (error) {
+      console.error('Failed to add collection:', error);
+      throw new Error('Failed to fetch collection data from blockchain');
+    }
+  }
+  
+  static async getAllCollections() {
+    return await db.select().from(collections).where(eq(collections.isActive, true));
+  }
+  
+  static async getCollection(contractAddress: string) {
+    const result = await db.select()
+      .from(collections)
+      .where(eq(collections.contractAddress, contractAddress.toLowerCase()))
+      .limit(1);
+    return result[0];
+  }
+  
+  static async updateCollectionStats(contractAddress: string, stats: {
+    floorPrice?: string;
+    volumeTraded?: string;
+    totalSupply?: number;
+  }) {
+    await db.update(collections)
+      .set({
+        ...stats,
+        updatedAt: new Date()
+      })
+      .where(eq(collections.contractAddress, contractAddress.toLowerCase()));
+  }
+  
+  static async toggleCollectionStatus(contractAddress: string, isActive: boolean) {
+    await db.update(collections)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(collections.contractAddress, contractAddress.toLowerCase()));
+  }
+  
+  static async setFeatured(contractAddress: string, isFeatured: boolean) {
+    await db.update(collections)
+      .set({ isFeatured, updatedAt: new Date() })
+      .where(eq(collections.contractAddress, contractAddress.toLowerCase()));
+  }
+}
+
+
+STEP 3: ADD COLLECTION API ENDPOINTS
+
+1. UPDATE FILE: server/routes.ts
+
+Add these new routes in the appropriate section:
+
+// Get all active collections
+app.get('/api/collections', async (req, res) => {
+  try {
+    const allCollections = await CollectionService.getAllCollections();
+    res.json(allCollections);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch collections' });
+  }
+});
+
+// Get single collection
+app.get('/api/collections/:address', async (req, res) => {
+  try {
+    const collection = await CollectionService.getCollection(req.params.address);
+    if (!collection) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    res.json(collection);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch collection' });
+  }
+});
+
+// Admin: Add new collection
+app.post('/api/admin/collections', async (req, res) => {
+  const { contractAddress } = req.body;
+  
+  if (!contractAddress || !ethers.isAddress(contractAddress)) {
+    return res.status(400).json({ error: 'Invalid contract address' });
+  }
+  
+  try {
+    const rpcUrl = process.env.RPC_URL || 'https://rpc.basedai.network';
+    const collection = await CollectionService.addCollection(contractAddress, rpcUrl);
+    res.json(collection);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: Update collection
+app.put('/api/admin/collections/:address', async (req, res) => {
+  const { name, description, bannerImage, thumbnailImage, isActive, isFeatured } = req.body;
+  
+  try {
+    await db.update(collections)
+      .set({
+        ...(name && { name }),
+        ...(description && { description }),
+        ...(bannerImage && { bannerImage }),
+        ...(thumbnailImage && { thumbnailImage }),
+        ...(typeof isActive === 'boolean' && { isActive }),
+        ...(typeof isFeatured === 'boolean' && { isFeatured }),
+        updatedAt: new Date()
+      })
+      .where(eq(collections.contractAddress, req.params.address.toLowerCase()));
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update collection' });
+  }
+});
+
+// Admin: Delete collection
+app.delete('/api/admin/collections/:address', async (req, res) => {
+  try {
+    await db.delete(collections)
+      .where(eq(collections.contractAddress, req.params.address.toLowerCase()));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete collection' });
+  }
+});
+
+Don't forget to import at the top:
+import { CollectionService } from './lib/collectionService';
+import { collections } from '../shared/schema';
+
+
+STEP 4: CREATE COLLECTIONS PAGE
+
+1. CREATE FILE: client/src/pages/Collections.tsx
+
+import { useEffect, useState } from 'react';
+import { Link } from 'wouter';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, TrendingUp, Users } from 'lucide-react';
+
+interface Collection {
+  id: number;
+  contractAddress: string;
+  name: string;
+  symbol: string;
+  description: string | null;
+  bannerImage: string | null;
+  thumbnailImage: string | null;
+  totalSupply: number;
+  floorPrice: string;
+  volumeTraded: string;
+  isFeatured: boolean;
+}
+
+export default function Collections() {
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCollections();
+  }, []);
+
+  async function fetchCollections() {
+    try {
+      const res = await fetch('/api/collections');
+      const data = await res.json();
+      setCollections(data);
+    } catch (error) {
+      console.error('Failed to fetch collections:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const featured = collections.filter(c => c.isFeatured);
+  const other = collections.filter(c => !c.isFeatured);
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+          NFT Collections
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          Discover and trade NFTs from verified collections across the BasedAI ecosystem
+        </p>
+      </div>
+
+      {featured.length > 0 && (
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-primary" />
+            Featured Collections
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featured.map(collection => (
+              <CollectionCard key={collection.id} collection={collection} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <Users className="w-6 h-6 text-primary" />
+          All Collections
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {other.map(collection => (
+            <CollectionCard key={collection.id} collection={collection} />
+          ))}
+        </div>
+      </div>
+
+      {collections.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No collections available yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectionCard({ collection }: { collection: Collection }) {
+  const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
+  const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
+
+  return (
+    <Link href={`/marketplace?collection=${collection.contractAddress}`}>
+      <Card className="hover:shadow-xl transition-all cursor-pointer group">
+        <div className="relative h-48 overflow-hidden rounded-t-lg">
+          {collection.bannerImage ? (
+            <img 
+              src={collection.bannerImage} 
+              alt={collection.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-purple-500/20" />
+          )}
+          {collection.isFeatured && (
+            <Badge className="absolute top-4 right-4 bg-primary">Featured</Badge>
+          )}
+        </div>
+        
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            {collection.thumbnailImage ? (
+              <img 
+                src={collection.thumbnailImage} 
+                alt={collection.name}
+                className="w-12 h-12 rounded-full border-2 border-primary"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-primary/20" />
+            )}
+            <div>
+              <CardTitle className="text-xl">{collection.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">{collection.symbol}</p>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          {collection.description && (
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+              {collection.description}
+            </p>
+          )}
+          
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground">Items</p>
+              <p className="font-bold">{collection.totalSupply}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Floor</p>
+              <p className="font-bold">{floorPrice} BASED</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Volume</p>
+              <p className="font-bold">{volume} BASED</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+
+STEP 5: UPDATE PORTFOLIO WITH COLLECTION TOGGLE
+
+1. UPDATE FILE: client/src/pages/Profile.tsx
+
+Add collection filtering at the top of the Profile component:
+
+const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+const [collections, setCollections] = useState<any[]>([]);
+
+// Fetch collections
+useEffect(() => {
+  fetch('/api/collections')
+    .then(res => res.json())
+    .then(setCollections)
+    .catch(console.error);
+}, []);
+
+// Group NFTs by collection
+const nftsByCollection = useMemo(() => {
+  const grouped: Record<string, any[]> = {};
+  userNFTs.forEach(nft => {
+    const collectionAddress = nft.contractAddress || 'unknown';
+    if (!grouped[collectionAddress]) {
+      grouped[collectionAddress] = [];
+    }
+    grouped[collectionAddress].push(nft);
+  });
+  return grouped;
+}, [userNFTs]);
+
+const filteredNFTs = selectedCollection 
+  ? nftsByCollection[selectedCollection] || []
+  : userNFTs;
+
+Add collection selector UI before the NFT grid:
+
+{Object.keys(nftsByCollection).length > 1 && (
+  <div className="mb-6">
+    <h3 className="text-sm font-medium mb-3">Filter by Collection</h3>
+    <div className="flex flex-wrap gap-2">
+      <button
+        onClick={() => setSelectedCollection(null)}
+        className={`px-4 py-2 rounded-lg border transition-all ${
+          selectedCollection === null 
+            ? 'bg-primary text-white border-primary' 
+            : 'border-border hover:border-primary'
+        }`}
+      >
+        All Collections ({userNFTs.length})
+      </button>
+      
+      {Object.entries(nftsByCollection).map(([address, nfts]) => {
+        const collection = collections.find(c => c.contractAddress === address);
+        return (
+          <button
+            key={address}
+            onClick={() => setSelectedCollection(address)}
+            className={`px-4 py-2 rounded-lg border transition-all ${
+              selectedCollection === address 
+                ? 'bg-primary text-white border-primary' 
+                : 'border-border hover:border-primary'
+            }`}
+          >
+            {collection?.name || 'Unknown'} ({nfts.length})
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
+
+Replace userNFTs.map() with filteredNFTs.map() in the NFT grid.
+
+
+STEP 6: UPDATE MARKETPLACE WITH COLLECTION FILTER
+
+1. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+Add collection filter at the top:
+
+import { useLocation } from 'wouter';
+
+const [location] = useLocation();
+const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+const [collections, setCollections] = useState<any[]>([]);
+
+// Get collection from URL params
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const collection = params.get('collection');
+  if (collection) {
+    setSelectedCollection(collection);
+  }
+}, [location]);
+
+// Fetch collections
+useEffect(() => {
+  fetch('/api/collections')
+    .then(res => res.json())
+    .then(setCollections)
+    .catch(console.error);
+}, []);
+
+Add collection filter UI before listings grid:
+
+<div className="mb-6 flex gap-4 overflow-x-auto">
+  {collections.map(collection => (
+    <button
+      key={collection.id}
+      onClick={() => setSelectedCollection(
+        selectedCollection === collection.contractAddress ? null : collection.contractAddress
+      )}
+      className={`px-4 py-2 rounded-lg border whitespace-nowrap transition-all ${
+        selectedCollection === collection.contractAddress
+          ? 'bg-primary text-white border-primary'
+          : 'border-border hover:border-primary'
+      }`}
+    >
+      {collection.name}
+    </button>
+  ))}
+</div>
+
+Filter listings by selected collection in your listings fetch/filter logic.
+
+
+STEP 7: ADD ADMIN COLLECTION MANAGEMENT
+
+1. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add new CollectionManagementPanel component inside AdminDashboard:
+
+function CollectionManagementPanel() {
+  const [collections, setCollections] = useState<any[]>([]);
+  const [newAddress, setNewAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCollections();
+  }, []);
+
+  async function fetchCollections() {
+    const res = await fetch('/api/collections');
+    const data = await res.json();
+    setCollections(data);
+  }
+
+  async function addCollection() {
+    if (!newAddress) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractAddress: newAddress })
+      });
+      
+      if (res.ok) {
+        setNewAddress('');
+        await fetchCollections();
+        alert('Collection added successfully');
+      } else {
+        const error = await res.json();
+        alert(`Failed: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Failed to add collection');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleFeatured(address: string, isFeatured: boolean) {
+    await fetch(`/api/admin/collections/${address}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isFeatured: !isFeatured })
+    });
+    await fetchCollections();
+  }
+
+  async function toggleActive(address: string, isActive: boolean) {
+    if (!confirm(`Are you sure you want to ${isActive ? 'disable' : 'enable'} this collection?`)) {
+      return;
+    }
+    
+    await fetch(`/api/admin/collections/${address}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !isActive })
+    });
+    await fetchCollections();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Collection Management</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-6 flex gap-2">
+          <input
+            type="text"
+            placeholder="Contract Address (0x...)"
+            value={newAddress}
+            onChange={(e) => setNewAddress(e.target.value)}
+            className="flex-1 px-3 py-2 border rounded-lg"
+          />
+          <button
+            onClick={addCollection}
+            disabled={loading}
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? 'Adding...' : 'Add Collection'}
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {collections.map(collection => (
+            <div key={collection.id} className="flex items-center gap-3 p-3 border rounded-lg">
+              <div className="flex-1">
+                <p className="font-medium">{collection.name}</p>
+                <p className="text-sm text-muted-foreground">{collection.contractAddress}</p>
+              </div>
+              
+              <button
+                onClick={() => toggleFeatured(collection.contractAddress, collection.isFeatured)}
+                className={`px-3 py-1 rounded ${
+                  collection.isFeatured ? 'bg-yellow-500 text-white' : 'bg-gray-200'
+                }`}
+              >
+                {collection.isFeatured ? 'Featured' : 'Feature'}
+              </button>
+              
+              <button
+                onClick={() => toggleActive(collection.contractAddress, collection.isActive)}
+                className={`px-3 py-1 rounded ${
+                  collection.isActive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                }`}
+              >
+                {collection.isActive ? 'Active' : 'Disabled'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+Add <CollectionManagementPanel /> to the admin dashboard layout.
+
+
+STEP 8: UPDATE NAVIGATION
+
+1. UPDATE FILE: client/src/components/Navbar.tsx
+
+Add Collections link to navigation:
+
+{ name: t('nav.collections'), href: '/collections' },
+
+2. UPDATE FILE: client/src/App.tsx
+
+Add route:
+
+<Route path="/collections" component={Collections} />
+
+Import at top:
+import Collections from '@/pages/Collections';
+
+
+STEP 9: ADD TO TRANSLATIONS
+
+1. UPDATE FILE: client/src/locales/en.json
+
+Add:
+
+"nav": {
+  "collections": "Collections",
+  ...existing nav items
+}
+
+
+STEP 10: UPDATE ACTIVITY FEED FOR MULTI-COLLECTION
+
+1. UPDATE FILE: client/src/hooks/useActivityFeed.ts
+
+Modify to accept collection filter:
+
+export function useActivityFeed(collectionAddress?: string) {
+  // ... existing code
+  
+  // When fetching events, filter by collection if provided
+  const contractAddress = collectionAddress || NFT_CONTRACT;
+  
+  // Use contractAddress in your event queries
+}
+
+
+TESTING CHECKLIST:
+
+✅ Collections table created in database
+✅ Admin can add new collections via dashboard
+✅ Collections page displays all active collections
+✅ Portfolio filters NFTs by collection
+✅ Marketplace filters listings by collection
+✅ URL params work (/marketplace?collection=0x...)
+✅ Featured collections display prominently
+✅ Admin can toggle active/featured status
+✅ Collection stats auto-update (floor, volume)
+✅ Navigation includes Collections link
+✅ Mobile responsive on all new pages
+
+DEPLOYMENT NOTES:
+
+1. Run db:push to create collections table
+2. Add your main Guardian collection via admin panel first
+3. Test adding a second test collection
+4. Verify all pages work with single and multiple collections
+5. Check activity feed, marketplace, portfolio with filters
