@@ -219,40 +219,48 @@ export function useSubnetEmissions(): SubnetEmissionsData {
       setLoading(true);
       setError(null);
 
-      const provider = await getWorkingProvider();
-      const tokenContract = new ethers.Contract(BRAIN_CONFIG.token, ERC20_ABI, provider);
-
-      // 1. Get current brain wallet balance
-      const balance = await tokenContract.balanceOf(BRAIN_CONFIG.wallet);
-      const balanceNum = parseFloat(ethers.formatEther(balance));
-      setBrainBalance(balanceNum);
-
-      // 2. Get current block for event query range
-      const currentBlock = await provider.getBlockNumber();
-      // Query last ~30 days of blocks (assuming ~12 sec blocks on ETH = ~7200 blocks/day)
-      const blocksToQuery = 7200 * 30;
-      const fromBlock = Math.max(0, currentBlock - blocksToQuery);
-
-      // 3. Query Transfer events TO the brain wallet (with graceful failure)
-      const filter = tokenContract.filters.Transfer(null, BRAIN_CONFIG.wallet);
+      let balanceNum = 0;
       let events: ethers.EventLog[] = [];
+      let currentBlock = 0;
       
+      // First try BasedAI L1 for native $BASED balance
       try {
-        const rawEvents = await tokenContract.queryFilter(filter, fromBlock, 'latest');
-        events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
-      } catch (e) {
-        // If query fails, try smaller range
+        const basedProvider = new ethers.JsonRpcProvider(BRAIN_CONFIG.basedaiRpc);
+        // On BasedAI L1, $BASED is the native currency (like ETH)
+        const nativeBalance = await basedProvider.getBalance(BRAIN_CONFIG.wallet);
+        balanceNum = parseFloat(ethers.formatEther(nativeBalance));
+        currentBlock = await basedProvider.getBlockNumber();
+        console.log('[Emissions] BasedAI native balance:', balanceNum);
+      } catch (basedError) {
+        console.warn('[Emissions] BasedAI RPC failed, trying Ethereum fallback...');
+        
+        // Fallback to Ethereum mainnet for ERC-20 token balance
         try {
-          const smallerFromBlock = currentBlock - 50000;
-          const rawEvents = await tokenContract.queryFilter(filter, smallerFromBlock, 'latest');
-          events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
-        } catch (e2) {
-          // Event queries failed - use balance as fallback
-          events = [];
+          const provider = await getWorkingProvider();
+          const tokenContract = new ethers.Contract(BRAIN_CONFIG.token, ERC20_ABI, provider);
+          const balance = await tokenContract.balanceOf(BRAIN_CONFIG.wallet);
+          balanceNum = parseFloat(ethers.formatEther(balance));
+          currentBlock = await provider.getBlockNumber();
+          
+          // Try to get transfer events on Ethereum
+          const blocksToQuery = 7200 * 30;
+          const fromBlock = Math.max(0, currentBlock - blocksToQuery);
+          const filter = tokenContract.filters.Transfer(null, BRAIN_CONFIG.wallet);
+          
+          try {
+            const rawEvents = await tokenContract.queryFilter(filter, fromBlock, 'latest');
+            events = rawEvents.filter((e): e is ethers.EventLog => 'args' in e);
+          } catch {
+            events = [];
+          }
+        } catch (ethError) {
+          console.error('[Emissions] All RPC methods failed');
         }
       }
+      
+      setBrainBalance(balanceNum);
 
-      // 4. Process events (with fallback)
+      // Process events (with fallback)
       let total = 0;
       const processedEvents: EmissionEvent[] = [];
       const dailyAmounts: Record<string, number> = {};
