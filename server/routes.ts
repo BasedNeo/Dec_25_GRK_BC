@@ -946,9 +946,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/admin/transactions/export', requireAdmin, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const csv = await storage.exportAllTransactionsCSV(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=all-transactions.csv');
+      res.send(csv);
+    } catch (error: any) {
+      console.error('[Admin] Transaction export failed:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/transactions/stats', requireAdmin, async (req, res) => {
+    try {
+      const stats = await storage.getTransactionStats();
+      res.json({ stats });
+    } catch (error: any) {
+      console.error('[Admin] Transaction stats failed:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post('/api/transactions/receipt', async (req, res) => {
     try {
-      const { walletAddress, transactionType, transactionHash, tokenId, amount, fromAddress, toAddress, platformFee, royaltyFee, metadata } = req.body;
+      const { 
+        walletAddress, transactionType, transactionHash, tokenId, amount, 
+        fromAddress, toAddress, platformFee, royaltyFee, metadata,
+        quantity, pricePerUnit, gasEstimate, netAmount,
+        userAgent, screenResolution, timezone
+      } = req.body;
       
       if (!walletAddress || !transactionType || !transactionHash) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -969,6 +1002,13 @@ export async function registerRoutes(
         platformFee,
         royaltyFee,
         metadata,
+        quantity,
+        pricePerUnit,
+        gasEstimate,
+        netAmount,
+        userAgent,
+        screenResolution,
+        timezone,
         status: 'pending'
       });
       res.json({ receipt });
@@ -983,8 +1023,10 @@ export async function registerRoutes(
 
   app.put('/api/transactions/receipt/:hash', async (req, res) => {
     try {
-      const { status, blockNumber, gasUsed, gasPrice } = req.body;
-      await storage.updateTransactionStatus(req.params.hash, status, { blockNumber, gasUsed, gasPrice });
+      const { status, blockNumber, gasUsed, gasPrice, gasCostInBase, errorMessage, failedAt, confirmedAt } = req.body;
+      await storage.updateTransactionStatus(req.params.hash, status, { 
+        blockNumber, gasUsed, gasPrice, gasCostInBase, errorMessage, failedAt, confirmedAt 
+      });
       res.json({ success: true });
     } catch (error: any) {
       console.error('[Transaction] Error updating receipt:', error);
