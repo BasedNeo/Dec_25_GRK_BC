@@ -73,8 +73,8 @@ function GlobalErrorFallback() {
       
       <div className="text-center p-8 relative z-10 max-w-lg">
         <div className="mb-8">
-          <div className="text-7xl mb-4">
-            <span className="inline-block motion-safe:animate-float">🛸</span>
+          <div className="mb-4">
+            <Rocket className="w-20 h-20 text-cyan-400 mx-auto rotate-180 motion-safe:animate-float" />
           </div>
           <div className="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400/50 uppercase">
             // transmission interrupted
@@ -288,7 +288,9 @@ function App() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">🛸</div>
+          <div className="mb-4 animate-bounce">
+            <Rocket className="w-16 h-16 text-cyan-400 mx-auto rotate-180" />
+          </div>
           <div className="text-white font-orbitron text-xl">Loading...</div>
           <div className="text-gray-500 text-sm mt-2">Connecting to the Giga Brain Galaxy</div>
         </div>
