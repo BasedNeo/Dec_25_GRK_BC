@@ -205,3 +205,55 @@ export class RPCProviderManager {
 }
 
 export const rpcManager = new RPCProviderManager();
+
+// RPC Queue to limit concurrent calls and prevent overloading
+class RPCQueue {
+  private running = 0;
+  private readonly maxConcurrent: number;
+  private queue: Array<{
+    fn: () => Promise<any>;
+    resolve: (value: any) => void;
+    reject: (error: any) => void;
+  }> = [];
+
+  constructor(maxConcurrent = 3) {
+    this.maxConcurrent = maxConcurrent;
+  }
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ fn, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  private async processQueue() {
+    if (this.running >= this.maxConcurrent || this.queue.length === 0) {
+      return;
+    }
+
+    const item = this.queue.shift();
+    if (!item) return;
+
+    this.running++;
+    try {
+      const result = await item.fn();
+      item.resolve(result);
+    } catch (error) {
+      item.reject(error);
+    } finally {
+      this.running--;
+      this.processQueue();
+    }
+  }
+
+  getStatus() {
+    return {
+      running: this.running,
+      queued: this.queue.length,
+      maxConcurrent: this.maxConcurrent,
+    };
+  }
+}
+
+export const rpcQueue = new RPCQueue(3);
