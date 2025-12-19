@@ -33,6 +33,14 @@ const MINT_PRICE = 69420;
 
 const NFT_ABI = ["function totalMinted() view returns (uint256)"];
 
+// Safe value helper for null/undefined/NaN protection
+const safeValue = (value: any, fallback: string = '0'): string => {
+  if (value === null || value === undefined || (typeof value === 'number' && isNaN(value))) {
+    return fallback;
+  }
+  return String(value);
+};
+
 export function PoolTracker() {
   const [mintedCount, setMintedCount] = useState<number | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
