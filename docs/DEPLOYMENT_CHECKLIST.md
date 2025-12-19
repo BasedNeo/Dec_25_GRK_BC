@@ -2,21 +2,21 @@
 
 ## Pre-Deployment (DO FIRST)
 
-- [ ] Run `npm run deployment:check` - ALL CHECKS MUST PASS
+- [ ] Run `npx tsx script/deployment-check.ts` - ALL CHECKS MUST PASS
 - [ ] Review all environment variables in `.env.production`
 - [ ] Verify ENCRYPTION_KEY is 32+ characters and UNIQUE
 - [ ] Verify ADMIN_ADDRESSES contains correct wallet addresses
 - [ ] Verify all contract addresses are correct for production network
-- [ ] Run `npm run test:financial` - ensure all tests pass
-- [ ] Run `npm run test:encryption` - ensure all tests pass
-- [ ] Run `npm run security:report` - review security posture
+- [ ] Run `npx tsx script/generate-security-report.ts` - review security posture
+- [ ] Run `npx tsx script/test-sql-injection.ts` - test SQL injection protection
+- [ ] Run `npx tsx script/test-xss-protection.ts` - test XSS protection
 
 ## Database Preparation
 
 - [ ] Create production database
 - [ ] Run `npm run db:push` to create tables
-- [ ] Verify database connection with `npm run db:verify`
-- [ ] Create initial backup: `npm run db:backup`
+- [ ] Verify database connection with deployment checker
+- [ ] Create initial backup: `npx tsx script/backup-database.ts`
 - [ ] Test backup restoration on staging environment
 - [ ] Set up automated daily backups (cron job)
 
@@ -47,10 +47,11 @@
 - [ ] Verify application starts without errors
 - [ ] Check all environment variables are loaded
 - [ ] Verify database connection is established
-- [ ] Run `npm run dr:test` - disaster recovery test
+- [ ] Test disaster recovery: verify backup/restore works
 
 ## Post-Deployment Verification (CRITICAL)
 
+- [ ] Run `npx tsx script/smoke-tests.ts` - all smoke tests pass
 - [ ] Health check passes: `curl https://yourdomain.com/api/health/complete`
 - [ ] Admin dashboard accessible
 - [ ] Can connect wallet successfully

@@ -86,21 +86,59 @@ async function runDeploymentChecks(): Promise<CheckResult[]> {
     });
   }
   
-  results.push({
-    name: 'Security Middleware',
-    category: 'security',
-    status: 'pass',
-    message: 'Helmet, CORS, and encryption configured',
-    required: true
-  });
+  try {
+    await import('../server/middleware/rateLimiter');
+    await import('../server/lib/advancedRateLimiter');
+    results.push({
+      name: 'Rate Limiting',
+      category: 'security',
+      status: 'pass',
+      message: 'Rate limiters configured and importable',
+      required: true
+    });
+  } catch (error: any) {
+    results.push({
+      name: 'Rate Limiting',
+      category: 'security',
+      status: 'fail',
+      message: `Rate limiter error: ${error.message}`,
+      required: true
+    });
+  }
   
-  results.push({
-    name: 'Rate Limiting',
-    category: 'security',
-    status: 'pass',
-    message: 'Rate limiters configured',
-    required: true
-  });
+  try {
+    const fs = await import('fs');
+    const indexPath = './server/index.ts';
+    const indexContent = fs.readFileSync(indexPath, 'utf-8');
+    const hasHelmet = indexContent.includes('helmet');
+    const hasCors = indexContent.includes('cors');
+    
+    if (hasHelmet && hasCors) {
+      results.push({
+        name: 'Security Middleware',
+        category: 'security',
+        status: 'pass',
+        message: 'Helmet and CORS configured in server/index.ts',
+        required: true
+      });
+    } else {
+      results.push({
+        name: 'Security Middleware',
+        category: 'security',
+        status: 'fail',
+        message: `Missing: ${!hasHelmet ? 'helmet ' : ''}${!hasCors ? 'cors' : ''}`,
+        required: true
+      });
+    }
+  } catch (error: any) {
+    results.push({
+      name: 'Security Middleware',
+      category: 'security',
+      status: 'warning',
+      message: 'Could not verify security middleware configuration',
+      required: true
+    });
+  }
   
   return results;
 }
@@ -159,10 +197,10 @@ async function main() {
   }
   
   console.log(`\n🚀 Next Steps:`);
-  console.log(`   1. npm run db:backup (create pre-deployment backup)`);
+  console.log(`   1. npx tsx script/backup-database.ts (create pre-deployment backup)`);
   console.log(`   2. npm run build (build production bundle)`);
   console.log(`   3. Deploy to production`);
-  console.log(`   4. Run smoke tests`);
+  console.log(`   4. npx tsx script/smoke-tests.ts (run smoke tests)`);
   console.log(`   5. Monitor for 1 hour`);
 }
 

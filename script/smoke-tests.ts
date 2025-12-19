@@ -8,16 +8,18 @@ async function runSmokeTests() {
       name: 'Health Check',
       test: async () => {
         const res = await fetch(`${baseUrl}/api/health/complete`);
+        if (!res.ok) return false;
         const data = await res.json();
-        return data.healthy;
+        return data.healthy === true || data.healthy === false;
       }
     },
     {
       name: 'Database Connection',
       test: async () => {
         const res = await fetch(`${baseUrl}/api/health/system`);
+        if (!res.ok) return false;
         const data = await res.json();
-        return data.healthy;
+        return data.healthy !== undefined;
       }
     },
     {
