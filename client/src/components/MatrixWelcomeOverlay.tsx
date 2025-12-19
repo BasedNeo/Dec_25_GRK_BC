@@ -165,44 +165,43 @@ export function MatrixWelcomeOverlay({
           </div>
 
           <div className="relative z-10 max-w-2xl w-full px-8 md:px-12">
-            <div className="space-y-4 font-mono">
+            <div className="font-mono flex flex-col gap-4">
               {displayedLines.map((line, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
+                <div
+                  key={`displayed-${index}`}
                   className={`${
                     index === 0 
-                      ? 'text-2xl md:text-4xl text-cyan-400 font-bold tracking-wider' 
+                      ? 'text-2xl md:text-4xl text-cyan-400 font-bold tracking-wider min-h-[2.5rem] md:min-h-[3rem]' 
                       : line === 'Beta Phase Active'
-                        ? 'text-sm md:text-base text-amber-400/80 tracking-[0.3em] uppercase'
-                        : 'text-sm md:text-lg text-white/60 tracking-wide'
+                        ? 'text-sm md:text-base text-amber-400/80 tracking-[0.3em] uppercase min-h-[1.5rem]'
+                        : 'text-sm md:text-lg text-white/60 tracking-wide min-h-[1.5rem]'
                   }`}
                 >
-                  {line || <span className="opacity-0">.</span>}
-                </motion.div>
+                  {line || '\u00A0'}
+                </div>
               ))}
               
-              {isTyping && currentText && (
+              {currentLineIndex < lines.length && lines[currentLineIndex]?.text !== '' && (
                 <div className={`${
                   currentLineIndex === 0 
-                    ? 'text-2xl md:text-4xl text-cyan-400 font-bold tracking-wider' 
+                    ? 'text-2xl md:text-4xl text-cyan-400 font-bold tracking-wider min-h-[2.5rem] md:min-h-[3rem]' 
                     : lines[currentLineIndex]?.text === 'Beta Phase Active'
-                      ? 'text-sm md:text-base text-amber-400/80 tracking-[0.3em] uppercase'
-                      : 'text-sm md:text-lg text-white/60 tracking-wide'
+                      ? 'text-sm md:text-base text-amber-400/80 tracking-[0.3em] uppercase min-h-[1.5rem]'
+                      : 'text-sm md:text-lg text-white/60 tracking-wide min-h-[1.5rem]'
                 }`}>
                   {currentText}
-                  <span className={`inline-block w-[2px] h-[1em] ml-1 align-middle ${
-                    showCursor ? 'bg-current' : 'bg-transparent'
+                  <span className={`inline-block w-[2px] h-[1em] ml-1 align-middle transition-opacity duration-100 ${
+                    showCursor ? 'bg-current opacity-100' : 'opacity-0'
                   }`} />
                 </div>
               )}
 
-              {!isTyping && currentLineIndex < lines.length && (
-                <span className={`inline-block w-[2px] h-5 ${
-                  showCursor ? 'bg-cyan-400' : 'bg-transparent'
-                }`} />
+              {!isTyping && currentLineIndex < lines.length && lines[currentLineIndex]?.text === '' && (
+                <div className="min-h-[1.5rem]">
+                  <span className={`inline-block w-[2px] h-5 transition-opacity duration-100 ${
+                    showCursor ? 'bg-cyan-400 opacity-100' : 'opacity-0'
+                  }`} />
+                </div>
               )}
             </div>
           </div>
