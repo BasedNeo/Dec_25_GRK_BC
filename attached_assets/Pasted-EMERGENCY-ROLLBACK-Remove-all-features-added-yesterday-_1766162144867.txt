@@ -1,0 +1,351 @@
+EMERGENCY ROLLBACK - Remove all features added yesterday that could cause crashes
+
+ISSUE: App crashes browser completely, can't connect externally. Need to rollback to stable state before yesterday's changes.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: DISABLE WALLET SCANNER (BIGGEST CULPRIT)
+═══════════════════════════════════════════════════════════════════
+
+1. FIND AND DELETE/DISABLE: server/lib/walletScanner.ts
+
+If this file exists, delete it entirely:
+rm server/lib/walletScanner.ts
+
+
+2. FIND FILE: client/src/hooks/useWalletNFTs.ts (or similar)
+
+Comment out entire file or delete it:
+rm client/src/hooks/useWalletNFTs.ts
+
+
+3. FIND FILE: client/src/pages/Profile.tsx (or Portfolio.tsx)
+
+Remove any wallet scanning code:
+
+// FIND AND REMOVE lines like:
+/*
+const { data: collections } = useQuery({
+  queryKey: ['wallet-collections', address],
+  queryFn: () => scanWalletForCollections(address),
+  ...
+});
+*/
+
+// Replace with simple version:
+const { data: nfts } = useQuery({
+  queryKey: ['user-nfts', address],
+  queryFn: async () => {
+    const res = await fetch(`/api/nfts?owner=${address}`);
+    return res.json();
+  },
+  enabled: !!address,
+  staleTime: 60000, // 1 minute
+  refetchOnWindowFocus: false, // CRITICAL - don't refetch on focus
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: DISABLE CONNECTION MANAGER
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/lib/connectionManager.ts
+
+Comment out or delete entire file:
+
+// At the top, export no-op:
+export class ConnectionManager {
+  static async initialize() {
+    console.log('[ConnectionManager] Disabled');
+    return;
+  }
+  
+  static cleanup() {
+    // Do nothing
+  }
+}
+
+// Comment out ALL other code in this file
+
+
+2. FIND FILE: client/src/App.tsx
+
+Remove ConnectionManager initialization:
+
+// FIND AND REMOVE:
+/*
+useEffect(() => {
+  ConnectionManager.initialize();
+  return () => ConnectionManager.cleanup();
+}, []);
+*/
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DISABLE MULTI-COLLECTION FEATURES
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/App.tsx
+
+Remove any collection-related routes:
+
+// FIND AND REMOVE these routes:
+/*
+<Route path="/collections" element={<Collections />} />
+<Route path="/marketplace/browse" element={<Browse />} />
+<Route path="/collection/:address" element={<CollectionPage />} />
+*/
+
+// Keep only:
+<Route path="/marketplace" element={<Marketplace />} />
+
+
+2. DELETE FILES (if they exist):
+rm client/src/pages/Collections.tsx
+rm client/src/pages/CollectionPage.tsx
+rm client/src/pages/MarketplaceBrowse.tsx
+rm client/src/hooks/useCollections.ts
+
+
+3. FIND FILE: server/routes.ts
+
+Comment out collection endpoints:
+
+// FIND AND COMMENT OUT:
+/*
+app.get('/api/collections', ...)
+app.get('/api/collections/:address', ...)
+app.post('/api/collections', ...)
+*/
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: DISABLE NFT GATING CHECKS
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/hooks/useNFTOwnership.ts
+
+Replace with always-true version:
+
+export function useNFTOwnership() {
+  return {
+    hasNFT: true, // Always allow access for now
+    isLoading: false,
+    isChecking: false,
+  };
+}
+
+
+2. FIND FILE: client/src/components/NFTGate.tsx
+
+Replace with pass-through:
+
+export function NFTGate({ children }: { children: React.ReactNode }) {
+  return <>{children}</>; // Always allow access
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: DISABLE MONITORING AND HEALTH CHECKS
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILES and disable:
+
+server/lib/monitoring.ts - Comment out all setInterval calls
+server/lib/securityMonitor.ts - Comment out all setInterval calls  
+server/lib/healthCheck.ts - Comment out background checks
+
+
+2. In each file, find patterns like:
+
+// FIND AND COMMENT OUT:
+/*
+setInterval(() => {
+  // any code
+}, 1000);
+*/
+
+
+3. FIND FILE: server/index.ts
+
+Remove health check endpoints or make them simple:
+
+// Replace complex health check with simple version:
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: REMOVE FEATURE FLAG CHECKS FROM CRITICAL PATHS
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILES: client/src/pages/*.tsx
+
+In each page component, remove feature flag checks:
+
+// FIND AND REMOVE:
+/*
+const { data: featureFlags } = useQuery(...);
+if (!featureFlags?.marketplace) return <div>Disabled</div>;
+*/
+
+// Or comment out the check:
+// if (!featureFlags?.marketplace) return <div>Disabled</div>;
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: SIMPLIFY DATABASE QUERIES
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: server/routes.ts
+
+Simplify marketplace listings query:
+
+app.get('/api/marketplace/listings', async (req, res) => {
+  try {
+    const listings = await db
+      .select()
+      .from(marketplaceListings)
+      .where(eq(marketplaceListings.status, 'active'))
+      .limit(50); // Add limit!
+    
+    res.json(listings);
+  } catch (error) {
+    console.error('Error fetching listings:', error);
+    res.json([]); // Return empty array instead of error
+  }
+});
+
+
+2. Add limits to ALL queries:
+
+// Every db.select() should have:
+.limit(100) // Or appropriate number
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: DISABLE ALL AUTO-REFETCHING
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/lib/queryClient.ts (or where QueryClient is created)
+
+Update default config:
+
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 300000, // 5 minutes
+      refetchOnWindowFocus: false, // CRITICAL - disable
+      refetchOnMount: false, // CRITICAL - disable
+      refetchOnReconnect: false, // CRITICAL - disable
+      retry: 1, // Only retry once
+      retryDelay: 1000,
+    },
+  },
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: REMOVE REACT STRICT MODE
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/main.tsx
+
+Remove StrictMode wrapper:
+
+// BEFORE:
+<React.StrictMode>
+  <App />
+</React.StrictMode>
+
+// AFTER:
+<App />
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: CLEAN BUILD AND RESTART
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Stop everything
+killall node
+
+# Clean everything
+rm -rf dist/
+rm -rf node_modules/.vite/
+rm -rf .next/
+rm -rf .cache/
+
+# Clear any background processes
+ps aux | grep node
+
+# If you see any, kill them:
+kill -9 [PID]
+
+# Rebuild fresh
+npm run build
+
+# Start fresh
+npm start
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 11: TEST INTERNALLY FIRST
+═══════════════════════════════════════════════════════════════════
+
+1. In Replit preview, test:
+
+✅ App loads (not stuck)
+✅ Pages navigate without crash
+✅ Can view NFTs
+✅ Marketplace loads
+✅ NO wallet connection yet
+
+2. Check terminal for errors:
+- Should NOT see infinite loops of log messages
+- Should NOT see repeated RPC errors
+- Should NOT see memory warnings
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 12: REPUBLISH FOR EXTERNAL ACCESS
+═══════════════════════════════════════════════════════════════════
+
+1. Click "Republish" or "Deploy" in Replit
+
+2. Wait for deployment to complete
+
+3. Test external URL in INCOGNITO window
+
+4. If it loads, STOP - don't connect wallet yet
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After rollback, confirm:
+
+INTERNAL (Replit preview):
+- [ ] App loads without hanging
+- [ ] Can navigate between pages
+- [ ] No console errors flooding
+- [ ] Terminal shows clean startup
+
+EXTERNAL (Public URL):
+- [ ] URL loads (even if slow)
+- [ ] Shows homepage or content
+- [ ] Doesn't timeout
+- [ ] Can view pages without wallet
+
+DO NOT TEST WALLET CONNECTION YET
+
+Reply with:
+"Rollback complete
+Internal: [loads/stuck/error]
+External: [loads/stuck/timeout]
+Terminal: [clean/errors]
+Console: [clean/flooding]"

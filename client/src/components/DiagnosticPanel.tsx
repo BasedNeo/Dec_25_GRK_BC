@@ -43,10 +43,6 @@ export function DiagnosticPanel() {
   const isAdmin = isConnected && address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
   );
-  
-  if (!isAdmin) {
-    return null;
-  }
 
   const runDiagnostics = async () => {
     setIsRunning(true);
@@ -147,7 +143,11 @@ export function DiagnosticPanel() {
     if (isAdmin && !hasRun) {
       runDiagnostics();
     }
-  }, [isAdmin]);
+  }, [isAdmin, hasRun]);
+
+  if (!isAdmin) {
+    return null;
+  }
 
   const StatusIcon = ({ status }: { status: 'pass' | 'fail' | 'warn' }) => {
     if (status === 'pass') return <CheckCircle size={12} className="text-green-400" />;
