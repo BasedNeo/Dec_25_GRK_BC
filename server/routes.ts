@@ -2,10 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema, analyticsEvents, collections } from "@shared/schema";
-// STRIPPED FOR LAUNCH: Advanced features commented out
-// import { CollectionService } from './lib/collectionService';
-// import { GatingService } from './lib/gatingService';
-// import { searchService, type SearchFilters } from './lib/searchService';
+import { CollectionService } from './lib/collectionService';
+import { GatingService } from './lib/gatingService';
+import { searchService, type SearchFilters } from './lib/searchService';
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
@@ -41,8 +40,7 @@ import { AdminAuthService } from './lib/adminAuth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
-// STRIPPED FOR LAUNCH: Wallet scanner too slow
-// import { WalletScanner } from './lib/walletScanner';
+import { WalletScanner } from './lib/walletScanner';
 import crypto from "crypto";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -2197,7 +2195,6 @@ export async function registerRoutes(
   });
   END OF STRIPPED PITR/DISASTER/SNAPSHOTS/RUNBOOKS/INCIDENTS ROUTES */
 
-  /* STRIPPED FOR LAUNCH: Collection, Gating, Wallet Scanner, and Search routes
   // Collection routes
   
   // Seed default Based Guardians collection on startup
@@ -2548,7 +2545,6 @@ export async function registerRoutes(
       res.status(500).json({ error: 'Failed to get popular searches' });
     }
   });
-  END OF STRIPPED COLLECTION/GATING/SCANNER/SEARCH ROUTES */
 
   return httpServer;
 }
