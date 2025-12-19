@@ -1,0 +1,139 @@
+URGENT: The Based Guardians app is not loading. Users see blank screen or infinite loading. Implement these emergency fixes IMMEDIATELY.
+
+STEP 1: ADD LOADING TIMEOUT PROTECTION
+
+1. UPDATE FILE: client/src/App.tsx
+
+Add these imports at the top if not present:
+import { useState, useEffect } from 'react';
+
+Add this at the beginning of the App component (after line 125, before the existing useEffect):
+
+function App() {
+  const [appReady, setAppReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!appReady) {
+        setLoadError('App initialization timeout. Please refresh.');
+      }
+    }, 10000);
+    
+    const initTimer = setTimeout(() => {
+      setAppReady(true);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(initTimer);
+    };
+  }, [appReady]);
+  
+  if (!appReady && !loadError) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">🛸</div>
+          <div className="text-white font-orbitron text-xl">Loading...</div>
+          <div className="text-gray-500 text-sm mt-2">Connecting to the Giga Brain Galaxy</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (loadError) {
+    return <GlobalErrorFallback />;
+  }
+
+STEP 2: FIX RPC TIMEOUT
+
+2. UPDATE FILE: client/src/lib/wagmi.ts
+
+Find transports (around line 88-99) and change to:
+
+transports: {
+  [basedL1.id]: fallback([
+    http('https://mainnet.basedaibridge.com/rpc/', {
+      timeout: 5000,
+      retryCount: 2,
+      retryDelay: 500,
+    }),
+    http('https://rpc.basedaibridge.com/', {
+      timeout: 5000,
+      retryCount: 2,
+      retryDelay: 500,
+    }),
+  ]),
+},
+
+STEP 3: FIX MEMORY LEAK
+
+3. UPDATE FILE: client/src/hooks/useSubnetEmissions.ts
+
+Find first useEffect (line 336-340) and ensure cleanup:
+
+useEffect(() => {
+  fetchEmissions();
+  const interval = setInterval(fetchEmissions, 60000);
+  return () => clearInterval(interval);
+}, [fetchEmissions]);
+
+Find second useEffect (line 343-356) and ensure cleanup:
+
+useEffect(() => {
+  getBlockInfo().then(info => {
+    if (info) setBlockInfo(info);
+  });
+  
+  const interval = setInterval(() => {
+    getBlockInfo().then(info => {
+      if (info) setBlockInfo(info);
+    });
+  }, 300000);
+  
+  return () => clearInterval(interval);
+}, []);
+
+STEP 4: ADD CACHE CLEAR
+
+4. UPDATE FILE: client/src/main.tsx
+
+Add at top after imports (line 19):
+
+const APP_VERSION = '1.0.1';
+const lastVersion = localStorage.getItem('app_version');
+
+if (lastVersion !== APP_VERSION) {
+  console.log('[EMERGENCY] Clearing caches due to version change');
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('app_version', APP_VERSION);
+}
+
+STEP 5: FIX HEALTH CHECK
+
+5. UPDATE FILE: client/src/components/HealthCheckBanner.tsx
+
+At beginning of component:
+
+export function HealthCheckBanner() {
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(delay);
+  }, []);
+  
+  if (loading) return null;
+
+VERIFICATION:
+1. Clear browser cache (Ctrl+Shift+Del)
+2. Hard refresh (Ctrl+Shift+R)
+3. Open DevTools Console
+4. App should load in 10 seconds
+5. Check console for specific error messages

@@ -872,7 +872,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/backup/status", async (req, res) => {
+  app.get("/api/admin/backup/status", writeLimiter, requireAdmin, async (req, res) => {
     try {
       const backupsDir = path.join(process.cwd(), 'backups');
       

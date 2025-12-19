@@ -81,16 +81,34 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
         .then(data => setFeatureFlags(data))
         .catch(() => {});
       
-      fetch('/api/admin/backup/status')
-        .then(r => r.json())
-        .then(data => setBackupStatus(data))
-        .catch(() => {});
+      // Backup status is fetched separately with auth via fetchBackupStatus button
     }
   }, [isOpen, isAdmin]);
   
   const fetchBackupStatus = async () => {
+    if (!address) return;
+    
     try {
-      const res = await fetch('/api/admin/backup/status');
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      
+      if (!nonceRes.ok) return;
+      const { nonce } = await nonceRes.json();
+      
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+      const signature = await signer.signMessage(message);
+      
+      const res = await fetch('/api/admin/backup/status', {
+        headers: {
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        }
+      });
       const data = await res.json();
       setBackupStatus(data);
     } catch (error) {
