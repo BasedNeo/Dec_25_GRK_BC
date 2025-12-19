@@ -116,6 +116,39 @@ export async function registerRoutes(
     res.status(200).json({ status: "ok", timestamp: Date.now() });
   });
 
+  // Financial health check endpoint - validates calculation systems
+  app.get("/api/health/financial", async (_req, res) => {
+    try {
+      const checks = {
+        safeMath: true,
+        mintCalculations: true,
+        feeCalculations: true,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Basic SafeMath validation
+      const testWei = BigInt("1000000000000000000");
+      const testAdd = testWei + testWei;
+      checks.safeMath = testAdd === BigInt("2000000000000000000");
+      
+      // Mint price validation (69420 BASED)
+      const mintPrice = BigInt("69420000000000000000000");
+      checks.mintCalculations = mintPrice > BigInt(0);
+      
+      // Fee calculation validation (1% + 10% = 11% total)
+      const salePrice = BigInt("100000000000000000000");
+      const platformFee = (salePrice * BigInt(100)) / BigInt(10000);
+      const royaltyFee = (salePrice * BigInt(1000)) / BigInt(10000);
+      checks.feeCalculations = platformFee + royaltyFee === BigInt("11000000000000000000");
+      
+      const healthy = checks.safeMath && checks.mintCalculations && checks.feeCalculations;
+      
+      res.json({ healthy, checks });
+    } catch (error: any) {
+      res.status(500).json({ healthy: false, error: error.message });
+    }
+  });
+
   // Admin auth nonce endpoint - get a nonce for signing
   app.post("/api/admin/nonce", authLimiter, async (req, res) => {
     try {

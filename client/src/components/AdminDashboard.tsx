@@ -18,6 +18,52 @@ import { perfMonitor } from '@/lib/performanceMonitor';
 import { CircuitBreakerMonitor } from './CircuitBreakerMonitor';
 import { circuitBreakerManager } from '@/lib/circuitBreaker';
 
+const FinancialHealthCheck = () => {
+  const [health, setHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetch('/api/health/financial')
+      .then(res => res.json())
+      .then(data => {
+        setHealth(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setHealth({ healthy: false, error: 'Failed to fetch' });
+        setLoading(false);
+      });
+  }, []);
+  
+  if (loading) return <div className="text-gray-500 text-sm">Loading financial health...</div>;
+  if (!health) return <div className="text-red-500 text-sm">Failed to load health check</div>;
+  
+  return (
+    <div className="bg-black/40 border border-green-500/30 rounded p-4" data-testid="financial-health-panel">
+      <div className="space-y-2 text-sm">
+        <div className="flex items-center gap-2">
+          <span>SafeMath:</span>
+          <span data-testid="status-safemath">{health.checks?.safeMath ? '✅' : '❌'}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Mint Calculations:</span>
+          <span data-testid="status-mint-calc">{health.checks?.mintCalculations ? '✅' : '❌'}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Fee Calculations:</span>
+          <span data-testid="status-fee-calc">{health.checks?.feeCalculations ? '✅' : '❌'}</span>
+        </div>
+        <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-700">
+          Last check: {health.checks?.timestamp ? new Date(health.checks.timestamp).toLocaleString() : 'N/A'}
+        </div>
+        {!health.healthy && (
+          <div className="text-red-400 text-xs mt-2">⚠️ Some checks failed - review calculations</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -1113,6 +1159,13 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               </div>
             </div>
             <CircuitBreakerMonitor />
+          </Card>
+
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              💰 Financial System Health
+            </h3>
+            <FinancialHealthCheck />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">

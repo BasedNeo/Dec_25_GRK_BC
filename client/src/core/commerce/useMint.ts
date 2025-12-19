@@ -6,6 +6,7 @@ import { useContractData } from '@/hooks/useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
 import { SafeTransaction } from '@/lib/safeTransaction';
+import { FinancialValidator } from '@/lib/financialValidator';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
 import { analytics } from '@/lib/analytics';
@@ -157,6 +158,22 @@ export function useMint() {
 
       if (!SafeMath.validate(valueInWei).valid) {
         throw new Error('Invalid mint amount');
+      }
+
+      const validation = FinancialValidator.preTransactionCheck(
+        'mint',
+        valueInWei,
+        balanceData?.value,
+        quantity
+      );
+
+      if (!validation.valid) {
+        console.error('[MINT] Validation failed:', validation.errors);
+        throw new Error(`Mint validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      if (validation.warnings.length > 0) {
+        console.warn('[MINT] Warnings:', validation.warnings);
       }
 
       const preFlightResult = await SafeTransaction.preFlightCheck(

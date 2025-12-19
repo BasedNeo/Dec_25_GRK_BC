@@ -21,6 +21,7 @@ import { useTransactionContext } from '@/context/TransactionContext';
 import { parseContractError } from '@/lib/errorParser';
 import { SafeTransaction } from '@/lib/safeTransaction';
 import { SafeMath } from '@/lib/safeMath';
+import { FinancialValidator } from '@/lib/financialValidator';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
 import { analytics } from '@/lib/analytics';
@@ -393,6 +394,16 @@ export function useMarketplace() {
     
     const price = Number(priceInBased);
     analytics.listingStarted(tokenId, price);
+
+    const listingValidation = FinancialValidator.validateListingPrice(priceWei);
+    if (!listingValidation.valid) {
+      console.error('[MARKETPLACE] Listing validation failed:', listingValidation.errors);
+      toast({ title: "Invalid Price", description: listingValidation.errors[0], variant: "destructive" });
+      return;
+    }
+    if (listingValidation.warnings.length > 0) {
+      console.warn('[MARKETPLACE] Listing warnings:', listingValidation.warnings);
+    }
 
     // Pre-flight check: Verify NFT is not already listed
     try {
