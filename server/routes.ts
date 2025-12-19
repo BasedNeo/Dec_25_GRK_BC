@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema, analyticsEvents, collections } from "@shared/schema";
 import { CollectionService } from './lib/collectionService';
+import { GatingService } from './lib/gatingService';
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
@@ -2216,6 +2217,58 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete collection' });
+    }
+  });
+
+  // Gating routes
+  GatingService.initializeDefaultRules().catch(err => {
+    console.error('[Routes] Failed to initialize gating rules:', err);
+  });
+
+  app.get('/api/gating/rules', async (_req, res) => {
+    try {
+      const rules = await GatingService.getAllGatingRules();
+      res.json(rules);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch gating rules' });
+    }
+  });
+
+  app.get('/api/gating/rules/:featureKey', async (req, res) => {
+    try {
+      const rule = await GatingService.getGatingRule(req.params.featureKey);
+      if (!rule) {
+        return res.status(404).json({ error: 'Gating rule not found' });
+      }
+      res.json(rule);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch gating rule' });
+    }
+  });
+
+  app.put('/api/admin/gating/rules/:featureKey', requireAdmin, async (req, res) => {
+    try {
+      const { requiresNFT, requiredCollection, minimumBalance, bypassForAdmin, enabled, gateMessage } = req.body;
+      await GatingService.updateGatingRule(req.params.featureKey, {
+        requiresNFT,
+        requiredCollection,
+        minimumBalance,
+        bypassForAdmin,
+        enabled,
+        gateMessage
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update gating rule' });
+    }
+  });
+
+  app.post('/api/admin/gating/initialize', requireAdmin, async (_req, res) => {
+    try {
+      await GatingService.initializeDefaultRules();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to initialize gating rules' });
     }
   });
 

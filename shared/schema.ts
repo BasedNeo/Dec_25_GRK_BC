@@ -336,3 +336,26 @@ export const insertCollectionSchema = createInsertSchema(collections).omit({
 
 export type InsertCollection = z.infer<typeof insertCollectionSchema>;
 export type Collection = typeof collections.$inferSelect;
+
+export const featureGating = pgTable('feature_gating', {
+  id: serial('id').primaryKey(),
+  featureKey: text('feature_key').notNull().unique(),
+  featureName: text('feature_name').notNull(),
+  requiresNFT: boolean('requires_nft').default(false),
+  requiredCollection: text('required_collection'),
+  minimumBalance: integer('minimum_balance').default(1),
+  bypassForAdmin: boolean('bypass_for_admin').default(true),
+  enabled: boolean('enabled').default(true),
+  gateMessage: text('gate_message'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const insertFeatureGatingSchema = createInsertSchema(featureGating).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFeatureGating = z.infer<typeof insertFeatureGatingSchema>;
+export type FeatureGating = typeof featureGating.$inferSelect;
