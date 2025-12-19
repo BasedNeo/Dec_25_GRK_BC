@@ -572,14 +572,11 @@ const FALLBACK_THUMBNAIL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2
 function CollectionCard({ collection }: { collection: Collection }) {
   const [bannerLoaded, setBannerLoaded] = useState(false);
   const [bannerError, setBannerError] = useState(false);
-  const [thumbLoaded, setThumbLoaded] = useState(false);
-  const [thumbError, setThumbError] = useState(false);
   
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
 
   const bannerSrc = collection.bannerImage || FALLBACK_BANNER;
-  const thumbSrc = collection.thumbnailImage || FALLBACK_THUMBNAIL;
 
   return (
     <Link href={`/collections?collection=${collection.contractAddress}`}>
@@ -607,27 +604,8 @@ function CollectionCard({ collection }: { collection: Collection }) {
         </div>
         
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 flex-shrink-0">
-              {!thumbLoaded && !thumbError && (
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border-2 border-cyan-400/50 animate-pulse" />
-              )}
-              <img 
-                src={thumbError ? FALLBACK_THUMBNAIL : thumbSrc} 
-                alt={collection.name}
-                className={`w-12 h-12 rounded-full border-2 border-cyan-400 object-cover ${thumbLoaded ? 'opacity-100' : 'opacity-0'}`}
-                onLoad={() => setThumbLoaded(true)}
-                onError={() => {
-                  setThumbError(true);
-                  setThumbLoaded(true);
-                }}
-              />
-            </div>
-            <div>
-              <CardTitle className="text-xl text-white font-orbitron">{collection.name}</CardTitle>
-              <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
-            </div>
-          </div>
+          <CardTitle className="text-xl text-white font-orbitron">{collection.name}</CardTitle>
+          <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
         </CardHeader>
         
         <CardContent>
