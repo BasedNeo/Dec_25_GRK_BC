@@ -27,7 +27,221 @@ import { DisasterRecoveryPanel } from './DisasterRecoveryPanel';
 import { SnapshotManager } from './SnapshotManager';
 import { RunbookManager } from './RunbookManager';
 import { PerformanceDashboard } from './PerformanceDashboard';
-import { Camera, Book, Layers } from 'lucide-react';
+import { Camera, Book, Layers, Lock } from 'lucide-react';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const GatingControlPanel = () => {
+  const [rules, setRules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState<any[]>([]);
+  const { address } = useAccount();
+
+  useEffect(() => {
+    fetchRules();
+    fetchCollections();
+  }, []);
+
+  async function fetchRules() {
+    try {
+      const res = await fetch('/api/gating/rules');
+      const data = await res.json();
+      setRules(data);
+    } catch (error) {
+      console.error('Failed to fetch gating rules:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchCollections() {
+    try {
+      const res = await fetch('/api/collections');
+      const data = await res.json();
+      setCollections(data);
+    } catch (error) {
+      console.error('Failed to fetch collections:', error);
+    }
+  }
+
+  async function updateRule(featureKey: string, updates: any) {
+    if (!address) return;
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      if (!nonceRes.ok) return;
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(`Based Guardians Admin Auth\nNonce: ${nonce}`);
+      
+      const res = await fetch(`/api/admin/gating/rules/${featureKey}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (res.ok) {
+        await fetchRules();
+      } else {
+        alert('Failed to update gating rule');
+      }
+    } catch (error) {
+      alert('Failed to update gating rule');
+    }
+  }
+
+  async function initializeRules() {
+    if (!address) return;
+    if (!confirm('Initialize default gating rules? This will create missing rules but not overwrite existing ones.')) {
+      return;
+    }
+
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      if (!nonceRes.ok) return;
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(`Based Guardians Admin Auth\nNonce: ${nonce}`);
+      
+      const res = await fetch('/api/admin/gating/initialize', { 
+        method: 'POST',
+        headers: {
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        }
+      });
+      if (res.ok) {
+        await fetchRules();
+        alert('Default rules initialized');
+      }
+    } catch (error) {
+      alert('Failed to initialize rules');
+    }
+  }
+
+  if (loading) {
+    return <div className="p-4 text-gray-400">Loading gating rules...</div>;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="gating-control-panel">
+      <div className="flex justify-end">
+        <Button onClick={initializeRules} variant="outline" size="sm" className="border-cyan-500/50 text-cyan-400">
+          Initialize Defaults
+        </Button>
+      </div>
+      
+      <div className="space-y-4">
+        {rules.map(rule => (
+          <div key={rule.id} className="border border-cyan-500/20 rounded-lg p-4 space-y-3 bg-black/40" data-testid={`gating-rule-${rule.featureKey}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-white">{rule.featureName}</h4>
+                <p className="text-xs text-gray-500 font-mono">{rule.featureKey}</p>
+              </div>
+              <button
+                onClick={() => updateRule(rule.featureKey, { enabled: !rule.enabled })}
+                className={`px-3 py-1 rounded text-sm font-orbitron ${
+                  rule.enabled ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
+                }`}
+                data-testid={`button-toggle-enabled-${rule.featureKey}`}
+              >
+                {rule.enabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <label className="flex items-center gap-2 text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={rule.requiresNFT}
+                  onChange={(e) => updateRule(rule.featureKey, { requiresNFT: e.target.checked })}
+                  className="rounded border-cyan-500/50"
+                  data-testid={`checkbox-requires-nft-${rule.featureKey}`}
+                />
+                <span>Requires NFT</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={rule.bypassForAdmin}
+                  onChange={(e) => updateRule(rule.featureKey, { bypassForAdmin: e.target.checked })}
+                  className="rounded border-cyan-500/50"
+                  data-testid={`checkbox-admin-bypass-${rule.featureKey}`}
+                />
+                <span>Admin Bypass</span>
+              </label>
+            </div>
+
+            {rule.requiresNFT && (
+              <>
+                <div>
+                  <label className="text-sm font-medium block mb-1 text-gray-300">Required Collection</label>
+                  <select
+                    value={rule.requiredCollection || ''}
+                    onChange={(e) => updateRule(rule.featureKey, { 
+                      requiredCollection: e.target.value || null 
+                    })}
+                    className="w-full px-3 py-2 bg-black/60 border border-cyan-500/30 rounded-lg text-sm text-white"
+                    data-testid={`select-collection-${rule.featureKey}`}
+                  >
+                    <option value="">Any Guardian NFT</option>
+                    {collections.map(col => (
+                      <option key={col.id} value={col.contractAddress}>
+                        {col.name} ({col.symbol})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-1 text-gray-300">Minimum Balance</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={rule.minimumBalance}
+                    onChange={(e) => updateRule(rule.featureKey, { 
+                      minimumBalance: parseInt(e.target.value) 
+                    })}
+                    className="w-full px-3 py-2 bg-black/60 border border-cyan-500/30 rounded-lg text-sm text-white"
+                    data-testid={`input-min-balance-${rule.featureKey}`}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-1 text-gray-300">Gate Message</label>
+                  <textarea
+                    value={rule.gateMessage || ''}
+                    onChange={(e) => updateRule(rule.featureKey, { gateMessage: e.target.value })}
+                    className="w-full px-3 py-2 bg-black/60 border border-cyan-500/30 rounded-lg text-sm text-white"
+                    rows={2}
+                    placeholder="Custom message for locked users"
+                    data-testid={`textarea-message-${rule.featureKey}`}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const CollectionManagementPanel = () => {
   const [collections, setCollections] = useState<any[]>([]);
@@ -1656,6 +1870,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Collection Management
             </h3>
             <CollectionManagementPanel />
+          </Card>
+          
+          <Card className="bg-black/60 border-purple-500/30 p-6 mb-6" data-testid="gating-control-card">
+            <h3 className="text-xl font-orbitron font-bold text-purple-400 mb-4 flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              NFT Gating Control
+            </h3>
+            <GatingControlPanel />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">
