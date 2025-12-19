@@ -1,0 +1,714 @@
+Implement advanced rate limiting with IP-based throttling, user-based quotas, endpoint-specific limits, DDoS protection, and automated IP banning for repeated abuse attempts.
+
+STEP 1: CREATE ADVANCED RATE LIMITER
+
+1. CREATE FILE: server/lib/advancedRateLimiter.ts
+
+import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import { Request } from 'express';
+
+interface RateLimitConfig {
+  windowMs: number;
+  max: number;
+  message?: string;
+  skipSuccessfulRequests?: boolean;
+  skipFailedRequests?: boolean;
+  standardHeaders?: boolean;
+  legacyHeaders?: boolean;
+}
+
+export class AdvancedRateLimiter {
+  private static bannedIPs: Map<string, { until: number; reason: string }> = new Map();
+  private static suspiciousIPs: Map<string, { count: number; firstSeen: number }> = new Map();
+  
+  static createLimiter(config: RateLimitConfig) {
+    return rateLimit({
+      windowMs: config.windowMs,
+      max: config.max,
+      message: config.message || 'Too many requests, please try again later',
+      standardHeaders: config.standardHeaders !== false,
+      legacyHeaders: config.legacyHeaders !== false,
+      skipSuccessfulRequests: config.skipSuccessfulRequests || false,
+      skipFailedRequests: config.skipFailedRequests || false,
+      keyGenerator: (req: Request) => {
+        return this.getClientIdentifier(req);
+      },
+      skip: (req: Request) => {
+        const clientId = this.getClientIdentifier(req);
+        return this.isWhitelisted(clientId);
+      },
+      handler: (req, res) => {
+        const clientId = this.getClientIdentifier(req);
+        this.trackSuspiciousActivity(clientId, req.path);
+        
+        res.status(429).json({
+          error: config.message || 'Too many requests',
+          retryAfter: Math.ceil(config.windowMs / 1000),
+          limit: config.max,
+          window: config.windowMs
+        });
+      }
+    });
+  }
+  
+  static getClientIdentifier(req: Request): string {
+    const forwarded = req.get('x-forwarded-for');
+    const ip = forwarded ? forwarded.split(',')[0].trim() : req.ip;
+    const walletAddress = req.headers['x-wallet-address'] as string;
+    
+    return walletAddress || ip || 'unknown';
+  }
+  
+  static isWhitelisted(clientId: string): boolean {
+    const whitelist = (process.env.RATE_LIMIT_WHITELIST || '').split(',');
+    return whitelist.includes(clientId);
+  }
+  
+  static isBanned(clientId: string): boolean {
+    const ban = this.bannedIPs.get(clientId);
+    
+    if (!ban) return false;
+    
+    if (Date.now() > ban.until) {
+      this.bannedIPs.delete(clientId);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static banIP(clientId: string, durationMs: number, reason: string) {
+    this.bannedIPs.set(clientId, {
+      until: Date.now() + durationMs,
+      reason
+    });
+    
+    console.warn(`[SECURITY] Banned ${clientId} for ${durationMs}ms: ${reason}`);
+  }
+  
+  static unbanIP(clientId: string) {
+    this.bannedIPs.delete(clientId);
+    console.log(`[SECURITY] Unbanned ${clientId}`);
+  }
+  
+  static trackSuspiciousActivity(clientId: string, endpoint: string) {
+    const existing = this.suspiciousIPs.get(clientId);
+    
+    if (!existing) {
+      this.suspiciousIPs.set(clientId, {
+        count: 1,
+        firstSeen: Date.now()
+      });
+      return;
+    }
+    
+    existing.count++;
+    
+    const fiveMinutes = 5 * 60 * 1000;
+    if (Date.now() - existing.firstSeen > fiveMinutes) {
+      existing.count = 1;
+      existing.firstSeen = Date.now();
+      return;
+    }
+    
+    if (existing.count >= 10) {
+      this.banIP(clientId, 60 * 60 * 1000, 'Repeated rate limit violations');
+    } else if (existing.count >= 5) {
+      console.warn(`[SECURITY] Suspicious activity from ${clientId}: ${existing.count} violations`);
+    }
+  }
+  
+  static getSuspiciousIPs() {
+    return Array.from(this.suspiciousIPs.entries()).map(([ip, data]) => ({
+      ip,
+      count: data.count,
+      firstSeen: new Date(data.firstSeen),
+      active: Date.now() - data.firstSeen < 5 * 60 * 1000
+    }));
+  }
+  
+  static getBannedIPs() {
+    return Array.from(this.bannedIPs.entries()).map(([ip, data]) => ({
+      ip,
+      reason: data.reason,
+      until: new Date(data.until),
+      remaining: Math.max(0, data.until - Date.now())
+    }));
+  }
+  
+  static clearSuspiciousIPs() {
+    this.suspiciousIPs.clear();
+  }
+}
+
+export const strictLimiter = AdvancedRateLimiter.createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many requests from this IP, please try again later'
+});
+
+export const authLimiter = AdvancedRateLimiter.createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Too many authentication attempts, please try again later',
+  skipSuccessfulRequests: true
+});
+
+export const writeLimiter = AdvancedRateLimiter.createLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: 'Too many write operations, please slow down'
+});
+
+export const gameLimiter = AdvancedRateLimiter.createLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Too many game requests, please wait before playing again'
+});
+
+export const readLimiter = AdvancedRateLimiter.createLimiter({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please slow down'
+});
+
+STEP 2: CREATE IP BAN MIDDLEWARE
+
+2. CREATE FILE: server/middleware/ipBanGuard.ts
+
+import { Request, Response, NextFunction } from 'express';
+import { AdvancedRateLimiter } from '../lib/advancedRateLimiter';
+
+export function ipBanGuard(req: Request, res: Response, next: NextFunction) {
+  const clientId = AdvancedRateLimiter.getClientIdentifier(req);
+  
+  if (AdvancedRateLimiter.isBanned(clientId)) {
+    const bannedIPs = AdvancedRateLimiter.getBannedIPs();
+    const banInfo = bannedIPs.find(b => b.ip === clientId);
+    
+    console.warn(`[SECURITY] Blocked request from banned IP: ${clientId}`);
+    
+    return res.status(403).json({
+      error: 'Access forbidden',
+      reason: banInfo?.reason || 'IP address banned',
+      bannedUntil: banInfo?.until,
+      code: 'IP_BANNED'
+    });
+  }
+  
+  next();
+}
+
+STEP 3: CREATE ENDPOINT-SPECIFIC RATE LIMITERS
+
+3. CREATE FILE: server/lib/endpointLimiters.ts
+
+import { AdvancedRateLimiter } from './advancedRateLimiter';
+
+export const EndpointLimiters = {
+  mint: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: 'Too many mint attempts. Please wait before minting again.'
+  }),
+  
+  buy: AdvancedRateLimiter.createLimiter({
+    windowMs: 30 * 1000,
+    max: 10,
+    message: 'Too many purchase attempts. Please wait before buying again.'
+  }),
+  
+  list: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: 'Too many listing operations. Please slow down.'
+  }),
+  
+  offer: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 1000,
+    max: 15,
+    message: 'Too many offer operations. Please wait before making more offers.'
+  }),
+  
+  customName: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: 'Too many custom name changes. You can change names 3 times per hour.'
+  }),
+  
+  vote: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: 'Too many voting attempts. Please slow down.'
+  }),
+  
+  proposalCreate: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: 'Too many proposal creations. Maximum 3 proposals per hour.'
+  }),
+  
+  gameSubmit: AdvancedRateLimiter.createLimiter({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: 'Too many game submissions. Please play at a reasonable pace.'
+  }),
+  
+  profileUpdate: AdvancedRateLimiter.createLimiter({
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+    message: 'Too many profile updates. Please wait before updating again.'
+  }),
+  
+  export: AdvancedRateLimiter.createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'Too many export requests. Maximum 5 exports per 15 minutes.'
+  })
+};
+
+STEP 4: UPDATE ROUTES WITH SPECIFIC LIMITERS
+
+4. UPDATE FILE: server/routes.ts
+
+Add imports:
+
+import { ipBanGuard } from './middleware/ipBanGuard';
+import { EndpointLimiters } from './lib/endpointLimiters';
+import { AdvancedRateLimiter, readLimiter } from './lib/advancedRateLimiter';
+
+Apply IP ban guard globally:
+
+app.use('/api/*', ipBanGuard);
+
+Apply read limiter to GET requests:
+
+app.use('/api/*', (req, res, next) => {
+  if (req.method === 'GET') {
+    return readLimiter(req, res, next);
+  }
+  next();
+});
+
+Update specific endpoints with targeted limiters:
+
+// Mint endpoint
+app.post('/api/mint', EndpointLimiters.mint, async (req, res) => {
+  // existing mint logic
+});
+
+// Custom names
+app.post('/api/custom-names', EndpointLimiters.customName, async (req, res) => {
+  // existing custom name logic
+});
+
+// Proposals
+app.post('/api/proposals', isAdmin, EndpointLimiters.proposalCreate, async (req, res) => {
+  // existing proposal logic
+});
+
+// Voting
+app.post('/api/proposals/:id/vote', EndpointLimiters.vote, async (req, res) => {
+  // existing voting logic
+});
+
+// Game submissions
+app.post('/api/games/:gameType/submit', EndpointLimiters.gameSubmit, async (req, res) => {
+  // existing game submission logic
+});
+
+// Exports
+app.get('/api/transactions/export/:walletAddress', EndpointLimiters.export, async (req, res) => {
+  // existing export logic
+});
+
+STEP 5: ADD RATE LIMIT MONITORING ENDPOINT
+
+5. UPDATE FILE: server/routes.ts
+
+Add endpoints:
+
+app.get('/api/admin/rate-limits/suspicious', isAdmin, async (req, res) => {
+  try {
+    const suspicious = AdvancedRateLimiter.getSuspiciousIPs();
+    res.json({ suspicious });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/rate-limits/banned', isAdmin, async (req, res) => {
+  try {
+    const banned = AdvancedRateLimiter.getBannedIPs();
+    res.json({ banned });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/rate-limits/ban', isAdmin, async (req, res) => {
+  try {
+    const { ip, durationMs, reason } = req.body;
+    
+    if (!ip || !durationMs || !reason) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    AdvancedRateLimiter.banIP(ip, durationMs, reason);
+    
+    res.json({ success: true, message: `Banned ${ip} for ${durationMs}ms` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/rate-limits/unban', isAdmin, async (req, res) => {
+  try {
+    const { ip } = req.body;
+    
+    if (!ip) {
+      return res.status(400).json({ error: 'IP address required' });
+    }
+    
+    AdvancedRateLimiter.unbanIP(ip);
+    
+    res.json({ success: true, message: `Unbanned ${ip}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/rate-limits/clear-suspicious', isAdmin, async (req, res) => {
+  try {
+    AdvancedRateLimiter.clearSuspiciousIPs();
+    res.json({ success: true, message: 'Cleared suspicious IP list' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 6: CREATE RATE LIMIT MONITOR COMPONENT
+
+6. CREATE FILE: client/src/components/RateLimitMonitor.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Ban, Shield } from 'lucide-react';
+
+interface SuspiciousIP {
+  ip: string;
+  count: number;
+  firstSeen: Date;
+  active: boolean;
+}
+
+interface BannedIP {
+  ip: string;
+  reason: string;
+  until: Date;
+  remaining: number;
+}
+
+export const RateLimitMonitor = () => {
+  const [suspicious, setSuspicious] = useState<SuspiciousIP[]>([]);
+  const [banned, setBanned] = useState<BannedIP[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const [suspRes, banRes] = await Promise.all([
+        fetch('/api/admin/rate-limits/suspicious'),
+        fetch('/api/admin/rate-limits/banned')
+      ]);
+      
+      const suspData = await suspRes.json();
+      const banData = await banRes.json();
+      
+      setSuspicious(suspData.suspicious || []);
+      setBanned(banData.banned || []);
+    } catch (error) {
+      console.error('Failed to fetch rate limit data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const banIP = async (ip: string, durationHours: number) => {
+    try {
+      await fetch('/api/admin/rate-limits/ban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ip,
+          durationMs: durationHours * 60 * 60 * 1000,
+          reason: 'Manual ban by admin'
+        })
+      });
+      
+      fetchData();
+    } catch (error) {
+      console.error('Failed to ban IP:', error);
+    }
+  };
+  
+  const unbanIP = async (ip: string) => {
+    try {
+      await fetch('/api/admin/rate-limits/unban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip })
+      });
+      
+      fetchData();
+    } catch (error) {
+      console.error('Failed to unban IP:', error);
+    }
+  };
+  
+  const clearSuspicious = async () => {
+    try {
+      await fetch('/api/admin/rate-limits/clear-suspicious', { method: 'POST' });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to clear suspicious IPs:', error);
+    }
+  };
+  
+  if (loading) return <div>Loading...</div>;
+  
+  return (
+    <div className="space-y-6">
+      <Card className="p-6 bg-black/60 border-yellow-500/30">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-400" />
+            Suspicious Activity ({suspicious.length})
+          </h3>
+          <Button onClick={clearSuspicious} size="sm" variant="outline">
+            Clear All
+          </Button>
+        </div>
+        
+        {suspicious.length === 0 ? (
+          <div className="text-gray-400">No suspicious activity detected</div>
+        ) : (
+          <div className="space-y-2">
+            {suspicious.map((item) => (
+              <div 
+                key={item.ip} 
+                className={`p-3 rounded border ${
+                  item.active ? 'border-yellow-500/50 bg-yellow-500/10' : 'border-gray-500/50 bg-gray-500/10'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-mono text-sm">{item.ip}</div>
+                    <div className="text-xs text-gray-400">
+                      {item.count} violations • First seen: {new Date(item.firstSeen).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => banIP(item.ip, 1)} size="sm" variant="destructive">
+                      Ban 1h
+                    </Button>
+                    <Button onClick={() => banIP(item.ip, 24)} size="sm" variant="destructive">
+                      Ban 24h
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+      
+      <Card className="p-6 bg-black/60 border-red-500/30">
+        <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+          <Ban className="w-5 h-5 text-red-400" />
+          Banned IPs ({banned.length})
+        </h3>
+        
+        {banned.length === 0 ? (
+          <div className="text-gray-400">No banned IPs</div>
+        ) : (
+          <div className="space-y-2">
+            {banned.map((item) => (
+              <div key={item.ip} className="p-3 rounded border border-red-500/50 bg-red-500/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-mono text-sm">{item.ip}</div>
+                    <div className="text-xs text-gray-400">
+                      Reason: {item.reason}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Until: {new Date(item.until).toLocaleString()} 
+                      ({Math.ceil(item.remaining / 60000)} minutes remaining)
+                    </div>
+                  </div>
+                  <Button onClick={() => unbanIP(item.ip)} size="sm" variant="outline">
+                    Unban
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+STEP 7: ADD RATE LIMIT MONITOR TO ADMIN DASHBOARD
+
+7. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add import:
+
+import { RateLimitMonitor } from './RateLimitMonitor';
+
+Add to dashboard render:
+
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">🛡️ Rate Limiting & DDoS Protection</h2>
+  <RateLimitMonitor />
+</div>
+
+STEP 8: CREATE RATE LIMIT HEADERS INTERCEPTOR
+
+8. CREATE FILE: client/src/lib/rateLimitInterceptor.ts
+
+export class RateLimitInterceptor {
+  private static limits: Map<string, {
+    limit: number;
+    remaining: number;
+    reset: number;
+  }> = new Map();
+  
+  static processHeaders(endpoint: string, headers: Headers) {
+    const limit = headers.get('X-RateLimit-Limit');
+    const remaining = headers.get('X-RateLimit-Remaining');
+    const reset = headers.get('X-RateLimit-Reset');
+    
+    if (limit && remaining && reset) {
+      this.limits.set(endpoint, {
+        limit: parseInt(limit),
+        remaining: parseInt(remaining),
+        reset: parseInt(reset)
+      });
+      
+      if (parseInt(remaining) < 5) {
+        console.warn(`[RATE LIMIT] Approaching limit for ${endpoint}: ${remaining}/${limit}`);
+      }
+    }
+  }
+  
+  static getRateLimitInfo(endpoint: string) {
+    return this.limits.get(endpoint);
+  }
+  
+  static getAllLimits() {
+    return Array.from(this.limits.entries()).map(([endpoint, data]) => ({
+      endpoint,
+      ...data,
+      resetTime: new Date(data.reset * 1000)
+    }));
+  }
+}
+
+STEP 9: CREATE RATE LIMIT WARNING COMPONENT
+
+9. CREATE FILE: client/src/components/RateLimitWarning.tsx
+
+import { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
+
+export const RateLimitWarning = () => {
+  const [show, setShow] = useState(false);
+  
+  useEffect(() => {
+    const checkRateLimits = () => {
+      // Check if user is approaching any rate limits
+      const userRequests = parseInt(localStorage.getItem('requestCount') || '0');
+      const lastReset = parseInt(localStorage.getItem('lastReset') || '0');
+      const now = Date.now();
+      
+      if (now - lastReset > 60000) {
+        localStorage.setItem('requestCount', '0');
+        localStorage.setItem('lastReset', now.toString());
+        setShow(false);
+        return;
+      }
+      
+      if (userRequests > 80) {
+        setShow(true);
+      } else {
+        setShow(false);
+      }
+    };
+    
+    const interval = setInterval(checkRateLimits, 5000);
+    checkRateLimits();
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  if (!show) return null;
+  
+  return (
+    <div className="fixed bottom-4 right-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 max-w-sm z-50">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5" />
+        <div>
+          <div className="font-bold text-yellow-400">Rate Limit Warning</div>
+          <div className="text-sm text-yellow-300">
+            You're making many requests. Please slow down to avoid being rate limited.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+STEP 10: ADD RATE LIMIT WARNING TO APP
+
+10. UPDATE FILE: client/src/App.tsx
+
+Add import:
+
+import { RateLimitWarning } from './components/RateLimitWarning';
+
+Add to render (near the bottom before closing tags):
+
+<RateLimitWarning />
+
+VERIFICATION STEPS:
+1. Make multiple rapid requests to any endpoint
+2. Should eventually get 429 Too Many Requests error
+3. Check response headers for X-RateLimit-* values
+4. Open Admin Dashboard
+5. Find Rate Limiting & DDoS Protection section
+6. Should see suspicious activity (if any rate limits hit)
+7. Try making 15+ requests in 1 minute to /api/proposals
+8. Should be rate limited
+9. Check Security Audit Log
+10. Should see rate limit violations logged
+11. Try banning an IP from admin panel
+12. That IP should get 403 Forbidden on next request
+13. Unban the IP
+14. Should be able to make requests again
+
+Test automated banning:
+1. Hit rate limit 10+ times from same IP
+2. IP should be automatically banned for 1 hour
+3. Check banned IPs list in admin dashboard
+4. Should see the auto-banned IP
+
+Your app now has enterprise-grade DDoS protection! 🛡️
