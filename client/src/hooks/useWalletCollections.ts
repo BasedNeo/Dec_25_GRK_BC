@@ -11,11 +11,15 @@ interface CollectionSummary {
 }
 
 export function useWalletCollections() {
+  // STRIPPED FOR LAUNCH: Wallet scanning is too slow, disabled for now
+  // Returns empty state - can be re-enabled later when optimized
   const { address, isConnected } = useAccount();
-  const [collections, setCollections] = useState<CollectionSummary[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [collections] = useState<CollectionSummary[]>([]);
+  const [loading] = useState(false);
+  const [error] = useState<string | null>(null);
 
+  // Scanning disabled - was causing slow API calls
+  /*
   useEffect(() => {
     if (!isConnected || !address) {
       setCollections([]);
@@ -24,6 +28,7 @@ export function useWalletCollections() {
 
     scanWallet();
   }, [address, isConnected]);
+  */
 
   async function scanWallet() {
     if (!address) return;
