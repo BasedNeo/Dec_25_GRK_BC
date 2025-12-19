@@ -194,6 +194,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   } else if (item.id === 'marketplace') {
                     setLocation('/marketplace');
                   } else {
+                    // Navigate to home page and set the tab
+                    setLocation('/');
                     onTabChange(item.id);
                   }
                 }}
@@ -413,7 +415,11 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       setLocation('/games');
                     } else if (item.id === 'collections') {
                       setLocation('/collections');
+                    } else if (item.id === 'marketplace') {
+                      setLocation('/marketplace');
                     } else {
+                      // Navigate to home page and set the tab
+                      setLocation('/');
                       onTabChange(item.id);
                     }
                     setIsMobileMenuOpen(false);
