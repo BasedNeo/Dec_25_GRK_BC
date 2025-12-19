@@ -37,6 +37,7 @@ import { CSRFProtection } from './lib/csrfProtection';
 // import { ThreatDetection } from './lib/threatDetection';
 // import { IncidentResponse } from './lib/incidentResponse';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
+import { AdminAuthService } from './lib/adminAuth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
@@ -250,6 +251,65 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error generating nonce:", error);
       return res.status(500).json({ error: "Failed to generate nonce" });
+    }
+  });
+
+  // Admin password authentication endpoints
+  app.get('/api/admin/auth/status/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+        return res.status(403).json({ error: 'Not an admin wallet' });
+      }
+      const status = await AdminAuthService.checkIfLocked(walletAddress);
+      res.json(status);
+    } catch (error) {
+      console.error('Error checking admin lock status:', error);
+      res.status(500).json({ error: 'Failed to check status' });
+    }
+  });
+
+  app.post('/api/admin/auth/verify', authLimiter, async (req, res) => {
+    try {
+      const { walletAddress, password } = req.body;
+      if (!walletAddress || !password) {
+        return res.status(400).json({ error: 'Wallet address and password required' });
+      }
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+        return res.status(403).json({ error: 'Not an admin wallet' });
+      }
+      const result = await AdminAuthService.verifyPassword(walletAddress, password);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(401).json(result);
+      }
+    } catch (error) {
+      console.error('Error verifying admin password:', error);
+      res.status(500).json({ error: 'Verification failed' });
+    }
+  });
+
+  app.get('/api/admin/auth/locked', authLimiter, async (req, res) => {
+    try {
+      const walletAddress = req.headers['x-wallet-address'] as string;
+      if (!walletAddress || !isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Valid wallet address required' });
+      }
+      if (!ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+        return res.status(403).json({ error: 'Not an admin wallet' });
+      }
+      const locked = await AdminAuthService.getAllLockedWallets();
+      res.json(locked);
+    } catch (error) {
+      console.error('Error fetching locked wallets:', error);
+      res.status(500).json({ error: 'Failed to fetch locked wallets' });
     }
   });
 

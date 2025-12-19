@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { RPC_URL, NFT_CONTRACT, MARKETPLACE_CONTRACT, ADMIN_WALLETS } from '@/lib/constants';
+import { AdminPasswordModal } from './AdminPasswordModal';
 import { errorReporter } from '@/lib/errorReporter';
 import { SecureStorage } from '@/lib/secureStorage';
 import { useToast } from '@/hooks/use-toast';
@@ -677,6 +678,35 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
     admin => admin.toLowerCase() === address.toLowerCase()
   );
   
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  
+  useEffect(() => {
+    if (isOpen && isAdmin && address) {
+      const authTime = sessionStorage.getItem('admin_auth_time');
+      const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
+      const sessionValid = authTime && (Date.now() - parseInt(authTime)) < 24 * 60 * 60 * 1000;
+      
+      if (isAuth && sessionValid) {
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+      } else {
+        setIsAuthenticated(false);
+        setShowPasswordModal(true);
+      }
+    }
+  }, [isOpen, isAdmin, address]);
+  
+  const handlePasswordSuccess = () => {
+    setIsAuthenticated(true);
+    setShowPasswordModal(false);
+  };
+  
+  const handlePasswordClose = () => {
+    setShowPasswordModal(false);
+    onClose();
+  };
+  
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [storageInfo, setStorageInfo] = useState(SecureStorage.getStorageInfo());
   const [loading, setLoading] = useState<string | null>(null);
@@ -1155,6 +1185,19 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
   }, [isOpen, isAdmin]);
   
   if (!isAdmin || !isOpen) return null;
+  
+  if (showPasswordModal && address) {
+    return (
+      <AdminPasswordModal
+        isOpen={showPasswordModal}
+        onClose={handlePasswordClose}
+        onSuccess={handlePasswordSuccess}
+        walletAddress={address}
+      />
+    );
+  }
+  
+  if (!isAuthenticated) return null;
   
   const handleClose = () => {
     if (onClose) {
