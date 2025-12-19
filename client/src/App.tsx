@@ -23,6 +23,7 @@ const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
 const BasedArcade = lazy(() => import("@/pages/BasedArcade"));
 const TransactionHistory = lazy(() => import("@/pages/TransactionHistory"));
 const Collections = lazy(() => import("@/pages/Collections"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const WalletProviders = lazy(() => import("@/components/WalletProviders"));
@@ -236,6 +237,11 @@ export function Router() {
         <Route path="/collections">
           <ErrorBoundary feature="Collections">
             <Collections />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/marketplace">
+          <ErrorBoundary feature="Marketplace">
+            <Marketplace />
           </ErrorBoundary>
         </Route>
         <Route>

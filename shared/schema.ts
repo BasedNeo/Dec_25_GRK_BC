@@ -359,3 +359,59 @@ export const insertFeatureGatingSchema = createInsertSchema(featureGating).omit(
 
 export type InsertFeatureGating = z.infer<typeof insertFeatureGatingSchema>;
 export type FeatureGating = typeof featureGating.$inferSelect;
+
+// NFT Listings for marketplace search
+export const listings = pgTable('listings', {
+  id: serial('id').primaryKey(),
+  tokenId: integer('token_id').notNull(),
+  collectionAddress: text('collection_address').notNull(),
+  sellerAddress: text('seller_address').notNull(),
+  price: text('price').notNull(),
+  isActive: boolean('is_active').default(true),
+  listedAt: timestamp('listed_at').defaultNow(),
+  expiresAt: timestamp('expires_at'),
+  metadata: text('metadata'),
+  rarity: varchar('rarity', { length: 20 }),
+  traits: text('traits'),
+});
+
+export const insertListingSchema = createInsertSchema(listings).omit({
+  id: true,
+  listedAt: true,
+});
+
+export type InsertListing = z.infer<typeof insertListingSchema>;
+export type Listing = typeof listings.$inferSelect;
+
+// Collection Activity for trending and analytics
+export const collectionActivity = pgTable('collection_activity', {
+  id: serial('id').primaryKey(),
+  collectionAddress: text('collection_address').notNull(),
+  eventType: varchar('event_type', { length: 20 }).notNull(),
+  tokenId: integer('token_id'),
+  fromAddress: text('from_address'),
+  toAddress: text('to_address'),
+  price: text('price'),
+  transactionHash: text('transaction_hash'),
+  blockNumber: integer('block_number'),
+  timestamp: timestamp('timestamp').defaultNow(),
+});
+
+export const insertCollectionActivitySchema = createInsertSchema(collectionActivity).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertCollectionActivity = z.infer<typeof insertCollectionActivitySchema>;
+export type CollectionActivity = typeof collectionActivity.$inferSelect;
+
+// Search History for personalized suggestions
+export const searchHistory = pgTable('search_history', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address'),
+  query: text('query').notNull(),
+  resultCount: integer('result_count').default(0),
+  searchedAt: timestamp('searched_at').defaultNow(),
+});
+
+export type SearchHistory = typeof searchHistory.$inferSelect;

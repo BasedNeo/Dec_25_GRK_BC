@@ -137,6 +137,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'mint', label: t('nav.mint', 'Mint') },
     { id: 'gallery', label: t('nav.gallery', 'Portfolio') },
     { id: 'escrow', label: t('nav.escrow', 'Market') },
+    { id: 'marketplace', label: t('nav.marketplace', 'Browse') },
     { id: 'collections', label: t('nav.collections', 'Collections') },
     { id: 'universe', label: t('nav.universe', 'Universe') },
     { id: 'pool', label: t('nav.pool', 'Pool') },

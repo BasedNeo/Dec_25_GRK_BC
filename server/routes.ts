@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertFeedbackSchema, insertStorySchema, analyticsEvents, collections } from "@shared/schema";
 import { CollectionService } from './lib/collectionService';
 import { GatingService } from './lib/gatingService';
+import { searchService, type SearchFilters } from './lib/searchService';
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
@@ -2322,6 +2323,92 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Metadata fetch failed:', error);
       res.status(500).json({ error: 'Failed to fetch metadata' });
+    }
+  });
+
+  // Search API endpoints
+  app.get('/api/search/listings', async (req, res) => {
+    try {
+      const filters: SearchFilters = {
+        query: req.query.q as string | undefined,
+        collectionAddress: req.query.collection as string | undefined,
+        minPrice: req.query.minPrice as string | undefined,
+        maxPrice: req.query.maxPrice as string | undefined,
+        rarity: req.query.rarity ? (req.query.rarity as string).split(',') : undefined,
+        sortBy: req.query.sortBy as SearchFilters['sortBy'],
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 20
+      };
+
+      const results = await searchService.searchListings(filters);
+      
+      const walletAddress = req.headers['x-wallet-address'] as string | null;
+      if (filters.query) {
+        await searchService.recordSearch(walletAddress, filters.query, results.total);
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error('Search listings failed:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  app.get('/api/search/collections', async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+
+      const results = await searchService.searchCollections(query);
+      res.json(results);
+    } catch (error) {
+      console.error('Search collections failed:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  app.get('/api/trending/collections', async (req, res) => {
+    try {
+      const hours = req.query.hours ? parseInt(req.query.hours as string) : 24;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const trending = await searchService.getTrendingCollections(hours, Math.min(limit, 50));
+      res.json(trending);
+    } catch (error) {
+      console.error('Get trending collections failed:', error);
+      res.status(500).json({ error: 'Failed to get trending collections' });
+    }
+  });
+
+  app.get('/api/collection/:address/stats', async (req, res) => {
+    try {
+      const { address } = req.params;
+      if (!ethers.isAddress(address)) {
+        return res.status(400).json({ error: 'Invalid collection address' });
+      }
+
+      const stats = await searchService.getCollectionStats(address);
+      if (!stats) {
+        return res.status(404).json({ error: 'Collection not found' });
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Get collection stats failed:', error);
+      res.status(500).json({ error: 'Failed to get collection stats' });
+    }
+  });
+
+  app.get('/api/search/popular', async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const popular = await searchService.getPopularSearches(Math.min(limit, 20));
+      res.json(popular);
+    } catch (error) {
+      console.error('Get popular searches failed:', error);
+      res.status(500).json({ error: 'Failed to get popular searches' });
     }
   });
 
