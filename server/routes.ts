@@ -26,6 +26,8 @@ import { SignatureVerifier } from './lib/signatureVerifier';
 import { NonceManager } from './lib/nonceManager';
 import { OriginValidator } from './lib/originValidator';
 import { CSRFProtection } from './lib/csrfProtection';
+import { EncryptionService } from './lib/encryption';
+import { EncryptedStorageService } from './lib/encryptedStorage';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -1440,6 +1442,126 @@ export async function registerRoutes(
       const result = ValidationRulesEngine.validate(data, schemaObj);
       
       res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/encryption/test', requireAdmin, async (req, res) => {
+    try {
+      const { data } = req.body;
+      
+      if (!data) {
+        return res.status(400).json({ error: 'Data required for encryption test' });
+      }
+      
+      const testData = typeof data === 'string' ? data : JSON.stringify(data);
+      const encrypted = EncryptionService.encrypt(testData);
+      const decrypted = EncryptionService.decrypt(encrypted);
+      const hash = EncryptionService.hash(testData);
+      
+      res.json({
+        success: true,
+        originalLength: testData.length,
+        encryptedLength: encrypted.length,
+        decryptedMatch: testData === decrypted,
+        hash: hash.substring(0, 16) + '...',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/encryption/store', requireAdmin, async (req, res) => {
+    try {
+      const { key, value, ttlSeconds } = req.body;
+      
+      if (!key || value === undefined) {
+        return res.status(400).json({ error: 'Key and value required' });
+      }
+      
+      await EncryptedStorageService.store(key, value, ttlSeconds);
+      
+      res.json({
+        success: true,
+        key,
+        expiresIn: ttlSeconds ? `${ttlSeconds} seconds` : 'never',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/encryption/retrieve/:key', requireAdmin, async (req, res) => {
+    try {
+      const { key } = req.params;
+      
+      const value = await EncryptedStorageService.retrieve(key);
+      
+      if (value === null) {
+        return res.status(404).json({ error: 'Key not found or expired' });
+      }
+      
+      res.json({
+        success: true,
+        key,
+        value,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/encryption/status', requireAdmin, async (req, res) => {
+    try {
+      const keyPair = EncryptionService.getKeyPair();
+      
+      res.json({
+        success: true,
+        status: 'operational',
+        algorithms: {
+          symmetric: 'AES-256-GCM',
+          hashing: 'SHA-256',
+          hmac: 'HMAC-SHA256',
+          asymmetric: 'RSA-OAEP'
+        },
+        publicKeyAvailable: !!keyPair.publicKey,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/admin/encryption/delete/:key', requireAdmin, async (req, res) => {
+    try {
+      const { key } = req.params;
+      
+      await EncryptedStorageService.delete(key);
+      
+      res.json({
+        success: true,
+        message: `Key ${key} deleted`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/encryption/cleanup', requireAdmin, async (req, res) => {
+    try {
+      const count = await EncryptedStorageService.cleanup();
+      
+      res.json({
+        success: true,
+        cleanedUp: count,
+        message: `Removed ${count} expired entries`,
+        timestamp: new Date().toISOString()
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

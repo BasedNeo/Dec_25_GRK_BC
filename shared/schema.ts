@@ -280,3 +280,14 @@ export const insertTransactionReceiptSchema = createInsertSchema(transactionRece
 
 export type InsertTransactionReceipt = z.infer<typeof insertTransactionReceiptSchema>;
 export type TransactionReceipt = typeof transactionReceipts.$inferSelect;
+
+export const encryptedStorage = pgTable('encrypted_storage', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  encryptedValue: text('encrypted_value').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  expiresAt: timestamp('expires_at'),
+});
+
+export type EncryptedStorageEntry = typeof encryptedStorage.$inferSelect;

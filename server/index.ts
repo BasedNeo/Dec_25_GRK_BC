@@ -5,6 +5,7 @@ import { createServer } from "http";
 import compression from "compression";
 import { apiLimiter } from './middleware/rateLimiter';
 import { helmetConfig, corsConfig, sanitizeRequest, secureLogger } from './middleware/security';
+import { encryptSensitiveResponse, decryptSensitiveRequest } from './middleware/encryptedPayload';
 
 const app = express();
 const httpServer = createServer(app);
@@ -44,6 +45,8 @@ app.use(corsConfig);
 app.use(sanitizeRequest);
 app.use(secureLogger);
 app.use('/api', apiLimiter);
+app.use(encryptSensitiveResponse);
+app.use(decryptSensitiveRequest);
 
 (async () => {
   // Branded loading page HTML
