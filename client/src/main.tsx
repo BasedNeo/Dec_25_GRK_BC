@@ -26,7 +26,7 @@ import "./index.css";
 import { initAnalytics } from "@/lib/analytics";
 
 // Emergency: Clear all caches if app version changed
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const lastVersion = localStorage.getItem('app_version');
 
 if (lastVersion !== APP_VERSION) {
