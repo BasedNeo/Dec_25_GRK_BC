@@ -81,7 +81,7 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
     },
     { 
       id: 'game', 
-      label: t('hub.gameLabel', 'Retro Defender'), 
+      label: t('hub.gameLabel', 'Arcade'), 
       icon: Rocket, 
       description: t('hub.gameDesc', 'The Based Odyssey arcade'),
       color: 'from-orange-500 to-red-500',
