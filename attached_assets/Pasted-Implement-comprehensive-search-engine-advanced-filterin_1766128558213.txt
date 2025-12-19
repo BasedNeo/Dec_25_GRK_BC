@@ -1,0 +1,1065 @@
+Implement comprehensive search engine, advanced filtering, collection pages, trending system, and final marketplace integrations to create the best NFT marketplace on BasedAI network.
+
+STEP 1: CREATE SEARCH & FILTER SERVICE
+
+1. CREATE FILE: server/lib/searchService.ts
+
+import { db } from '../db';
+import { collections, listings, collectionActivity } from '../../shared/schema';
+import { sql, eq, like, and, or, gte, lte, desc, asc } from 'drizzle-orm';
+
+interface SearchParams {
+  query?: string;
+  collectionAddress?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sortBy?: 'price_asc' | 'price_desc' | 'recently_listed' | 'ending_soon' | 'most_viewed';
+  traits?: Record<string, string[]>;
+  status?: 'listed' | 'sold' | 'all';
+  limit?: number;
+  offset?: number;
+}
+
+export class SearchService {
+  
+  // Search across collections and NFTs
+  static async search(params: SearchParams) {
+    const {
+      query = '',
+      collectionAddress,
+      minPrice,
+      maxPrice,
+      sortBy = 'recently_listed',
+      status = 'listed',
+      limit = 50,
+      offset = 0
+    } = params;
+
+    try {
+      // Search collections
+      const collectionsResults = await this.searchCollections(query, limit);
+
+      // Search listings/NFTs
+      const listingsResults = await this.searchListings({
+        query,
+        collectionAddress,
+        minPrice,
+        maxPrice,
+        sortBy,
+        status,
+        limit,
+        offset
+      });
+
+      return {
+        collections: collectionsResults,
+        listings: listingsResults.items,
+        total: listingsResults.total,
+        limit,
+        offset
+      };
+
+    } catch (error) {
+      console.error('Search failed:', error);
+      throw error;
+    }
+  }
+
+  // Search collections by name or symbol
+  static async searchCollections(query: string, limit: number = 10) {
+    if (!query) {
+      return await db.select()
+        .from(collections)
+        .where(eq(collections.isActive, true))
+        .orderBy(desc(collections.volume24h))
+        .limit(limit);
+    }
+
+    const searchTerm = `%${query.toLowerCase()}%`;
+
+    return await db.select()
+      .from(collections)
+      .where(
+        and(
+          eq(collections.isActive, true),
+          or(
+            sql`LOWER(${collections.name}) LIKE ${searchTerm}`,
+            sql`LOWER(${collections.symbol}) LIKE ${searchTerm}`,
+            sql`LOWER(${collections.contractAddress}) LIKE ${searchTerm}`
+          )
+        )
+      )
+      .orderBy(desc(collections.volume24h))
+      .limit(limit);
+  }
+
+  // Search listings with advanced filters
+  static async searchListings(params: SearchParams) {
+    const {
+      query = '',
+      collectionAddress,
+      minPrice,
+      maxPrice,
+      sortBy = 'recently_listed',
+      status = 'listed',
+      limit = 50,
+      offset = 0
+    } = params;
+
+    const conditions = [];
+
+    // Status filter
+    if (status === 'listed') {
+      conditions.push(eq(listings.active, true));
+    }
+
+    // Collection filter
+    if (collectionAddress) {
+      conditions.push(eq(listings.contractAddress, collectionAddress.toLowerCase()));
+    }
+
+    // Price range filter
+    if (minPrice) {
+      conditions.push(gte(listings.price, minPrice));
+    }
+    if (maxPrice) {
+      conditions.push(lte(listings.price, maxPrice));
+    }
+
+    // Token ID search (exact match)
+    if (query && !isNaN(Number(query))) {
+      conditions.push(eq(listings.tokenId, parseInt(query)));
+    }
+
+    // Build query
+    let queryBuilder = db.select()
+      .from(listings)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    // Sorting
+    switch (sortBy) {
+      case 'price_asc':
+        queryBuilder = queryBuilder.orderBy(asc(listings.price));
+        break;
+      case 'price_desc':
+        queryBuilder = queryBuilder.orderBy(desc(listings.price));
+        break;
+      case 'recently_listed':
+        queryBuilder = queryBuilder.orderBy(desc(listings.createdAt));
+        break;
+      default:
+        queryBuilder = queryBuilder.orderBy(desc(listings.createdAt));
+    }
+
+    // Get total count
+    const countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(listings)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const [items, countResult] = await Promise.all([
+      queryBuilder.limit(limit).offset(offset),
+      countQuery
+    ]);
+
+    return {
+      items,
+      total: countResult[0]?.count || 0
+    };
+  }
+
+  // Get trending collections
+  static async getTrendingCollections(limit: number = 10) {
+    return await db.select()
+      .from(collections)
+      .where(eq(collections.isActive, true))
+      .orderBy(desc(collections.volume24h), desc(collections.salesCount24h))
+      .limit(limit);
+  }
+
+  // Get recently listed NFTs
+  static async getRecentlyListed(limit: number = 20) {
+    return await db.select()
+      .from(listings)
+      .where(eq(listings.active, true))
+      .orderBy(desc(listings.createdAt))
+      .limit(limit);
+  }
+
+  // Get collection stats
+  static async getCollectionStats(contractAddress: string) {
+    const collection = await db.select()
+      .from(collections)
+      .where(eq(collections.contractAddress, contractAddress.toLowerCase()))
+      .limit(1);
+
+    if (!collection[0]) {
+      return null;
+    }
+
+    // Get recent activity
+    const recentActivity = await db.select()
+      .from(collectionActivity)
+      .where(eq(collectionActivity.contractAddress, contractAddress.toLowerCase()))
+      .orderBy(desc(collectionActivity.timestamp))
+      .limit(20);
+
+    // Get active listings count
+    const activeListings = await db.select({ count: sql<number>`count(*)` })
+      .from(listings)
+      .where(
+        and(
+          eq(listings.contractAddress, contractAddress.toLowerCase()),
+          eq(listings.active, true)
+        )
+      );
+
+    return {
+      ...collection[0],
+      recentActivity,
+      activeListingsCount: activeListings[0]?.count || 0
+    };
+  }
+}
+
+
+STEP 2: ADD SEARCH API ENDPOINTS
+
+1. UPDATE FILE: server/routes.ts
+
+Add comprehensive search endpoints:
+
+// Universal search
+app.get('/api/search', async (req, res) => {
+  try {
+    const {
+      q: query,
+      collection,
+      minPrice,
+      maxPrice,
+      sortBy,
+      status,
+      limit = '50',
+      offset = '0'
+    } = req.query;
+
+    const results = await SearchService.search({
+      query: query as string,
+      collectionAddress: collection as string,
+      minPrice: minPrice as string,
+      maxPrice: maxPrice as string,
+      sortBy: sortBy as any,
+      status: status as any,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string)
+    });
+
+    res.json(results);
+  } catch (error) {
+    console.error('Search failed:', error);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// Search collections only
+app.get('/api/search/collections', async (req, res) => {
+  try {
+    const { q: query, limit = '10' } = req.query;
+    const results = await SearchService.searchCollections(
+      query as string,
+      parseInt(limit as string)
+    );
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: 'Collection search failed' });
+  }
+});
+
+// Get trending collections
+app.get('/api/trending/collections', async (req, res) => {
+  try {
+    const { limit = '10' } = req.query;
+    const trending = await SearchService.getTrendingCollections(
+      parseInt(limit as string)
+    );
+    res.json(trending);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch trending collections' });
+  }
+});
+
+// Get recently listed NFTs
+app.get('/api/listings/recent', async (req, res) => {
+  try {
+    const { limit = '20' } = req.query;
+    const recent = await SearchService.getRecentlyListed(
+      parseInt(limit as string)
+    );
+    res.json(recent);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch recent listings' });
+  }
+});
+
+// Get detailed collection page data
+app.get('/api/collections/:address/details', async (req, res) => {
+  try {
+    const stats = await SearchService.getCollectionStats(req.params.address);
+    if (!stats) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch collection details' });
+  }
+});
+
+Add import at top:
+import { SearchService } from './lib/searchService';
+
+
+STEP 3: CREATE SEARCH BAR COMPONENT
+
+1. CREATE FILE: client/src/components/SearchBar.tsx
+
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, TrendingUp, Clock } from 'lucide-react';
+import { Link } from 'wouter';
+import { Card, CardContent } from '@/components/ui/card';
+
+interface SearchResult {
+  type: 'collection' | 'nft';
+  id: string;
+  name: string;
+  image?: string;
+  price?: string;
+  contractAddress?: string;
+  tokenId?: number;
+}
+
+export default function SearchBar() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Search with debounce
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=10`);
+        const data = await response.json();
+
+        const searchResults: SearchResult[] = [
+          ...data.collections.map((col: any) => ({
+            type: 'collection' as const,
+            id: col.contractAddress,
+            name: col.name,
+            image: col.thumbnailImage,
+            contractAddress: col.contractAddress
+          })),
+          ...data.listings.map((listing: any) => ({
+            type: 'nft' as const,
+            id: `${listing.contractAddress}-${listing.tokenId}`,
+            name: `#${listing.tokenId}`,
+            price: listing.price,
+            contractAddress: listing.contractAddress,
+            tokenId: listing.tokenId
+          }))
+        ];
+
+        setResults(searchResults);
+        setShowResults(true);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
+
+  return (
+    <div ref={searchRef} className="relative w-full max-w-2xl">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => query && setShowResults(true)}
+          placeholder="Search collections, NFTs, or addresses..."
+          className="w-full pl-10 pr-10 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        />
+        {query && (
+          <button
+            onClick={() => {
+              setQuery('');
+              setResults([]);
+              setShowResults(false);
+            }}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Search Results Dropdown */}
+      {showResults && results.length > 0 && (
+        <Card className="absolute top-full mt-2 w-full max-h-96 overflow-y-auto z-50 shadow-xl">
+          <CardContent className="p-2">
+            {results.map((result) => (
+              <Link
+                key={result.id}
+                href={result.type === 'collection' 
+                  ? `/marketplace?collection=${result.contractAddress}`
+                  : `/nft/${result.contractAddress}/${result.tokenId}`
+                }
+                onClick={() => {
+                  setShowResults(false);
+                  setQuery('');
+                }}
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+                  {result.image ? (
+                    <img
+                      src={result.image}
+                      alt={result.name}
+                      className="w-10 h-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      {result.type === 'collection' ? '🎨' : '🖼️'}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium">{result.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {result.type === 'collection' ? 'Collection' : 'NFT'}
+                    </p>
+                  </div>
+                  {result.price && (
+                    <p className="text-sm font-semibold">
+                      {(Number(result.price) / 1e18).toFixed(2)} BASED
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Results */}
+      {showResults && query && !loading && results.length === 0 && (
+        <Card className="absolute top-full mt-2 w-full z-50 shadow-xl">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">No results found for "{query}"</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+
+STEP 4: ADD SEARCH BAR TO NAVBAR
+
+1. UPDATE FILE: client/src/components/Navbar.tsx
+
+Add SearchBar to the navbar (desktop and mobile):
+
+import SearchBar from './SearchBar';
+
+// In desktop nav (between logo and menu items):
+<div className="hidden md:flex flex-1 max-w-2xl mx-8">
+  <SearchBar />
+</div>
+
+// In mobile menu (if you have one):
+<div className="md:hidden px-4 py-4">
+  <SearchBar />
+</div>
+
+
+STEP 5: UPDATE MARKETPLACE WITH ADVANCED FILTERS
+
+1. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+Add comprehensive filtering UI:
+
+import { useState, useEffect, useMemo } from 'react';
+import { Filter, SlidersHorizontal, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+export default function Marketplace() {
+  const [listings, setListings] = useState<any[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Filter states
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'recently_listed'>('recently_listed');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Fetch listings with filters
+  useEffect(() => {
+    fetchListings();
+  }, [selectedCollection, minPrice, maxPrice, sortBy]);
+
+  async function fetchListings() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedCollection) params.append('collection', selectedCollection);
+      if (minPrice) params.append('minPrice', (parseFloat(minPrice) * 1e18).toString());
+      if (maxPrice) params.append('maxPrice', (parseFloat(maxPrice) * 1e18).toString());
+      params.append('sortBy', sortBy);
+      params.append('status', 'listed');
+
+      const response = await fetch(`/api/search?${params.toString()}`);
+      const data = await response.json();
+      setListings(data.listings || []);
+    } catch (error) {
+      console.error('Failed to fetch listings:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Fetch collections
+  useEffect(() => {
+    fetch('/api/collections')
+      .then(res => res.json())
+      .then(setCollections)
+      .catch(console.error);
+  }, []);
+
+  function clearFilters() {
+    setSelectedCollection(null);
+    setMinPrice('');
+    setMaxPrice('');
+    setSortBy('recently_listed');
+  }
+
+  const hasActiveFilters = selectedCollection || minPrice || maxPrice || sortBy !== 'recently_listed';
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-4xl font-bold">Marketplace</h1>
+        
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="gap-2"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-1 px-2 py-0.5 bg-primary text-white text-xs rounded-full">
+                Active
+              </span>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* Filters Sidebar */}
+        <aside className={`w-80 space-y-6 ${showFilters ? 'block' : 'hidden'} lg:block`}>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Filters</CardTitle>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Collection Filter */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Collection</label>
+                <select
+                  value={selectedCollection || ''}
+                  onChange={(e) => setSelectedCollection(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                >
+                  <option value="">All Collections</option>
+                  {collections.map(col => (
+                    <option key={col.id} value={col.contractAddress}>
+                      {col.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Price Range (BASED)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                  />
+                </div>
+              </div>
+
+              {/* Sort By */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                >
+                  <option value="recently_listed">Recently Listed</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Listings</span>
+                <span className="font-semibold">{listings.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Collections</span>
+                <span className="font-semibold">{collections.length}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
+
+        {/* Listings Grid */}
+        <div className="flex-1">
+          {loading ? (
+            <div className="text-center py-16">Loading listings...</div>
+          ) : listings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map((listing) => (
+                <Card key={`${listing.contractAddress}-${listing.tokenId}`}>
+                  {/* Your existing NFT card rendering */}
+                  <CardContent className="p-4">
+                    <p className="font-semibold">#{listing.tokenId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(Number(listing.price) / 1e18).toFixed(2)} BASED
+                    </p>
+                    {/* Buy button, etc. */}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mb-4">No listings found</p>
+              {hasActiveFilters && (
+                <Button onClick={clearFilters} variant="outline">
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+STEP 6: CREATE TRENDING COLLECTIONS SECTION
+
+1. CREATE FILE: client/src/components/TrendingCollections.tsx
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TrendingUp, Activity } from 'lucide-react';
+import { Link } from 'wouter';
+
+export default function TrendingCollections() {
+  const [trending, setTrending] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/trending/collections?limit=5')
+      .then(res => res.json())
+      .then(setTrending)
+      .catch(console.error);
+  }, []);
+
+  if (trending.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          Trending Collections
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {trending.map((collection, index) => {
+          const volume24h = (Number(collection.volume24h || '0') / 1e18).toFixed(2);
+          const floorPrice = (Number(collection.floorPrice || '0') / 1e18).toFixed(2);
+          
+          return (
+            <Link key={collection.id} href={`/marketplace?collection=${collection.contractAddress}`}>
+              <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+                <span className="text-2xl font-bold text-muted-foreground w-8">
+                  {index + 1}
+                </span>
+                {collection.thumbnailImage ? (
+                  <img
+                    src={collection.thumbnailImage}
+                    alt={collection.name}
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    🎨
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{collection.name}</p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>Floor: {floorPrice} BASED</span>
+                    <span className="flex items-center gap-1">
+                      <Activity className="w-3 h-3" />
+                      {volume24h} BASED
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+
+STEP 7: ADD TRENDING SECTION TO HOME PAGE
+
+1. UPDATE FILE: client/src/pages/Home.tsx (or wherever your landing page is)
+
+import TrendingCollections from '@/components/TrendingCollections';
+
+// Add to your home page layout:
+<div className="container mx-auto px-4 py-8">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="lg:col-span-2">
+      {/* Your main content */}
+    </div>
+    <div className="space-y-6">
+      <TrendingCollections />
+      {/* Other sidebar content */}
+    </div>
+  </div>
+</div>
+
+
+STEP 8: CREATE INDIVIDUAL COLLECTION PAGE
+
+1. CREATE FILE: client/src/pages/CollectionPage.tsx
+
+import { useEffect, useState } from 'react';
+import { useRoute } from 'wouter';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Activity, TrendingUp, Users, Package } from 'lucide-react';
+
+export default function CollectionPage() {
+  const [, params] = useRoute('/collection/:address');
+  const [collection, setCollection] = useState<any>(null);
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (params?.address) {
+      fetchCollectionDetails(params.address);
+    }
+  }, [params?.address]);
+
+  async function fetchCollectionDetails(address: string) {
+    setLoading(true);
+    try {
+      const [detailsRes, listingsRes] = await Promise.all([
+        fetch(`/api/collections/${address}/details`),
+        fetch(`/api/search?collection=${address}&status=listed&limit=50`)
+      ]);
+
+      const details = await detailsRes.json();
+      const listingsData = await listingsRes.json();
+
+      setCollection(details);
+      setListings(listingsData.listings || []);
+    } catch (error) {
+      console.error('Failed to fetch collection:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="container mx-auto px-4 py-16 text-center">Loading collection...</div>;
+  }
+
+  if (!collection) {
+    return <div className="container mx-auto px-4 py-16 text-center">Collection not found</div>;
+  }
+
+  const floorPrice = (Number(collection.floorPrice || '0') / 1e18).toFixed(2);
+  const volume24h = (Number(collection.volume24h || '0') / 1e18).toFixed(2);
+  const volumeTotal = (Number(collection.volumeAllTime || '0') / 1e18).toLocaleString();
+
+  return (
+    <div className="min-h-screen">
+      {/* Banner */}
+      {collection.bannerImage && (
+        <div className="w-full h-64 bg-gradient-to-br from-primary/20 to-purple-500/20 overflow-hidden">
+          <img
+            src={collection.bannerImage}
+            alt={collection.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <div className="container mx-auto px-4">
+        {/* Collection Header */}
+        <div className="flex items-start gap-6 -mt-16 mb-8">
+          {collection.thumbnailImage ? (
+            <img
+              src={collection.thumbnailImage}
+              alt={collection.name}
+              className="w-32 h-32 rounded-2xl border-4 border-background shadow-xl"
+            />
+          ) : (
+            <div className="w-32 h-32 rounded-2xl bg-primary/10 border-4 border-background shadow-xl flex items-center justify-center text-4xl">
+              🎨
+            </div>
+          )}
+
+          <div className="flex-1 mt-16">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">{collection.name}</h1>
+              {collection.isVerified && (
+                <Badge className="bg-green-500">✓ Verified</Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground mb-4">{collection.description}</p>
+            
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Floor Price</p>
+                <p className="text-xl font-bold">{floorPrice} BASED</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">24h Volume</p>
+                <p className="text-xl font-bold">{volume24h} BASED</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Total Volume</p>
+                <p className="text-xl font-bold">{volumeTotal} BASED</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Items</p>
+                <p className="text-xl font-bold">{collection.totalSupply}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Listings */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-6">
+            Listed Items ({listings.length})
+          </h2>
+
+          {listings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {listings.map(listing => (
+                <Card key={`${listing.contractAddress}-${listing.tokenId}`}>
+                  <CardContent className="p-4">
+                    <p className="font-semibold mb-2">#{listing.tokenId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(Number(listing.price) / 1e18).toFixed(2)} BASED
+                    </p>
+                    {/* Buy button */}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 text-muted-foreground">
+              No items currently listed
+            </div>
+          )}
+        </div>
+
+        {/* Recent Activity */}
+        {collection.recentActivity && collection.recentActivity.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
+            <Card>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {collection.recentActivity.slice(0, 10).map((activity: any, index: number) => (
+                    <div key={index} className="p-4 flex items-center gap-4 hover:bg-accent transition-colors">
+                      <Activity className="w-5 h-5 text-primary" />
+                      <div className="flex-1">
+                        <p className="font-medium capitalize">{activity.activityType}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Token #{activity.tokenId}
+                        </p>
+                      </div>
+                      {activity.price && (
+                        <p className="font-semibold">
+                          {(Number(activity.price) / 1e18).toFixed(2)} BASED
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.timestamp).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+2. ADD ROUTE TO APP:
+
+UPDATE FILE: client/src/App.tsx
+
+<Route path="/collection/:address" component={CollectionPage} />
+
+Import at top:
+import CollectionPage from '@/pages/CollectionPage';
+
+
+STEP 9: ADD SEO & METADATA
+
+1. UPDATE FILE: index.html
+
+Add dynamic meta tags support:
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="The premier NFT marketplace on BasedAI network. Discover, collect, and trade unique digital assets." />
+  <meta name="keywords" content="NFT, BasedAI, marketplace, crypto, digital art, collectibles" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Based Command - NFT Marketplace" />
+  <meta property="og:description" content="The premier NFT marketplace on BasedAI network" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/og-image.png" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Based Command - NFT Marketplace" />
+  <meta name="twitter:description" content="The premier NFT marketplace on BasedAI network" />
+  
+  <title>Based Command - NFT Marketplace on BasedAI</title>
+</head>
+
+
+STEP 10: FINAL INTEGRATION CHECKLIST
+
+Run through this checklist to ensure everything is connected:
+
+✅ Search engine indexes collections and NFTs
+✅ Search bar in navbar with live results
+✅ Advanced filters work (collection, price, sort)
+✅ Trending collections display and update
+✅ Individual collection pages show full stats
+✅ Recent activity displays correctly
+✅ All stats update from CollectionStatsService
+✅ Activity logging captures all transactions
+✅ Volume calculations accurate across all views
+✅ SEO meta tags present
+✅ Mobile responsive on all new pages
+✅ Loading states on all searches
+✅ Error handling for failed searches
+✅ Cache works for search results
+✅ Collection cards link correctly
+✅ NFT cards link correctly
+
+
+POST-IMPLEMENTATION NOTES:
+
+1. The search currently scans blockchain events. For production scale, integrate:
+   - The Graph (recommended for BasedAI)
+   - Moralis
+   - Or custom indexer
+
+2. Consider adding:
+   - Attribute/trait filtering (if your NFTs have traits)
+   - Watch list / favorites
+   - Price alerts
+   - Collection analytics charts
+
+3. Performance optimization:
+   - Add Redis for search caching
+   - Implement pagination for large result sets
+   - Use CDN for NFT images
+
+4. Marketing:
+   - Submit to BasedAI ecosystem directory
+   - Add social share buttons
+   - Create collection submission form
