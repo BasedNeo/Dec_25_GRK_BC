@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useAccount } from 'wagmi';
+import { ethers } from 'ethers';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, RotateCcw, GitCompare, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Camera, RotateCcw, GitCompare, Trash2, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 interface Snapshot {
   id: string;
@@ -30,48 +32,99 @@ interface SnapshotStats {
 }
 
 export const SnapshotManager = () => {
+  const { address } = useAccount();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [stats, setStats] = useState<SnapshotStats | null>(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [comparison, setComparison] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const authenticatedFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    if (!address) throw new Error('Wallet not connected');
+    
+    const nonceRes = await fetch('/api/admin/nonce', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress: address }),
+    });
+    
+    if (!nonceRes.ok) throw new Error('Not authorized');
+    
+    const { nonce } = await nonceRes.json();
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
+    const signer = await provider.getSigner();
+    const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+    const signature = await signer.signMessage(message);
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'x-wallet-address': address,
+        'x-admin-signature': signature,
+        'Content-Type': 'application/json',
+      },
+    });
+  }, [address]);
   
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!address) {
+      setFetchLoading(false);
+      return;
+    }
+    
+    setError(null);
+    
     try {
       const [snapshotsRes, statsRes] = await Promise.all([
-        fetch('/api/admin/snapshots/list'),
-        fetch('/api/admin/snapshots/stats')
+        authenticatedFetch('/api/admin/snapshots/list'),
+        authenticatedFetch('/api/admin/snapshots/stats')
       ]);
+      
+      if (!snapshotsRes.ok || !statsRes.ok) {
+        throw new Error('Failed to fetch snapshot data');
+      }
       
       const snapshotsData = await snapshotsRes.json();
       const statsData = await statsRes.json();
       
       setSnapshots(snapshotsData.snapshots || []);
       setStats(statsData.stats);
-    } catch (error) {
-      console.error('Failed to fetch snapshots:', error);
+    } catch (err: any) {
+      console.error('Failed to fetch snapshots:', err);
+      setError(err.message || 'Failed to fetch snapshot data');
+    } finally {
+      setFetchLoading(false);
     }
-  };
+  }, [address, authenticatedFetch]);
+  
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
   const captureSnapshot = async () => {
     setLoading(true);
+    setError(null);
     try {
-      await fetch('/api/admin/snapshots/capture', {
+      const res = await authenticatedFetch('/api/admin/snapshots/capture', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description })
       });
       
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Capture failed');
+      }
+      
       setDescription('');
       await fetchData();
-    } catch (error) {
-      console.error('Snapshot capture failed:', error);
+    } catch (err: any) {
+      console.error('Snapshot capture failed:', err);
+      setError(err.message || 'Snapshot capture failed');
     } finally {
       setLoading(false);
     }
@@ -89,16 +142,22 @@ export const SnapshotManager = () => {
     if (!confirmed) return;
     
     setLoading(true);
+    setError(null);
     try {
-      await fetch(`/api/admin/snapshots/restore/${snapshotId}`, {
+      const res = await authenticatedFetch(`/api/admin/snapshots/restore/${snapshotId}`, {
         method: 'POST'
       });
       
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Restore failed');
+      }
+      
       alert('Snapshot restored! The page will reload.');
       window.location.reload();
-    } catch (error) {
-      console.error('Restore failed:', error);
-      alert('Restore failed. Check console for details.');
+    } catch (err: any) {
+      console.error('Restore failed:', err);
+      setError(err.message || 'Restore failed');
     } finally {
       setLoading(false);
     }
@@ -109,13 +168,19 @@ export const SnapshotManager = () => {
     if (!confirmed) return;
     
     try {
-      await fetch(`/api/admin/snapshots/${snapshotId}`, {
+      const res = await authenticatedFetch(`/api/admin/snapshots/${snapshotId}`, {
         method: 'DELETE'
       });
       
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Delete failed');
+      }
+      
       await fetchData();
-    } catch (error) {
-      console.error('Delete failed:', error);
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      setError(err.message || 'Delete failed');
     }
   };
   
@@ -131,20 +196,26 @@ export const SnapshotManager = () => {
     if (selectedForCompare.length !== 2) return;
     
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/admin/snapshots/compare', {
+      const res = await authenticatedFetch('/api/admin/snapshots/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           snapshot1: selectedForCompare[0],
           snapshot2: selectedForCompare[1]
         })
       });
       
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Comparison failed');
+      }
+      
       const data = await res.json();
       setComparison(data.diff);
-    } catch (error) {
-      console.error('Comparison failed:', error);
+    } catch (err: any) {
+      console.error('Comparison failed:', err);
+      setError(err.message || 'Comparison failed');
     } finally {
       setLoading(false);
     }
@@ -154,8 +225,31 @@ export const SnapshotManager = () => {
     return new Date(dateStr).toLocaleString();
   };
   
+  if (!address) {
+    return (
+      <div className="text-gray-400 text-center py-8">
+        Connect your wallet to manage snapshots.
+      </div>
+    );
+  }
+  
+  if (fetchLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+        <span className="ml-2 text-gray-400">Loading snapshots...</span>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6" data-testid="snapshot-manager">
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded p-3 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+      
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4 bg-black/60 border-blue-500/30">
@@ -197,7 +291,7 @@ export const SnapshotManager = () => {
               className="bg-gradient-to-r from-purple-500 to-blue-500"
               data-testid="button-capture-snapshot"
             >
-              <Camera className="w-4 h-4 mr-2" />
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
               Capture Snapshot
             </Button>
             
