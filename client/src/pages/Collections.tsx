@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, TrendingUp, Users, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { NFT_CONTRACT } from '@/lib/constants';
 
 interface Collection {
   id: number;
@@ -19,9 +21,25 @@ interface Collection {
   isFeatured: boolean;
 }
 
+// Default Based Guardians collection
+const BASED_GUARDIANS_DEFAULT: Collection = {
+  id: 1,
+  contractAddress: NFT_CONTRACT.toLowerCase(),
+  name: 'Based Guardians',
+  symbol: 'GUARDIAN',
+  description: 'The official Based Guardians NFT collection - 3,732 unique cyberpunk guardians protecting the BasedAI ecosystem.',
+  bannerImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
+  thumbnailImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
+  totalSupply: 3732,
+  floorPrice: '0',
+  volumeTraded: '0',
+  isFeatured: true
+};
+
 export default function Collections() {
   const { t } = useTranslation();
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,9 +50,22 @@ export default function Collections() {
     try {
       const res = await fetch('/api/collections');
       const data = await res.json();
-      setCollections(data);
+      
+      // Ensure Based Guardians is always in the list
+      const hasBasedGuardians = data.some(
+        (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
+      );
+      
+      if (!hasBasedGuardians) {
+        // Add Based Guardians as the default featured collection
+        setCollections([BASED_GUARDIANS_DEFAULT, ...data]);
+      } else {
+        setCollections(data);
+      }
     } catch (error) {
       console.error('Failed to fetch collections:', error);
+      // Fallback to Based Guardians if API fails
+      setCollections([BASED_GUARDIANS_DEFAULT]);
     } finally {
       setLoading(false);
     }
@@ -48,18 +79,65 @@ export default function Collections() {
     );
   }
 
-  const featured = collections.filter(c => c.isFeatured);
-  const other = collections.filter(c => !c.isFeatured);
+  // Filter collections based on selected project
+  const filteredCollections = selectedProject === 'all' 
+    ? collections 
+    : collections.filter(c => c.contractAddress.toLowerCase() === selectedProject.toLowerCase());
+
+  const featured = filteredCollections.filter(c => c.isFeatured);
+  const other = filteredCollections.filter(c => !c.isFeatured);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-orbitron font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent" data-testid="collections-title">
-          {t('collections.title', 'NFT Collections')}
-        </h1>
-        <p className="text-gray-400 text-lg">
-          {t('collections.subtitle', 'Discover and trade NFTs from verified collections across the BasedAI ecosystem')}
-        </p>
+      {/* Header with Project Selector */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-6">
+        <div className="text-center md:text-left">
+          <h1 className="text-5xl font-orbitron font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent" data-testid="collections-title">
+            {t('collections.title', 'NFT Collections')}
+          </h1>
+          <p className="text-gray-400 text-lg">
+            {t('collections.subtitle', 'Discover and trade NFTs from verified collections across the BasedAI ecosystem')}
+          </p>
+        </div>
+        
+        {/* Project Selector Dropdown */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400 whitespace-nowrap">Project:</span>
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger 
+              className="w-[220px] bg-black/60 border-cyan-500/30 text-white hover:border-cyan-400/60 transition-colors"
+              data-testid="select-project"
+            >
+              <SelectValue placeholder="Select Project" />
+            </SelectTrigger>
+            <SelectContent className="bg-black/95 border-cyan-500/30">
+              <SelectItem 
+                value="all" 
+                className="text-white hover:bg-cyan-500/10 focus:bg-cyan-500/10"
+              >
+                All Projects
+              </SelectItem>
+              {collections.map(collection => (
+                <SelectItem 
+                  key={collection.id} 
+                  value={collection.contractAddress.toLowerCase()}
+                  className="text-white hover:bg-cyan-500/10 focus:bg-cyan-500/10"
+                >
+                  <div className="flex items-center gap-2">
+                    {collection.thumbnailImage && (
+                      <img 
+                        src={collection.thumbnailImage} 
+                        alt="" 
+                        className="w-5 h-5 rounded-full"
+                      />
+                    )}
+                    {collection.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {featured.length > 0 && (
@@ -87,7 +165,7 @@ export default function Collections() {
               <CollectionCard key={collection.id} collection={collection} />
             ))}
           </div>
-        ) : collections.length === 0 ? (
+        ) : filteredCollections.length === 0 ? (
           <div className="text-center py-12" data-testid="collections-empty">
             <p className="text-gray-500">{t('collections.empty', 'No collections available yet')}</p>
           </div>

@@ -2123,12 +2123,38 @@ export async function registerRoutes(
   });
 
   // Collection routes
+  
+  // Seed default Based Guardians collection on startup
+  const NFT_CONTRACT = '0xaE51dc5fD1499A129f8654963560f9340773ad59';
+  CollectionService.seedDefaultCollection(NFT_CONTRACT).catch(err => {
+    console.error('[Routes] Failed to seed default collection:', err);
+  });
+  
   app.get('/api/collections', async (_req, res) => {
     try {
       const allCollections = await CollectionService.getAllCollections();
       res.json(allCollections);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch collections' });
+    }
+  });
+  
+  // Auto-register a collection when someone lists an NFT from it
+  app.post('/api/collections/register', async (req, res) => {
+    const { contractAddress } = req.body;
+    
+    if (!contractAddress || !ethers.isAddress(contractAddress)) {
+      return res.status(400).json({ error: 'Invalid contract address' });
+    }
+    
+    try {
+      const result = await CollectionService.getOrCreateCollection(contractAddress);
+      res.json({
+        collection: result.collection,
+        created: result.created
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to register collection' });
     }
   });
 

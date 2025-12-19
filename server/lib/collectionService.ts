@@ -90,4 +90,61 @@ export class CollectionService {
       .set({ isFeatured, updatedAt: new Date() })
       .where(eq(collections.contractAddress, contractAddress.toLowerCase()));
   }
+  
+  /**
+   * Get or create a collection - used for auto-registration when someone lists an NFT
+   * from a new collection. This pulls metadata on-chain automatically.
+   */
+  static async getOrCreateCollection(contractAddress: string, rpcUrl: string = RPC_URL) {
+    const normalizedAddress = contractAddress.toLowerCase();
+    
+    // Check if collection already exists
+    const existing = await this.getCollection(normalizedAddress);
+    if (existing) {
+      return { collection: existing, created: false };
+    }
+    
+    // Auto-create the collection by fetching on-chain metadata
+    try {
+      const collection = await this.addCollection(contractAddress, rpcUrl);
+      console.log(`[CollectionService] Auto-registered new collection: ${collection.name} (${normalizedAddress})`);
+      return { collection, created: true };
+    } catch (error) {
+      console.error(`[CollectionService] Failed to auto-register collection ${contractAddress}:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Seed the default Based Guardians collection if it doesn't exist
+   */
+  static async seedDefaultCollection(nftContractAddress: string) {
+    const normalizedAddress = nftContractAddress.toLowerCase();
+    
+    const existing = await this.getCollection(normalizedAddress);
+    if (existing) {
+      return existing;
+    }
+    
+    // Create Based Guardians with known metadata
+    try {
+      const collection = await db.insert(collections).values({
+        contractAddress: normalizedAddress,
+        name: 'Based Guardians',
+        symbol: 'GUARDIAN',
+        description: 'The official Based Guardians NFT collection - 3,732 unique cyberpunk guardians protecting the BasedAI ecosystem.',
+        bannerImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
+        thumbnailImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
+        totalSupply: 3732,
+        isActive: true,
+        isFeatured: true
+      }).returning();
+      
+      console.log('[CollectionService] Seeded default Based Guardians collection');
+      return collection[0];
+    } catch (error) {
+      console.error('[CollectionService] Failed to seed default collection:', error);
+      throw error;
+    }
+  }
 }
