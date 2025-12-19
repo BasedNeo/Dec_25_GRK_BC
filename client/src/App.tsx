@@ -4,13 +4,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import '@/lib/i18n';
-import { lazy, Suspense, useState } from "react";
-import Home from "@/pages/Home";
-import NotFound from "@/pages/not-found";
-import { MatrixWelcomeOverlay } from "@/components/MatrixWelcomeOverlay";
-import { useWelcomeExperience } from "@/hooks/useWelcomeExperience";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Rocket } from "lucide-react";
 
-// Lazy load secondary pages for faster initial load
+const Home = lazy(() => import("@/pages/Home"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const Odyssey = lazy(() => import("@/pages/Odyssey"));
@@ -22,30 +20,10 @@ const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
 const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
 const BasedArcade = lazy(() => import("@/pages/BasedArcade"));
 const TransactionHistory = lazy(() => import("@/pages/TransactionHistory"));
-import { WagmiProvider } from "wagmi";
-import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
-import { config } from "./lib/wagmi";
-import { SecurityProvider } from "@/context/SecurityContext";
-import { TransactionProvider } from "@/context/TransactionContext";
-import { initAnalytics } from "@/lib/analytics";
-import { useEffect } from "react";
-import { DisclaimerModal } from "@/components/DisclaimerModal";
-import { SpaceBackground } from "@/components/SpaceBackground";
-import { OnboardingTour } from "@/components/OnboardingTour";
-import { GlobalBuyListener } from "@/components/GlobalBuyListener";
-import { WalletWatcher } from "@/components/WalletWatcher";
-import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
-import { DegradationBanner } from "@/components/DegradationBanner";
-import { PendingTxBanner } from "@/components/PendingTxBanner";
-import { PendingPurchaseBanner } from "@/components/PendingPurchaseBanner";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { DiagnosticPanel } from "@/components/DiagnosticPanel";
-import { HealthCheckBanner } from "@/components/HealthCheckBanner";
-import { GuardianProfileProvider } from "@/components/GuardianProfileProvider";
-import { LanguageSelector } from "@/components/LanguageSelector";
-import { NotificationsProvider } from "@/context/NotificationsContext";
-import { useNotificationWatchers } from "@/hooks/useNotificationWatchers";
-import { Rocket } from "lucide-react";
+const NotFound = lazy(() => import("@/pages/not-found"));
+
+const WalletProviders = lazy(() => import("@/components/WalletProviders"));
+const AppContent = lazy(() => import("@/components/AppContent"));
 
 function GlobalErrorFallback() {
   return (
@@ -120,6 +98,22 @@ function GlobalErrorFallback() {
   );
 }
 
+function AppLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-center">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-cyan-500/30 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-2 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+        </div>
+        <p className="text-white text-xl font-orbitron font-semibold mb-2">Loading...</p>
+        <p className="text-cyan-300/70 text-sm">Connecting to the Giga Brain Galaxy</p>
+      </div>
+    </div>
+  );
+}
+
 function RouteLoadingFallback() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
@@ -136,7 +130,7 @@ function RouteLoadingFallback() {
   );
 }
 
-function Router() {
+export function Router() {
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Switch>
@@ -228,131 +222,39 @@ function Router() {
   );
 }
 
-function NotificationWatcherSetup() {
-  useNotificationWatchers();
-  return null;
-}
-
-function WelcomeExperienceWrapper({ children }: { children: React.ReactNode }) {
-  const { shouldShow, isFirstVisit, loading, markShown, prefersReducedMotion } = useWelcomeExperience();
-  const [showOverlay, setShowOverlay] = useState(true);
-
-  const handleComplete = () => {
-    markShown();
-    setShowOverlay(false);
-  };
-
-  if (loading) {
-    return <>{children}</>;
-  }
-
-  return (
-    <>
-      {shouldShow && showOverlay && (
-        <MatrixWelcomeOverlay
-          isFirstVisit={isFirstVisit}
-          onComplete={handleComplete}
-          prefersReducedMotion={prefersReducedMotion}
-        />
-      )}
-      {children}
-    </>
-  );
-}
-
 function App() {
-  const [appReady, setAppReady] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  
+  const [walletReady, setWalletReady] = useState(false);
+
   useEffect(() => {
-    initAnalytics();
-  }, []);
-  
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!appReady) {
-        setLoadError('App initialization timeout. Please refresh.');
-      }
-    }, 10000);
-    
-    const initTimer = setTimeout(() => {
-      setAppReady(true);
-    }, 100);
+    const timer = requestIdleCallback ? 
+      requestIdleCallback(() => setWalletReady(true), { timeout: 500 }) :
+      setTimeout(() => setWalletReady(true), 100);
     
     return () => {
-      clearTimeout(timeout);
-      clearTimeout(initTimer);
+      if (requestIdleCallback && typeof timer === 'number') {
+        cancelIdleCallback(timer);
+      } else {
+        clearTimeout(timer as unknown as number);
+      }
     };
-  }, [appReady]);
-  
-  if (!appReady && !loadError) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 animate-bounce">
-            <Rocket className="w-16 h-16 text-cyan-400 mx-auto rotate-180" />
-          </div>
-          <div className="text-white font-orbitron text-xl">Loading...</div>
-          <div className="text-gray-500 text-sm mt-2">Connecting to the Giga Brain Galaxy</div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (loadError) {
-    return <GlobalErrorFallback />;
-  }
+  }, []);
 
   return (
     <ErrorBoundary fallback={<GlobalErrorFallback />}>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider 
-            theme={darkTheme({
-              accentColor: '#00ffff',
-              accentColorForeground: 'black',
-              borderRadius: 'medium',
-              fontStack: 'system',
-              overlayBlur: 'small',
-            })}
-            modalSize="wide"
-            initialChain={32323}
-            showRecentTransactions={true}
-            appInfo={{
-              appName: 'Based Guardians',
-              learnMoreUrl: 'https://basedguardians.com',
-            }}
-          >
-            <SecurityProvider>
-              <TransactionProvider>
-                <GuardianProfileProvider>
-                  <NotificationsProvider>
-                    <TooltipProvider>
-                      <WelcomeExperienceWrapper>
-                        <NotificationWatcherSetup />
-                        <HealthCheckBanner />
-                        <NetworkSwitchBanner />
-                        <DegradationBanner />
-                        <SpaceBackground />
-                        <Router />
-                        <DisclaimerModal />
-                        <OnboardingTour />
-                        <GlobalBuyListener />
-                        <WalletWatcher />
-                        <PendingTxBanner />
-                        <PendingPurchaseBanner />
-                        <Toaster />
-                        <DiagnosticPanel />
-                        <LanguageSelector />
-                      </WelcomeExperienceWrapper>
-                    </TooltipProvider>
-                  </NotificationsProvider>
-                </GuardianProfileProvider>
-              </TransactionProvider>
-            </SecurityProvider>
-          </RainbowKitProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          {walletReady ? (
+            <Suspense fallback={<AppLoadingFallback />}>
+              <WalletProviders>
+                <AppContent />
+              </WalletProviders>
+            </Suspense>
+          ) : (
+            <AppLoadingFallback />
+          )}
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

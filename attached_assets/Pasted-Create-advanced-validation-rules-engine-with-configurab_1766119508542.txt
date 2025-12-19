@@ -1,0 +1,1016 @@
+Create advanced validation rules engine with configurable schemas, type checking, boundary validation, format verification, and real-time validation feedback for all API endpoints and user inputs.
+
+STEP 1: CREATE VALIDATION RULES ENGINE
+
+1. CREATE FILE: server/lib/validationRules.ts
+
+export type ValidationType = 
+  | 'string' 
+  | 'number' 
+  | 'integer' 
+  | 'boolean' 
+  | 'email' 
+  | 'url' 
+  | 'wallet' 
+  | 'tokenId' 
+  | 'date' 
+  | 'enum' 
+  | 'array' 
+  | 'object';
+
+export interface ValidationRule {
+  type: ValidationType;
+  required?: boolean;
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  enum?: any[];
+  custom?: (value: any) => boolean | string;
+  default?: any;
+  sanitize?: (value: any) => any;
+  arrayOf?: ValidationRule;
+  schema?: Record<string, ValidationRule>;
+  errorMessage?: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: Array<{ field: string; message: string }>;
+  sanitized?: any;
+}
+
+export class ValidationRulesEngine {
+  static validate(
+    data: Record<string, any>,
+    rules: Record<string, ValidationRule>
+  ): ValidationResult {
+    const errors: Array<{ field: string; message: string }> = [];
+    const sanitized: Record<string, any> = {};
+    
+    for (const [field, rule] of Object.entries(rules)) {
+      const value = data[field];
+      
+      if (value === undefined || value === null || value === '') {
+        if (rule.required) {
+          errors.push({
+            field,
+            message: rule.errorMessage || `${field} is required`
+          });
+        } else if (rule.default !== undefined) {
+          sanitized[field] = rule.default;
+        }
+        continue;
+      }
+      
+      const fieldResult = this.validateField(field, value, rule);
+      
+      if (!fieldResult.valid) {
+        errors.push(...fieldResult.errors);
+      } else {
+        sanitized[field] = fieldResult.sanitized;
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors,
+      sanitized: errors.length === 0 ? sanitized : undefined
+    };
+  }
+  
+  private static validateField(
+    field: string,
+    value: any,
+    rule: ValidationRule
+  ): ValidationResult {
+    const errors: Array<{ field: string; message: string }> = [];
+    let sanitized = value;
+    
+    if (rule.sanitize) {
+      sanitized = rule.sanitize(value);
+    }
+    
+    switch (rule.type) {
+      case 'string':
+        if (typeof sanitized !== 'string') {
+          errors.push({ field, message: `${field} must be a string` });
+          break;
+        }
+        
+        if (rule.minLength && sanitized.length < rule.minLength) {
+          errors.push({ 
+            field, 
+            message: `${field} must be at least ${rule.minLength} characters` 
+          });
+        }
+        
+        if (rule.maxLength && sanitized.length > rule.maxLength) {
+          errors.push({ 
+            field, 
+            message: `${field} must be at most ${rule.maxLength} characters` 
+          });
+        }
+        
+        if (rule.pattern && !rule.pattern.test(sanitized)) {
+          errors.push({ 
+            field, 
+            message: rule.errorMessage || `${field} has invalid format` 
+          });
+        }
+        break;
+        
+      case 'number':
+      case 'integer':
+        const num = typeof sanitized === 'string' ? parseFloat(sanitized) : sanitized;
+        
+        if (isNaN(num) || !isFinite(num)) {
+          errors.push({ field, message: `${field} must be a valid number` });
+          break;
+        }
+        
+        if (rule.type === 'integer' && !Number.isInteger(num)) {
+          errors.push({ field, message: `${field} must be an integer` });
+          break;
+        }
+        
+        if (rule.min !== undefined && num < rule.min) {
+          errors.push({ field, message: `${field} must be at least ${rule.min}` });
+        }
+        
+        if (rule.max !== undefined && num > rule.max) {
+          errors.push({ field, message: `${field} must be at most ${rule.max}` });
+        }
+        
+        sanitized = num;
+        break;
+        
+      case 'boolean':
+        if (typeof sanitized === 'string') {
+          sanitized = sanitized === 'true' || sanitized === '1';
+        } else if (typeof sanitized !== 'boolean') {
+          errors.push({ field, message: `${field} must be a boolean` });
+        }
+        break;
+        
+      case 'email':
+        if (typeof sanitized !== 'string') {
+          errors.push({ field, message: `${field} must be a string` });
+          break;
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(sanitized)) {
+          errors.push({ field, message: `${field} must be a valid email` });
+        }
+        
+        sanitized = sanitized.toLowerCase().trim();
+        break;
+        
+      case 'url':
+        if (typeof sanitized !== 'string') {
+          errors.push({ field, message: `${field} must be a string` });
+          break;
+        }
+        
+        try {
+          const url = new URL(sanitized);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            errors.push({ field, message: `${field} must use http or https` });
+          }
+        } catch {
+          errors.push({ field, message: `${field} must be a valid URL` });
+        }
+        break;
+        
+      case 'wallet':
+        if (typeof sanitized !== 'string') {
+          errors.push({ field, message: `${field} must be a string` });
+          break;
+        }
+        
+        if (!/^0x[a-fA-F0-9]{40}$/.test(sanitized)) {
+          errors.push({ field, message: `${field} must be a valid wallet address` });
+        }
+        
+        sanitized = sanitized.toLowerCase();
+        break;
+        
+      case 'tokenId':
+        const tokenId = typeof sanitized === 'string' ? parseInt(sanitized) : sanitized;
+        
+        if (isNaN(tokenId) || !Number.isInteger(tokenId)) {
+          errors.push({ field, message: `${field} must be a valid token ID` });
+          break;
+        }
+        
+        if (tokenId < 0 || tokenId > 10000) {
+          errors.push({ field, message: `${field} must be between 0 and 10000` });
+        }
+        
+        sanitized = tokenId;
+        break;
+        
+      case 'date':
+        const date = new Date(sanitized);
+        if (isNaN(date.getTime())) {
+          errors.push({ field, message: `${field} must be a valid date` });
+        }
+        sanitized = date;
+        break;
+        
+      case 'enum':
+        if (!rule.enum || !rule.enum.includes(sanitized)) {
+          errors.push({ 
+            field, 
+            message: `${field} must be one of: ${rule.enum?.join(', ')}` 
+          });
+        }
+        break;
+        
+      case 'array':
+        if (!Array.isArray(sanitized)) {
+          errors.push({ field, message: `${field} must be an array` });
+          break;
+        }
+        
+        if (rule.minLength && sanitized.length < rule.minLength) {
+          errors.push({ 
+            field, 
+            message: `${field} must contain at least ${rule.minLength} items` 
+          });
+        }
+        
+        if (rule.maxLength && sanitized.length > rule.maxLength) {
+          errors.push({ 
+            field, 
+            message: `${field} must contain at most ${rule.maxLength} items` 
+          });
+        }
+        
+        if (rule.arrayOf) {
+          const arrayErrors: any[] = [];
+          const sanitizedArray: any[] = [];
+          
+          for (let i = 0; i < sanitized.length; i++) {
+            const itemResult = this.validateField(`${field}[${i}]`, sanitized[i], rule.arrayOf);
+            if (!itemResult.valid) {
+              arrayErrors.push(...itemResult.errors);
+            } else {
+              sanitizedArray.push(itemResult.sanitized);
+            }
+          }
+          
+          if (arrayErrors.length > 0) {
+            errors.push(...arrayErrors);
+          } else {
+            sanitized = sanitizedArray;
+          }
+        }
+        break;
+        
+      case 'object':
+        if (typeof sanitized !== 'object' || sanitized === null || Array.isArray(sanitized)) {
+          errors.push({ field, message: `${field} must be an object` });
+          break;
+        }
+        
+        if (rule.schema) {
+          const objectResult = this.validate(sanitized, rule.schema);
+          if (!objectResult.valid) {
+            errors.push(...objectResult.errors.map(e => ({
+              field: `${field}.${e.field}`,
+              message: e.message
+            })));
+          } else {
+            sanitized = objectResult.sanitized;
+          }
+        }
+        break;
+    }
+    
+    if (rule.custom && errors.length === 0) {
+      const customResult = rule.custom(sanitized);
+      if (customResult !== true) {
+        errors.push({
+          field,
+          message: typeof customResult === 'string' ? customResult : `${field} failed custom validation`
+        });
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors,
+      sanitized: errors.length === 0 ? sanitized : undefined
+    };
+  }
+}
+
+STEP 2: CREATE VALIDATION SCHEMAS FOR ENDPOINTS
+
+2. CREATE FILE: server/lib/validationSchemas.ts
+
+import { ValidationRule } from './validationRules';
+
+export const ValidationSchemas = {
+  customName: {
+    tokenId: {
+      type: 'tokenId' as const,
+      required: true,
+      errorMessage: 'Valid token ID required'
+    },
+    customName: {
+      type: 'string' as const,
+      required: true,
+      minLength: 3,
+      maxLength: 32,
+      pattern: /^[a-zA-Z0-9_\s-]+$/,
+      errorMessage: 'Name must be 3-32 characters, alphanumeric only',
+      sanitize: (v: string) => v.trim()
+    }
+  } as Record<string, ValidationRule>,
+  
+  proposal: {
+    title: {
+      type: 'string' as const,
+      required: true,
+      minLength: 10,
+      maxLength: 100,
+      errorMessage: 'Title must be 10-100 characters',
+      sanitize: (v: string) => v.trim()
+    },
+    description: {
+      type: 'string' as const,
+      required: true,
+      minLength: 50,
+      maxLength: 2000,
+      errorMessage: 'Description must be 50-2000 characters',
+      sanitize: (v: string) => v.trim()
+    },
+    category: {
+      type: 'enum' as const,
+      required: true,
+      enum: ['governance', 'technical', 'community', 'treasury'],
+      errorMessage: 'Invalid category'
+    },
+    durationDays: {
+      type: 'integer' as const,
+      required: false,
+      min: 1,
+      max: 30,
+      default: 7
+    }
+  } as Record<string, ValidationRule>,
+  
+  vote: {
+    proposalId: {
+      type: 'integer' as const,
+      required: true,
+      min: 1
+    },
+    support: {
+      type: 'boolean' as const,
+      required: true
+    },
+    weight: {
+      type: 'number' as const,
+      required: false,
+      min: 0,
+      default: 1
+    }
+  } as Record<string, ValidationRule>,
+  
+  listing: {
+    tokenId: {
+      type: 'tokenId' as const,
+      required: true
+    },
+    price: {
+      type: 'string' as const,
+      required: true,
+      pattern: /^\d+(\.\d+)?$/,
+      errorMessage: 'Price must be a valid number',
+      custom: (v: string) => {
+        const num = parseFloat(v);
+        if (num <= 0) return 'Price must be greater than 0';
+        if (num > 1000000000) return 'Price too large';
+        return true;
+      }
+    }
+  } as Record<string, ValidationRule>,
+  
+  offer: {
+    tokenId: {
+      type: 'tokenId' as const,
+      required: true
+    },
+    price: {
+      type: 'string' as const,
+      required: true,
+      pattern: /^\d+(\.\d+)?$/,
+      errorMessage: 'Price must be a valid number',
+      custom: (v: string) => {
+        const num = parseFloat(v);
+        if (num <= 0) return 'Price must be greater than 0';
+        if (num > 1000000000) return 'Price too large';
+        return true;
+      }
+    },
+    expiresAt: {
+      type: 'number' as const,
+      required: true,
+      custom: (v: number) => {
+        if (v <= Date.now()) return 'Expiration must be in the future';
+        if (v > Date.now() + 30 * 24 * 60 * 60 * 1000) return 'Expiration too far in future';
+        return true;
+      }
+    }
+  } as Record<string, ValidationRule>,
+  
+  gameSubmit: {
+    gameType: {
+      type: 'enum' as const,
+      required: true,
+      enum: ['guardian-solitaire', 'asteroid-mining', 'guardian-defense', 'retro-defender']
+    },
+    score: {
+      type: 'integer' as const,
+      required: true,
+      min: 0,
+      max: 1000000
+    },
+    duration: {
+      type: 'integer' as const,
+      required: false,
+      min: 0,
+      max: 3600000
+    },
+    metadata: {
+      type: 'object' as const,
+      required: false
+    }
+  } as Record<string, ValidationRule>,
+  
+  banUser: {
+    walletAddress: {
+      type: 'wallet' as const,
+      required: true
+    },
+    reason: {
+      type: 'string' as const,
+      required: true,
+      minLength: 10,
+      maxLength: 500
+    },
+    durationHours: {
+      type: 'integer' as const,
+      required: false,
+      min: 1,
+      max: 8760
+    }
+  } as Record<string, ValidationRule>,
+  
+  pagination: {
+    page: {
+      type: 'integer' as const,
+      required: false,
+      min: 1,
+      default: 1
+    },
+    limit: {
+      type: 'integer' as const,
+      required: false,
+      min: 1,
+      max: 100,
+      default: 20
+    },
+    sortBy: {
+      type: 'string' as const,
+      required: false,
+      pattern: /^[a-z_]+$/,
+      maxLength: 50
+    },
+    sortOrder: {
+      type: 'enum' as const,
+      required: false,
+      enum: ['asc', 'desc'],
+      default: 'desc'
+    }
+  } as Record<string, ValidationRule>
+};
+
+STEP 3: CREATE VALIDATION MIDDLEWARE
+
+3. CREATE FILE: server/middleware/validationMiddleware.ts
+
+import { Request, Response, NextFunction } from 'express';
+import { ValidationRulesEngine } from '../lib/validationRules';
+import { ValidationSchemas } from '../lib/validationSchemas';
+
+export function validateRequest(schemaName: keyof typeof ValidationSchemas) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const schema = ValidationSchemas[schemaName];
+    
+    if (!schema) {
+      console.error(`[VALIDATION] Schema not found: ${schemaName}`);
+      return res.status(500).json({ error: 'Validation configuration error' });
+    }
+    
+    const result = ValidationRulesEngine.validate(req.body, schema);
+    
+    if (!result.valid) {
+      console.warn(`[VALIDATION] Failed for ${schemaName}:`, result.errors);
+      return res.status(400).json({
+        error: 'Validation failed',
+        errors: result.errors
+      });
+    }
+    
+    req.body = result.sanitized;
+    
+    next();
+  };
+}
+
+export function validateQuery(schemaName: keyof typeof ValidationSchemas) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const schema = ValidationSchemas[schemaName];
+    
+    if (!schema) {
+      console.error(`[VALIDATION] Schema not found: ${schemaName}`);
+      return res.status(500).json({ error: 'Validation configuration error' });
+    }
+    
+    const result = ValidationRulesEngine.validate(req.query as any, schema);
+    
+    if (!result.valid) {
+      console.warn(`[VALIDATION] Query validation failed for ${schemaName}:`, result.errors);
+      return res.status(400).json({
+        error: 'Query validation failed',
+        errors: result.errors
+      });
+    }
+    
+    req.query = result.sanitized as any;
+    
+    next();
+  };
+}
+
+STEP 4: APPLY VALIDATION TO ROUTES
+
+4. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { validateRequest, validateQuery } from './middleware/validationMiddleware';
+
+Apply validation to endpoints:
+
+// Custom names
+app.post('/api/custom-names', requireAuth, validateRequest('customName'), async (req: AuthRequest, res) => {
+  // existing logic - req.body is now validated and sanitized
+});
+
+// Proposals
+app.post('/api/proposals', requireAdmin, validateRequest('proposal'), async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+// Voting
+app.post('/api/proposals/:id/vote', requireAuth, validateRequest('vote'), async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+// Listings
+app.post('/api/marketplace/list', requireAuth, validateRequest('listing'), async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+// Offers
+app.post('/api/offers', requireAuth, validateRequest('offer'), async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+// Game submissions
+app.post('/api/games/:gameType/submit', requireAuth, validateRequest('gameSubmit'), async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+// Pagination (for GET requests)
+app.get('/api/nfts', validateQuery('pagination'), async (req, res) => {
+  // existing logic
+});
+
+app.get('/api/proposals', validateQuery('pagination'), async (req, res) => {
+  // existing logic
+});
+
+STEP 5: CREATE CLIENT-SIDE VALIDATION HELPERS
+
+5. CREATE FILE: client/src/lib/validation.ts
+
+export interface ValidationRule {
+  type: 'string' | 'number' | 'email' | 'url' | 'wallet';
+  required?: boolean;
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  custom?: (value: any) => boolean | string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export class ClientValidator {
+  static validateField(value: any, rule: ValidationRule): ValidationResult {
+    if (!value || value === '') {
+      if (rule.required) {
+        return { valid: false, error: 'This field is required' };
+      }
+      return { valid: true };
+    }
+    
+    switch (rule.type) {
+      case 'string':
+        if (typeof value !== 'string') {
+          return { valid: false, error: 'Must be text' };
+        }
+        
+        if (rule.minLength && value.length < rule.minLength) {
+          return { valid: false, error: `Must be at least ${rule.minLength} characters` };
+        }
+        
+        if (rule.maxLength && value.length > rule.maxLength) {
+          return { valid: false, error: `Must be at most ${rule.maxLength} characters` };
+        }
+        
+        if (rule.pattern && !rule.pattern.test(value)) {
+          return { valid: false, error: 'Invalid format' };
+        }
+        break;
+        
+      case 'number':
+        const num = typeof value === 'string' ? parseFloat(value) : value;
+        
+        if (isNaN(num) || !isFinite(num)) {
+          return { valid: false, error: 'Must be a valid number' };
+        }
+        
+        if (rule.min !== undefined && num < rule.min) {
+          return { valid: false, error: `Must be at least ${rule.min}` };
+        }
+        
+        if (rule.max !== undefined && num > rule.max) {
+          return { valid: false, error: `Must be at most ${rule.max}` };
+        }
+        break;
+        
+      case 'email':
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return { valid: false, error: 'Must be a valid email' };
+        }
+        break;
+        
+      case 'url':
+        try {
+          new URL(value);
+        } catch {
+          return { valid: false, error: 'Must be a valid URL' };
+        }
+        break;
+        
+      case 'wallet':
+        if (!/^0x[a-fA-F0-9]{40}$/.test(value)) {
+          return { valid: false, error: 'Must be a valid wallet address' };
+        }
+        break;
+    }
+    
+    if (rule.custom) {
+      const customResult = rule.custom(value);
+      if (customResult !== true) {
+        return { 
+          valid: false, 
+          error: typeof customResult === 'string' ? customResult : 'Invalid value' 
+        };
+      }
+    }
+    
+    return { valid: true };
+  }
+  
+  static validateForm(
+    values: Record<string, any>,
+    rules: Record<string, ValidationRule>
+  ): { valid: boolean; errors: Record<string, string> } {
+    const errors: Record<string, string> = {};
+    
+    for (const [field, rule] of Object.entries(rules)) {
+      const result = this.validateField(values[field], rule);
+      if (!result.valid && result.error) {
+        errors[field] = result.error;
+      }
+    }
+    
+    return {
+      valid: Object.keys(errors).length === 0,
+      errors
+    };
+  }
+}
+
+STEP 6: CREATE VALIDATION HOOK
+
+6. CREATE FILE: client/src/hooks/useFormValidation.ts
+
+import { useState } from 'react';
+import { ClientValidator, ValidationRule } from '@/lib/validation';
+
+export function useFormValidation<T extends Record<string, any>>(
+  initialValues: T,
+  rules: Record<keyof T, ValidationRule>
+) {
+  const [values, setValues] = useState<T>(initialValues);
+  const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({});
+  
+  const validateField = (field: keyof T, value: any) => {
+    const rule = rules[field];
+    if (!rule) return;
+    
+    const result = ClientValidator.validateField(value, rule);
+    
+    setErrors(prev => ({
+      ...prev,
+      [field]: result.error || undefined
+    }));
+    
+    return result.valid;
+  };
+  
+  const handleChange = (field: keyof T, value: any) => {
+    setValues(prev => ({ ...prev, [field]: value }));
+    
+    if (touched[field]) {
+      validateField(field, value);
+    }
+  };
+  
+  const handleBlur = (field: keyof T) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    validateField(field, values[field]);
+  };
+  
+  const validateAll = () => {
+    const result = ClientValidator.validateForm(values, rules as any);
+    setErrors(result.errors as any);
+    
+    const allTouched = Object.keys(rules).reduce((acc, key) => {
+      acc[key as keyof T] = true;
+      return acc;
+    }, {} as Record<keyof T, boolean>);
+    setTouched(allTouched);
+    
+    return result.valid;
+  };
+  
+  const reset = () => {
+    setValues(initialValues);
+    setErrors({});
+    setTouched({});
+  };
+  
+  return {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    validateAll,
+    reset,
+    isValid: Object.keys(errors).length === 0
+  };
+}
+
+STEP 7: CREATE VALIDATED INPUT COMPONENT
+
+7. CREATE FILE: client/src/components/ValidatedInput.tsx
+
+import { InputHTMLAttributes } from 'react';
+
+interface ValidatedInputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+  touched?: boolean;
+}
+
+export const ValidatedInput = ({ 
+  label, 
+  error, 
+  touched, 
+  className = '',
+  ...props 
+}: ValidatedInputProps) => {
+  const hasError = touched && error;
+  
+  return (
+    <div className="space-y-1">
+      <label className="block text-sm font-medium text-gray-300">
+        {label}
+        {props.required && <span className="text-red-400 ml-1">*</span>}
+      </label>
+      
+      <input
+        {...props}
+        className={`w-full px-4 py-2 bg-black/60 border rounded-lg transition-colors
+          ${hasError 
+            ? 'border-red-500 focus:border-red-400' 
+            : 'border-purple-500/30 focus:border-purple-500'
+          }
+          ${className}
+        `}
+      />
+      
+      {hasError && (
+        <div className="text-sm text-red-400 flex items-center gap-1">
+          <span>⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+STEP 8: CREATE VALIDATION TEST ENDPOINT
+
+8. UPDATE FILE: server/routes.ts
+
+Add test endpoint:
+
+app.post('/api/test/validate', async (req, res) => {
+  try {
+    const { schema, data } = req.body;
+    
+    if (!schema || !data) {
+      return res.status(400).json({ error: 'Schema and data required' });
+    }
+    
+    const schemaObj = ValidationSchemas[schema as keyof typeof ValidationSchemas];
+    
+    if (!schemaObj) {
+      return res.status(400).json({ error: 'Invalid schema name' });
+    }
+    
+    const result = ValidationRulesEngine.validate(data, schemaObj);
+    
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 9: CREATE VALIDATION TEST SCRIPT
+
+9. CREATE FILE: script/test-validation.ts
+
+async function testValidation() {
+  console.log('✅ Testing Validation Rules Engine...\n');
+  
+  const tests = [
+    {
+      name: 'Valid custom name',
+      schema: 'customName',
+      data: { tokenId: 42, customName: 'MyCoolNFT' },
+      shouldPass: true
+    },
+    {
+      name: 'Invalid custom name (too short)',
+      schema: 'customName',
+      data: { tokenId: 42, customName: 'ab' },
+      shouldPass: false
+    },
+    {
+      name: 'Invalid custom name (special chars)',
+      schema: 'customName',
+      data: { tokenId: 42, customName: 'Test@Name!' },
+      shouldPass: false
+    },
+    {
+      name: 'Valid proposal',
+      schema: 'proposal',
+      data: {
+        title: 'Improve governance system',
+        description: 'We should implement a new voting mechanism that allows for more granular control over proposals.',
+        category: 'governance'
+      },
+      shouldPass: true
+    },
+    {
+      name: 'Invalid proposal (title too short)',
+      schema: 'proposal',
+      data: {
+        title: 'Short',
+        description: 'This description is long enough to pass validation but the title is not.',
+        category: 'governance'
+      },
+      shouldPass: false
+    },
+    {
+      name: 'Valid listing',
+      schema: 'listing',
+      data: { tokenId: 123, price: '100.50' },
+      shouldPass: true
+    },
+    {
+      name: 'Invalid listing (negative price)',
+      schema: 'listing',
+      data: { tokenId: 123, price: '-10' },
+      shouldPass: false
+    }
+  ];
+  
+  let passed = 0;
+  let failed = 0;
+  
+  for (const test of tests) {
+    try {
+      const response = await fetch('http://localhost:5000/api/test/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schema: test.schema,
+          data: test.data
+        })
+      });
+      
+      const result = await response.json();
+      
+      const testPassed = result.valid === test.shouldPass;
+      
+      if (testPassed) {
+        console.log(`✅ ${test.name}`);
+        passed++;
+      } else {
+        console.log(`❌ ${test.name}`);
+        console.log(`   Expected ${test.shouldPass ? 'valid' : 'invalid'}, got ${result.valid ? 'valid' : 'invalid'}`);
+        if (!result.valid) {
+          console.log(`   Errors:`, result.errors);
+        }
+        failed++;
+      }
+    } catch (error) {
+      console.log(`❌ ${test.name}: ${error}`);
+      failed++;
+    }
+  }
+  
+  console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
+  
+  if (failed > 0) {
+    process.exit(1);
+  }
+}
+
+testValidation();
+
+STEP 10: ADD TO PACKAGE.JSON
+
+10. UPDATE FILE: package.json
+
+Add script:
+
+"test:validation": "tsx script/test-validation.ts"
+
+VERIFICATION STEPS:
+1. Run in terminal: npm run test:validation
+2. All tests should pass
+3. Try submitting form with invalid data
+4. Should see validation errors
+5. Fix errors one by one
+6. Error messages should disappear
+7. Submit valid data
+8. Should succeed
+9. Check server logs for validation messages
+10. Try API request with invalid data
+11. Should get 400 error with detailed errors
+12. Fix data and retry
+13. Should succeed
+
+Test real-time validation:
+1. Open any form (custom name, proposal, etc)
+2. Start typing in a field
+3. Blur (click away) from field
+4. Should see validation error if invalid
+5. Fix the error
+6. Error should disappear
+7. Try to submit with errors
+8. Submit button should show validation errors
+
+Your app now has bulletproof input validation! ✅
