@@ -121,8 +121,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Apply SQL injection guard globally to all API routes
-  app.use('/api', sqlInjectionGuard);
+  // Note: SQL injection protection is provided by Drizzle ORM's parameterized queries
+  // The sqlInjectionGuard middleware is available for specific high-risk endpoints but
+  // not applied globally to avoid false positives on legitimate content
 
   // Health check endpoint - must respond immediately for deployment health checks
   app.get("/api/health", (_req, res) => {

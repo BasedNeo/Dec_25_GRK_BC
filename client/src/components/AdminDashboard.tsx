@@ -64,6 +64,110 @@ const FinancialHealthCheck = () => {
   );
 };
 
+interface SecurityAuditPanelProps {
+  walletAddress?: string;
+}
+
+const SecurityAuditPanel = ({ walletAddress }: SecurityAuditPanelProps) => {
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const fetchAuditLog = async () => {
+    if (!walletAddress) {
+      setError('Wallet not connected');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      });
+      
+      if (!nonceRes.ok) {
+        setError('Not authorized');
+        setLoading(false);
+        return;
+      }
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+      const signature = await signer.signMessage(message);
+      
+      const res = await fetch('/api/admin/security/audit?limit=50', {
+        headers: {
+          'x-wallet-address': walletAddress,
+          'x-admin-signature': signature
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setAuditLog(data.queries || []);
+      } else {
+        setError('Failed to fetch audit log');
+      }
+    } catch (err) {
+      console.error('Failed to fetch audit log:', err);
+      setError('Authentication cancelled or failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="p-4 bg-black/40 border border-red-500/30 rounded" data-testid="security-audit-panel">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-gray-400 text-sm">SQL Injection Detection</span>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={fetchAuditLog}
+          disabled={loading}
+          className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+          data-testid="button-refresh-audit"
+        >
+          {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+        </Button>
+      </div>
+      
+      {error && (
+        <div className="text-red-400 text-sm mb-2">{error}</div>
+      )}
+      
+      {auditLog.length === 0 ? (
+        <div className="text-gray-400 text-sm">
+          {loading ? 'Loading...' : 'Click refresh to load audit log (requires signature)'}
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {auditLog.map((log, i) => (
+            <div key={i} className={`p-2 rounded border text-xs ${
+              log.blocked ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold">{log.blocked ? 'BLOCKED' : 'SUSPICIOUS'}</span>
+                <span className="text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+              </div>
+              <div className="text-gray-300">Source: {log.source}</div>
+              <div className="font-mono bg-black/60 p-1 rounded mt-1 overflow-x-auto text-[10px]">
+                {log.query?.substring(0, 100)}...
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TransactionStatsPanel = () => {
   const [stats, setStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1244,6 +1348,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               📊 Transaction Statistics
             </h3>
             <TransactionStatsPanel />
+          </Card>
+          
+          <Card className="bg-black/60 border-red-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-red-400 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Security Audit
+            </h3>
+            <SecurityAuditPanel walletAddress={address} />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">

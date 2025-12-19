@@ -1,44 +1,56 @@
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
 import { QueryValidator } from './queryValidator';
 
-export class PreparedStatements {
-  static async executeRaw(
-    query: string, 
-    params: any[] = [], 
-    allowedTables: string[] = []
-  ): Promise<any> {
-    for (const param of params) {
-      if (typeof param === 'string' && QueryValidator.detectSqlInjection(param)) {
-        throw new Error('SQL injection detected in parameters');
-      }
-    }
-    
-    const validTables = ['nfts', 'users', 'proposals', 'transactions', 'audit_logs', 
-      'guardian_names', 'proposal_votes', 'admin_nonces', 'game_scores', 'user_feedback'];
-    
-    for (const table of allowedTables) {
-      if (!validTables.includes(table.toLowerCase())) {
-        throw new Error(`Table ${table} not allowed`);
-      }
-    }
-    
-    return db.execute(sql.raw(query));
+/**
+ * Safe query utilities for Drizzle ORM
+ * 
+ * IMPORTANT: Always use Drizzle's query builder methods with parameterized values.
+ * Never use sql.raw() with user input - it bypasses SQL injection protection.
+ * 
+ * Drizzle ORM automatically parameterizes all values passed to query builders,
+ * which is the primary defense against SQL injection in this application.
+ */
+export class SafeQueryBuilder {
+  /**
+   * Validates and returns a safe limit value
+   */
+  static safeLimit(limit: any, maxLimit: number = 100): number {
+    return QueryValidator.validateLimit(limit, maxLimit);
   }
   
-  static buildSafeWhereClause(filters: Record<string, any>): any {
-    const conditions: any[] = [];
-    
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === undefined || value === null) continue;
-      
-      if (typeof value === 'string' && QueryValidator.detectSqlInjection(value)) {
-        throw new Error(`SQL injection detected in filter: ${key}`);
-      }
-      
-      conditions.push(sql`${sql.raw(key)} = ${value}`);
-    }
-    
-    return conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+  /**
+   * Validates and returns a safe offset value
+   */
+  static safeOffset(offset: any): number {
+    return QueryValidator.validateOffset(offset);
+  }
+  
+  /**
+   * Validates a column name against an allowlist
+   * Use this for dynamic ORDER BY columns
+   */
+  static safeColumn<T extends string>(column: string, allowedColumns: T[]): T {
+    const validated = QueryValidator.validateOrderByColumn(column, allowedColumns);
+    return validated as T;
+  }
+  
+  /**
+   * Returns sanitized search input with SQL wildcards escaped
+   */
+  static safeSearchPattern(input: string): string {
+    return QueryValidator.sanitizeForLike(input);
+  }
+  
+  /**
+   * Validates search input and returns sanitized version
+   */
+  static safeSearchQuery(query: string, maxLength: number = 100): string {
+    return QueryValidator.validateSearchQuery(query, maxLength);
+  }
+  
+  /**
+   * Validates sort direction
+   */
+  static safeSortDirection(direction: string): 'asc' | 'desc' {
+    return QueryValidator.validateSortDirection(direction);
   }
 }

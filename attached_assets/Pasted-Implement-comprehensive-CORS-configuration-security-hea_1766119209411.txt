@@ -1,0 +1,769 @@
+Implement comprehensive CORS configuration, security headers (CSP, HSTS, X-Frame-Options), clickjacking protection, and secure cookie policies for production-grade security.
+
+STEP 1: CREATE SECURITY HEADERS CONFIGURATION
+
+1. CREATE FILE: server/lib/securityHeaders.ts
+
+import helmet from 'helmet';
+import cors from 'cors';
+import { Request, Response, NextFunction } from 'express';
+
+export class SecurityHeaders {
+  static getHelmetConfig() {
+    return helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            "https://cdn.jsdelivr.net",
+            "https://unpkg.com"
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com"
+          ],
+          fontSrc: [
+            "'self'",
+            "https://fonts.gstatic.com",
+            "data:"
+          ],
+          imgSrc: [
+            "'self'",
+            "data:",
+            "blob:",
+            "https:",
+            "http:"
+          ],
+          connectSrc: [
+            "'self'",
+            "https://api.coingecko.com",
+            "https://api.binance.com",
+            "https://api.coincap.io",
+            "https://*.base.org",
+            "wss://*.base.org",
+            process.env.RPC_URL || ""
+          ].filter(Boolean),
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+          upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+        }
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+      },
+      frameguard: {
+        action: 'deny'
+      },
+      noSniff: true,
+      xssFilter: true,
+      referrerPolicy: {
+        policy: 'strict-origin-when-cross-origin'
+      },
+      dnsPrefetchControl: {
+        allow: false
+      },
+      permittedCrossDomainPolicies: {
+        permittedPolicies: 'none'
+      }
+    });
+  }
+  
+  static getCorsConfig() {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'https://yourdomain.com',
+      'https://www.yourdomain.com'
+    ].filter(Boolean);
+    
+    return cors({
+      origin: (origin, callback) => {
+        if (!origin) {
+          return callback(null, true);
+        }
+        
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          console.warn(`[SECURITY] Blocked CORS request from: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Session-ID',
+        'X-Wallet-Address',
+        'X-Requested-With'
+      ],
+      exposedHeaders: [
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset'
+      ],
+      maxAge: 86400
+    });
+  }
+  
+  static addCustomHeaders(req: Request, res: Response, next: NextFunction) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('X-Powered-By', 'Guardian Command');
+    
+    res.removeHeader('X-Powered-By');
+    
+    next();
+  }
+  
+  static preventClickjacking(req: Request, res: Response, next: NextFunction) {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+    next();
+  }
+  
+  static secureJsonResponse(req: Request, res: Response, next: NextFunction) {
+    const originalJson = res.json.bind(res);
+    
+    res.json = function(body: any) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      
+      if (body && typeof body === 'object') {
+        for (const key in body) {
+          if (typeof body[key] === 'string') {
+            body[key] = body[key].replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+          }
+        }
+      }
+      
+      return originalJson(body);
+    };
+    
+    next();
+  }
+}
+
+STEP 2: CREATE ORIGIN VALIDATOR
+
+2. CREATE FILE: server/lib/originValidator.ts
+
+export class OriginValidator {
+  private static allowedOrigins: Set<string> = new Set([
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5000'
+  ]);
+  
+  private static suspiciousOrigins: Map<string, number> = new Map();
+  
+  static addAllowedOrigin(origin: string) {
+    this.allowedOrigins.add(origin);
+  }
+  
+  static removeAllowedOrigin(origin: string) {
+    this.allowedOrigins.delete(origin);
+  }
+  
+  static isOriginAllowed(origin: string | undefined): boolean {
+    if (!origin) {
+      return true;
+    }
+    
+    if (this.allowedOrigins.has(origin)) {
+      return true;
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  static trackSuspiciousOrigin(origin: string) {
+    const count = this.suspiciousOrigins.get(origin) || 0;
+    this.suspiciousOrigins.set(origin, count + 1);
+    
+    if (count > 10) {
+      console.error(`[SECURITY] Multiple CORS violations from: ${origin} (${count} attempts)`);
+    }
+  }
+  
+  static getSuspiciousOrigins() {
+    return Array.from(this.suspiciousOrigins.entries()).map(([origin, count]) => ({
+      origin,
+      count
+    }));
+  }
+  
+  static clearSuspiciousOrigins() {
+    this.suspiciousOrigins.clear();
+  }
+}
+
+STEP 3: CREATE SECURE COOKIE MANAGER
+
+3. CREATE FILE: server/lib/secureCookie.ts
+
+import { Response } from 'express';
+
+interface CookieOptions {
+  maxAge?: number;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'strict' | 'lax' | 'none';
+  domain?: string;
+  path?: string;
+}
+
+export class SecureCookie {
+  static setSecure(
+    res: Response,
+    name: string,
+    value: string,
+    options: CookieOptions = {}
+  ) {
+    const defaultOptions: CookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/'
+    };
+    
+    const finalOptions = { ...defaultOptions, ...options };
+    
+    res.cookie(name, value, finalOptions);
+  }
+  
+  static setSession(res: Response, sessionId: string) {
+    this.setSecure(res, 'sessionId', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+  }
+  
+  static clearSession(res: Response) {
+    res.clearCookie('sessionId', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
+  }
+  
+  static setCSRFToken(res: Response, token: string) {
+    this.setSecure(res, 'csrfToken', token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 1000
+    });
+  }
+}
+
+STEP 4: CREATE CSRF PROTECTION
+
+4. CREATE FILE: server/lib/csrfProtection.ts
+
+import crypto from 'crypto';
+import { Request, Response, NextFunction } from 'express';
+
+export class CSRFProtection {
+  private static tokens: Map<string, { token: string; createdAt: number }> = new Map();
+  private static readonly TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+  
+  static generateToken(sessionId: string): string {
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    this.tokens.set(sessionId, {
+      token,
+      createdAt: Date.now()
+    });
+    
+    this.cleanupExpiredTokens();
+    
+    return token;
+  }
+  
+  static validateToken(sessionId: string, token: string): boolean {
+    const stored = this.tokens.get(sessionId);
+    
+    if (!stored) {
+      console.warn('[CSRF] No token found for session:', sessionId);
+      return false;
+    }
+    
+    if (Date.now() - stored.createdAt > this.TOKEN_EXPIRY) {
+      console.warn('[CSRF] Token expired for session:', sessionId);
+      this.tokens.delete(sessionId);
+      return false;
+    }
+    
+    if (stored.token !== token) {
+      console.warn('[CSRF] Token mismatch for session:', sessionId);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static middleware(req: Request, res: Response, next: NextFunction) {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+      return next();
+    }
+    
+    const sessionId = req.headers['x-session-id'] as string;
+    const csrfToken = req.headers['x-csrf-token'] as string;
+    
+    if (!sessionId) {
+      return res.status(401).json({ error: 'No session', code: 'NO_SESSION' });
+    }
+    
+    if (!csrfToken) {
+      return res.status(403).json({ error: 'CSRF token required', code: 'NO_CSRF_TOKEN' });
+    }
+    
+    if (!this.validateToken(sessionId, csrfToken)) {
+      return res.status(403).json({ error: 'Invalid CSRF token', code: 'INVALID_CSRF_TOKEN' });
+    }
+    
+    next();
+  }
+  
+  static cleanupExpiredTokens() {
+    const now = Date.now();
+    
+    for (const [sessionId, data] of this.tokens.entries()) {
+      if (now - data.createdAt > this.TOKEN_EXPIRY) {
+        this.tokens.delete(sessionId);
+      }
+    }
+  }
+}
+
+setInterval(() => {
+  CSRFProtection.cleanupExpiredTokens();
+}, 5 * 60 * 1000);
+
+STEP 5: UPDATE SERVER WITH SECURITY MIDDLEWARE
+
+5. UPDATE FILE: server/index.ts
+
+Add imports at top:
+
+import { SecurityHeaders } from './lib/securityHeaders';
+import { OriginValidator } from './lib/originValidator';
+import { CSRFProtection } from './lib/csrfProtection';
+
+Apply security middleware BEFORE routes:
+
+const app = express();
+
+app.use(SecurityHeaders.getHelmetConfig());
+app.use(SecurityHeaders.getCorsConfig());
+app.use(SecurityHeaders.addCustomHeaders);
+app.use(SecurityHeaders.preventClickjacking);
+app.use(SecurityHeaders.secureJsonResponse);
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Existing routes go here
+
+STEP 6: ADD CSRF ENDPOINTS
+
+6. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { CSRFProtection } from './lib/csrfProtection';
+
+Add CSRF token endpoint:
+
+app.get('/api/auth/csrf-token', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const sessionId = req.session!.id;
+    const csrfToken = CSRFProtection.generateToken(sessionId);
+    
+    res.json({ csrfToken });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+Apply CSRF protection to sensitive endpoints:
+
+app.post('/api/custom-names', requireAuth, CSRFProtection.middleware, async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+app.post('/api/proposals', requireAdmin, CSRFProtection.middleware, async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+app.post('/api/proposals/:id/vote', requireAuth, CSRFProtection.middleware, async (req: AuthRequest, res) => {
+  // existing logic
+});
+
+STEP 7: ADD SECURITY MONITORING ENDPOINT
+
+7. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { OriginValidator } from './lib/originValidator';
+
+Add endpoint:
+
+app.get('/api/admin/security/cors-violations', requireAdmin, async (req, res) => {
+  try {
+    const suspicious = OriginValidator.getSuspiciousOrigins();
+    res.json({ suspicious });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/security/clear-cors-violations', requireAdmin, async (req, res) => {
+  try {
+    OriginValidator.clearSuspiciousOrigins();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/security/add-origin', requireAdmin, async (req, res) => {
+  try {
+    const { origin } = req.body;
+    
+    if (!origin || !origin.startsWith('http')) {
+      return res.status(400).json({ error: 'Invalid origin' });
+    }
+    
+    OriginValidator.addAllowedOrigin(origin);
+    
+    res.json({ success: true, message: `Added origin: ${origin}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 8: CREATE SECURITY MONITOR COMPONENT
+
+8. CREATE FILE: client/src/components/SecurityMonitor.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Shield, AlertTriangle } from 'lucide-react';
+
+export const SecurityMonitor = () => {
+  const [corsViolations, setCorsViolations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const res = await fetch('/api/admin/security/cors-violations');
+      const data = await res.json();
+      setCorsViolations(data.suspicious || []);
+    } catch (error) {
+      console.error('Failed to fetch security data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const clearViolations = async () => {
+    try {
+      await fetch('/api/admin/security/clear-cors-violations', { method: 'POST' });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to clear violations:', error);
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Shield className="w-5 h-5 text-purple-400" />
+            Security Headers Status
+          </h3>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>CORS Protection</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>CSP (Content Security Policy)</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>HSTS (Strict Transport Security)</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>X-Frame-Options (Clickjacking)</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>XSS Protection</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+          <div className="flex items-center justify-between p-2 bg-black/40 rounded">
+            <span>MIME Sniffing Prevention</span>
+            <span className="text-green-400">✅ Active</span>
+          </div>
+        </div>
+      </Card>
+      
+      <Card className="p-6 bg-black/60 border-yellow-500/30">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-400" />
+            CORS Violations ({corsViolations.length})
+          </h3>
+          {corsViolations.length > 0 && (
+            <Button onClick={clearViolations} size="sm" variant="outline">
+              Clear All
+            </Button>
+          )}
+        </div>
+        
+        {loading ? (
+          <div>Loading...</div>
+        ) : corsViolations.length === 0 ? (
+          <div className="text-gray-400">No CORS violations detected</div>
+        ) : (
+          <div className="space-y-2">
+            {corsViolations.map((violation, i) => (
+              <div key={i} className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+                <div className="font-mono text-sm">{violation.origin}</div>
+                <div className="text-xs text-gray-400">
+                  {violation.count} attempt{violation.count !== 1 ? 's' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+STEP 9: ADD SECURITY MONITOR TO ADMIN DASHBOARD
+
+9. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add import:
+
+import { SecurityMonitor } from './SecurityMonitor';
+
+Add to dashboard render:
+
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">🔒 Security Headers & CORS</h2>
+  <SecurityMonitor />
+</div>
+
+STEP 10: UPDATE CLIENT AUTH TO USE CSRF TOKENS
+
+10. UPDATE FILE: client/src/lib/auth.ts
+
+Update authenticatedFetch method:
+
+static async authenticatedFetch(url: string, options: RequestInit = {}) {
+  const sessionId = this.getSession();
+  
+  if (!sessionId) {
+    throw new Error('No active session');
+  }
+  
+  let csrfToken = localStorage.getItem('csrfToken');
+  
+  if (!csrfToken && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
+    const csrfRes = await fetch('/api/auth/csrf-token', {
+      headers: { 'X-Session-ID': sessionId }
+    });
+    const csrfData = await csrfRes.json();
+    csrfToken = csrfData.csrfToken;
+    localStorage.setItem('csrfToken', csrfToken);
+  }
+  
+  const headers = {
+    ...options.headers,
+    'X-Session-ID': sessionId
+  };
+  
+  if (csrfToken && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+  
+  const response = await fetch(url, { ...options, headers });
+  
+  if (response.status === 401) {
+    this.clearSession();
+    localStorage.removeItem('csrfToken');
+    throw new Error('Session expired');
+  }
+  
+  if (response.status === 403) {
+    const data = await response.json();
+    if (data.code === 'INVALID_CSRF_TOKEN') {
+      localStorage.removeItem('csrfToken');
+      throw new Error('CSRF token invalid, please try again');
+    }
+  }
+  
+  return response;
+}
+
+STEP 11: CREATE SECURITY HEADER TEST SCRIPT
+
+11. CREATE FILE: script/test-security-headers.ts
+
+async function testSecurityHeaders() {
+  console.log('🔒 Testing Security Headers...\n');
+  
+  const url = process.env.API_URL || 'http://localhost:5000';
+  
+  try {
+    const response = await fetch(`${url}/api/health`);
+    const headers = response.headers;
+    
+    const tests = [
+      {
+        name: 'X-Frame-Options',
+        header: 'x-frame-options',
+        expected: 'DENY',
+        critical: true
+      },
+      {
+        name: 'X-Content-Type-Options',
+        header: 'x-content-type-options',
+        expected: 'nosniff',
+        critical: true
+      },
+      {
+        name: 'X-XSS-Protection',
+        header: 'x-xss-protection',
+        expected: '1; mode=block',
+        critical: true
+      },
+      {
+        name: 'Strict-Transport-Security',
+        header: 'strict-transport-security',
+        expected: 'max-age=',
+        critical: true
+      },
+      {
+        name: 'Referrer-Policy',
+        header: 'referrer-policy',
+        expected: 'strict-origin-when-cross-origin',
+        critical: false
+      },
+      {
+        name: 'Content-Security-Policy',
+        header: 'content-security-policy',
+        expected: 'default-src',
+        critical: true
+      }
+    ];
+    
+    let passed = 0;
+    let failed = 0;
+    
+    for (const test of tests) {
+      const value = headers.get(test.header);
+      
+      if (value && value.includes(test.expected)) {
+        console.log(`✅ ${test.name}: ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
+        passed++;
+      } else {
+        console.log(`${test.critical ? '❌' : '⚠️'} ${test.name}: ${value || 'MISSING'}`);
+        if (test.critical) {
+          failed++;
+        }
+      }
+    }
+    
+    console.log(`\n📊 Results: ${passed} passed, ${failed} critical failures`);
+    
+    if (failed > 0) {
+      console.log('⚠️  Critical security headers missing!');
+      process.exit(1);
+    } else {
+      console.log('✅ All critical security headers present!');
+    }
+  } catch (error) {
+    console.error('❌ Failed to test headers:', error);
+    process.exit(1);
+  }
+}
+
+testSecurityHeaders();
+
+STEP 12: ADD TO PACKAGE.JSON
+
+12. UPDATE FILE: package.json
+
+Add script:
+
+"test:security-headers": "tsx script/test-security-headers.ts"
+
+VERIFICATION STEPS:
+1. Run in terminal: npm run test:security-headers
+2. All critical headers should pass
+3. Open browser DevTools > Network
+4. Make any API request
+5. Check Response Headers
+6. Should see:
+   - X-Frame-Options: DENY
+   - X-Content-Type-Options: nosniff
+   - X-XSS-Protection: 1; mode=block
+   - Strict-Transport-Security: max-age=31536000
+   - Content-Security-Policy: (long value)
+7. Try loading app in iframe
+8. Should be blocked by X-Frame-Options
+9. Open Admin Dashboard > Security Monitor
+10. Should show all security headers active
+11. Try making request from different origin
+12. Should be blocked by CORS
+13. Check CORS Violations in admin dashboard
+
+Test CSRF protection:
+1. Make POST request without CSRF token
+2. Should get 403 error
+3. Get CSRF token from /api/auth/csrf-token
+4. Include token in X-CSRF-Token header
+5. Request should succeed
+
+Your app now has military-grade security headers! 🛡️
