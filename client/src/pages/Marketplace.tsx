@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 import { 
   Store, 
   SlidersHorizontal, 
@@ -262,8 +264,24 @@ export default function Marketplace() {
             )}
 
             {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+              <div className={`grid gap-4 ${
+                gridSize === 'large' 
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
+                  : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+              }`}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
+                    <Skeleton 
+                      height={gridSize === 'large' ? 280 : 180} 
+                      baseColor="#1f2937" 
+                      highlightColor="#374151"
+                    />
+                    <div className="p-4">
+                      <Skeleton width="60%" baseColor="#1f2937" highlightColor="#374151" />
+                      <Skeleton width="40%" baseColor="#1f2937" highlightColor="#374151" className="mt-2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : error ? (
               <div className="text-center py-20">

@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
 import { useAccount } from 'wagmi';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 interface Collection {
   id: number;
@@ -88,9 +90,35 @@ export default function Collections() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]" data-testid="collections-loading">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
+      <>
+        <Navbar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          isConnected={isConnected}
+        />
+        <div className="container mx-auto px-4 py-8" data-testid="collections-loading">
+          <div className="mb-12">
+            <Skeleton width={300} height={48} baseColor="#1f2937" highlightColor="#374151" />
+            <Skeleton width={400} height={24} baseColor="#1f2937" highlightColor="#374151" className="mt-4" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
+                <Skeleton height={192} baseColor="#1f2937" highlightColor="#374151" />
+                <div className="p-4">
+                  <Skeleton width="70%" height={24} baseColor="#1f2937" highlightColor="#374151" />
+                  <Skeleton width="50%" baseColor="#1f2937" highlightColor="#374151" className="mt-2" />
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
+                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
+                    <Skeleton height={40} baseColor="#1f2937" highlightColor="#374151" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
     );
   }
 
