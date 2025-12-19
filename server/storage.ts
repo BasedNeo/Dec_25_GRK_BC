@@ -1,7 +1,7 @@
 import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, desc, sql, count, ne } from "drizzle-orm";
+import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
 
 const MAX_MESSAGES_PER_INBOX = 100;
 const MAX_EMAILS = 4000;
@@ -512,16 +512,152 @@ export class DatabaseStorage implements IStorage {
   }
 
   async exportUserTransactionsCSV(walletAddress: string): Promise<string> {
-    const receipts = await this.getUserTransactionHistory(walletAddress, 1000);
+    const transactions = await this.getUserTransactionHistory(walletAddress, 1000);
     
-    let csv = 'Date,Type,Amount,Gas,Status,TX Hash,Token ID\n';
+    const headers = [
+      'Date',
+      'Time',
+      'Type',
+      'Status',
+      'Token ID',
+      'Quantity',
+      'Amount ($BASED)',
+      'Platform Fee',
+      'Royalty Fee',
+      'Net Amount',
+      'Gas Used',
+      'Gas Cost ($BASED)',
+      'Transaction Hash',
+      'Block Number',
+      'From Address',
+      'To Address',
+      'Notes'
+    ];
     
-    for (const receipt of receipts) {
-      const date = receipt.createdAt ? new Date(receipt.createdAt).toISOString() : '';
-      csv += `${date},${receipt.transactionType},${receipt.amount || '0'},${receipt.gasUsed || '0'},${receipt.status},${receipt.transactionHash},${receipt.tokenId || ''}\n`;
+    const rows = transactions.map(tx => {
+      const createdAt = tx.createdAt ? new Date(tx.createdAt) : new Date();
+      let metadata: any = {};
+      try {
+        metadata = tx.metadata ? JSON.parse(tx.metadata) : {};
+      } catch (e) {
+        metadata = {};
+      }
+      
+      return [
+        createdAt.toLocaleDateString(),
+        createdAt.toLocaleTimeString(),
+        tx.transactionType,
+        tx.status,
+        tx.tokenId || '',
+        tx.quantity || '1',
+        tx.amount || '0',
+        tx.platformFee || '0',
+        tx.royaltyFee || '0',
+        tx.netAmount || tx.amount || '0',
+        tx.gasUsed || '',
+        tx.gasCostInBase || '',
+        tx.transactionHash,
+        tx.blockNumber || '',
+        tx.fromAddress || '',
+        tx.toAddress || '',
+        metadata.note || ''
+      ].map(val => `"${val}"`).join(',');
+    });
+    
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  async exportAllTransactionsCSV(startDate?: Date, endDate?: Date): Promise<string> {
+    let transactions: TransactionReceipt[];
+    
+    if (startDate && endDate) {
+      transactions = await db.select()
+        .from(transactionReceipts)
+        .where(and(
+          gte(transactionReceipts.createdAt, startDate),
+          lte(transactionReceipts.createdAt, endDate)
+        ))
+        .orderBy(desc(transactionReceipts.createdAt))
+        .limit(10000);
+    } else if (startDate) {
+      transactions = await db.select()
+        .from(transactionReceipts)
+        .where(gte(transactionReceipts.createdAt, startDate))
+        .orderBy(desc(transactionReceipts.createdAt))
+        .limit(10000);
+    } else if (endDate) {
+      transactions = await db.select()
+        .from(transactionReceipts)
+        .where(lte(transactionReceipts.createdAt, endDate))
+        .orderBy(desc(transactionReceipts.createdAt))
+        .limit(10000);
+    } else {
+      transactions = await db.select()
+        .from(transactionReceipts)
+        .orderBy(desc(transactionReceipts.createdAt))
+        .limit(10000);
     }
     
-    return csv;
+    const headers = [
+      'Date',
+      'Time',
+      'Wallet',
+      'Type',
+      'Status',
+      'Token ID',
+      'Amount',
+      'Platform Fee',
+      'Royalty Fee',
+      'Gas Cost',
+      'Transaction Hash',
+      'Block',
+      'Timezone'
+    ];
+    
+    const rows = transactions.map(tx => {
+      const createdAt = tx.createdAt ? new Date(tx.createdAt) : new Date();
+      
+      return [
+        createdAt.toLocaleDateString(),
+        createdAt.toLocaleTimeString(),
+        tx.walletAddress,
+        tx.transactionType,
+        tx.status,
+        tx.tokenId || '',
+        tx.amount || '0',
+        tx.platformFee || '0',
+        tx.royaltyFee || '0',
+        tx.gasCostInBase || '',
+        tx.transactionHash,
+        tx.blockNumber || '',
+        tx.timezone || 'UTC'
+      ].map(val => `"${val}"`).join(',');
+    });
+    
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  async getTransactionStats(): Promise<{
+    transactionType: string;
+    count: number;
+    totalAmount: string | null;
+    totalPlatformFees: string | null;
+    totalRoyaltyFees: string | null;
+    totalGasCost: string | null;
+  }[]> {
+    const stats = await db.select({
+      transactionType: transactionReceipts.transactionType,
+      count: sql<number>`count(*)::int`,
+      totalAmount: sql<string>`COALESCE(sum(CAST(NULLIF(${transactionReceipts.amount}, '') AS DECIMAL)), 0)::text`,
+      totalPlatformFees: sql<string>`COALESCE(sum(CAST(NULLIF(${transactionReceipts.platformFee}, '') AS DECIMAL)), 0)::text`,
+      totalRoyaltyFees: sql<string>`COALESCE(sum(CAST(NULLIF(${transactionReceipts.royaltyFee}, '') AS DECIMAL)), 0)::text`,
+      totalGasCost: sql<string>`COALESCE(sum(CAST(NULLIF(${transactionReceipts.gasCostInBase}, '') AS DECIMAL)), 0)::text`
+    })
+    .from(transactionReceipts)
+    .where(eq(transactionReceipts.status, 'confirmed'))
+    .groupBy(transactionReceipts.transactionType);
+    
+    return stats;
   }
 }
 
