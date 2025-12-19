@@ -25,18 +25,16 @@ interface Collection {
   isFeatured: boolean;
 }
 
-// IPFS gateway for reliable image loading (this CID is for actual images, not metadata)
-const IPFS_IMAGE_BASE = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeif47552u34c3r46iy3p26h7j3a7b63d333p4m4r4v3r4b6x3d3d3y';
-
 // Default Based Guardians collection with reliable IPFS images
+// These URLs are extracted from actual NFT metadata
 const BASED_GUARDIANS_DEFAULT: Collection = {
   id: 1,
   contractAddress: NFT_CONTRACT.toLowerCase(),
   name: 'Based Guardians',
   symbol: 'GUARDIAN',
   description: 'The official Based Guardians NFT collection - 3,732 unique cyberpunk guardians protecting the BasedAI ecosystem.',
-  bannerImage: `${IPFS_IMAGE_BASE}/42.png`,
-  thumbnailImage: `${IPFS_IMAGE_BASE}/1.png`,
+  bannerImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeigklna3comgshfndjcbmdjechrj6qkl74dnn77piysmfli7jvlzfq/Darkroot%20Alchemists/Darkroot_Alchemists_2.jpg',
+  thumbnailImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeigklna3comgshfndjcbmdjechrj6qkl74dnn77piysmfli7jvlzfq/NeoStrike%20Hackers/NeoStrike_Hackers_1.jpg',
   totalSupply: 3732,
   floorPrice: '0',
   volumeTraded: '0',
