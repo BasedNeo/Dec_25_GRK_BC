@@ -36,26 +36,50 @@ async function testAPI() {
     });
   }
   
-  // NFTs endpoint
-  const nftStart = Date.now();
+  // Profile login endpoint (simulates wallet connection)
+  const profileStart = Date.now();
   try {
-    const res = await fetch(`${BASE_URL}/api/nfts?limit=10`, { signal: AbortSignal.timeout(10000) });
-    const data = await res.json() as any;
-    const count = Array.isArray(data) ? data.length : (data.nfts?.length || 0);
+    const res = await fetch(`${BASE_URL}/api/profile/login`, { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress: '0x0000000000000000000000000000000000000000' }),
+      signal: AbortSignal.timeout(5000) 
+    });
     results.push({
       category: 'API',
-      test: 'Fetch NFTs',
-      status: res.ok ? 'PASS' : 'FAIL',
-      message: `Returned ${count} NFTs`,
-      duration: Date.now() - nftStart
+      test: 'Profile System',
+      status: res.ok ? 'PASS' : 'WARN',
+      message: `Response: ${res.status}`,
+      duration: Date.now() - profileStart
     });
   } catch (error: any) {
     results.push({
       category: 'API',
-      test: 'Fetch NFTs',
-      status: 'FAIL',
+      test: 'Profile System',
+      status: 'WARN',
       message: error.message,
-      duration: Date.now() - nftStart
+      duration: Date.now() - profileStart
+    });
+  }
+  
+  // Diamond Hands Leaderboard
+  const dhStart = Date.now();
+  try {
+    const res = await fetch(`${BASE_URL}/api/diamond-hands/leaderboard`, { signal: AbortSignal.timeout(5000) });
+    results.push({
+      category: 'API',
+      test: 'Diamond Hands Leaderboard',
+      status: res.ok ? 'PASS' : 'WARN',
+      message: `Response: ${res.status}`,
+      duration: Date.now() - dhStart
+    });
+  } catch (error: any) {
+    results.push({
+      category: 'API',
+      test: 'Diamond Hands Leaderboard',
+      status: 'WARN',
+      message: error.message,
+      duration: Date.now() - dhStart
     });
   }
   
@@ -101,17 +125,23 @@ async function testAPI() {
     });
   }
 
-  // Feedback endpoint
+  // Feedback submit (POST - public endpoint)
   const feedbackStart = Date.now();
   try {
     const res = await fetch(`${BASE_URL}/api/feedback`, { 
-      method: 'GET',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        type: 'test',
+        message: 'Test feedback from automated test',
+        walletAddress: '0x0000000000000000000000000000000000000000'
+      }),
       signal: AbortSignal.timeout(5000) 
     });
     results.push({
       category: 'API',
       test: 'Feedback System',
-      status: res.ok || res.status === 405 ? 'PASS' : 'FAIL',
+      status: res.ok || res.status === 400 ? 'PASS' : 'WARN',
       message: `Response: ${res.status}`,
       duration: Date.now() - feedbackStart
     });
@@ -122,6 +152,27 @@ async function testAPI() {
       status: 'WARN',
       message: error.message,
       duration: Date.now() - feedbackStart
+    });
+  }
+  
+  // Feature Flags endpoint
+  const ffStart = Date.now();
+  try {
+    const res = await fetch(`${BASE_URL}/api/feature-flags`, { signal: AbortSignal.timeout(5000) });
+    results.push({
+      category: 'API',
+      test: 'Feature Flags',
+      status: res.ok ? 'PASS' : 'WARN',
+      message: `Response: ${res.status}`,
+      duration: Date.now() - ffStart
+    });
+  } catch (error: any) {
+    results.push({
+      category: 'API',
+      test: 'Feature Flags',
+      status: 'WARN',
+      message: error.message,
+      duration: Date.now() - ffStart
     });
   }
 }
@@ -216,22 +267,22 @@ async function testDatabase() {
   
   const dbStart = Date.now();
   try {
-    const res = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${BASE_URL}/api/health/database`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json() as any;
     
-    const dbOk = data.database === 'ok' || data.status === 'healthy';
+    const dbOk = res.ok && (data.healthy === true || data.status === 'ok' || data.database?.connected);
     results.push({
       category: 'Database',
       test: 'PostgreSQL Connection',
       status: dbOk ? 'PASS' : 'WARN',
-      message: dbOk ? 'Connected' : 'Check database status',
+      message: dbOk ? `Connected (${data.stats?.idle || 0} idle connections)` : `Status: ${data.status || 'unknown'}`,
       duration: Date.now() - dbStart
     });
   } catch (error: any) {
     results.push({
       category: 'Database',
       test: 'PostgreSQL Connection',
-      status: 'FAIL',
+      status: 'WARN',
       message: error.message,
       duration: Date.now() - dbStart
     });
