@@ -241,3 +241,32 @@ export const adminNonces = pgTable('admin_nonces', {
 });
 
 export type AdminNonce = typeof adminNonces.$inferSelect;
+
+export const transactionReceipts = pgTable('transaction_receipts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  transactionType: text('transaction_type').notNull(),
+  transactionHash: text('transaction_hash').notNull().unique(),
+  tokenId: integer('token_id'),
+  amount: text('amount'),
+  gasUsed: text('gas_used'),
+  gasPrice: text('gas_price'),
+  blockNumber: integer('block_number'),
+  status: text('status').notNull().default('pending'),
+  fromAddress: text('from_address'),
+  toAddress: text('to_address'),
+  platformFee: text('platform_fee'),
+  royaltyFee: text('royalty_fee'),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+  confirmedAt: timestamp('confirmed_at'),
+});
+
+export const insertTransactionReceiptSchema = createInsertSchema(transactionReceipts).omit({
+  id: true,
+  createdAt: true,
+  confirmedAt: true,
+});
+
+export type InsertTransactionReceipt = z.infer<typeof insertTransactionReceiptSchema>;
+export type TransactionReceipt = typeof transactionReceipts.$inferSelect;
