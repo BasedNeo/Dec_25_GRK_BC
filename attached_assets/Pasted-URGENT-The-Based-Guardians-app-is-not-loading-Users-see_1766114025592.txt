@@ -1,0 +1,845 @@
+URGENT: The Based Guardians app is not loading. Users see blank screen or infinite loading. Implement these emergency fixes IMMEDIATELY.
+
+STEP 1: ADD LOADING TIMEOUT PROTECTION
+
+1. UPDATE FILE: client/src/App.tsx
+
+Add this at the top of the App component (after line 125, before existing useEffect):
+
+```typescript
+function App() {
+  const [appReady, setAppReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Timeout protection - if app doesn't load in 10 seconds, show error
+    const timeout = setTimeout(() => {
+      if (!appReady) {
+        setLoadError('App initialization timeout. Please refresh.');
+      }
+    }, 10000);
+    
+    // Mark app as ready after critical components mount
+    const initTimer = setTimeout(() => {
+      setAppReady(true);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(initTimer);
+    };
+  }, [appReady]);
+  
+  // Show loading screen while initializing
+  if (!appReady && !loadError) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">🛸</div>
+          <div className="text-white font-orbitron text-xl">Loading...</div>
+          <div className="text-gray-500 text-sm mt-2">Connecting to the Giga Brain Galaxy</div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error if loading failed
+  if (loadError) {
+    return <GlobalErrorFallback />;
+  }
+
+  // ... rest of existing App return statement stays the same
+```
+
+STEP 2: FIX RPC TIMEOUT
+
+2. UPDATE FILE: client/src/lib/wagmi.ts
+
+Change RPC configuration (around line 88):
+
+```typescript
+transports: {
+  [basedL1.id]: fallback([
+    http('https://mainnet.basedaibridge.com/rpc/', {
+      timeout: 5000,  // Changed from 30000
+      retryCount: 2,   // Changed from 5
+      retryDelay: 500, // Changed from 1500
+    }),
+    http('https://rpc.basedaibridge.com/', {
+      timeout: 5000,
+      retryCount: 2,
+      retryDelay: 500,
+    }),
+  ]),
+},
+```
+
+STEP 3: FIX MEMORY LEAK IN useSubnetEmissions
+
+3. UPDATE FILE: client/src/hooks/useSubnetEmissions.ts
+
+Find the useEffect with setInterval around line 336-340 and ensure cleanup:
+
+```typescript
+useEffect(() => {
+  fetchEmissions();
+  const interval = setInterval(fetchEmissions, 60000);
+  return () => clearInterval(interval); // ENSURE THIS LINE EXISTS
+}, [fetchEmissions]);
+```
+
+Find the second useEffect around line 343-356 and ensure cleanup:
+
+```typescript
+useEffect(() => {
+  getBlockInfo().then(info => {
+    if (info) setBlockInfo(info);
+  });
+  
+  const interval = setInterval(() => {
+    getBlockInfo().then(info => {
+      if (info) setBlockInfo(info);
+    });
+  }, 300000);
+  
+  return () => clearInterval(interval); // ENSURE THIS LINE EXISTS
+}, []);
+```
+
+STEP 4: ADD EMERGENCY CACHE CLEAR
+
+4. UPDATE FILE: client/src/main.tsx
+
+Add this at the top, right after the imports (before line 20):
+
+```typescript
+// Emergency: Clear all caches if app version changed
+const APP_VERSION = '1.0.1';
+const lastVersion = localStorage.getItem('app_version');
+
+if (lastVersion !== APP_VERSION) {
+  console.log('[EMERGENCY] Clearing caches due to version change');
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('app_version', APP_VERSION);
+}
+```
+
+STEP 5: ADD COMPONENT MOUNT CHECK
+
+5. UPDATE FILE: client/src/components/HealthCheckBanner.tsx
+
+Add early return to prevent blocking during load:
+
+```typescript
+export function HealthCheckBanner() {
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Don't run health check until app is ready
+    const delay = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(delay);
+  }, []);
+  
+  if (loading) return null; // Skip during initial load
+  
+  // ... rest of existing code
+}
+```
+
+VERIFICATION:
+1. Clear browser cache (Ctrl+Shift+Del)
+2. Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+3. Open DevTools → Console
+4. App should load within 10 seconds
+5. Check for any errors in console
+
+If still not loading:
+- Check server is running in Replit
+- Check Network tab for failed requests
+- Try incognito mode
+- Report specific console errors
+
+===================== COPY TO HERE =====================
+```
+
+**After completing**: 
+- [ ] App loads in <10 seconds
+- [ ] No console errors
+- [ ] Can navigate pages
+- [ ] Wallet connects
+
+---
+
+# 💰 PHASE 1: FINANCIAL & LEGAL FOUNDATION
+
+## ✅ PROMPT 1.1: Database Automated Backups
+
+**Priority**: 🔴 CRITICAL  
+**Time**: 45 minutes  
+**Dependencies**: Prompt 0 complete
+
+```
+===================== COPY FROM HERE =====================
+
+Create a comprehensive automated database backup system for the Based Guardians PostgreSQL database.
+
+REQUIREMENTS:
+
+1. CREATE FILE: script/backup-database.ts
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
+
+const execAsync = promisify(exec);
+
+async function backupDatabase() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = path.join(process.cwd(), 'backups');
+  const backupFile = path.join(backupDir, `backup-${timestamp}.sql`);
+  const gzipFile = `${backupFile}.gz`;
+  
+  console.log('🔄 Starting database backup...');
+  
+  // Create backups directory if doesn't exist
+  if (!existsSync(backupDir)) {
+    await mkdir(backupDir, { recursive: true });
+    console.log('✅ Created backups directory');
+  }
+  
+  // Get database URL from environment
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL not found in environment variables');
+  }
+  
+  try {
+    // Run pg_dump
+    console.log('📦 Dumping database...');
+    const { stdout, stderr } = await execAsync(
+      `pg_dump "${dbUrl}" > "${backupFile}"`
+    );
+    
+    if (stderr) {
+      console.warn('⚠️  Warnings:', stderr);
+    }
+    
+    console.log('✅ Database dumped successfully');
+    
+    // Compress with gzip
+    console.log('🗜️  Compressing backup...');
+    await execAsync(`gzip "${backupFile}"`);
+    console.log('✅ Backup compressed');
+    
+    // Log success
+    const logMessage = `[${new Date().toISOString()}] Backup created: ${gzipFile}\n`;
+    await writeFile(path.join(backupDir, 'backup.log'), logMessage, { flag: 'a' });
+    
+    console.log(`✅ Backup complete: ${gzipFile}`);
+    
+    // Cleanup old backups (keep last 30 days)
+    await cleanupOldBackups(backupDir);
+    
+    return gzipFile;
+  } catch (error) {
+    console.error('❌ Backup failed:', error);
+    const logMessage = `[${new Date().toISOString()}] Backup FAILED: ${error}\n`;
+    await writeFile(path.join(backupDir, 'backup.log'), logMessage, { flag: 'a' });
+    throw error;
+  }
+}
+
+async function cleanupOldBackups(backupDir: string) {
+  try {
+    const { stdout } = await execAsync(`find "${backupDir}" -name "backup-*.sql.gz" -mtime +30 -delete`);
+    console.log('🧹 Cleaned up backups older than 30 days');
+  } catch (error) {
+    console.warn('⚠️  Cleanup warning:', error);
+  }
+}
+
+backupDatabase().catch(console.error);
+```
+
+2. CREATE FILE: script/restore-database.ts
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { existsSync } from 'fs';
+import path from 'path';
+
+const execAsync = promisify(exec);
+
+async function restoreDatabase(backupFile: string) {
+  console.log('🔄 Starting database restore...');
+  
+  if (!existsSync(backupFile)) {
+    throw new Error(`Backup file not found: ${backupFile}`);
+  }
+  
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL not found');
+  }
+  
+  try {
+    // Decompress if gzipped
+    let sqlFile = backupFile;
+    if (backupFile.endsWith('.gz')) {
+      console.log('📦 Decompressing backup...');
+      await execAsync(`gunzip -k "${backupFile}"`);
+      sqlFile = backupFile.replace('.gz', '');
+      console.log('✅ Decompressed');
+    }
+    
+    // Restore database
+    console.log('📥 Restoring database...');
+    const { stdout, stderr } = await execAsync(
+      `psql "${dbUrl}" < "${sqlFile}"`
+    );
+    
+    if (stderr) {
+      console.warn('⚠️  Warnings:', stderr);
+    }
+    
+    console.log('✅ Database restored successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Restore failed:', error);
+    throw error;
+  }
+}
+
+const backupFile = process.argv[2];
+if (!backupFile) {
+  console.error('Usage: npm run restore:db <backup-file>');
+  process.exit(1);
+}
+
+restoreDatabase(backupFile).catch(console.error);
+```
+
+3. CREATE FILE: script/verify-backup.ts
+
+```typescript
+import { stat, readFile } from 'fs/promises';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+
+const execAsync = promisify(exec);
+
+async function verifyBackup() {
+  const backupDir = path.join(process.cwd(), 'backups');
+  
+  console.log('🔍 Verifying latest backup...');
+  
+  try {
+    // Find latest backup
+    const { stdout } = await execAsync(`ls -t "${backupDir}"/backup-*.sql.gz | head -1`);
+    const latestBackup = stdout.trim();
+    
+    if (!latestBackup) {
+      throw new Error('No backups found');
+    }
+    
+    console.log(`📦 Latest backup: ${latestBackup}`);
+    
+    // Check file size
+    const stats = await stat(latestBackup);
+    const sizeMB = stats.size / (1024 * 1024);
+    
+    console.log(`📊 Size: ${sizeMB.toFixed(2)} MB`);
+    
+    if (stats.size < 100 * 1024) { // Less than 100KB
+      throw new Error('Backup file suspiciously small');
+    }
+    
+    // Verify gzip integrity
+    await execAsync(`gzip -t "${latestBackup}"`);
+    console.log('✅ Gzip integrity: OK');
+    
+    // Check backup age
+    const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
+    console.log(`⏰ Age: ${ageHours.toFixed(1)} hours`);
+    
+    if (ageHours > 24) {
+      console.warn('⚠️  Backup is older than 24 hours');
+    }
+    
+    console.log('✅ Backup verification passed');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Verification failed:', error);
+    throw error;
+  }
+}
+
+verifyBackup().catch(console.error);
+```
+
+4. UPDATE FILE: package.json
+
+Add these scripts to the "scripts" section:
+
+```json
+{
+  "scripts": {
+    "backup:db": "tsx script/backup-database.ts",
+    "restore:db": "tsx script/restore-database.ts",
+    "verify:backup": "tsx script/verify-backup.ts"
+  }
+}
+```
+
+5. UPDATE FILE: .gitignore
+
+Add:
+
+```
+/backups
+*.sql
+*.sql.gz
+```
+
+6. ADD TO AdminDashboard.tsx
+
+Add this component inside the AdminDashboard:
+
+```typescript
+const BackupPanel = () => {
+  const [lastBackup, setLastBackup] = useState<{ time: string; size: string } | null>(null);
+  
+  const runBackup = async () => {
+    setLoading('backup');
+    addLog('Starting database backup...');
+    
+    try {
+      const res = await fetch('/api/admin/backup', { method: 'POST' });
+      const data = await res.json();
+      
+      setLastBackup(data.backup);
+      addLog(`✅ Backup created: ${data.backup.file}`);
+      showToast('Database backed up successfully', 'success');
+    } catch (error) {
+      addLog(`❌ Backup failed: ${error}`);
+      showToast('Backup failed', 'error');
+    } finally {
+      setLoading(null);
+    }
+  };
+  
+  return (
+    <div className="p-6 border border-green-500/30 rounded-xl">
+      <h3 className="text-xl font-bold mb-4">💾 Database Backups</h3>
+      
+      {lastBackup && (
+        <div className="mb-4 p-3 bg-black/40 rounded">
+          <div className="text-sm text-gray-400">Last Backup:</div>
+          <div className="text-white">{lastBackup.time}</div>
+          <div className="text-xs text-gray-500">Size: {lastBackup.size}</div>
+        </div>
+      )}
+      
+      <Button onClick={runBackup} disabled={loading === 'backup'} className="w-full bg-green-500">
+        <Database className="mr-2" size={16} />
+        Backup Now
+      </Button>
+    </div>
+  );
+};
+```
+
+7. ADD API ENDPOINT in server/routes.ts
+
+```typescript
+app.post('/api/admin/backup', isAdmin, async (req, res) => {
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    
+    await execAsync('npm run backup:db');
+    
+    res.json({ success: true, message: 'Backup created' });
+  } catch (error) {
+    res.status(500).json({ error: 'Backup failed' });
+  }
+});
+```
+
+VERIFICATION STEPS:
+1. Run in terminal: npm run backup:db
+2. Check /backups folder for .sql.gz file
+3. Run: npm run verify:backup (should pass)
+4. Open Admin Dashboard → Click "Backup Now"
+5. Verify new backup created
+
+This creates automated backups protecting against data loss.
+
+===================== COPY TO HERE =====================
+```
+
+**After completing**:
+- [ ] Backup script runs successfully
+- [ ] `/backups` folder contains .sql.gz file
+- [ ] Verify script passes
+- [ ] Admin dashboard shows backup button
+
+---
+
+## ✅ PROMPT 1.2: Transaction Receipt Storage
+
+**Priority**: 🔴 CRITICAL  
+**Time**: 2 hours  
+**Dependencies**: Prompt 1.1 complete
+
+```
+===================== COPY FROM HERE =====================
+
+Create a comprehensive transaction receipt storage system that logs every financial transaction for audit trail and tax reporting.
+
+REQUIREMENTS:
+
+1. UPDATE FILE: shared/schema.ts
+
+Add this table definition after existing tables:
+
+```typescript
+export const transactionReceipts = pgTable('transaction_receipts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  transactionType: text('transaction_type').notNull(), // 'mint', 'buy', 'sell', 'offer_made', 'offer_accepted', 'listing'
+  transactionHash: text('transaction_hash').notNull().unique(),
+  tokenId: integer('token_id'),
+  amount: text('amount'), // Store as string to preserve precision
+  gasUsed: text('gas_used'),
+  gasPrice: text('gas_price'),
+  blockNumber: integer('block_number'),
+  status: text('status').notNull().default('pending'), // 'pending', 'confirmed', 'failed'
+  fromAddress: text('from_address'),
+  toAddress: text('to_address'),
+  platformFee: text('platform_fee'),
+  royaltyFee: text('royalty_fee'),
+  metadata: text('metadata').$type<string>(), // JSON string
+  createdAt: timestamp('created_at').defaultNow(),
+  confirmedAt: timestamp('confirmed_at'),
+});
+
+export type TransactionReceipt = typeof transactionReceipts.$inferSelect;
+export type InsertTransactionReceipt = typeof transactionReceipts.$inferInsert;
+```
+
+2. RUN DATABASE MIGRATION
+
+After adding the table, run:
+
+```bash
+npm run db:push
+```
+
+3. ADD DATABASE METHODS in server/storage.ts
+
+Add these methods to the DatabaseStorage class:
+
+```typescript
+async createTransactionReceipt(data: InsertTransactionReceipt): Promise<TransactionReceipt> {
+  const [receipt] = await db.insert(transactionReceipts).values(data).returning();
+  return receipt;
+}
+
+async updateTransactionStatus(
+  txHash: string, 
+  status: 'confirmed' | 'failed', 
+  blockNumber?: number,
+  gasUsed?: string,
+  gasPrice?: string
+): Promise<void> {
+  await db.update(transactionReceipts)
+    .set({ 
+      status, 
+      blockNumber, 
+      gasUsed,
+      gasPrice,
+      confirmedAt: new Date() 
+    })
+    .where(eq(transactionReceipts.transactionHash, txHash));
+}
+
+async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | undefined> {
+  const [receipt] = await db.select()
+    .from(transactionReceipts)
+    .where(eq(transactionReceipts.transactionHash, txHash));
+  return receipt;
+}
+
+async getUserTransactionHistory(
+  walletAddress: string, 
+  limit: number = 50
+): Promise<TransactionReceipt[]> {
+  return db.select()
+    .from(transactionReceipts)
+    .where(eq(transactionReceipts.walletAddress, walletAddress.toLowerCase()))
+    .orderBy(desc(transactionReceipts.createdAt))
+    .limit(limit);
+}
+
+async exportUserTransactionsCSV(walletAddress: string): Promise<string> {
+  const receipts = await this.getUserTransactionHistory(walletAddress, 1000);
+  
+  // CSV header
+  let csv = 'Date,Type,Amount,Gas,Status,TX Hash,Token ID\n';
+  
+  // CSV rows
+  for (const receipt of receipts) {
+    csv += `${receipt.createdAt?.toISOString()},`;
+    csv += `${receipt.transactionType},`;
+    csv += `${receipt.amount || '0'},`;
+    csv += `${receipt.gasUsed || '0'},`;
+    csv += `${receipt.status},`;
+    csv += `${receipt.transactionHash},`;
+    csv += `${receipt.tokenId || ''}\n`;
+  }
+  
+  return csv;
+}
+```
+
+4. ADD API ENDPOINTS in server/routes.ts
+
+```typescript
+// Create transaction receipt
+app.post('/api/transactions/receipt', async (req, res) => {
+  try {
+    const receipt = await storage.createTransactionReceipt(req.body);
+    res.json({ receipt });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create receipt' });
+  }
+});
+
+// Update transaction status
+app.put('/api/transactions/receipt/:hash', async (req, res) => {
+  try {
+    const { status, blockNumber, gasUsed, gasPrice } = req.body;
+    await storage.updateTransactionStatus(
+      req.params.hash, 
+      status, 
+      blockNumber,
+      gasUsed,
+      gasPrice
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update receipt' });
+  }
+});
+
+// Get single receipt
+app.get('/api/transactions/receipt/:hash', async (req, res) => {
+  try {
+    const receipt = await storage.getTransactionReceipt(req.params.hash);
+    if (!receipt) {
+      return res.status(404).json({ error: 'Receipt not found' });
+    }
+    res.json({ receipt });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get receipt' });
+  }
+});
+
+// Get user transaction history
+app.get('/api/transactions/history/:address', async (req, res) => {
+  try {
+    const history = await storage.getUserTransactionHistory(req.params.address);
+    res.json({ history });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get history' });
+  }
+});
+
+// Export transactions as CSV
+app.get('/api/transactions/export/:address/csv', async (req, res) => {
+  try {
+    const csv = await storage.exportUserTransactionsCSV(req.params.address);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=transactions-${req.params.address}.csv`);
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export' });
+  }
+});
+```
+
+5. INTEGRATE IN client/src/hooks/useMint.ts
+
+After successful mint, add:
+
+```typescript
+// After tx is sent, store receipt
+await fetch('/api/transactions/receipt', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    walletAddress: address,
+    transactionType: 'mint',
+    transactionHash: tx.hash,
+    amount: (quantity * MINT_PRICE).toString(),
+    status: 'pending',
+    tokenId: null, // Will be updated after confirmation
+  })
+});
+
+// After tx.wait()
+const receipt = await tx.wait();
+
+// Update receipt with confirmation
+await fetch(`/api/transactions/receipt/${tx.hash}`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    status: 'confirmed',
+    blockNumber: receipt.blockNumber,
+    gasUsed: receipt.gasUsed.toString(),
+    gasPrice: receipt.gasPrice?.toString(),
+  })
+});
+```
+
+6. CREATE FILE: client/src/pages/TransactionHistory.tsx
+
+```typescript
+import { useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export function TransactionHistory() {
+  const { address } = useAccount();
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (address) {
+      fetch(`/api/transactions/history/${address}`)
+        .then(res => res.json())
+        .then(data => {
+          setHistory(data.history);
+          setLoading(false);
+        });
+    }
+  }, [address]);
+  
+  const downloadCSV = () => {
+    window.open(`/api/transactions/export/${address}/csv`, '_blank');
+  };
+  
+  if (!address) {
+    return <div>Connect wallet to view transaction history</div>;
+  }
+  
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Transaction History</h2>
+        <Button onClick={downloadCSV} variant="outline">
+          <Download size={16} className="mr-2" />
+          Export CSV
+        </Button>
+      </div>
+      
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left p-3">Date</th>
+                <th className="text-left p-3">Type</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">TX Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((tx) => (
+                <tr key={tx.id} className="border-b border-white/5">
+                  <td className="p-3">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                  <td className="p-3">{tx.transactionType}</td>
+                  <td className="p-3">{tx.amount} $BASED</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      tx.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                      tx.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <a 
+                      href={`https://explorer.bf1337.org/tx/${tx.transactionHash}`}
+                      target="_blank"
+                      className="text-cyan-400 hover:underline"
+                    >
+                      {tx.transactionHash.slice(0, 10)}...
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+7. ADD ROUTE in client/src/App.tsx
+
+```typescript
+import TransactionHistory from "@/pages/TransactionHistory";
+
+// In Router component:
+<Route path="/transactions" component={TransactionHistory} />
+```
+
+VERIFICATION:
+1. Mint an NFT
+2. Check database: SELECT * FROM transaction_receipts;
+3. Navigate to /transactions
+4. See mint transaction in history
+5. Click "Export CSV" → Download works
+6. Verify CSV contains correct data
+
+This provides full audit trail for all transactions.
+
+===================== COPY TO HERE =====================
+```
+
+**After completing**:
+- [ ] Table created in database
+- [ ] Receipt created when minting
+- [ ] Transaction history page works
+- [ ] CSV export downloads correctly
+
+---
+
+*[Continue with remaining 25 prompts in same format...]*
+
+---
+
+Would you like me to continue with all remaining 25 prompts in this same copy-paste format? This file will be quite long (100+ pages) but will have EVERY prompt ready to copy-paste in order.
