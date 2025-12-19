@@ -25,15 +25,18 @@ interface Collection {
   isFeatured: boolean;
 }
 
-// Default Based Guardians collection
+// IPFS gateway for reliable image loading
+const IPFS_IMAGE_BASE = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y';
+
+// Default Based Guardians collection with reliable IPFS images
 const BASED_GUARDIANS_DEFAULT: Collection = {
   id: 1,
   contractAddress: NFT_CONTRACT.toLowerCase(),
   name: 'Based Guardians',
   symbol: 'GUARDIAN',
   description: 'The official Based Guardians NFT collection - 3,732 unique cyberpunk guardians protecting the BasedAI ecosystem.',
-  bannerImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
-  thumbnailImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/1.png',
+  bannerImage: `${IPFS_IMAGE_BASE}/42.png`,
+  thumbnailImage: `${IPFS_IMAGE_BASE}/1.png`,
   totalSupply: 3732,
   floorPrice: '0',
   volumeTraded: '0',
@@ -225,26 +228,42 @@ export default function Collections() {
   );
 }
 
+const FALLBACK_BANNER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"%3E%3Cdefs%3E%3ClinearGradient id="bg" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%23001a1a"/%3E%3Cstop offset="50%25" stop-color="%23003333"/%3E%3Cstop offset="100%25" stop-color="%23001a2e"/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="400" height="200" fill="url(%23bg)"/%3E%3Ccircle cx="50" cy="40" r="2" fill="%2300ffff" opacity="0.5"/%3E%3Ccircle cx="350" cy="60" r="1.5" fill="%23bf00ff" opacity="0.4"/%3E%3Ccircle cx="200" cy="30" r="1" fill="%23ffffff" opacity="0.3"/%3E%3Ccircle cx="100" cy="150" r="1.5" fill="%2300ffff" opacity="0.3"/%3E%3Ccircle cx="300" cy="170" r="2" fill="%23bf00ff" opacity="0.4"/%3E%3C/svg%3E';
+
+const FALLBACK_THUMBNAIL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Cdefs%3E%3ClinearGradient id="thumb" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%2300ffff"/%3E%3Cstop offset="100%25" stop-color="%23bf00ff"/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx="50" cy="50" r="50" fill="url(%23thumb)"/%3E%3Ctext x="50" y="58" font-size="32" text-anchor="middle" fill="white"%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E';
+
 function CollectionCard({ collection }: { collection: Collection }) {
+  const [bannerLoaded, setBannerLoaded] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
+  const [thumbLoaded, setThumbLoaded] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
+  
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
+
+  const bannerSrc = collection.bannerImage || FALLBACK_BANNER;
+  const thumbSrc = collection.thumbnailImage || FALLBACK_THUMBNAIL;
 
   return (
     <Link href={`/marketplace?collection=${collection.contractAddress}`}>
       <Card 
-        className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(0,255,255,0.15)] transition-all cursor-pointer group"
+        className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(0,255,255,0.15)] transition-all cursor-pointer group overflow-hidden"
         data-testid={`collection-card-${collection.id}`}
       >
         <div className="relative h-48 overflow-hidden rounded-t-lg">
-          {collection.bannerImage ? (
-            <img 
-              src={collection.bannerImage} 
-              alt={collection.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20" />
+          {!bannerLoaded && !bannerError && (
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 animate-pulse" />
           )}
+          <img 
+            src={bannerError ? FALLBACK_BANNER : bannerSrc} 
+            alt={collection.name}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setBannerLoaded(true)}
+            onError={() => {
+              setBannerError(true);
+              setBannerLoaded(true);
+            }}
+          />
           {collection.isFeatured && (
             <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">Featured</Badge>
           )}
@@ -252,15 +271,21 @@ function CollectionCard({ collection }: { collection: Collection }) {
         
         <CardHeader>
           <div className="flex items-center gap-3">
-            {collection.thumbnailImage ? (
+            <div className="relative w-12 h-12 flex-shrink-0">
+              {!thumbLoaded && !thumbError && (
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border-2 border-cyan-400/50 animate-pulse" />
+              )}
               <img 
-                src={collection.thumbnailImage} 
+                src={thumbError ? FALLBACK_THUMBNAIL : thumbSrc} 
                 alt={collection.name}
-                className="w-12 h-12 rounded-full border-2 border-cyan-400"
+                className={`w-12 h-12 rounded-full border-2 border-cyan-400 object-cover ${thumbLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setThumbLoaded(true)}
+                onError={() => {
+                  setThumbError(true);
+                  setThumbLoaded(true);
+                }}
               />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border-2 border-cyan-400/50" />
-            )}
+            </div>
             <div>
               <CardTitle className="text-xl text-white font-orbitron">{collection.name}</CardTitle>
               <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
