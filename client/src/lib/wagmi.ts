@@ -86,9 +86,9 @@ export const config = getDefaultConfig({
   chains: [basedL1],
   transports: {
     [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
-      timeout: 30000,
-      retryCount: 5,
-      retryDelay: 1500,
+      timeout: 5000,
+      retryCount: 2,
+      retryDelay: 500,
     }),
   },
   ssr: false,

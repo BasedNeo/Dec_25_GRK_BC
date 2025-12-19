@@ -254,9 +254,45 @@ function WelcomeExperienceWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const [appReady, setAppReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  
   useEffect(() => {
     initAnalytics();
   }, []);
+  
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!appReady) {
+        setLoadError('App initialization timeout. Please refresh.');
+      }
+    }, 10000);
+    
+    const initTimer = setTimeout(() => {
+      setAppReady(true);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(initTimer);
+    };
+  }, [appReady]);
+  
+  if (!appReady && !loadError) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">🛸</div>
+          <div className="text-white font-orbitron text-xl">Loading...</div>
+          <div className="text-gray-500 text-sm mt-2">Connecting to the Giga Brain Galaxy</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (loadError) {
+    return <GlobalErrorFallback />;
+  }
 
   return (
     <ErrorBoundary fallback={<GlobalErrorFallback />}>

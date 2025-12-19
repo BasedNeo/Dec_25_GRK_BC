@@ -16,10 +16,21 @@ export function HealthCheckBanner() {
   const [health, setHealth] = useState<HealthStatus>({ rpc: 'checking', contracts: 'checking' });
   const [dismissed, setDismissed] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const isAdmin = isConnected && address && ADMIN_WALLETS.some(
     admin => admin.toLowerCase() === address.toLowerCase()
   );
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setInitialLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(delay);
+  }, []);
+
+  if (initialLoading) return null;
 
   const checkHealth = async () => {
     setHealth({ rpc: 'checking', contracts: 'checking' });
