@@ -25,8 +25,8 @@ interface Collection {
   isFeatured: boolean;
 }
 
-// IPFS gateway for reliable image loading
-const IPFS_IMAGE_BASE = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y';
+// IPFS gateway for reliable image loading (this CID is for actual images, not metadata)
+const IPFS_IMAGE_BASE = 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeif47552u34c3r46iy3p26h7j3a7b63d333p4m4r4v3r4b6x3d3d3y';
 
 // Default Based Guardians collection with reliable IPFS images
 const BASED_GUARDIANS_DEFAULT: Collection = {
