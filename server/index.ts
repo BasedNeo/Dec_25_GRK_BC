@@ -120,6 +120,35 @@ app.use(decryptSensitiveRequest);
   const { BackupScheduler } = await import('./lib/backupScheduler');
   BackupScheduler.initialize();
 
+  // Initialize collection sync on startup if needed
+  (async () => {
+    try {
+      const { CollectionSync } = await import('./lib/collectionSync');
+      const needsSync = await CollectionSync.needsSync();
+      if (needsSync) {
+        log('Collections need sync, starting background sync...');
+        CollectionSync.syncAll().catch(err => 
+          console.error('[Server] Background sync failed:', err)
+        );
+      } else {
+        log('Collections are up to date');
+      }
+    } catch (error) {
+      console.error('[Server] Failed to check collection sync status:', error);
+    }
+  })();
+
+  // Set up hourly collection sync
+  setInterval(async () => {
+    try {
+      log('Running scheduled collection sync...');
+      const { CollectionSync } = await import('./lib/collectionSync');
+      await CollectionSync.syncAll();
+    } catch (error) {
+      console.error('[Server] Scheduled sync failed:', error);
+    }
+  }, 60 * 60 * 1000);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

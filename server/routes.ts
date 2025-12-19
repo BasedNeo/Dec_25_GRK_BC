@@ -2234,6 +2234,23 @@ export async function registerRoutes(
     }
   });
 
+  // Trigger collection sync (admin only)
+  app.post('/api/collections/sync', async (req, res) => {
+    try {
+      const walletAddress = req.headers['x-wallet-address'] as string;
+      if (!walletAddress || !ADMIN_WALLETS.includes(walletAddress.toLowerCase())) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      
+      const { CollectionSync } = await import('./lib/collectionSync');
+      const results = await CollectionSync.syncAll();
+      res.json({ success: true, results });
+    } catch (error: any) {
+      console.error('[API] Sync failed:', error);
+      res.status(500).json({ error: 'Sync failed' });
+    }
+  });
+
   app.get('/api/collections/:address', async (req, res) => {
     try {
       const collection = await CollectionService.getCollection(req.params.address);
