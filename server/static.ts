@@ -21,10 +21,23 @@ export function serveStatic(app: Express) {
     next();
   });
 
-  // Serve static files with caching
+  // Serve static files with aggressive caching
   app.use(express.static(distPath, {
-    maxAge: '1d',
-    etag: true
+    maxAge: '1y',
+    etag: true,
+    lastModified: true,
+    immutable: true,
+    setHeaders: (res, filepath) => {
+      if (filepath.endsWith('.js') || filepath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      if (filepath.match(/\.(jpg|jpeg|png|gif|svg|webp|ico)$/)) {
+        res.setHeader('Cache-Control', 'public, max-age=2592000');
+      }
+      if (filepath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
   }));
 
   // Fast fallthrough to index.html using pre-loaded content
