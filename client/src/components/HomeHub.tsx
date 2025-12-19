@@ -80,14 +80,14 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'purple'
     },
     { 
-      id: 'game', 
+      id: 'games', 
       label: t('hub.gameLabel', 'Arcade'), 
       icon: Rocket, 
       description: t('hub.gameDesc', 'The Based Odyssey arcade'),
       color: 'from-orange-500 to-red-500',
       glow: 'orange',
       isRoute: true,
-      route: '/game'
+      route: '/games'
     },
     { 
       id: 'voting', 
