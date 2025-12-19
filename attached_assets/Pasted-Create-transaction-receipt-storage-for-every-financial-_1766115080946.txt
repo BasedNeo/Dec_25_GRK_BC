@@ -1,0 +1,329 @@
+Create transaction receipt storage for every financial operation (audit trail + tax reporting).
+
+STEP 1: ADD DATABASE TABLE
+
+1. UPDATE FILE: shared/schema.ts
+
+Add after existing tables:
+
+```typescript
+export const transactionReceipts = pgTable('transaction_receipts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  transactionType: text('transaction_type').notNull(),
+  transactionHash: text('transaction_hash').notNull().unique(),
+  tokenId: integer('token_id'),
+  amount: text('amount'),
+  gasUsed: text('gas_used'),
+  gasPrice: text('gas_price'),
+  blockNumber: integer('block_number'),
+  status: text('status').notNull().default('pending'),
+  fromAddress: text('from_address'),
+  toAddress: text('to_address'),
+  platformFee: text('platform_fee'),
+  royaltyFee: text('royalty_fee'),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+  confirmedAt: timestamp('confirmed_at'),
+});
+
+export type TransactionReceipt = typeof transactionReceipts.$inferSelect;
+export type InsertTransactionReceipt = typeof transactionReceipts.$inferInsert;
+```
+
+STEP 2: PUSH DATABASE
+
+2. RUN: npm run db:push
+
+STEP 3: ADD DATABASE METHODS
+
+3. UPDATE FILE: server/storage.ts
+
+Add imports:
+```typescript
+import { transactionReceipts, type TransactionReceipt, type InsertTransactionReceipt } from "@shared/schema";
+```
+
+Add methods:
+
+```typescript
+async createTransactionReceipt(data: InsertTransactionReceipt): Promise<TransactionReceipt> {
+  const [receipt] = await db.insert(transactionReceipts).values({
+    ...data,
+    walletAddress: data.walletAddress.toLowerCase()
+  }).returning();
+  return receipt;
+}
+
+async updateTransactionStatus(txHash: string, status: 'confirmed' | 'failed', updates: any = {}): Promise<void> {
+  await db.update(transactionReceipts)
+    .set({ status, ...updates, confirmedAt: new Date() })
+    .where(eq(transactionReceipts.transactionHash, txHash));
+}
+
+async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | undefined> {
+  const [receipt] = await db.select()
+    .from(transactionReceipts)
+    .where(eq(transactionReceipts.transactionHash, txHash));
+  return receipt;
+}
+
+async getUserTransactionHistory(walletAddress: string, limit: number = 50): Promise<TransactionReceipt[]> {
+  return db.select()
+    .from(transactionReceipts)
+    .where(eq(transactionReceipts.walletAddress, walletAddress.toLowerCase()))
+    .orderBy(desc(transactionReceipts.createdAt))
+    .limit(limit);
+}
+
+async exportUserTransactionsCSV(walletAddress: string): Promise<string> {
+  const receipts = await this.getUserTransactionHistory(walletAddress, 1000);
+  
+  let csv = 'Date,Type,Amount,Gas,Status,TX Hash,Token ID\n';
+  
+  for (const receipt of receipts) {
+    const date = receipt.createdAt ? new Date(receipt.createdAt).toISOString() : '';
+    csv += `${date},${receipt.transactionType},${receipt.amount || '0'},${receipt.gasUsed || '0'},${receipt.status},${receipt.transactionHash},${receipt.tokenId || ''}\n`;
+  }
+  
+  return csv;
+}
+```
+
+STEP 4: ADD API ENDPOINTS
+
+4. UPDATE FILE: server/routes.ts
+
+Add:
+
+```typescript
+app.post('/api/transactions/receipt', async (req, res) => {
+  try {
+    const receipt = await storage.createTransactionReceipt(req.body);
+    res.json({ receipt });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/transactions/receipt/:hash', async (req, res) => {
+  try {
+    const { status, blockNumber, gasUsed, gasPrice } = req.body;
+    await storage.updateTransactionStatus(req.params.hash, status, { blockNumber, gasUsed, gasPrice });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/transactions/history/:address', async (req, res) => {
+  try {
+    const history = await storage.getUserTransactionHistory(req.params.address);
+    res.json({ history });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/transactions/export/:address/csv', async (req, res) => {
+  try {
+    const csv = await storage.exportUserTransactionsCSV(req.params.address);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=transactions-${req.params.address}.csv`);
+    res.send(csv);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+STEP 5: CREATE RECEIPT LOGGER
+
+5. CREATE FILE: client/src/lib/receiptLogger.ts
+
+```typescript
+export async function logTransactionReceipt(data: any) {
+  try {
+    await fetch('/api/transactions/receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, status: 'pending' })
+    });
+  } catch (error) {
+    console.error('[RECEIPT] Failed to log:', error);
+  }
+}
+
+export async function updateTransactionReceipt(txHash: string, receipt: any) {
+  try {
+    await fetch(`/api/transactions/receipt/${txHash}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'confirmed',
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed?.toString(),
+        gasPrice: receipt.gasPrice?.toString(),
+      })
+    });
+  } catch (error) {
+    console.error('[RECEIPT] Failed to update:', error);
+  }
+}
+```
+
+STEP 6: INTEGRATE IN MINTING
+
+6. UPDATE FILE: client/src/hooks/useMint.ts
+
+Add import:
+```typescript
+import { logTransactionReceipt, updateTransactionReceipt } from '@/lib/receiptLogger';
+```
+
+After sending transaction:
+
+```typescript
+// Log receipt
+await logTransactionReceipt({
+  walletAddress: address,
+  transactionType: 'mint',
+  transactionHash: tx.hash,
+  amount: (quantity * 69420).toString(),
+});
+
+// Wait for confirmation
+const receipt = await tx.wait();
+
+// Update receipt
+await updateTransactionReceipt(tx.hash, receipt);
+```
+
+STEP 7: CREATE HISTORY PAGE
+
+7. CREATE FILE: client/src/pages/TransactionHistory.tsx
+
+```typescript
+import { useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
+import { Download, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export default function TransactionHistory() {
+  const { address } = useAccount();
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (address) {
+      fetch(`/api/transactions/history/${address}`)
+        .then(res => res.json())
+        .then(data => { setHistory(data.history || []); setLoading(false); })
+        .catch(() => setLoading(false));
+    }
+  }, [address]);
+  
+  const downloadCSV = () => {
+    window.open(`/api/transactions/export/${address}/csv`, '_blank');
+  };
+  
+  if (!address) {
+    return <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white">Connect wallet to view history</div>
+    </div>;
+  }
+  
+  return (
+    <div className="min-h-screen bg-black pt-24 pb-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-white font-orbitron">Transaction History</h1>
+          <Button onClick={downloadCSV} variant="outline">
+            <Download size={16} className="mr-2" />
+            Export CSV
+          </Button>
+        </div>
+        
+        {loading ? (
+          <div className="text-center text-white">Loading...</div>
+        ) : history.length === 0 ? (
+          <div className="text-center text-gray-400">No transactions yet</div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left p-4 text-gray-400">Date</th>
+                <th className="text-left p-4 text-gray-400">Type</th>
+                <th className="text-left p-4 text-gray-400">Amount</th>
+                <th className="text-left p-4 text-gray-400">Status</th>
+                <th className="text-left p-4 text-gray-400">TX Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((tx) => (
+                <tr key={tx.id} className="border-b border-white/5">
+                  <td className="p-4 text-white">{new Date(tx.createdAt).toLocaleString()}</td>
+                  <td className="p-4"><span className="px-2 py-1 rounded text-xs bg-cyan-500/20 text-cyan-400">{tx.transactionType}</span></td>
+                  <td className="p-4 text-white">{tx.amount} $BASED</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      tx.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                      tx.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>{tx.status}</span>
+                  </td>
+                  <td className="p-4">
+                    <a href={`https://explorer.bf1337.org/tx/${tx.transactionHash}`} target="_blank" className="text-cyan-400 flex items-center gap-1">
+                      {tx.transactionHash.slice(0, 10)}...<ExternalLink size={12} />
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+STEP 8: ADD ROUTE
+
+8. UPDATE FILE: client/src/App.tsx
+
+Add import and route:
+
+```typescript
+import TransactionHistory from "@/pages/TransactionHistory";
+
+<Route path="/transactions" component={TransactionHistory} />
+```
+
+VERIFICATION:
+1. Mint an NFT
+2. Check database: SELECT * FROM transaction_receipts;
+3. Navigate to /transactions
+4. See transaction in history
+5. Click Export CSV
+6. Verify CSV downloads
+
+===================== COPY TO HERE =====================
+```
+
+**Checklist**:
+- [ ] Table created
+- [ ] Receipt logged when minting
+- [ ] History page shows transactions
+- [ ] CSV export works
+
+---
+
+*[Continue with prompts 1.3 through 1.8 - each in same complete format]*
+
+Due to character limits, would you like me to:
+1. **Continue in this file** with prompts 1.3-1.8?
+2. **Create a separate continuation file** for the rest of Phase 1?
+
+Let me know and I'll provide ALL 8 prompts complete!
+
