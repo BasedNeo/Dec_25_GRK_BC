@@ -74,7 +74,10 @@ const ADMIN_WALLETS = [
   "0xb1362caf09189887599ed40f056712b1a138210c",
   "0xabce9e63a9ae51e215bb10c9648f4c0f400c5847",
   "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
-  "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af"
+  "0xc5ca5cb0acf8f7d4c6cd307d0d875ee2e09fb1af",
+  "0x9392b6a9d78a52aefeaf1122121cfc09e98cbcf4",
+  "0x3a0f4636c99a644a5d30d710cc3ef72e77b64dc7",
+  "0x76ca648359e118687fc0a2fd53a3c29e2c71570f"
 ];
 
 // Admin nonce configuration for EIP-191 signature verification

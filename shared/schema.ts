@@ -415,3 +415,15 @@ export const searchHistory = pgTable('search_history', {
 });
 
 export type SearchHistory = typeof searchHistory.$inferSelect;
+
+// Admin authentication attempts for password protection with lockout
+export const adminAuthAttempts = pgTable('admin_auth_attempts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  attemptCount: integer('attempt_count').default(0).notNull(),
+  lastAttemptAt: timestamp('last_attempt_at').notNull(),
+  lockedUntil: timestamp('locked_until'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type AdminAuthAttempt = typeof adminAuthAttempts.$inferSelect;

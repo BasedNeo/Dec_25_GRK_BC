@@ -1,0 +1,653 @@
+IMPLEMENT SECURE ADMIN DASHBOARD ACCESS - ALL ADMIN WALLETS
+
+REQUIREMENT: Add password protection (97086) to admin dashboard for ALL admin wallets. Add 3 NEW admin wallets to the existing list. Users get 4 attempts, failed attempts lock wallet out for 30 days.
+
+NEW Admin Wallets to ADD:
+- 0x9392b6A9d78A52AeFeaf1122121cfC09E98cBcF4
+- 0x3a0f4636C99A644a5D30D710Cc3eF72E77B64Dc7
+- 0x76CA648359E118687Fc0a2Fd53a3c29E2c71570f
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: UPDATE ADMIN WALLET LIST - ADD NEW WALLETS
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/constants.ts
+
+Find the existing ADMIN_ADDRESSES array and ADD the 3 new wallets:
+
+// FIND the existing array (might look like this):
+export const ADMIN_ADDRESSES: string[] = [
+  // ... existing wallets here
+];
+
+// UPDATE TO ADD the 3 new wallets at the end:
+export const ADMIN_ADDRESSES: string[] = [
+  // Keep ALL existing addresses here - DO NOT REMOVE ANY!
+  // Then ADD these 3 new ones:
+  '0x9392b6A9d78A52AeFeaf1122121cfC09E98cBcF4',
+  '0x3a0f4636C99A644a5D30D710Cc3eF72E77B64Dc7',
+  '0x76CA648359E118687Fc0a2Fd53a3c29E2c71570f'
+].map(addr => addr.toLowerCase());
+
+// Also add this helper function if it doesn't exist:
+export const isAdminAddress = (address: string | undefined): boolean => {
+  if (!address) return false;
+  return ADMIN_ADDRESSES.includes(address.toLowerCase());
+};
+
+IMPORTANT: Do NOT remove any existing admin wallet addresses. Only ADD the 3 new ones to the existing list.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CREATE DATABASE TABLE FOR ADMIN AUTH ATTEMPTS
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: shared/schema.ts
+
+Add new table for tracking admin authentication (if it doesn't already exist):
+
+export const adminAuthAttempts = pgTable('admin_auth_attempts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  attemptCount: integer('attempt_count').default(0).notNull(),
+  lastAttemptAt: timestamp('last_attempt_at').notNull(),
+  lockedUntil: timestamp('locked_until'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
+2. Push to database:
+
+npm run db:push
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: CREATE ADMIN AUTH SERVICE
+═══════════════════════════════════════════════════════════════════
+
+1. CREATE FILE: server/lib/adminAuth.ts
+
+import { db } from '../db';
+import { adminAuthAttempts } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const CORRECT_PASSWORD = '97086';
+const MAX_ATTEMPTS = 4;
+const LOCKOUT_DAYS = 30;
+
+export class AdminAuthService {
+  static async checkIfLocked(walletAddress: string): Promise<{
+    isLocked: boolean;
+    lockedUntil?: Date;
+    remainingAttempts?: number;
+  }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    
+    const records = await db
+      .select()
+      .from(adminAuthAttempts)
+      .where(eq(adminAuthAttempts.walletAddress, normalizedAddress))
+      .limit(1);
+    
+    if (records.length === 0) {
+      return { isLocked: false, remainingAttempts: MAX_ATTEMPTS };
+    }
+    
+    const record = records[0];
+    
+    // Check if locked and lock period hasn't expired
+    if (record.lockedUntil && record.lockedUntil > new Date()) {
+      return {
+        isLocked: true,
+        lockedUntil: record.lockedUntil,
+      };
+    }
+    
+    // Lock expired, reset attempts
+    if (record.lockedUntil && record.lockedUntil <= new Date()) {
+      await db
+        .update(adminAuthAttempts)
+        .set({
+          attemptCount: 0,
+          lockedUntil: null,
+          lastAttemptAt: new Date(),
+        })
+        .where(eq(adminAuthAttempts.walletAddress, normalizedAddress));
+      
+      return { isLocked: false, remainingAttempts: MAX_ATTEMPTS };
+    }
+    
+    const remainingAttempts = MAX_ATTEMPTS - record.attemptCount;
+    return { isLocked: false, remainingAttempts: Math.max(0, remainingAttempts) };
+  }
+  
+  static async verifyPassword(
+    walletAddress: string,
+    password: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    remainingAttempts?: number;
+    lockedUntil?: Date;
+  }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    
+    // Check if locked
+    const lockStatus = await this.checkIfLocked(normalizedAddress);
+    if (lockStatus.isLocked) {
+      return {
+        success: false,
+        message: `Access locked until ${lockStatus.lockedUntil?.toLocaleString()}`,
+        lockedUntil: lockStatus.lockedUntil,
+      };
+    }
+    
+    // Verify password
+    if (password === CORRECT_PASSWORD) {
+      // Success - reset attempts
+      await db
+        .delete(adminAuthAttempts)
+        .where(eq(adminAuthAttempts.walletAddress, normalizedAddress));
+      
+      return {
+        success: true,
+        message: 'Access granted',
+      };
+    }
+    
+    // Failed attempt - increment counter
+    const records = await db
+      .select()
+      .from(adminAuthAttempts)
+      .where(eq(adminAuthAttempts.walletAddress, normalizedAddress))
+      .limit(1);
+    
+    let newAttemptCount = 1;
+    
+    if (records.length === 0) {
+      // First failed attempt
+      await db.insert(adminAuthAttempts).values({
+        walletAddress: normalizedAddress,
+        attemptCount: 1,
+        lastAttemptAt: new Date(),
+        lockedUntil: null,
+      });
+    } else {
+      // Increment attempts
+      newAttemptCount = records[0].attemptCount + 1;
+      
+      // Check if should lock (4th failed attempt)
+      if (newAttemptCount >= MAX_ATTEMPTS) {
+        const lockoutDate = new Date();
+        lockoutDate.setDate(lockoutDate.getDate() + LOCKOUT_DAYS);
+        
+        await db
+          .update(adminAuthAttempts)
+          .set({
+            attemptCount: newAttemptCount,
+            lastAttemptAt: new Date(),
+            lockedUntil: lockoutDate,
+          })
+          .where(eq(adminAuthAttempts.walletAddress, normalizedAddress));
+        
+        return {
+          success: false,
+          message: `Too many failed attempts. Access locked for ${LOCKOUT_DAYS} days.`,
+          remainingAttempts: 0,
+          lockedUntil: lockoutDate,
+        };
+      } else {
+        await db
+          .update(adminAuthAttempts)
+          .set({
+            attemptCount: newAttemptCount,
+            lastAttemptAt: new Date(),
+          })
+          .where(eq(adminAuthAttempts.walletAddress, normalizedAddress));
+      }
+    }
+    
+    const remaining = MAX_ATTEMPTS - newAttemptCount;
+    return {
+      success: false,
+      message: `Incorrect password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`,
+      remainingAttempts: remaining,
+    };
+  }
+  
+  // Admin can view all locked wallets
+  static async getAllLockedWallets() {
+    const now = new Date();
+    const locked = await db
+      .select()
+      .from(adminAuthAttempts)
+      .where(eq(adminAuthAttempts.attemptCount, MAX_ATTEMPTS))
+      .orderBy(adminAuthAttempts.lastAttemptAt);
+    
+    return locked.filter(record => 
+      record.lockedUntil && record.lockedUntil > now
+    );
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD API ENDPOINTS FOR ADMIN AUTH
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/routes.ts
+
+Add these endpoints:
+
+import { AdminAuthService } from './lib/adminAuth';
+
+// Check if wallet is locked
+app.get('/api/admin/auth/status/:walletAddress', async (req, res) => {
+  try {
+    const { walletAddress } = req.params;
+    const status = await AdminAuthService.checkIfLocked(walletAddress);
+    res.json(status);
+  } catch (error) {
+    console.error('Error checking admin lock status:', error);
+    res.status(500).json({ error: 'Failed to check status' });
+  }
+});
+
+// Verify admin password
+app.post('/api/admin/auth/verify', async (req, res) => {
+  try {
+    const { walletAddress, password } = req.body;
+    
+    if (!walletAddress || !password) {
+      return res.status(400).json({ error: 'Wallet address and password required' });
+    }
+    
+    const result = await AdminAuthService.verifyPassword(walletAddress, password);
+    
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(401).json(result);
+    }
+  } catch (error) {
+    console.error('Error verifying admin password:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// View all locked wallets (admin only)
+app.get('/api/admin/auth/locked', async (req, res) => {
+  try {
+    const locked = await AdminAuthService.getAllLockedWallets();
+    res.json(locked);
+  } catch (error) {
+    console.error('Error fetching locked wallets:', error);
+    res.status(500).json({ error: 'Failed to fetch locked wallets' });
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: CREATE ADMIN PASSWORD MODAL COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+1. CREATE FILE: client/src/components/AdminPasswordModal.tsx
+
+import { useState, useEffect } from 'react';
+import { X, Lock, AlertTriangle, Shield } from 'lucide-react';
+
+interface AdminPasswordModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  walletAddress: string;
+}
+
+export function AdminPasswordModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  walletAddress
+}: AdminPasswordModalProps) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState(4);
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && walletAddress) {
+      checkLockStatus();
+      setPassword('');
+      setError('');
+    }
+  }, [isOpen, walletAddress]);
+
+  const checkLockStatus = async () => {
+    try {
+      const res = await fetch(`/api/admin/auth/status/${walletAddress}`);
+      const data = await res.json();
+      
+      if (data.isLocked) {
+        setIsLocked(true);
+        setLockedUntil(new Date(data.lockedUntil));
+        setError(`Access locked until ${new Date(data.lockedUntil).toLocaleString()}`);
+      } else {
+        setIsLocked(false);
+        setRemainingAttempts(data.remainingAttempts || 4);
+      }
+    } catch (error) {
+      console.error('Error checking lock status:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        onSuccess();
+        setPassword('');
+        setError('');
+      } else {
+        setError(data.message);
+        if (data.remainingAttempts !== undefined) {
+          setRemainingAttempts(data.remainingAttempts);
+        }
+        if (data.lockedUntil) {
+          setIsLocked(true);
+          setLockedUntil(new Date(data.lockedUntil));
+        }
+      }
+    } catch (error) {
+      setError('Verification failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setPassword('');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Shield className="text-cyan-400" size={28} />
+            <h2 className="text-2xl font-bold text-white">Admin Access</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {isLocked ? (
+          <div className="text-center py-6">
+            <AlertTriangle className="mx-auto mb-4 text-red-400" size={48} />
+            <p className="text-red-400 mb-2 font-bold text-lg">Access Locked</p>
+            <p className="text-gray-300 text-sm mb-4">
+              Too many failed authentication attempts.
+            </p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
+              <p className="text-gray-400 text-xs font-mono">
+                Locked until: <br />
+                <span className="text-red-400 font-bold">
+                  {lockedUntil?.toLocaleString()}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <p className="text-gray-300 mb-2 text-sm">
+                Enter admin password to access the dashboard.
+              </p>
+              <p className="text-gray-500 text-xs">
+                Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter 5-digit password"
+                maxLength={5}
+                className="w-full px-4 py-3 bg-slate-900 border border-cyan-500/30 rounded-lg text-white text-center text-2xl tracking-widest placeholder-gray-600 focus:outline-none focus:border-cyan-400 transition"
+                autoFocus
+                disabled={isLoading}
+              />
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-gray-400 mb-6 px-2">
+              <div className="flex items-center gap-1">
+                <Lock size={12} />
+                <span>Attempts: {remainingAttempts}/4</span>
+              </div>
+              <span className="text-gray-500">30-day lockout after 4 fails</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || !password || password.length !== 5}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-bold shadow-lg shadow-cyan-500/20"
+              >
+                {isLoading ? 'Verifying...' : 'Verify'}
+              </button>
+            </div>
+
+            <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p className="text-xs text-amber-400 text-center">
+                ⚠️ Warning: After 4 failed attempts, this wallet will be locked out for 30 days.
+              </p>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: UPDATE NAVBAR TO SHOW ADMIN LINK WITH PASSWORD PROTECTION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/components/Navbar.tsx
+
+Add import, state, and modal:
+
+import { useState } from 'react';
+import { useAccount } from 'wagmi';
+import { useNavigate } from 'react-router-dom';
+import { Shield } from 'lucide-react';
+import { AdminPasswordModal } from './AdminPasswordModal';
+import { isAdminAddress } from '@/lib/constants';
+
+// Inside Navbar component:
+const { address } = useAccount();
+const navigate = useNavigate();
+const [showAdminModal, setShowAdminModal] = useState(false);
+const isAdmin = isAdminAddress(address);
+
+const handleAdminClick = (e: React.MouseEvent) => {
+  e.preventDefault();
+  setShowAdminModal(true);
+};
+
+const handleAdminSuccess = () => {
+  setShowAdminModal(false);
+  navigate('/admin');
+};
+
+// In the navigation section (where other nav items are):
+{isAdmin && (
+  <button
+    onClick={handleAdminClick}
+    className="flex items-center gap-2 px-4 py-2 text-cyan-400 hover:text-cyan-300 font-semibold border border-cyan-500/30 rounded-lg hover:bg-cyan-500/10 transition-all shadow-lg shadow-cyan-500/10"
+  >
+    <Shield size={18} />
+    Admin Dashboard
+  </button>
+)}
+
+// Add modal at bottom of Navbar component (before closing tag):
+<AdminPasswordModal
+  isOpen={showAdminModal}
+  onClose={() => setShowAdminModal(false)}
+  onSuccess={handleAdminSuccess}
+  walletAddress={address || ''}
+/>
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: PROTECT ADMIN DASHBOARD ROUTE
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/AdminDashboard.tsx
+
+Add protection at the top:
+
+import { useAccount } from 'wagmi';
+import { isAdminAddress } from '@/lib/constants';
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+
+export default function AdminDashboard() {
+  const { address } = useAccount();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Redirect if not admin
+    if (!address || !isAdminAddress(address)) {
+      navigate('/');
+    }
+  }, [address, navigate]);
+  
+  if (!address || !isAdminAddress(address)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">Unauthorized access</p>
+      </div>
+    );
+  }
+  
+  // Rest of admin dashboard code...
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: ADD LOCKED WALLETS VIEWER TO ADMIN DASHBOARD
+═══════════════════════════════════════════════════════════════════
+
+1. In AdminDashboard.tsx, add a section to view locked wallets:
+
+import { useState, useEffect } from 'react';
+
+// Add this component inside AdminDashboard:
+const [lockedWallets, setLockedWallets] = useState([]);
+
+useEffect(() => {
+  fetchLockedWallets();
+}, []);
+
+const fetchLockedWallets = async () => {
+  try {
+    const res = await fetch('/api/admin/auth/locked');
+    const data = await res.json();
+    setLockedWallets(data);
+  } catch (error) {
+    console.error('Error fetching locked wallets:', error);
+  }
+};
+
+// Add this to the admin dashboard UI:
+<div className="bg-slate-800 border border-red-500/30 rounded-xl p-6">
+  <h3 className="text-xl font-bold text-red-400 mb-4">
+    🔒 Locked Admin Wallets
+  </h3>
+  {lockedWallets.length === 0 ? (
+    <p className="text-gray-400 text-sm">No wallets currently locked</p>
+  ) : (
+    <div className="space-y-2">
+      {lockedWallets.map((wallet: any) => (
+        <div key={wallet.id} className="bg-slate-900 p-3 rounded-lg">
+          <p className="text-sm font-mono text-white">
+            {wallet.walletAddress}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Locked until: {new Date(wallet.lockedUntil).toLocaleString()}
+          </p>
+          <p className="text-xs text-red-400">
+            Failed attempts: {wallet.attemptCount}
+          </p>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION & TESTING
+═══════════════════════════════════════════════════════════════════
+
+After implementation, test with ALL admin wallets (old + new):
+
+TEST CHECKLIST:
+- [ ] ALL admin wallets (old + new) see "Admin Dashboard" button
+- [ ] Non-admin wallets don't see admin button
+- [ ] Clicking admin button shows password modal
+- [ ] Correct password (97086) grants access to ALL admin wallets
+- [ ] Wrong password shows remaining attempts
+- [ ] 4 failed attempts locks that specific wallet for 30 days
+- [ ] Locked wallets see lockout message with date
+- [ ] Other admin wallets still work while one is locked
+- [ ] Lockout persists across browser sessions
+- [ ] Admin dashboard shows list of locked wallets
+- [ ] After 30 days, lockout expires and attempts reset
+
+IMPORTANT: Test with at least 2 different admin wallets to confirm:
+1. Each wallet has independent attempt tracking
+2. Locking one wallet doesn't affect others
+3. Password works for all admin wallets
