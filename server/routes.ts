@@ -5,6 +5,13 @@ import { insertFeedbackSchema, insertStorySchema, analyticsEvents } from "@share
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
+import { 
+  validateCustomName, 
+  validateProposal, 
+  validateWalletAddress,
+  sanitizeQueryParams
+} from './middleware/validation';
+import { InputSanitizer } from './lib/sanitizer';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
@@ -1061,6 +1068,36 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error('[Transaction] Error exporting CSV:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // XSS Sanitization Test Endpoint (Admin only)
+  app.post('/api/admin/test-sanitization', requireAdmin, async (req, res) => {
+    try {
+      const { input, type } = req.body;
+      
+      let result;
+      switch (type) {
+        case 'customName':
+          result = InputSanitizer.sanitizeCustomName(input);
+          break;
+        case 'proposal':
+          result = InputSanitizer.sanitizeProposalDescription(input);
+          break;
+        case 'wallet':
+          result = InputSanitizer.sanitizeWalletAddress(input);
+          break;
+        default:
+          result = InputSanitizer.sanitizeString(input, { stripHtml: true });
+      }
+      
+      res.json({ 
+        original: input, 
+        sanitized: result,
+        safe: result === input
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

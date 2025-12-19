@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useGuardianProfileContext } from './GuardianProfileProvider';
+import { ClientValidator } from '@/lib/clientValidator';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -618,10 +619,16 @@ export function UserStats() {
   };
 
   const handleNameChange = async (value: string) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
+    const cleaned = value.replace(/[^a-zA-Z0-9_\s-]/g, '').slice(0, 16);
     setNameInput(cleaned);
     setNameError(null);
     setNameAvailable(null);
+    
+    const validation = ClientValidator.validateCustomName(cleaned);
+    if (!validation.valid && cleaned.length > 0) {
+      setNameError(validation.error || 'Invalid name');
+      return;
+    }
     
     if (cleaned.length >= 2) {
       setCheckingName(true);

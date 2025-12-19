@@ -1,0 +1,676 @@
+Harden database queries against SQL injection, implement query validation, add database connection security, and create automated testing for injection vulnerabilities.
+
+STEP 1: CREATE QUERY VALIDATOR SERVICE
+
+1. CREATE FILE: server/lib/queryValidator.ts
+
+export class QueryValidator {
+  static validateOrderByColumn(column: string, allowedColumns: string[]): string {
+    const sanitized = column.trim().toLowerCase();
+    
+    if (!allowedColumns.includes(sanitized)) {
+      throw new Error(`Invalid order by column: ${column}`);
+    }
+    
+    return sanitized;
+  }
+  
+  static validateSortDirection(direction: string): 'asc' | 'desc' {
+    const sanitized = direction.trim().toLowerCase();
+    
+    if (sanitized !== 'asc' && sanitized !== 'desc') {
+      throw new Error('Sort direction must be asc or desc');
+    }
+    
+    return sanitized as 'asc' | 'desc';
+  }
+  
+  static validateLimit(limit: any, maxLimit: number = 1000): number {
+    const num = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+    
+    if (isNaN(num) || !Number.isInteger(num)) {
+      throw new Error('Limit must be an integer');
+    }
+    
+    if (num < 1) {
+      throw new Error('Limit must be at least 1');
+    }
+    
+    if (num > maxLimit) {
+      return maxLimit;
+    }
+    
+    return num;
+  }
+  
+  static validateOffset(offset: any): number {
+    const num = typeof offset === 'string' ? parseInt(offset, 10) : offset;
+    
+    if (isNaN(num) || !Number.isInteger(num)) {
+      throw new Error('Offset must be an integer');
+    }
+    
+    if (num < 0) {
+      throw new Error('Offset must be non-negative');
+    }
+    
+    return num;
+  }
+  
+  static validateSearchQuery(query: string, maxLength: number = 100): string {
+    if (typeof query !== 'string') {
+      throw new Error('Search query must be a string');
+    }
+    
+    let sanitized = query.trim();
+    
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength);
+    }
+    
+    sanitized = sanitized
+      .replace(/[';"\-\-\/\*]/g, '')
+      .replace(/(\bOR\b|\bAND\b|\bUNION\b|\bSELECT\b|\bDROP\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b)/gi, '');
+    
+    return sanitized;
+  }
+  
+  static validateTableName(tableName: string, allowedTables: string[]): string {
+    const sanitized = tableName.trim().toLowerCase();
+    
+    if (!allowedTables.includes(sanitized)) {
+      throw new Error(`Invalid table name: ${tableName}`);
+    }
+    
+    if (!/^[a-z_][a-z0-9_]*$/.test(sanitized)) {
+      throw new Error('Table name contains invalid characters');
+    }
+    
+    return sanitized;
+  }
+  
+  static detectSqlInjection(input: string): boolean {
+    const sqlInjectionPatterns = [
+      /(\bOR\b|\bAND\b)\s+[\d\w]+\s*=\s*[\d\w]+/i,
+      /UNION\s+(ALL\s+)?SELECT/i,
+      /;\s*(DROP|DELETE|UPDATE|INSERT|CREATE|ALTER)/i,
+      /--/,
+      /\/\*/,
+      /\*\//,
+      /xp_/i,
+      /sp_/i,
+      /exec(\s|\+)+(s|x)p\w+/i,
+    ];
+    
+    for (const pattern of sqlInjectionPatterns) {
+      if (pattern.test(input)) {
+        console.warn('[SECURITY] Potential SQL injection detected:', input);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  static sanitizeForLike(input: string): string {
+    return input
+      .replace(/[%_]/g, '\\$&')
+      .replace(/[';"\-\-]/g, '');
+  }
+}
+
+STEP 2: UPDATE STORAGE WITH SAFE QUERY PATTERNS
+
+2. UPDATE FILE: server/storage.ts
+
+Add import at top:
+
+import { QueryValidator } from './lib/queryValidator';
+
+Update getUserNFTs method with validation:
+
+async getUserNFTs(
+  walletAddress: string, 
+  options: { 
+    limit?: number; 
+    offset?: number; 
+    sortBy?: string; 
+    sortDirection?: string;
+  } = {}
+): Promise<NFT[]> {
+  const limit = options.limit ? QueryValidator.validateLimit(options.limit, 100) : 50;
+  const offset = options.offset ? QueryValidator.validateOffset(options.offset) : 0;
+  
+  const allowedSortColumns = ['token_id', 'created_at', 'name'];
+  const sortBy = options.sortBy 
+    ? QueryValidator.validateOrderByColumn(options.sortBy, allowedSortColumns)
+    : 'token_id';
+  
+  const sortDirection = options.sortDirection 
+    ? QueryValidator.validateSortDirection(options.sortDirection)
+    : 'desc';
+  
+  const query = db
+    .select()
+    .from(nfts)
+    .where(eq(nfts.owner, walletAddress.toLowerCase()))
+    .limit(limit)
+    .offset(offset);
+  
+  return sortDirection === 'desc' 
+    ? query.orderBy(desc(nfts[sortBy]))
+    : query.orderBy(asc(nfts[sortBy]));
+}
+
+Update searchNFTs method (if exists, otherwise add it):
+
+async searchNFTs(searchQuery: string, options: { limit?: number } = {}): Promise<NFT[]> {
+  const sanitizedQuery = QueryValidator.validateSearchQuery(searchQuery);
+  const limit = options.limit ? QueryValidator.validateLimit(options.limit, 50) : 20;
+  
+  if (QueryValidator.detectSqlInjection(sanitizedQuery)) {
+    console.error('[SECURITY] SQL injection attempt blocked in search:', searchQuery);
+    return [];
+  }
+  
+  const searchPattern = `%${QueryValidator.sanitizeForLike(sanitizedQuery)}%`;
+  
+  return db
+    .select()
+    .from(nfts)
+    .where(sql`LOWER(name) LIKE LOWER(${searchPattern})`)
+    .limit(limit);
+}
+
+Update getAuditLogs with proper validation:
+
+async getAuditLogs(filters: {
+  userId?: string;
+  action?: string;
+  resource?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}): Promise<AuditLog[]> {
+  const limit = filters.limit ? QueryValidator.validateLimit(filters.limit, 1000) : 100;
+  
+  let query = db.select().from(auditLogs);
+  
+  if (filters.userId) {
+    if (QueryValidator.detectSqlInjection(filters.userId)) {
+      throw new Error('Invalid userId parameter');
+    }
+    query = query.where(eq(auditLogs.userId, filters.userId)) as any;
+  }
+  
+  if (filters.action) {
+    if (QueryValidator.detectSqlInjection(filters.action)) {
+      throw new Error('Invalid action parameter');
+    }
+    query = query.where(eq(auditLogs.action, filters.action)) as any;
+  }
+  
+  if (filters.resource) {
+    if (QueryValidator.detectSqlInjection(filters.resource)) {
+      throw new Error('Invalid resource parameter');
+    }
+    query = query.where(eq(auditLogs.resource, filters.resource)) as any;
+  }
+  
+  if (filters.startDate) {
+    query = query.where(gte(auditLogs.timestamp, filters.startDate)) as any;
+  }
+  
+  if (filters.endDate) {
+    query = query.where(lte(auditLogs.timestamp, filters.endDate)) as any;
+  }
+  
+  return query.orderBy(desc(auditLogs.timestamp)).limit(limit) as any;
+}
+
+STEP 3: CREATE DATABASE CONNECTION SECURITY
+
+3. CREATE FILE: server/lib/dbSecurity.ts
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool, PoolConfig } from 'pg';
+
+interface SecurePoolConfig extends PoolConfig {
+  max?: number;
+  idleTimeoutMillis?: number;
+  connectionTimeoutMillis?: number;
+  statement_timeout?: number;
+  query_timeout?: number;
+}
+
+export class SecureDatabaseConnection {
+  private static instance: SecureDatabaseConnection;
+  private pool: Pool;
+  
+  private constructor() {
+    const config: SecurePoolConfig = {
+      connectionString: process.env.DATABASE_URL,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      statement_timeout: 30000,
+      query_timeout: 30000,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined,
+    };
+    
+    this.pool = new Pool(config);
+    
+    this.pool.on('error', (err) => {
+      console.error('[DB] Unexpected database error:', err);
+    });
+    
+    this.pool.on('connect', (client) => {
+      client.query(`SET statement_timeout = 30000`);
+      client.query(`SET idle_in_transaction_session_timeout = 60000`);
+    });
+  }
+  
+  static getInstance(): SecureDatabaseConnection {
+    if (!SecureDatabaseConnection.instance) {
+      SecureDatabaseConnection.instance = new SecureDatabaseConnection();
+    }
+    return SecureDatabaseConnection.instance;
+  }
+  
+  getPool(): Pool {
+    return this.pool;
+  }
+  
+  async healthCheck(): Promise<boolean> {
+    try {
+      const result = await this.pool.query('SELECT 1 as health');
+      return result.rows[0].health === 1;
+    } catch (error) {
+      console.error('[DB] Health check failed:', error);
+      return false;
+    }
+  }
+  
+  async getConnectionStats() {
+    return {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+      waiting: this.pool.waitingCount,
+    };
+  }
+}
+
+STEP 4: ADD PREPARED STATEMENT WRAPPER
+
+4. CREATE FILE: server/lib/preparedStatements.ts
+
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
+
+export class PreparedStatements {
+  static async executeRaw(
+    query: string, 
+    params: any[] = [], 
+    allowedTables: string[] = []
+  ): Promise<any> {
+    for (const param of params) {
+      if (typeof param === 'string' && QueryValidator.detectSqlInjection(param)) {
+        throw new Error('SQL injection detected in parameters');
+      }
+    }
+    
+    for (const table of allowedTables) {
+      if (!QueryValidator.validateTableName(table, ['nfts', 'users', 'proposals', 'transactions', 'audit_logs'])) {
+        throw new Error(`Table ${table} not allowed`);
+      }
+    }
+    
+    return db.execute(sql.raw(query, ...params));
+  }
+  
+  static buildSafeWhereClause(filters: Record<string, any>): any {
+    const conditions: any[] = [];
+    
+    for (const [key, value] of Object.entries(filters)) {
+      if (value === undefined || value === null) continue;
+      
+      if (typeof value === 'string' && QueryValidator.detectSqlInjection(value)) {
+        throw new Error(`SQL injection detected in filter: ${key}`);
+      }
+      
+      conditions.push(sql`${sql.raw(key)} = ${value}`);
+    }
+    
+    return conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+  }
+}
+
+STEP 5: ADD SQL INJECTION DETECTION MIDDLEWARE
+
+5. CREATE FILE: server/middleware/sqlInjectionGuard.ts
+
+import { Request, Response, NextFunction } from 'express';
+import { QueryValidator } from '../lib/queryValidator';
+
+export function sqlInjectionGuard(req: Request, res: Response, next: NextFunction) {
+  const checkValue = (value: any, path: string): boolean => {
+    if (typeof value === 'string') {
+      if (QueryValidator.detectSqlInjection(value)) {
+        console.error(`[SECURITY] SQL injection attempt detected at ${path}:`, value);
+        return false;
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      for (const [key, val] of Object.entries(value)) {
+        if (!checkValue(val, `${path}.${key}`)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+  
+  if (!checkValue(req.body, 'body')) {
+    return res.status(400).json({ 
+      error: 'Invalid input detected',
+      code: 'SECURITY_VIOLATION'
+    });
+  }
+  
+  if (!checkValue(req.query, 'query')) {
+    return res.status(400).json({ 
+      error: 'Invalid query parameters',
+      code: 'SECURITY_VIOLATION'
+    });
+  }
+  
+  if (!checkValue(req.params, 'params')) {
+    return res.status(400).json({ 
+      error: 'Invalid path parameters',
+      code: 'SECURITY_VIOLATION'
+    });
+  }
+  
+  next();
+}
+
+STEP 6: APPLY SQL INJECTION GUARD TO ROUTES
+
+6. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { sqlInjectionGuard } from './middleware/sqlInjectionGuard';
+
+Apply globally to all API routes:
+
+app.use('/api/*', sqlInjectionGuard);
+
+STEP 7: ADD DATABASE HEALTH CHECK ENDPOINT
+
+7. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { SecureDatabaseConnection } from './lib/dbSecurity';
+
+Add endpoint:
+
+app.get('/api/health/database', async (req, res) => {
+  try {
+    const dbConn = SecureDatabaseConnection.getInstance();
+    const healthy = await dbConn.healthCheck();
+    const stats = await dbConn.getConnectionStats();
+    
+    res.json({
+      healthy,
+      stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      healthy: false,
+      error: error.message
+    });
+  }
+});
+
+STEP 8: CREATE SQL INJECTION TEST SCRIPT
+
+8. CREATE FILE: script/test-sql-injection.ts
+
+const sqlInjectionPayloads = [
+  "1' OR '1'='1",
+  "admin'--",
+  "' OR 1=1--",
+  "' UNION SELECT NULL--",
+  "1; DROP TABLE users--",
+  "' OR 'x'='x",
+  "1' AND '1'='1",
+  "'; EXEC sp_MSForEachTable 'DROP TABLE ?'--",
+  "' OR EXISTS(SELECT * FROM users)--",
+  "1' ORDER BY 10--",
+];
+
+async function testEndpoint(url: string, payload: string) {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: payload })
+    });
+    
+    if (response.status === 400) {
+      const data = await response.json();
+      if (data.code === 'SECURITY_VIOLATION') {
+        console.log(`✅ BLOCKED: ${payload.substring(0, 30)}...`);
+        return true;
+      }
+    }
+    
+    console.log(`❌ FAILED: Payload not blocked: ${payload}`);
+    return false;
+  } catch (error) {
+    console.log(`✅ BLOCKED: ${payload.substring(0, 30)}...`);
+    return true;
+  }
+}
+
+async function runTests() {
+  console.log('🔒 Running SQL Injection Tests...\n');
+  
+  const testUrl = process.env.API_URL || 'http://localhost:5000';
+  
+  let passed = 0;
+  let failed = 0;
+  
+  for (const payload of sqlInjectionPayloads) {
+    const result = await testEndpoint(`${testUrl}/api/test-injection`, payload);
+    if (result) {
+      passed++;
+    } else {
+      failed++;
+    }
+  }
+  
+  console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
+  
+  if (failed > 0) {
+    console.log('⚠️  Some SQL injection payloads were not blocked!');
+    process.exit(1);
+  } else {
+    console.log('✅ All SQL injection tests passed!');
+  }
+}
+
+runTests();
+
+STEP 9: ADD TEST INJECTION ENDPOINT (DEVELOPMENT ONLY)
+
+9. UPDATE FILE: server/routes.ts
+
+Add test endpoint:
+
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/test-injection', sqlInjectionGuard, async (req, res) => {
+    res.json({ message: 'Test passed - no injection detected' });
+  });
+}
+
+STEP 10: ADD TO PACKAGE.JSON
+
+10. UPDATE FILE: package.json
+
+Add script:
+
+"test:sql-injection": "tsx script/test-sql-injection.ts"
+
+STEP 11: CREATE DATABASE QUERY AUDIT LOG
+
+11. UPDATE FILE: server/lib/queryValidator.ts
+
+Add audit logging for suspicious queries:
+
+export class QueryAuditor {
+  private static suspiciousQueries: Array<{
+    timestamp: Date;
+    query: string;
+    source: string;
+    blocked: boolean;
+  }> = [];
+  
+  static logSuspiciousQuery(query: string, source: string, blocked: boolean) {
+    this.suspiciousQueries.push({
+      timestamp: new Date(),
+      query,
+      source,
+      blocked
+    });
+    
+    if (this.suspiciousQueries.length > 1000) {
+      this.suspiciousQueries = this.suspiciousQueries.slice(-1000);
+    }
+    
+    console.warn('[SECURITY AUDIT]', {
+      timestamp: new Date().toISOString(),
+      source,
+      query: query.substring(0, 100),
+      blocked
+    });
+  }
+  
+  static getSuspiciousQueries(limit: number = 100) {
+    return this.suspiciousQueries.slice(-limit);
+  }
+  
+  static clearAuditLog() {
+    this.suspiciousQueries = [];
+  }
+}
+
+STEP 12: ADD SECURITY AUDIT ENDPOINT
+
+12. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { QueryAuditor } from './lib/queryValidator';
+
+Add endpoint:
+
+app.get('/api/admin/security/audit', isAdmin, async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    const queries = QueryAuditor.getSuspiciousQueries(limit);
+    
+    res.json({ 
+      queries,
+      total: queries.length 
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 13: ADD SECURITY AUDIT PANEL TO ADMIN DASHBOARD
+
+13. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add this component:
+
+const SecurityAuditPanel = () => {
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchAuditLog();
+    const interval = setInterval(fetchAuditLog, 30000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const fetchAuditLog = async () => {
+    try {
+      const res = await fetch('/api/admin/security/audit?limit=50');
+      const data = await res.json();
+      setAuditLog(data.queries || []);
+    } catch (error) {
+      console.error('Failed to fetch audit log:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="p-6 bg-black/40 border border-red-500/30 rounded-xl">
+      <h3 className="text-xl font-bold mb-4">🚨 Security Audit Log</h3>
+      
+      {loading ? (
+        <div>Loading...</div>
+      ) : auditLog.length === 0 ? (
+        <div className="text-gray-400">No suspicious activity detected</div>
+      ) : (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {auditLog.map((log, i) => (
+            <div key={i} className={`p-3 rounded border ${
+              log.blocked ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold">
+                  {log.blocked ? '🔴 BLOCKED' : '⚠️  SUSPICIOUS'}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {new Date(log.timestamp).toLocaleString()}
+                </span>
+              </div>
+              <div className="text-xs text-gray-300">Source: {log.source}</div>
+              <div className="text-xs font-mono bg-black/60 p-2 rounded mt-1 overflow-x-auto">
+                {log.query}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+Add to dashboard render:
+
+<SecurityAuditPanel />
+
+VERIFICATION STEPS:
+1. Run in terminal: npm run test:sql-injection
+2. All tests should pass (payloads blocked)
+3. Try searching NFTs with: test' OR '1'='1
+4. Should be blocked or sanitized
+5. Check Admin Dashboard > Security Audit Log
+6. Should see blocked attempts (if any)
+7. Try API requests with SQL keywords in params
+8. Should be rejected with 400 error
+9. Check /api/health/database endpoint
+10. Should show healthy: true and connection stats
+11. All database queries should use parameterized inputs
+12. No raw SQL concatenation anywhere in codebase
+
+Check server logs for [SECURITY] warnings if injection attempts detected.
+
+Your database is now hardened against SQL injection! 🛡️

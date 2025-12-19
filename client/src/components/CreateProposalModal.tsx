@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { ClientValidator } from '@/lib/clientValidator';
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -30,18 +31,16 @@ export function CreateProposalModal({ isOpen, onClose, walletAddress }: CreatePr
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!title || title.length < 10) {
-      newErrors.title = 'Title must be at least 10 characters';
+    const titleValidation = ClientValidator.validateProposalTitle(title);
+    if (!titleValidation.valid) {
+      newErrors.title = titleValidation.error || 'Invalid title';
     }
-    if (title.length > 200) {
-      newErrors.title = 'Title must be less than 200 characters';
+    
+    const descValidation = ClientValidator.validateProposalDescription(description);
+    if (!descValidation.valid) {
+      newErrors.description = descValidation.error || 'Invalid description';
     }
-    if (!description || description.length < 50) {
-      newErrors.description = 'Description must be at least 50 characters';
-    }
-    if (description.length > 2000) {
-      newErrors.description = 'Description must be less than 2000 characters';
-    }
+    
     const duration = parseInt(durationDays);
     if (!duration || duration < 1 || duration > 30) {
       newErrors.duration = 'Duration must be between 1 and 30 days';
