@@ -14,8 +14,23 @@ window.addEventListener('load', () => {
 });
 
 window.addEventListener('error', (event) => {
+  const message = event.error?.message || '';
   console.error('[CONNECTION] Global error caught:', event.error);
-  if (event.error?.message?.includes('fetch') || event.error?.message?.includes('network')) {
+  
+  // Don't crash on wallet/MetaMask errors
+  if (
+    message.includes('MetaMask') ||
+    message.includes('wallet') ||
+    message.includes('connect') ||
+    message.includes('extension') ||
+    message.includes('provider')
+  ) {
+    event.preventDefault();
+    console.warn('[CONNECTION] Wallet error caught and suppressed');
+    return;
+  }
+  
+  if (message.includes('fetch') || message.includes('network')) {
     console.error('[CONNECTION] Network error detected during initialization');
   }
 });

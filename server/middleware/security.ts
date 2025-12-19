@@ -7,7 +7,7 @@ export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "blob:", "'wasm-unsafe-eval'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "blob:", "'wasm-unsafe-eval'", "chrome-extension:"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
@@ -20,7 +20,8 @@ export const helmetConfig = helmet({
         "wss://relay.walletconnect.com",
         "wss://relay.walletconnect.org",
         "https://*.walletconnect.com",
-        "https://*.walletconnect.org"
+        "https://*.walletconnect.org",
+        "chrome-extension:"
       ],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],

@@ -1,0 +1,268 @@
+FIX METAMASK AUTO-CONNECTION CRASH
+
+ISSUE: App crashes with "Failed to connect to MetaMask" runtime error. The app is trying to auto-connect to MetaMask on page load, which crashes when MetaMask isn't ready or user hasn't approved connection.
+
+Error: Failed to connect to MetaMask
+at Object.connect (chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/scripts/inpage.js)
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: DISABLE AUTO-RECONNECT IN WAGMI CONFIG
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/wagmi.ts
+
+Add reconnectOnMount: false to config:
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: process.env.VITE_WALLET_CONNECT_ID || 'YOUR_PROJECT_ID',
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http('https://rpc.basedai.network', {
+      timeout: 10000,
+      retryCount: 3,
+    }),
+  },
+  // Add these:
+  ssr: false,
+  autoConnect: false, // Disable auto-connect
+});
+
+// Or if using createConfig directly:
+export const config = createConfig({
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http('https://rpc.basedai.network'),
+  },
+  connectors: [
+    // Your connectors
+  ],
+  ssr: false,
+  autoConnect: false, // CRITICAL - don't auto-connect
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: WRAP WALLET PROVIDER WITH ERROR BOUNDARY
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/main.tsx
+
+Add try-catch around wallet initialization:
+
+import { ErrorBoundary } from 'react-error-boundary';
+
+function WalletErrorFallback({ error, resetErrorBoundary }: any) {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+      <div className="text-center p-8 max-w-md">
+        <div className="text-6xl mb-4">🔌</div>
+        <h1 className="text-2xl font-bold mb-4">Wallet Connection Issue</h1>
+        <p className="text-gray-400 mb-6">
+          There was a problem connecting to your wallet. This won't affect your ability to browse.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 bg-cyan-500 rounded-lg hover:bg-cyan-600"
+        >
+          Reload App
+        </button>
+        <p className="text-xs text-gray-600 mt-4">
+          Error: {error.message}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Wrap WagmiProvider and RainbowKitProvider:
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary FallbackComponent={WalletErrorFallback}>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          <App />
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  </ErrorBoundary>
+);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DISABLE EAGER WALLET CONNECTION CHECKS
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/App.tsx
+
+Remove any automatic wallet connection attempts:
+
+// REMOVE/COMMENT OUT:
+/*
+useEffect(() => {
+  if (connector) {
+    connector.connect();
+  }
+}, [connector]);
+*/
+
+// Or:
+/*
+useEffect(() => {
+  reconnect();
+}, []);
+*/
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD SAFE WALLET CONNECTION HANDLER
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/components/Navbar.tsx (or wherever ConnectButton is)
+
+Wrap connection in try-catch:
+
+import { useConnect, useAccount, useDisconnect } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+
+// Use RainbowKit's ConnectButton (it handles errors internally)
+<ConnectButton 
+  showBalance={false}
+  chainStatus="icon"
+/>
+
+// If using custom button:
+const SafeConnectButton = () => {
+  const { connect, connectors } = useConnect();
+  const { isConnected } = useAccount();
+  
+  const handleConnect = async () => {
+    try {
+      const connector = connectors[0]; // MetaMask
+      await connect({ connector });
+    } catch (error) {
+      console.error('Wallet connection failed:', error);
+      // Don't crash - just show error
+      alert('Failed to connect wallet. Please try again.');
+    }
+  };
+  
+  if (isConnected) return <DisconnectButton />;
+  
+  return (
+    <button onClick={handleConnect}>
+      Connect Wallet
+    </button>
+  );
+};
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: FIX CSP TO ALLOW METAMASK EXTENSION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/middleware/security.ts
+
+Add chrome-extension to CSP:
+
+scriptSrc: [
+  "'self'",
+  "'unsafe-inline'",
+  "'unsafe-eval'",
+  "https://unpkg.com",
+  "blob:",
+  "chrome-extension:" // Allow browser extensions
+],
+
+connectSrc: [
+  "'self'",
+  "https://mainnet.basedaibridge.com",
+  "https://api.coingecko.com",
+  "https://api.binance.com",
+  "https://*.mypinata.cloud",
+  "wss://relay.walletconnect.com",
+  "wss://relay.walletconnect.org",
+  "https://*.walletconnect.com",
+  "https://*.walletconnect.org",
+  "chrome-extension:" // Allow MetaMask communication
+],
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: ADD GLOBAL ERROR HANDLER
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/App.tsx
+
+Add global error handler at top:
+
+useEffect(() => {
+  const handleError = (event: ErrorEvent) => {
+    console.error('[GLOBAL ERROR]', event.error);
+    
+    // Don't crash on wallet errors
+    if (event.error?.message?.includes('MetaMask')) {
+      event.preventDefault();
+      console.warn('MetaMask error caught and suppressed');
+    }
+  };
+  
+  const handleRejection = (event: PromiseRejectionEvent) => {
+    console.error('[UNHANDLED REJECTION]', event.reason);
+    
+    // Don't crash on wallet rejections
+    if (event.reason?.message?.includes('MetaMask')) {
+      event.preventDefault();
+      console.warn('MetaMask rejection caught and suppressed');
+    }
+  };
+  
+  window.addEventListener('error', handleError);
+  window.addEventListener('unhandledrejection', handleRejection);
+  
+  return () => {
+    window.removeEventListener('error', handleError);
+    window.removeEventListener('unhandledrejection', handleRejection);
+  };
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: REBUILD AND TEST
+═══════════════════════════════════════════════════════════════════
+
+After all fixes:
+
+1. Clean and rebuild:
+rm -rf dist/
+npm run build
+
+2. Restart server:
+npm start
+
+3. Test in Replit preview:
+   - Should load without crash
+   - Should NOT auto-connect to wallet
+   - Click "Connect Wallet" manually
+   - Should connect successfully
+
+4. Republish to production
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After republishing, test:
+
+1. Open app on iPhone (fresh private window)
+2. Should load WITHOUT crash
+3. Should NOT auto-connect wallet
+4. Manually click "Connect Wallet"
+5. Should connect successfully
+
+Reply:
+"App loads: [yes/no]
+Crashes: [yes/no]
+Can browse without wallet: [yes/no]
+Manual wallet connect works: [yes/no]"

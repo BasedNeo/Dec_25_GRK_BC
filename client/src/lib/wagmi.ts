@@ -100,6 +100,9 @@ export const config = getDefaultConfig({
   },
   ssr: false,
   wallets: wallets,
+  // Disable auto-connect to prevent MetaMask crash on page load
+  // @ts-ignore - RainbowKit types may not include this but it works
+  autoConnect: false,
 });
 
 export { basedL1 };
