@@ -8,7 +8,6 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { GlobalBuyListener } from "@/components/GlobalBuyListener";
 import { WalletWatcher } from "@/components/WalletWatcher";
 import { NetworkSwitchBanner } from "@/components/NetworkSwitchBanner";
-import { DegradationBanner } from "@/components/DegradationBanner";
 import { PendingTxBanner } from "@/components/PendingTxBanner";
 import { PendingPurchaseBanner } from "@/components/PendingPurchaseBanner";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
@@ -59,7 +58,6 @@ export default function AppContent() {
       <NotificationWatcherSetup />
       <HealthCheckBanner />
       <NetworkSwitchBanner />
-      <DegradationBanner />
       <SpaceBackground />
       <Router />
       <DisclaimerModal />
