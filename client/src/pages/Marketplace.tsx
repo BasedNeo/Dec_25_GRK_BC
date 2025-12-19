@@ -348,10 +348,12 @@ export default function Marketplace() {
                         </div>
                         <div className="p-4">
                           <div className="font-medium text-white mb-1">{guardian.name}</div>
-                          {guardian.price && (
+                          {guardian.price && Number(guardian.price) > 0 ? (
                             <div className="text-cyan-400 font-bold">
-                              {guardian.price.toLocaleString()} {guardian.currency || 'BASED'}
+                              {Number(guardian.price).toLocaleString()} {guardian.currency || 'BASED'}
                             </div>
+                          ) : (
+                            <div className="text-gray-500 italic text-sm">Unlisted</div>
                           )}
                         </div>
                       </motion.div>
