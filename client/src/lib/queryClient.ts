@@ -47,9 +47,13 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 60000, // 1 minute stale time for balance/NFTs
-      gcTime: 1000 * 60 * 5, // 5 minutes garbage collection
-      retry: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      staleTime: 300000, // 5 minutes stale time
+      gcTime: 1000 * 60 * 10, // 10 minutes garbage collection
+      retry: 1,
+      retryDelay: 1000,
+      networkMode: 'online',
     },
     mutations: {
       retry: false,

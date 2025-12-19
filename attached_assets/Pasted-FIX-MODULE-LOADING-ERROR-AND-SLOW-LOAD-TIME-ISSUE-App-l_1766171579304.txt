@@ -1,0 +1,237 @@
+FIX MODULE LOADING ERROR AND SLOW LOAD TIME
+
+ISSUE: App loads externally (success!) but shows "Importing a module script failed" error on first load, requiring refresh. Also takes 40 seconds to load initially.
+
+Error: err_1766171150393_zbvwckz - Importing a module script failed.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: FIX CSP TO ALLOW MODULE SCRIPTS
+═══════════════════════════════════════════════════════════════════
+
+The error "Importing a module script failed" is likely CSP blocking JavaScript modules.
+
+1. UPDATE FILE: server/middleware/security.ts
+
+Find the helmetConfig and update scriptSrc:
+
+scriptSrc: [
+  "'self'",
+  "'unsafe-inline'",
+  "'unsafe-eval'",
+  "https://unpkg.com",
+  "blob:", // Add this for workers
+  "'wasm-unsafe-eval'" // Add this for WASM
+],
+
+2. Add scriptSrcAttr for inline event handlers:
+
+scriptSrcAttr: ["'unsafe-inline'"],
+
+3. Update workerSrc to allow module workers:
+
+workerSrc: [
+  "'self'",
+  "blob:",
+  "data:",
+  "https://*.replit.app" // Allow Replit domains
+],
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: ADD PRELOAD HINTS FOR CRITICAL ASSETS
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: index.html (in client/ or dist/public/)
+
+Add preload/prefetch tags in <head> BEFORE script tags:
+
+<!-- Preload critical assets -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://mainnet.basedaibridge.com">
+<link rel="dns-prefetch" href="https://api.coingecko.com">
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REDUCE BUNDLE SIZE WITH BETTER CODE SPLITTING
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: vite.config.ts
+
+Improve code splitting to reduce initial load:
+
+build: {
+  outDir: "dist/public",
+  emptyOutDir: true,
+  sourcemap: false,
+  minify: 'terser',
+  terserOptions: {
+    compress: {
+      drop_console: true, // Remove console.logs in production
+      drop_debugger: true
+    }
+  },
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        'wagmi-vendor': ['wagmi', 'viem'],
+        'rainbow-vendor': ['@rainbow-me/rainbowkit'],
+        'query-vendor': ['@tanstack/react-query'],
+        'games': [
+          './client/src/pages/GuardianSolitaire',
+          './client/src/pages/AsteroidMining',
+          './client/src/pages/GuardianDefense'
+        ]
+      },
+      chunkFileNames: 'assets/[name]-[hash].js',
+      entryFileNames: 'assets/[name]-[hash].js',
+      assetFileNames: 'assets/[name]-[hash].[ext]'
+    }
+  },
+  chunkSizeWarningLimit: 1000
+},
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD STATIC ASSET CACHING
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/index.ts
+
+Find where static files are served and add aggressive caching:
+
+if (isProduction) {
+  const distPath = path.join(process.cwd(), 'dist', 'public');
+  
+  app.use(express.static(distPath, {
+    maxAge: '1y', // Cache for 1 year
+    etag: true,
+    lastModified: true,
+    immutable: true,
+    setHeaders: (res, filepath) => {
+      // Cache JavaScript and CSS aggressively
+      if (filepath.endsWith('.js') || filepath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      // Cache images for 30 days
+      if (filepath.match(/\.(jpg|jpeg|png|gif|svg|webp|ico)$/)) {
+        res.setHeader('Cache-Control', 'public, max-age=2592000');
+      }
+      // Don't cache HTML
+      if (filepath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
+  }));
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: ADD COMPRESSION MIDDLEWARE
+═══════════════════════════════════════════════════════════════════
+
+1. Install compression:
+
+npm install compression
+
+2. UPDATE FILE: server/index.ts
+
+Add at the top with imports:
+
+import compression from 'compression';
+
+3. Add middleware BEFORE static files:
+
+app.use(compression({
+  level: 6,
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: FIX MODULE SCRIPT TYPE IN BUILD
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: vite.config.ts
+
+Ensure proper module format:
+
+build: {
+  // ... existing config
+  modulePreload: {
+    polyfill: true // Ensure module preload polyfill
+  },
+  target: 'es2020', // Modern browsers only
+  // ... rest
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: REDUCE INITIAL QUERIES
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/queryClient.ts
+
+Make queries lazy by default:
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 300000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      retry: 1,
+      retryDelay: 1000,
+      networkMode: 'online' // Only fetch when online
+    }
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: REBUILD AND REDEPLOY
+═══════════════════════════════════════════════════════════════════
+
+After all fixes:
+
+1. Clean build:
+rm -rf dist/
+rm -rf node_modules/.vite/
+
+2. Rebuild:
+npm run build
+
+3. Restart:
+npm start
+
+4. Test locally - should load faster
+
+5. Republish to production
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After republishing, test on iPhone:
+
+1. Clear Safari cache (Settings > Safari > Clear History)
+2. Open in Private mode
+3. Load URL
+4. Should load in 5-10 seconds (not 40)
+5. Should NOT show "module script failed" error
+6. Should load directly without refresh
+
+Reply:
+"Load time: [X seconds]
+Module error: [yes/no]
+Needs refresh: [yes/no]
+App works: [yes/no]"
