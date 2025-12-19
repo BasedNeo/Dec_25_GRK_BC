@@ -35,35 +35,50 @@ export const ValidationSchemas = {
       errorMessage: 'Description must be 50-2000 characters',
       sanitize: (v: string) => v.trim()
     },
+    proposer: {
+      type: 'wallet' as const,
+      required: true,
+      errorMessage: 'Valid proposer wallet address required'
+    },
     category: {
       type: 'enum' as const,
-      required: true,
-      enum: ['governance', 'technical', 'community', 'treasury'],
+      required: false,
+      enum: ['governance', 'technical', 'community', 'treasury', 'general'],
+      default: 'general',
       errorMessage: 'Invalid category'
     },
     durationDays: {
       type: 'integer' as const,
-      required: false,
+      required: true,
       min: 1,
       max: 30,
-      default: 7
+      errorMessage: 'Duration must be between 1 and 30 days'
+    },
+    requiredQuorum: {
+      type: 'integer' as const,
+      required: false,
+      min: 1,
+      max: 100,
+      default: 10
     }
   } as Record<string, ValidationRule>,
   
   vote: {
-    proposalId: {
-      type: 'integer' as const,
+    voter: {
+      type: 'wallet' as const,
       required: true,
-      min: 1
+      errorMessage: 'Valid voter wallet address required'
     },
-    support: {
-      type: 'boolean' as const,
-      required: true
+    vote: {
+      type: 'enum' as const,
+      required: true,
+      enum: ['for', 'against'],
+      errorMessage: "Vote must be 'for' or 'against'"
     },
-    weight: {
-      type: 'number' as const,
+    votingPower: {
+      type: 'integer' as const,
       required: false,
-      min: 0,
+      min: 1,
       default: 1
     }
   } as Record<string, ValidationRule>,

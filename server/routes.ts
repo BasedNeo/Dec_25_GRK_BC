@@ -14,6 +14,9 @@ import {
   validateWalletAddress,
   sanitizeQueryParams
 } from './middleware/validation';
+import { validateRequest, validateQuery } from './middleware/validationMiddleware';
+import { ValidationRulesEngine } from './lib/validationRules';
+import { ValidationSchemas } from './lib/validationSchemas';
 import { InputSanitizer } from './lib/sanitizer';
 import { sqlInjectionGuard } from './middleware/sqlInjectionGuard';
 import { QueryAuditor } from './lib/queryValidator';
@@ -1415,6 +1418,28 @@ export async function registerRoutes(
     try {
       const stats = CSRFProtection.getStats();
       res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/test/validate', async (req, res) => {
+    try {
+      const { schema, data } = req.body;
+      
+      if (!schema || !data) {
+        return res.status(400).json({ error: 'Schema and data required' });
+      }
+      
+      const schemaObj = ValidationSchemas[schema as keyof typeof ValidationSchemas];
+      
+      if (!schemaObj) {
+        return res.status(400).json({ error: 'Invalid schema name' });
+      }
+      
+      const result = ValidationRulesEngine.validate(data, schemaObj);
+      
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
