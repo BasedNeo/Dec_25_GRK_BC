@@ -1,0 +1,684 @@
+Implement admin-controlled NFT gating system where admins can toggle which features require NFT ownership, set required collection, and bypass rules from the admin dashboard.
+
+STEP 1: ADD GATING FEATURE FLAGS TO DATABASE
+
+1. UPDATE FILE: shared/schema.ts
+
+Add new table for feature gating:
+
+export const featureGating = pgTable('feature_gating', {
+  id: serial('id').primaryKey(),
+  featureKey: text('feature_key').notNull().unique(), // 'arcade', 'governance', 'custom_names', etc.
+  featureName: text('feature_name').notNull(),
+  requiresNFT: boolean('requires_nft').default(false),
+  requiredCollection: text('required_collection'), // Contract address or null for any
+  minimumBalance: integer('minimum_balance').default(1),
+  bypassForAdmin: boolean('bypass_for_admin').default(true),
+  enabled: boolean('enabled').default(true),
+  gateMessage: text('gate_message'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+Run: npm run db:push
+
+
+STEP 2: SEED DEFAULT GATING RULES
+
+1. CREATE FILE: server/lib/gatingService.ts
+
+import { db } from '../db';
+import { featureGating } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+export class GatingService {
+  
+  // Initialize default gating rules
+  static async initializeDefaultRules() {
+    const defaults = [
+      {
+        featureKey: 'arcade',
+        featureName: 'Based Arcade',
+        requiresNFT: true,
+        requiredCollection: null, // Any Guardian NFT
+        minimumBalance: 1,
+        bypassForAdmin: true,
+        enabled: true,
+        gateMessage: 'The Based Arcade is an exclusive gaming zone for Guardian NFT holders.'
+      },
+      {
+        featureKey: 'game_solitaire',
+        featureName: 'Guardian Solitaire',
+        requiresNFT: true,
+        requiredCollection: null,
+        minimumBalance: 1,
+        bypassForAdmin: true,
+        enabled: true,
+        gateMessage: 'Guardian Solitaire is exclusive to NFT holders.'
+      },
+      {
+        featureKey: 'game_asteroid',
+        featureName: 'Asteroid Mining',
+        requiresNFT: true,
+        requiredCollection: null,
+        minimumBalance: 1,
+        bypassForAdmin: true,
+        enabled: true,
+        gateMessage: 'Asteroid Mining is exclusive to NFT holders.'
+      },
+      {
+        featureKey: 'game_defense',
+        featureName: 'Guardian Defense',
+        requiresNFT: true,
+        requiredCollection: null,
+        minimumBalance: 1,
+        bypassForAdmin: true,
+        enabled: true,
+        gateMessage: 'Guardian Defense is exclusive to NFT holders.'
+      },
+      {
+        featureKey: 'governance',
+        featureName: 'Governance Voting',
+        requiresNFT: false,
+        requiredCollection: null,
+        minimumBalance: 1,
+        bypassForAdmin: false,
+        enabled: true,
+        gateMessage: 'Voting on proposals requires Guardian NFT ownership.'
+      },
+      {
+        featureKey: 'custom_names',
+        featureName: 'Custom NFT Names',
+        requiresNFT: false,
+        requiredCollection: null,
+        minimumBalance: 1,
+        bypassForAdmin: false,
+        enabled: true,
+        gateMessage: 'Custom names are available to all users.'
+      }
+    ];
+
+    for (const rule of defaults) {
+      try {
+        const existing = await db.select()
+          .from(featureGating)
+          .where(eq(featureGating.featureKey, rule.featureKey))
+          .limit(1);
+
+        if (existing.length === 0) {
+          await db.insert(featureGating).values(rule);
+          console.log(`✅ Created gating rule: ${rule.featureName}`);
+        }
+      } catch (error) {
+        console.error(`Failed to create rule for ${rule.featureKey}:`, error);
+      }
+    }
+  }
+
+  // Get gating rules for a feature
+  static async getGatingRule(featureKey: string) {
+    const result = await db.select()
+      .from(featureGating)
+      .where(eq(featureGating.featureKey, featureKey))
+      .limit(1);
+    
+    return result[0] || null;
+  }
+
+  // Get all gating rules
+  static async getAllGatingRules() {
+    return await db.select().from(featureGating);
+  }
+
+  // Update gating rule
+  static async updateGatingRule(featureKey: string, updates: Partial<{
+    requiresNFT: boolean;
+    requiredCollection: string | null;
+    minimumBalance: number;
+    bypassForAdmin: boolean;
+    enabled: boolean;
+    gateMessage: string;
+  }>) {
+    await db.update(featureGating)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(featureGating.featureKey, featureKey));
+  }
+
+  // Check if user has access to feature
+  static async checkAccess(featureKey: string, userAddress: string | null, isAdmin: boolean) {
+    const rule = await this.getGatingRule(featureKey);
+    
+    if (!rule || !rule.enabled) {
+      return { hasAccess: true, rule: null };
+    }
+
+    // Admin bypass
+    if (isAdmin && rule.bypassForAdmin) {
+      return { hasAccess: true, rule, bypassed: true };
+    }
+
+    // No NFT required
+    if (!rule.requiresNFT) {
+      return { hasAccess: true, rule };
+    }
+
+    // Check ownership (would be done client-side or via API)
+    return { hasAccess: false, rule, requiresCheck: true };
+  }
+}
+
+
+STEP 3: ADD API ENDPOINTS FOR GATING
+
+1. UPDATE FILE: server/routes.ts
+
+Add gating management endpoints:
+
+// Get all gating rules
+app.get('/api/gating/rules', async (req, res) => {
+  try {
+    const rules = await GatingService.getAllGatingRules();
+    res.json(rules);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch gating rules' });
+  }
+});
+
+// Get specific gating rule
+app.get('/api/gating/rules/:featureKey', async (req, res) => {
+  try {
+    const rule = await GatingService.getGatingRule(req.params.featureKey);
+    if (!rule) {
+      return res.status(404).json({ error: 'Gating rule not found' });
+    }
+    res.json(rule);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch gating rule' });
+  }
+});
+
+// Admin: Update gating rule
+app.put('/api/admin/gating/rules/:featureKey', async (req, res) => {
+  try {
+    const { requiresNFT, requiredCollection, minimumBalance, bypassForAdmin, enabled, gateMessage } = req.body;
+    
+    await GatingService.updateGatingRule(req.params.featureKey, {
+      requiresNFT,
+      requiredCollection,
+      minimumBalance,
+      bypassForAdmin,
+      enabled,
+      gateMessage
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update gating rule' });
+  }
+});
+
+// Admin: Initialize default rules
+app.post('/api/admin/gating/initialize', async (req, res) => {
+  try {
+    await GatingService.initializeDefaultRules();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to initialize gating rules' });
+  }
+});
+
+Add import at top:
+import { GatingService } from './lib/gatingService';
+import { featureGating } from '../shared/schema';
+
+Call initialization on server start in server/index.ts:
+
+import { GatingService } from './lib/gatingService';
+
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  
+  // Initialize gating rules
+  await GatingService.initializeDefaultRules();
+  
+  // Start stats scheduler
+  StatsScheduler.start();
+});
+
+
+STEP 4: UPDATE NFT GATE COMPONENT TO USE DYNAMIC RULES
+
+1. UPDATE FILE: client/src/components/NFTGate.tsx
+
+Replace entire file with dynamic version:
+
+import { ReactNode, useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
+import { useNFTOwnership } from '@/hooks/useNFTOwnership';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Lock, Loader2, ShoppingBag, Wallet } from 'lucide-react';
+import { Link } from 'wouter';
+import { ADMIN_ADDRESSES } from '@/lib/constants';
+
+interface NFTGateProps {
+  children: ReactNode;
+  featureKey: string; // Dynamic feature key to fetch rules
+}
+
+interface GatingRule {
+  featureKey: string;
+  featureName: string;
+  requiresNFT: boolean;
+  requiredCollection: string | null;
+  minimumBalance: number;
+  bypassForAdmin: boolean;
+  enabled: boolean;
+  gateMessage: string;
+}
+
+export default function NFTGate({ children, featureKey }: NFTGateProps) {
+  const { address, isConnected } = useAccount();
+  const [rule, setRule] = useState<GatingRule | null>(null);
+  const [ruleLoading, setRuleLoading] = useState(true);
+  
+  const isAdmin = address && ADMIN_ADDRESSES.includes(address.toLowerCase());
+  
+  // Fetch gating rule
+  useEffect(() => {
+    async function fetchRule() {
+      try {
+        const res = await fetch(`/api/gating/rules/${featureKey}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRule(data);
+        } else {
+          // No rule = no gating
+          setRule(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch gating rule:', error);
+        setRule(null);
+      } finally {
+        setRuleLoading(false);
+      }
+    }
+    
+    fetchRule();
+  }, [featureKey]);
+
+  const { isHolder, ownedCount, loading: ownershipLoading } = useNFTOwnership(rule?.requiredCollection || undefined);
+
+  // Loading state
+  if (ruleLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // No rule or not enabled = allow access
+  if (!rule || !rule.enabled) {
+    return <>{children}</>;
+  }
+
+  // Admin bypass
+  if (isAdmin && rule.bypassForAdmin) {
+    return (
+      <>
+        <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-yellow-600 dark:text-yellow-400">
+            👑 Admin Mode: Bypassing NFT gate for {rule.featureName}
+          </p>
+        </div>
+        {children}
+      </>
+    );
+  }
+
+  // No NFT required
+  if (!rule.requiresNFT) {
+    return <>{children}</>;
+  }
+
+  // Check ownership loading
+  if (ownershipLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Verifying NFT ownership...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not connected
+  if (!isConnected) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <Card className="max-w-2xl mx-auto border-2 border-primary/20">
+          <CardHeader className="text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Wallet className="w-10 h-10 text-primary" />
+            </div>
+            <CardTitle className="text-3xl mb-2">Connect Your Wallet</CardTitle>
+            <p className="text-muted-foreground">
+              {rule.gateMessage || 'Connect your wallet to access this feature'}
+            </p>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <Button size="lg" className="w-full" onClick={() => {
+              document.querySelector('[data-testid="rk-connect-button"]')?.dispatchEvent(new Event('click', { bubbles: true }));
+            }}>
+              <Wallet className="w-5 h-5 mr-2" />
+              Connect Wallet
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check minimum balance
+  const hasEnoughNFTs = isHolder && ownedCount >= rule.minimumBalance;
+
+  if (!hasEnoughNFTs) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <Card className="max-w-2xl mx-auto border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-500/5 to-orange-500/5">
+          <CardHeader className="text-center">
+            <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-10 h-10 text-yellow-500" />
+            </div>
+            <CardTitle className="text-3xl mb-2">
+              🔒 {rule.featureName}
+            </CardTitle>
+            <p className="text-lg text-muted-foreground">
+              {rule.gateMessage}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-card border border-border rounded-lg p-6 text-center">
+              <h3 className="font-bold text-xl mb-2">
+                {rule.minimumBalance > 1 
+                  ? `Hold ${rule.minimumBalance} Guardian NFTs to Unlock`
+                  : 'Hold a Guardian NFT to Unlock'
+                }
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                You currently own {ownedCount} NFT{ownedCount !== 1 ? 's' : ''}.
+                {rule.minimumBalance > ownedCount && ` You need ${rule.minimumBalance - ownedCount} more.`}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Link href="/mint">
+                <Button size="lg" className="w-full" variant="default">
+                  <ShoppingBag className="w-5 h-5 mr-2" />
+                  Mint Guardian NFT
+                </Button>
+              </Link>
+              <Link href="/marketplace">
+                <Button size="lg" className="w-full" variant="outline">
+                  Browse Marketplace
+                </Button>
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">
+                Connected: {address?.slice(0, 6)}...{address?.slice(-4)} • 
+                {ownedCount === 0 ? ' No Guardian NFTs found' : ` ${ownedCount} NFT${ownedCount > 1 ? 's' : ''} found`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Has access
+  return <>{children}</>;
+}
+
+
+STEP 5: ADD GATING CONTROL PANEL TO ADMIN DASHBOARD
+
+1. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add new GatingControlPanel component:
+
+function GatingControlPanel() {
+  const [rules, setRules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchRules();
+    fetchCollections();
+  }, []);
+
+  async function fetchRules() {
+    try {
+      const res = await fetch('/api/gating/rules');
+      const data = await res.json();
+      setRules(data);
+    } catch (error) {
+      console.error('Failed to fetch gating rules:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchCollections() {
+    try {
+      const res = await fetch('/api/collections');
+      const data = await res.json();
+      setCollections(data);
+    } catch (error) {
+      console.error('Failed to fetch collections:', error);
+    }
+  }
+
+  async function updateRule(featureKey: string, updates: any) {
+    try {
+      const res = await fetch(`/api/admin/gating/rules/${featureKey}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (res.ok) {
+        await fetchRules();
+        alert('Gating rule updated successfully');
+      } else {
+        alert('Failed to update gating rule');
+      }
+    } catch (error) {
+      alert('Failed to update gating rule');
+    }
+  }
+
+  async function initializeRules() {
+    if (!confirm('Initialize default gating rules? This will create missing rules but not overwrite existing ones.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/gating/initialize', { method: 'POST' });
+      if (res.ok) {
+        await fetchRules();
+        alert('Default rules initialized');
+      }
+    } catch (error) {
+      alert('Failed to initialize rules');
+    }
+  }
+
+  if (loading) {
+    return <Card><CardContent className="p-6">Loading gating rules...</CardContent></Card>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>🔒 NFT Gating Control</CardTitle>
+          <Button onClick={initializeRules} variant="outline" size="sm">
+            Initialize Defaults
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {rules.map(rule => (
+            <div key={rule.id} className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold">{rule.featureName}</h4>
+                  <p className="text-xs text-muted-foreground">{rule.featureKey}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateRule(rule.featureKey, { enabled: !rule.enabled })}
+                    className={`px-3 py-1 rounded text-sm ${
+                      rule.enabled ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}
+                  >
+                    {rule.enabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={rule.requiresNFT}
+                    onChange={(e) => updateRule(rule.featureKey, { requiresNFT: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span>Requires NFT</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={rule.bypassForAdmin}
+                    onChange={(e) => updateRule(rule.featureKey, { bypassForAdmin: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span>Admin Bypass</span>
+                </label>
+              </div>
+
+              {rule.requiresNFT && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Required Collection</label>
+                    <select
+                      value={rule.requiredCollection || ''}
+                      onChange={(e) => updateRule(rule.featureKey, { 
+                        requiredCollection: e.target.value || null 
+                      })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="">Any Guardian NFT</option>
+                      {collections.map(col => (
+                        <option key={col.id} value={col.contractAddress}>
+                          {col.name} ({col.symbol})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Minimum Balance</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={rule.minimumBalance}
+                      onChange={(e) => updateRule(rule.featureKey, { 
+                        minimumBalance: parseInt(e.target.value) 
+                      })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Gate Message</label>
+                    <textarea
+                      value={rule.gateMessage || ''}
+                      onChange={(e) => updateRule(rule.featureKey, { gateMessage: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      rows={2}
+                      placeholder="Custom message for locked users"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+Add to your AdminDashboard layout:
+<GatingControlPanel />
+
+
+STEP 6: UPDATE ALL PAGES TO USE DYNAMIC GATING
+
+1. UPDATE FILE: client/src/pages/BasedArcade.tsx
+
+<NFTGate featureKey="arcade">
+  {/* Your arcade content */}
+</NFTGate>
+
+2. UPDATE FILE: client/src/pages/GuardianSolitaire.tsx
+
+<NFTGate featureKey="game_solitaire">
+  {/* Your game content */}
+</NFTGate>
+
+3. UPDATE FILE: client/src/pages/AsteroidMining.tsx
+
+<NFTGate featureKey="game_asteroid">
+  {/* Your game content */}
+</NFTGate>
+
+4. UPDATE FILE: client/src/pages/GuardianDefense.tsx
+
+<NFTGate featureKey="game_defense">
+  {/* Your game content */}
+</NFTGate>
+
+5. OPTIONAL: UPDATE FILE: client/src/pages/Governance.tsx
+
+<NFTGate featureKey="governance">
+  {/* Your governance content */}
+</NFTGate>
+
+
+TESTING CHECKLIST:
+
+✅ Database table created for gating rules
+✅ Default rules initialized on server start
+✅ Admin dashboard shows gating control panel
+✅ Can toggle requires NFT on/off per feature
+✅ Can set minimum balance requirement
+✅ Can select specific collection requirement
+✅ Can enable/disable entire gate
+✅ Can toggle admin bypass
+✅ Can customize gate message
+✅ Changes take effect immediately
+✅ Non-holders see custom gate messages
+✅ Holders can access gated features
+✅ Admin bypass works when enabled
