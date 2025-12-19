@@ -1,10 +1,32 @@
+// CONNECTION TIMEOUT FIX - Must be at very top before any imports
+const CONNECTION_TIMEOUT = 30000; // 30 seconds
+
+const timeoutId = setTimeout(() => {
+  console.error('[CONNECTION] App initialization timeout - forcing reload');
+  if (!document.querySelector('#root')?.hasChildNodes()) {
+    window.location.reload();
+  }
+}, CONNECTION_TIMEOUT);
+
+window.addEventListener('load', () => {
+  clearTimeout(timeoutId);
+  console.log('[CONNECTION] App loaded successfully');
+});
+
+window.addEventListener('error', (event) => {
+  console.error('[CONNECTION] Global error caught:', event.error);
+  if (event.error?.message?.includes('fetch') || event.error?.message?.includes('network')) {
+    console.error('[CONNECTION] Network error detected during initialization');
+  }
+});
+
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { initAnalytics } from "@/lib/analytics";
 
 // Emergency: Clear all caches if app version changed
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const lastVersion = localStorage.getItem('app_version');
 
 if (lastVersion !== APP_VERSION) {
@@ -26,8 +48,12 @@ window.addEventListener('unhandledrejection', (event) => {
     message.includes('wallet') ||
     message.includes('connect') ||
     message.includes('extension') ||
-    message.includes('provider')
+    message.includes('provider') ||
+    message.includes('fetch') ||
+    message.includes('network') ||
+    message.includes('timeout')
   ) {
+    console.warn('[CONNECTION] Suppressed rejection:', message);
     event.preventDefault();
   }
 });

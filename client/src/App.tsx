@@ -7,6 +7,7 @@ import '@/lib/i18n';
 import { lazy, Suspense, useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Rocket } from "lucide-react";
+import { connectionManager } from "@/lib/connectionManager";
 
 const Home = lazy(() => import("@/pages/Home"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
@@ -230,6 +231,15 @@ export function Router() {
 
 function App() {
   const [walletReady, setWalletReady] = useState(false);
+
+  useEffect(() => {
+    connectionManager.startAutoCheck(30000);
+    console.log('[App] Connection manager initialized');
+    
+    return () => {
+      connectionManager.stopAutoCheck();
+    };
+  }, []);
 
   useEffect(() => {
     const timer = requestIdleCallback ? 
