@@ -104,24 +104,49 @@ export function useGuardianProfile(): GuardianProfileResult {
   const setCustomName = useCallback(async (name: string | null): Promise<{ success: boolean; error?: string }> => {
     if (!address) return { success: false, error: 'No wallet connected' };
     
-    try {
-      const res = await fetch('/api/profile/name', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address, customName: name }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data.profile);
-        return { success: true };
-      } else {
-        const error = await res.json();
-        return { success: false, error: error.error || 'Failed to set name' };
+    const maxRetries = 3;
+    let lastError = 'Failed to set name';
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        
+        const res = await fetch('/api/profile/name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: address, customName: name }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeout);
+        
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data.profile);
+          return { success: true };
+        } else {
+          const error = await res.json();
+          lastError = error.error || 'Failed to set name';
+          if (res.status === 400 || res.status === 409) {
+            return { success: false, error: lastError };
+          }
+        }
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          lastError = 'Request timed out';
+        } else {
+          lastError = 'Network error';
+        }
+        console.warn(`[Profile] Set name attempt ${attempt}/${maxRetries} failed:`, err);
       }
-    } catch {
-      return { success: false, error: 'Network error' };
+      
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
+    
+    return { success: false, error: lastError };
   }, [address]);
 
   const checkNameAvailable = useCallback(async (name: string): Promise<{ available: boolean; error?: string }> => {
