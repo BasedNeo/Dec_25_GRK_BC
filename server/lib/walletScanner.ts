@@ -5,7 +5,7 @@ interface NFTCollection {
   name: string;
   symbol: string;
   balance: number;
-  tokenIds: number[];
+  tokenIds: string[];
 }
 
 interface NFTMetadata {
@@ -44,11 +44,11 @@ export class WalletScanner {
       
       console.log(`Found ${logs.length} transfer events`);
       
-      const contractMap = new Map<string, Set<number>>();
+      const contractMap = new Map<string, Set<string>>();
       
       for (const log of logs) {
         const contractAddress = log.address.toLowerCase();
-        const tokenId = Number(log.topics[3]);
+        const tokenId = BigInt(log.topics[3]).toString();
         
         if (!contractMap.has(contractAddress)) {
           contractMap.set(contractAddress, new Set());
@@ -88,7 +88,7 @@ export class WalletScanner {
   private static async verifyAndGetCollection(
     contractAddress: string,
     walletAddress: string,
-    potentialTokenIds: number[],
+    potentialTokenIds: string[],
     provider: ethers.JsonRpcProvider
   ): Promise<NFTCollection | null> {
     const abi = [
@@ -120,12 +120,12 @@ export class WalletScanner {
         return null;
       }
       
-      const ownedTokenIds: number[] = [];
+      const ownedTokenIds: string[] = [];
       
       try {
         for (let i = 0; i < balanceNum && i < 100; i++) {
           const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-          ownedTokenIds.push(Number(tokenId));
+          ownedTokenIds.push(tokenId.toString());
         }
       } catch (error) {
         for (const tokenId of potentialTokenIds.slice(0, 100)) {
@@ -155,7 +155,7 @@ export class WalletScanner {
   
   static async getNFTMetadata(
     contractAddress: string,
-    tokenId: number,
+    tokenId: string | number,
     provider: ethers.JsonRpcProvider
   ): Promise<NFTMetadata | null> {
     try {

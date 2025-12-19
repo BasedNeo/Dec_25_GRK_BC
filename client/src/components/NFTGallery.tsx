@@ -158,7 +158,17 @@ export function NFTGallery({
 
   // Flatten pages
   const nfts = data?.pages.flatMap((page: any) => page.nfts) || [];
-  const displayNfts = filterByOwner ? ownedNFTs : (nfts && nfts.length > 0) ? nfts : [];
+  
+  // Filter by selected collection if specified
+  const isBasedGuardiansSelected = !selectedCollection || selectedCollection.toLowerCase() === NFT_CONTRACT.toLowerCase();
+  const displayNfts = filterByOwner 
+    ? (isBasedGuardiansSelected ? ownedNFTs : []) 
+    : (nfts && nfts.length > 0) ? nfts : [];
+  
+  // Get selected collection info for display
+  const selectedCollectionInfo = selectedCollection 
+    ? walletCollections.find(c => c.contractAddress.toLowerCase() === selectedCollection.toLowerCase())
+    : null;
 
   // Extract Traits
   const availableTraits = useMemo(() => {
@@ -549,9 +559,37 @@ export function NFTGallery({
                       ))}
                     </div>
                   ) : displayNfts.length === 0 ? (
-                     // ... existing empty state
                      (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                         {filterByOwner ? (
+                         {filterByOwner && !isBasedGuardiansSelected && selectedCollectionInfo ? (
+                           <>
+                             <div className="w-20 h-20 rounded-xl overflow-hidden mb-4 bg-muted">
+                               {selectedCollectionInfo.representativeImage ? (
+                                 <img src={selectedCollectionInfo.representativeImage} alt={selectedCollectionInfo.name} className="w-full h-full object-cover" />
+                               ) : (
+                                 <div className="w-full h-full flex items-center justify-center text-4xl">🖼️</div>
+                               )}
+                             </div>
+                             <h3 className="text-lg font-bold text-white mb-2">{selectedCollectionInfo.name}</h3>
+                             <p className="text-muted-foreground mb-4">You own {selectedCollectionInfo.balance} NFT{selectedCollectionInfo.balance !== 1 ? 's' : ''} from this collection.</p>
+                             <p className="text-xs text-muted-foreground/50 mb-6">This gallery is optimized for Based Guardians. View other collections on the block explorer.</p>
+                             <a 
+                               href={`${BLOCK_EXPLORER}/token/${selectedCollectionInfo.contractAddress}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-primary transition-colors"
+                             >
+                               <ExternalLink size={16} />
+                               View on Block Explorer
+                             </a>
+                             <Button 
+                               onClick={() => setSelectedCollection(null)} 
+                               variant="ghost" 
+                               className="mt-4 text-muted-foreground"
+                             >
+                               Back to Based Guardians
+                             </Button>
+                           </>
+                         ) : filterByOwner ? (
                            <>
                              <p className="text-muted-foreground mb-4">You don't own any Guardians yet.</p>
                              <p className="text-xs text-muted-foreground/50 mb-6">Mint or buy NFTs to see them here.</p>
@@ -562,9 +600,11 @@ export function NFTGallery({
                              <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
                            </>
                          )}
-                         <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
-                            Clear Filters
-                         </Button>
+                         {(isBasedGuardiansSelected || !filterByOwner) && (
+                           <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
+                              Clear Filters
+                           </Button>
+                         )}
                      </div>)
                   ) : (
                     <>

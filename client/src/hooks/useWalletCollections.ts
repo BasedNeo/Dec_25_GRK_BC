@@ -6,7 +6,7 @@ interface CollectionSummary {
   name: string;
   symbol: string;
   balance: number;
-  tokenIds: number[];
+  tokenIds: string[];
   representativeImage?: string;
 }
 
