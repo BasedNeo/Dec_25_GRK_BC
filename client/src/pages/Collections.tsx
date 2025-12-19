@@ -307,11 +307,15 @@ function CollectionCard({ collection }: { collection: Collection }) {
             </div>
             <div>
               <p className="text-xs text-gray-500">Floor</p>
-              <p className="font-bold text-cyan-400">{floorPrice} BASED</p>
+              <p className="font-bold text-cyan-400">
+                {Number(floorPrice) >= 1 ? `${floorPrice} BASED` : '-'}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Volume</p>
-              <p className="font-bold text-purple-400">{volume} BASED</p>
+              <p className="font-bold text-purple-400">
+                {Number(volume) >= 1 ? `${volume} BASED` : '-'}
+              </p>
             </div>
           </div>
         </CardContent>
