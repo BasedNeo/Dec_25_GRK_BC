@@ -1,10 +1,15 @@
+import { useMemo } from 'react';
 import { useGracefulDegradation } from '@/hooks/useGracefulDegradation';
 import { AlertTriangle } from 'lucide-react';
 
+const CRITICAL_SERVICES = ['rpc-mainnet.basedaibridge.com', 'coingecko-api', 'binance-api', 'coincap-api'];
+
 export const DegradationBanner = () => {
-  const { degraded, failedServices } = useGracefulDegradation({
-    criticalServices: ['rpc-mainnet.basedaibridge.com', 'coingecko-api', 'binance-api', 'coincap-api']
-  });
+  const options = useMemo(() => ({
+    criticalServices: CRITICAL_SERVICES
+  }), []);
+  
+  const { degraded, failedServices } = useGracefulDegradation(options);
   
   if (!degraded) return null;
   
