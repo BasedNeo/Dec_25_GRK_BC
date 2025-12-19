@@ -292,13 +292,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Only set timeout if wallet isn't ready yet
+    if (walletReady) return;
+    
     const timeoutTimer = setTimeout(() => {
-      setLoadingTimeout(true);
-      console.warn('[App] Loading timeout reached - showing fallback UI');
+      if (!walletReady) {
+        setLoadingTimeout(true);
+        console.warn('[App] Loading timeout reached - showing fallback UI');
+      }
     }, 10000);
     
     return () => clearTimeout(timeoutTimer);
-  }, []);
+  }, [walletReady]);
 
   if (loadingTimeout && !walletReady) {
     return <LoadingTimeoutFallback />;
