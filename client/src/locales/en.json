@@ -5,7 +5,7 @@
     "mint": "Mint",
     "gallery": "Portfolio",
     "escrow": "Guardian/NFTs",
-    "collections": "All Collections",
+    "collections": "Collections",
     "voting": "Voting",
     "pool": "Treasury",
     "stats": "Stats",
@@ -17,7 +17,7 @@
     "title": "NFT Collections",
     "subtitle": "Discover and trade NFTs from verified collections across the BasedAI ecosystem",
     "featured": "Featured Collections",
-    "all": "All Collections",
+    "all": "Collections",
     "empty": "No collections available yet"
   },
   "common": {

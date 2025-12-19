@@ -326,7 +326,7 @@ export default function Collections() {
             <div className="mb-12">
               <h2 className="text-2xl font-orbitron font-bold mb-6 flex items-center gap-2 text-white">
                 <Users className="w-6 h-6 text-cyan-400" />
-                {t('collections.all', 'All Collections')}
+                {t('collections.all', 'Collections')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {other.map(collection => (
