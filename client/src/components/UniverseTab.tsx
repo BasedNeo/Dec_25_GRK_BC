@@ -804,23 +804,21 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
         
         {/* Easter Egg Icons */}
         <div className="flex items-center justify-center gap-8 mt-6 sm:opacity-40 opacity-60 hover:opacity-100 transition-opacity duration-500">
-          <Link href="/odyssey">
-            <button 
-              className="p-3 rounded-full hover:bg-cyan-500/10 active:bg-cyan-500/20 transition-colors group touch-manipulation"
-              title="Discover more..."
-              aria-label="Discover the Odyssey"
-            >
-              <Cpu className="w-7 h-7 sm:w-6 sm:h-6 text-cyan-500/60 group-hover:text-cyan-400 group-active:text-cyan-400 transition-colors" />
-            </button>
+          <Link 
+            href="/odyssey"
+            className="p-3 rounded-full hover:bg-cyan-500/10 active:bg-cyan-500/20 transition-colors group touch-manipulation inline-flex items-center justify-center"
+            title="Discover more..."
+            aria-label="Discover the Odyssey"
+          >
+            <Cpu className="w-7 h-7 sm:w-6 sm:h-6 text-cyan-500/60 group-hover:text-cyan-400 group-active:text-cyan-400 transition-colors" />
           </Link>
-          <Link href="/creators">
-            <button 
-              className="p-3 rounded-full hover:bg-orange-500/10 active:bg-orange-500/20 transition-colors group touch-manipulation"
-              title="Meet the creators..."
-              aria-label="Meet the creators"
-            >
-              <FoxIcon className="w-7 h-7 sm:w-6 sm:h-6 text-orange-500/60 group-hover:text-orange-400 group-active:text-orange-400 transition-colors" />
-            </button>
+          <Link 
+            href="/creators"
+            className="p-3 rounded-full hover:bg-orange-500/10 active:bg-orange-500/20 transition-colors group touch-manipulation inline-flex items-center justify-center"
+            title="Meet the creators..."
+            aria-label="Meet the creators"
+          >
+            <FoxIcon className="w-7 h-7 sm:w-6 sm:h-6 text-orange-500/60 group-hover:text-orange-400 group-active:text-orange-400 transition-colors" />
           </Link>
         </div>
       </div>
