@@ -40,14 +40,6 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'cyan'
     },
     { 
-      id: 'gallery', 
-      label: t('hub.portfolioLabel', 'Portfolio'), 
-      icon: Wallet, 
-      description: t('hub.portfolioDesc', 'View your NFT collection'),
-      color: 'from-emerald-500 to-cyan-500',
-      glow: 'emerald'
-    },
-    { 
       id: 'escrow', 
       label: t('hub.marketLabel', 'Market'), 
       icon: Grid3X3, 
@@ -56,12 +48,12 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'violet'
     },
     { 
-      id: 'universe', 
-      label: t('hub.universeLabel', 'Universe'), 
-      icon: Globe, 
-      description: t('hub.universeDesc', 'Explore the Based Guardians lore'),
-      color: 'from-blue-500 to-indigo-500',
-      glow: 'blue'
+      id: 'gallery', 
+      label: t('hub.portfolioLabel', 'Portfolio'), 
+      icon: Wallet, 
+      description: t('hub.portfolioDesc', 'View your NFT collection'),
+      color: 'from-emerald-500 to-cyan-500',
+      glow: 'emerald'
     },
     { 
       id: 'pool', 
@@ -90,6 +82,14 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       route: '/games'
     },
     { 
+      id: 'activity', 
+      label: t('hub.activityLabel', 'Activity'), 
+      icon: Activity, 
+      description: t('hub.activityDesc', 'Live transaction feed'),
+      color: 'from-rose-500 to-pink-500',
+      glow: 'rose'
+    },
+    { 
       id: 'voting', 
       label: t('hub.votingLabel', 'Voting'), 
       icon: Vote, 
@@ -98,12 +98,12 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'amber'
     },
     { 
-      id: 'activity', 
-      label: t('hub.activityLabel', 'Activity'), 
-      icon: Activity, 
-      description: t('hub.activityDesc', 'Live transaction feed'),
-      color: 'from-rose-500 to-pink-500',
-      glow: 'rose'
+      id: 'universe', 
+      label: t('hub.universeLabel', 'Universe'), 
+      icon: Globe, 
+      description: t('hub.universeDesc', 'Explore the Based Guardians lore'),
+      color: 'from-blue-500 to-indigo-500',
+      glow: 'blue'
     },
     { 
       id: 'escrow-coming', 
