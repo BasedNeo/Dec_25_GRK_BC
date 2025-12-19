@@ -291,3 +291,19 @@ export const encryptedStorage = pgTable('encrypted_storage', {
 });
 
 export type EncryptedStorageEntry = typeof encryptedStorage.$inferSelect;
+
+export const transactionLogs = pgTable('transaction_logs', {
+  id: serial('id').primaryKey(),
+  logId: text('log_id').notNull().unique(),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+  operation: text('operation').notNull(),
+  tableName: text('table_name').notNull(),
+  recordId: text('record_id').notNull(),
+  beforeData: text('before_data'),
+  afterData: text('after_data'),
+  userId: text('user_id'),
+  txId: text('tx_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+export type TransactionLog = typeof transactionLogs.$inferSelect;
