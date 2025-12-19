@@ -1724,5 +1724,89 @@ export async function registerRoutes(
     }
   });
 
+  const { PointInTimeRecovery } = await import('./lib/pointInTimeRecovery');
+  const { TransactionLogService } = await import('./lib/transactionLog');
+
+  app.get('/api/admin/pitr/recovery-points', requireAdmin, async (req, res) => {
+    try {
+      const points = await PointInTimeRecovery.getRecoveryPoints(20);
+      res.json({ points });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/pitr/test', requireAdmin, async (req, res) => {
+    try {
+      const { timestamp } = req.body;
+      
+      if (!timestamp) {
+        return res.status(400).json({ error: 'Timestamp required' });
+      }
+      
+      const result = await PointInTimeRecovery.testRecovery(new Date(timestamp));
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/pitr/recover', requireAdmin, async (req, res) => {
+    try {
+      const { timestamp } = req.body;
+      
+      if (!timestamp) {
+        return res.status(400).json({ error: 'Timestamp required' });
+      }
+      
+      await PointInTimeRecovery.recoverToPoint(new Date(timestamp));
+      
+      res.json({ 
+        success: true,
+        message: 'Database recovered successfully',
+        recoveredTo: timestamp
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/pitr/transaction-logs/stats', requireAdmin, async (req, res) => {
+    try {
+      const stats = await TransactionLogService.getStats();
+      res.json({ stats });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/pitr/transaction-logs', requireAdmin, async (req, res) => {
+    try {
+      const { start, end, limit } = req.query;
+      
+      let logs;
+      
+      if (start && end) {
+        logs = await TransactionLogService.getLogsInRange(
+          new Date(start as string),
+          new Date(end as string)
+        );
+      } else if (start) {
+        logs = await TransactionLogService.getLogsSince(new Date(start as string));
+      } else {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        logs = await TransactionLogService.getLogsSince(oneDayAgo);
+      }
+      
+      if (limit) {
+        logs = logs.slice(0, parseInt(limit as string));
+      }
+      
+      res.json({ logs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

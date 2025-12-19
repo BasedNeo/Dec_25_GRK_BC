@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { 
   X, Shield, RefreshCw, Trash2, Database, Activity, 
   Zap, AlertTriangle, Eye, EyeOff, Server,
-  Download, Wrench, Inbox, Mail, Bug, HardDrive, ToggleLeft, ToggleRight
+  Download, Wrench, Inbox, Mail, Bug, HardDrive, ToggleLeft, ToggleRight, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import { SessionMonitor } from './SessionMonitor';
 import { SecurityMonitor } from './SecurityMonitor';
 import { SecurityDashboard } from './SecurityDashboard';
 import { BackupManager } from './BackupManager';
+import { PointInTimeRecovery } from './PointInTimeRecovery';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1413,6 +1414,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Database Backup & Restore
             </h3>
             <BackupManager />
+          </Card>
+          
+          <Card className="bg-black/60 border-purple-500/30 p-6 mb-6" data-testid="pitr-card">
+            <h3 className="text-xl font-orbitron font-bold text-purple-400 mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Point-in-Time Recovery
+            </h3>
+            <PointInTimeRecovery />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">
