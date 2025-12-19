@@ -96,10 +96,10 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     maxPlaysPerDay: 10,
     enabled: true,
     scoring: {
-      maxScore: 50000,       // Perfect 10-wave defense with chains
-      goodScore: 8000,       // Casual play, few waves cleared
-      greatScore: 25000,     // Advanced, most waves with good chains
-      legendaryScore: 40000, // Near-perfect defense mastery
+      maxScore: 50000,
+      goodScore: 8000,
+      greatScore: 25000,
+      legendaryScore: 40000,
     },
     features: {
       hasTimer: false,
@@ -107,7 +107,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasLives: true,
       hasCombo: true,
     },
-    nftRequired: false,
+    nftRequired: true,
     minPlayDuration: 60,
   },
   
@@ -125,10 +125,10 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     maxPlaysPerDay: 10,
     enabled: true,
     scoring: {
-      maxScore: 50000,       // Sub-3min, sub-80 moves, flawless
-      goodScore: 12000,      // Completed in reasonable time/moves
-      greatScore: 20000,     // Fast completion, efficient moves
-      legendaryScore: 35000, // Near-perfect execution
+      maxScore: 50000,
+      goodScore: 12000,
+      greatScore: 20000,
+      legendaryScore: 35000,
     },
     features: {
       hasTimer: true,
@@ -136,7 +136,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasUndo: true,
       hasCombo: true,
     },
-    nftRequired: true,
+    nftRequired: false,
     minPlayDuration: 120,
   },
   
@@ -164,7 +164,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasLives: true,
       hasCombo: false,
     },
-    nftRequired: false,
+    nftRequired: true,
     minPlayDuration: 60,
   },
   

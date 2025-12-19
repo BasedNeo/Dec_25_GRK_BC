@@ -183,120 +183,143 @@ function GameCard({ game, isLocked, isConnected, playsToday, personalBest, onPla
 
   return (
     <motion.div
-      className="relative group"
+      className="relative group cursor-pointer"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02, y: -5 }}
+      whileHover={{ scale: 1.03, y: -8 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
+      onClick={needsConnection ? onConnect : canPlay ? onPlay : undefined}
     >
-      <div className={`absolute -inset-0.5 bg-gradient-to-r ${game.thumbnailGradient} rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-300`} />
+      <div className={`absolute -inset-1 bg-gradient-to-r ${game.thumbnailGradient} rounded-2xl blur-lg opacity-0 group-hover:opacity-70 transition-all duration-500`} />
       
-      <Card className="relative bg-black/80 border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${game.thumbnailGradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
-        
-        <div className="relative p-6">
-          <div className="flex items-start justify-between mb-4">
-            <motion.div
-              className={`w-16 h-16 rounded-xl bg-gradient-to-br ${game.thumbnailGradient} flex items-center justify-center shadow-lg`}
-              animate={isHovered ? { rotate: [0, -5, 5, 0], scale: 1.1 } : {}}
-              transition={{ duration: 0.5 }}
-            >
-              <Icon className="w-8 h-8 text-white" />
-            </motion.div>
-            
-            <div className="flex flex-col items-end gap-2">
-              {isLocked ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-400">
-                  <Lock className="w-3 h-3" />
-                  NFT Required
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-xs font-medium text-green-400">
-                  <Unlock className="w-3 h-3" />
-                  Free to Play
-                </span>
-              )}
-              
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono ${
-                playsRemaining > 0 
-                  ? 'bg-cyan-500/20 border border-cyan-500/30 text-cyan-400' 
-                  : 'bg-gray-500/20 border border-gray-500/30 text-gray-500'
-              }`}>
-                <Zap className="w-3 h-3" />
-                {playsToday}/{maxPlays} plays
-              </span>
+      <Card className="relative bg-gradient-to-b from-gray-900 to-black border-0 rounded-2xl overflow-hidden shadow-2xl h-full">
+        <div className={`relative h-44 bg-gradient-to-br ${game.thumbnailGradient} overflow-hidden`}>
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
+          
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center"
+            animate={isHovered ? { scale: 1.1, rotate: [0, 2, -2, 0] } : { scale: 1 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/20 rounded-full blur-2xl scale-150" />
+              <Icon className="w-20 h-20 text-white drop-shadow-2xl relative z-10" />
             </div>
+          </motion.div>
+          
+          <div className="absolute top-3 left-3 flex gap-2">
+            {isLocked ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md border border-red-500/50 rounded-lg text-xs font-bold text-red-400 shadow-lg">
+                <Lock className="w-3 h-3" />
+                NFT REQUIRED
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md border border-green-500/50 rounded-lg text-xs font-bold text-green-400 shadow-lg">
+                <Unlock className="w-3 h-3" />
+                FREE TO PLAY
+              </span>
+            )}
           </div>
-
-          <h3 className="text-xl font-orbitron font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
+          
+          <div className="absolute top-3 right-3">
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md ${
+              playsRemaining > 0 
+                ? 'bg-cyan-500/80 text-white' 
+                : 'bg-gray-700/80 text-gray-300'
+            }`}>
+              <Zap className="w-3 h-3" />
+              {playsRemaining}/{maxPlays}
+            </span>
+          </div>
+          
+          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black via-black/80 to-transparent" />
+          
+          <motion.div 
+            className="absolute bottom-3 left-3 right-3"
+            initial={{ y: 10, opacity: 0 }}
+            animate={isHovered ? { y: 0, opacity: 1 } : { y: 10, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center gap-3 text-xs text-white/90">
+              <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
+                <Clock className="w-3 h-3" />
+                <span>{Math.round(game.averagePlayTime / 60)}min</span>
+              </div>
+              <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
+                <Star className="w-3 h-3 text-yellow-400" />
+                <span className="capitalize">{game.difficulty}</span>
+              </div>
+              <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full capitalize">
+                {game.category}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+        
+        <div className="relative p-5">
+          <h3 className="text-xl font-orbitron font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
             {game.name}
           </h3>
           
-          <p className="text-gray-400 text-sm mb-4 line-clamp-2 min-h-[40px]">
+          <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed min-h-[40px]">
             {game.description}
           </p>
 
-          <div className="flex items-center gap-4 mb-4 text-sm">
-            <div className="flex items-center gap-1.5 text-purple-400">
-              <Clock className="w-4 h-4" />
-              <span>{Math.round(game.averagePlayTime / 60)}m avg</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-yellow-400">
-              <Star className="w-4 h-4" />
-              <span className="capitalize">{game.difficulty}</span>
-            </div>
-          </div>
-
           {personalBest > 0 && (
-            <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-yellow-400 font-mono text-sm">
-                Personal Best: {personalBest.toLocaleString()}
+              <span className="text-yellow-400 font-mono text-sm font-bold">
+                {personalBest.toLocaleString()} pts
               </span>
             </div>
           )}
 
-          <Button
-            onClick={needsConnection ? onConnect : onPlay}
-            disabled={!needsConnection && !canPlay}
-            className={`w-full font-bold py-3 rounded-xl transition-all ${
-              needsConnection
-                ? 'bg-gradient-to-r from-cyan-500 to-purple-600 hover:shadow-lg hover:shadow-cyan-500/25 text-white cursor-pointer'
-                : canPlay
-                  ? `bg-gradient-to-r ${game.thumbnailGradient} hover:shadow-lg hover:shadow-purple-500/25 text-white`
-                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            }`}
-            aria-label={needsConnection ? 'Connect Wallet' : `Play ${game.name}`}
-            data-testid={`button-play-${game.id}`}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {needsConnection ? (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                Connect Wallet
-              </>
-            ) : isLocked ? (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                NFT Required
-              </>
-            ) : playsRemaining <= 0 ? (
-              <>
-                <Clock className="w-4 h-4 mr-2" />
-                Daily Limit Reached
-              </>
-            ) : (
-              <>
-                <Gamepad2 className="w-4 h-4 mr-2" />
-                Play Now
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </>
-            )}
-          </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); needsConnection ? onConnect() : onPlay(); }}
+              disabled={!needsConnection && !canPlay}
+              className={`w-full font-bold py-4 rounded-xl transition-all text-base ${
+                needsConnection
+                  ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 hover:shadow-xl hover:shadow-cyan-500/30 text-white'
+                  : canPlay
+                    ? `bg-gradient-to-r ${game.thumbnailGradient} hover:shadow-xl hover:shadow-purple-500/30 text-white`
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
+              aria-label={needsConnection ? 'Connect Wallet' : `Play ${game.name}`}
+              data-testid={`button-play-${game.id}`}
+            >
+              {needsConnection ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Connect & Play
+                </span>
+              ) : isLocked ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Unlock with NFT
+                </span>
+              ) : playsRemaining <= 0 ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Come Back Tomorrow
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Gamepad2 className="w-5 h-5" />
+                  PLAY NOW
+                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              )}
+            </Button>
+          </motion.div>
         </div>
 
         {isLocked && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             <div className="text-center p-6">
               <Lock className="w-12 h-12 text-cyan-400 mx-auto mb-3" />
               <p className="text-white font-bold mb-1">NFT Holders Only</p>
@@ -424,7 +447,7 @@ export default function BasedArcade() {
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              Connect your wallet to unlock NFT holder benefits
+              Connect your wallet to unlock NFT holder benefits & reward points
             </motion.p>
           )}
           
