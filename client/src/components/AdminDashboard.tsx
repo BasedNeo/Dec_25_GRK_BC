@@ -15,6 +15,8 @@ import { SecureStorage } from '@/lib/secureStorage';
 import { useToast } from '@/hooks/use-toast';
 import { invalidateFeatureFlagsCache } from '@/lib/featureFlags';
 import { perfMonitor } from '@/lib/performanceMonitor';
+import { CircuitBreakerMonitor } from './CircuitBreakerMonitor';
+import { circuitBreakerManager } from '@/lib/circuitBreaker';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -1083,6 +1085,34 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
             {!conversions && !analyticsData && (
               <div className="text-gray-500 text-sm">No analytics data yet. Analytics will appear as users interact with the app.</div>
             )}
+          </Card>
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Circuit Breakers
+            </h3>
+            <div className="space-y-4 mb-4">
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    circuitBreakerManager.resetAll();
+                    toast({
+                      title: "Circuit Breakers Reset",
+                      description: "All circuit breakers have been reset to CLOSED state.",
+                    });
+                  }}
+                  variant="outline"
+                  className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20"
+                  data-testid="button-reset-breakers"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reset All Breakers
+                </Button>
+              </div>
+            </div>
+            <CircuitBreakerMonitor />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">

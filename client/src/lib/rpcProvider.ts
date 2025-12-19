@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { RPC_ENDPOINTS } from './constants';
+import { circuitBreakerManager } from './circuitBreaker';
 
 interface RPCEndpoint {
   url: string;
@@ -109,7 +110,6 @@ export class RPCProviderManager {
     const healthyEndpoints = this.endpoints.filter(e => e.healthy);
     
     if (healthyEndpoints.length === 0) {
-      // Try all endpoints as fallback
       console.warn('[RPC] No healthy endpoints, trying all...');
     }
     
@@ -118,7 +118,7 @@ export class RPCProviderManager {
 
     for (let i = 0; i < Math.min(maxRetries, endpointsToTry.length); i++) {
       const endpoint = endpointsToTry[i];
-      // Exponential backoff: 0ms, 1000ms, 2000ms, 4000ms...
+      const breaker = circuitBreakerManager.getBreaker(`rpc-${endpoint.url.split('/')[2] || 'endpoint'}`);
       const backoffDelay = i > 0 ? Math.min(1000 * Math.pow(2, i - 1), 8000) : 0;
       
       if (backoffDelay > 0) {
@@ -126,16 +126,15 @@ export class RPCProviderManager {
       }
       
       try {
+        const result = await breaker.execute(async () => {
+          return await Promise.race([
+            fn(endpoint.provider),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error(`RPC timeout after ${timeoutMs}ms`)), timeoutMs)
+            ),
+          ]);
+        });
         
-        // Execute with timeout
-        const result = await Promise.race([
-          fn(endpoint.provider),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error(`RPC timeout after ${timeoutMs}ms`)), timeoutMs)
-          ),
-        ]);
-        
-        // Reset failure count on success
         endpoint.failureCount = 0;
         endpoint.healthy = true;
         return result;

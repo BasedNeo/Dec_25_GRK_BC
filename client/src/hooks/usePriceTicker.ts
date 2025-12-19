@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useInterval } from '@/hooks/useInterval';
+import { circuitBreakerManager } from '@/lib/circuitBreaker';
 
 const SECURITY_CONFIG = {
   MAX_PRICE_CHANGE_PERCENT: 50,
@@ -103,36 +104,40 @@ function getSecureCache(): { data: Record<string, PriceData>; valid: boolean; ti
 
 async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price: number; change: number }>> {
   const results = new Map();
+  const breaker = circuitBreakerManager.getBreaker('binance-api');
+  
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
-    
-    const requests = symbols.map(async (symbol) => {
-      try {
-        const res = await fetch(
-          `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
-          { signal: controller.signal }
-        );
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (data.lastPrice) {
-          const price = parseFloat(data.lastPrice);
-          const change = parseFloat(data.priceChangePercent || '0');
-          if (!isNaN(price) && price > 0) {
-            return { symbol, price, change };
+    await breaker.execute(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
+      
+      const requests = symbols.map(async (symbol) => {
+        try {
+          const res = await fetch(
+            `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
+            { signal: controller.signal }
+          );
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data.lastPrice) {
+            const price = parseFloat(data.lastPrice);
+            const change = parseFloat(data.priceChangePercent || '0');
+            if (!isNaN(price) && price > 0) {
+              return { symbol, price, change };
+            }
           }
+          return null;
+        } catch {
+          return null;
         }
-        return null;
-      } catch {
-        return null;
-      }
-    });
-    
-    const responses = await Promise.all(requests);
-    clearTimeout(timeout);
-    
-    responses.forEach(r => {
-      if (r) results.set(r.symbol, { price: r.price, change: r.change });
+      });
+      
+      const responses = await Promise.all(requests);
+      clearTimeout(timeout);
+      
+      responses.forEach(r => {
+        if (r) results.set(r.symbol, { price: r.price, change: r.change });
+      });
     });
     return results;
   } catch {
@@ -142,27 +147,31 @@ async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price:
 
 async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: number; change: number }>> {
   const results = new Map();
+  const breaker = circuitBreakerManager.getBreaker('coingecko-api');
+  
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), getTimeout(6000));
-    
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`,
-      { 
-        signal: controller.signal,
-        headers: { 'Accept': 'application/json' }
-      }
-    );
-    clearTimeout(timeout);
-    
-    if (!response.ok) return results;
-    const data = await response.json();
-    
-    Object.entries(data).forEach(([id, info]) => {
-      const priceInfo = info as { usd?: number; usd_24h_change?: number };
-      if (typeof priceInfo.usd === 'number' && priceInfo.usd > 0) {
-        results.set(id, { price: priceInfo.usd, change: priceInfo.usd_24h_change || 0 });
-      }
+    await breaker.execute(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), getTimeout(6000));
+      
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`,
+        { 
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
+        }
+      );
+      clearTimeout(timeout);
+      
+      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      const data = await response.json();
+      
+      Object.entries(data).forEach(([id, info]) => {
+        const priceInfo = info as { usd?: number; usd_24h_change?: number };
+        if (typeof priceInfo.usd === 'number' && priceInfo.usd > 0) {
+          results.set(id, { price: priceInfo.usd, change: priceInfo.usd_24h_change || 0 });
+        }
+      });
     });
     return results;
   } catch {
@@ -172,35 +181,39 @@ async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: n
 
 async function fetchFromCoinCap(): Promise<Map<string, { price: number; change: number }>> {
   const results = new Map();
+  const breaker = circuitBreakerManager.getBreaker('coincap-api');
+  
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
-    
-    const [btcRes, ethRes] = await Promise.all([
-      fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: controller.signal }),
-      fetch('https://api.coincap.io/v2/assets/ethereum', { signal: controller.signal }),
-    ]);
-    clearTimeout(timeout);
-    
-    if (btcRes.ok) {
-      const btcData = await btcRes.json();
-      if (btcData.data?.priceUsd) {
-        results.set('bitcoin', {
-          price: parseFloat(btcData.data.priceUsd),
-          change: parseFloat(btcData.data.changePercent24Hr || '0'),
-        });
+    await breaker.execute(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
+      
+      const [btcRes, ethRes] = await Promise.all([
+        fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: controller.signal }),
+        fetch('https://api.coincap.io/v2/assets/ethereum', { signal: controller.signal }),
+      ]);
+      clearTimeout(timeout);
+      
+      if (btcRes.ok) {
+        const btcData = await btcRes.json();
+        if (btcData.data?.priceUsd) {
+          results.set('bitcoin', {
+            price: parseFloat(btcData.data.priceUsd),
+            change: parseFloat(btcData.data.changePercent24Hr || '0'),
+          });
+        }
       }
-    }
-    
-    if (ethRes.ok) {
-      const ethData = await ethRes.json();
-      if (ethData.data?.priceUsd) {
-        results.set('ethereum', {
-          price: parseFloat(ethData.data.priceUsd),
-          change: parseFloat(ethData.data.changePercent24Hr || '0'),
-        });
+      
+      if (ethRes.ok) {
+        const ethData = await ethRes.json();
+        if (ethData.data?.priceUsd) {
+          results.set('ethereum', {
+            price: parseFloat(ethData.data.priceUsd),
+            change: parseFloat(ethData.data.changePercent24Hr || '0'),
+          });
+        }
       }
-    }
+    });
     return results;
   } catch {
     return results;
