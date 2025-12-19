@@ -8,6 +8,7 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Rocket } from "lucide-react";
 import { connectionManager } from "@/lib/connectionManager";
+import NFTGate from "@/components/NFTGate";
 
 const Home = lazy(() => import("@/pages/Home"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
@@ -173,42 +174,58 @@ export function Router() {
         </Route>
         <Route path="/games">
           <ErrorBoundary feature="Based Arcade">
-            <BasedArcade />
+            <NFTGate featureKey="arcade">
+              <BasedArcade />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/games/guardian-defense">
           <ErrorBoundary feature="Guardian Defense">
-            <GuardianDefense />
+            <NFTGate featureKey="game_defense">
+              <GuardianDefense />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/games/guardian-solitaire">
           <ErrorBoundary feature="Guardian Solitaire">
-            <GuardianSolitaire />
+            <NFTGate featureKey="game_solitaire">
+              <GuardianSolitaire />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/games/asteroid-mining">
           <ErrorBoundary feature="Asteroid Mining">
-            <AsteroidMining />
+            <NFTGate featureKey="game_asteroid">
+              <AsteroidMining />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/arcade">
           <ErrorBoundary feature="Based Arcade">
-            <BasedArcade />
+            <NFTGate featureKey="arcade">
+              <BasedArcade />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/guardian-defense">
           <ErrorBoundary feature="Guardian Defense">
-            <GuardianDefense />
+            <NFTGate featureKey="game_defense">
+              <GuardianDefense />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/guardian-solitaire">
           <ErrorBoundary feature="Guardian Solitaire">
-            <GuardianSolitaire />
+            <NFTGate featureKey="game_solitaire">
+              <GuardianSolitaire />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/asteroid-mining">
           <ErrorBoundary feature="Asteroid Mining">
-            <AsteroidMining />
+            <NFTGate featureKey="game_asteroid">
+              <AsteroidMining />
+            </NFTGate>
           </ErrorBoundary>
         </Route>
         <Route path="/transactions">

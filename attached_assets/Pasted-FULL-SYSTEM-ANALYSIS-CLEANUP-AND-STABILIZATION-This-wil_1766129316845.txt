@@ -1,0 +1,847 @@
+FULL SYSTEM ANALYSIS, CLEANUP, AND STABILIZATION
+
+This will methodically diagnose, fix, and stabilize your app after adding multiple features today. We'll restore connectivity and create a clean, documented baseline.
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 1: DIAGNOSTIC - UNDERSTAND WHAT'S BROKEN
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: CHECK CURRENT STATE
+
+In Replit terminal, run each command and note the output:
+
+1. Check if server is running:
+ps aux | grep node
+
+2. Check Node version:
+node --version
+
+3. Check for TypeScript errors:
+npx tsc --noEmit
+
+4. Check database connection:
+echo $DATABASE_URL
+
+If DATABASE_URL is empty, you need to set it in Replit Secrets.
+
+5. List all recent file changes:
+git status
+
+
+STEP 2: IDENTIFY BREAKING CHANGES
+
+Create a diagnostic log. In Replit terminal:
+
+mkdir -p logs
+echo "=== DIAGNOSTIC LOG - $(date) ===" > logs/diagnostic.txt
+echo "" >> logs/diagnostic.txt
+echo "Files modified today:" >> logs/diagnostic.txt
+git diff --name-only HEAD~5 >> logs/diagnostic.txt
+echo "" >> logs/diagnostic.txt
+echo "Server status:" >> logs/diagnostic.txt
+ps aux | grep node >> logs/diagnostic.txt
+
+View the log:
+cat logs/diagnostic.txt
+
+
+STEP 3: TRY STARTING SERVER AND CAPTURE ERRORS
+
+Stop any running processes:
+killall node
+
+Clear caches:
+rm -rf node_modules/.vite dist .cache
+
+Try starting with error logging:
+npm run dev 2>&1 | tee logs/server-errors.txt
+
+WAIT 30 SECONDS. Then press Ctrl+C to stop.
+
+View errors:
+cat logs/server-errors.txt | grep -i "error\|fail\|cannot"
+
+COPY ANY ERROR MESSAGES YOU SEE - These tell us exactly what's broken.
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2: STRATEGIC ROLLBACK - DISABLE NEW FEATURES TEMPORARILY
+═══════════════════════════════════════════════════════════════════
+
+We added these today (will disable temporarily):
+- ✅ Multi-collection support
+- ✅ NFT gating system  
+- ✅ Search engine
+- ✅ Wallet scanner
+- ✅ Collection stats tracking
+- ✅ Trending system
+
+We'll keep your core features working:
+- ✅ Minting
+- ✅ Marketplace (buy/sell/list)
+- ✅ Games (3 games)
+- ✅ Governance
+- ✅ Portfolio (basic)
+- ✅ Custom names
+- ✅ Activity feed
+
+
+STEP 4: CREATE BACKUP
+
+Before changing anything:
+
+git add -A
+git commit -m "BACKUP: Before cleanup - $(date)"
+
+Now you can always revert if needed.
+
+
+STEP 5: DISABLE NEW SERVER FEATURES
+
+1. UPDATE FILE: server/index.ts
+
+Find and comment out new service initializations:
+
+// BEFORE:
+import { GatingService } from './lib/gatingService';
+import { StatsScheduler } from './lib/statsScheduler';
+
+// AFTER (add // to comment out):
+// import { GatingService } from './lib/gatingService';
+// import { StatsScheduler } from './lib/statsScheduler';
+
+Find the app.listen() section and simplify:
+
+// BEFORE:
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  await GatingService.initializeDefaultRules();
+  StatsScheduler.start();
+});
+
+// AFTER:
+const server = app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Preview: ${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('⚠️  SIGTERM received, closing server...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+
+2. UPDATE FILE: server/routes.ts
+
+Comment out ALL new routes added today. Find and add // before each:
+
+// NEW ROUTES TO DISABLE (add // before these):
+// app.get('/api/wallet/scan/:address', ...
+// app.get('/api/search', ...
+// app.get('/api/search/collections', ...
+// app.get('/api/trending/collections', ...
+// app.get('/api/gating/rules', ...
+// app.put('/api/admin/gating/rules/:featureKey', ...
+// app.get('/api/collections/:address/details', ...
+
+Comment out their imports at the top:
+// import { WalletScanner } from './lib/walletScanner';
+// import { SearchService } from './lib/searchService';
+// import { GatingService } from './lib/gatingService';
+
+
+STEP 6: DISABLE NEW CLIENT FEATURES
+
+1. UPDATE FILE: client/src/App.tsx
+
+Comment out new routes:
+
+// NEW ROUTES TO DISABLE:
+// <Route path="/collection/:address" component={CollectionPage} />
+
+Comment out imports:
+// import CollectionPage from '@/pages/CollectionPage';
+
+
+2. UPDATE FILE: client/src/components/Navbar.tsx
+
+Remove SearchBar:
+
+// DISABLE SEARCH:
+// import SearchBar from './SearchBar';
+
+// In JSX, comment out:
+// <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+//   <SearchBar />
+// </div>
+
+
+3. UPDATE FILE: client/src/pages/Profile.tsx
+
+Disable multi-collection features:
+
+// DISABLE MULTI-COLLECTION:
+// import { useWalletCollections } from '@/hooks/useWalletCollections';
+// import CollectionSelector from '@/components/CollectionSelector';
+
+In component, comment out:
+// const { collections, loading: collectionsLoading } = useWalletCollections();
+
+In JSX, comment out:
+// <CollectionSelector
+//   collections={collections}
+//   selectedCollection={selectedCollection}
+//   onSelectCollection={setSelectedCollection}
+//   loading={collectionsLoading}
+// />
+
+
+4. UPDATE FILE: client/src/pages/BasedArcade.tsx
+
+Remove NFTGate wrapper:
+
+// DISABLE GATING:
+// import NFTGate from '@/components/NFTGate';
+
+Change from:
+<NFTGate featureKey="arcade">
+  {/* content */}
+</NFTGate>
+
+To:
+<>
+  {/* content */}
+</>
+
+
+5. UPDATE FILE: client/src/pages/GuardianSolitaire.tsx
+
+Remove NFTGate:
+// import NFTGate from '@/components/NFTGate';
+
+Unwrap content from <NFTGate> tags.
+
+
+6. UPDATE FILE: client/src/pages/AsteroidMining.tsx
+
+Remove NFTGate:
+// import NFTGate from '@/components/NFTGate';
+
+Unwrap content from <NFTGate> tags.
+
+
+7. UPDATE FILE: client/src/pages/GuardianDefense.tsx
+
+Remove NFTGate:
+// import NFTGate from '@/components/NFTGate';
+
+Unwrap content from <NFTGate> tags.
+
+
+8. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+If you added advanced filtering today, simplify it back to basics:
+
+// Keep basic collection filter dropdown
+// Remove: price range filters, advanced sorting, virtualization
+
+
+9. UPDATE FILE: client/src/pages/Collections.tsx (if you added it today)
+
+Rename or disable this page temporarily:
+
+mv client/src/pages/Collections.tsx client/src/pages/Collections.tsx.disabled
+
+Or add .disabled extension to prevent it from loading.
+
+
+STEP 7: CHECK FOR MISSING DEPENDENCIES
+
+In package.json, check if these were added today (may be causing issues):
+
+Look for:
+- "@tanstack/react-virtual"
+- "isomorphic-dompurify"
+- Any other new packages
+
+If you see errors about missing modules, install them:
+npm install
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 3: REBUILD & TEST - GET IT RUNNING
+═══════════════════════════════════════════════════════════════════
+
+STEP 8: CLEAN REBUILD
+
+1. Remove all build artifacts:
+rm -rf node_modules/.vite
+rm -rf dist
+rm -rf client/dist
+rm -rf client/node_modules/.vite
+rm -rf .cache
+
+2. Reinstall dependencies (if needed):
+npm install
+
+3. Build frontend:
+npm run build
+
+Watch for errors. If you see any, copy them.
+
+4. Start development server:
+npm run dev
+
+EXPECTED OUTPUT:
+✅ "Server running on port 5000"
+✅ "http://localhost:5000"
+
+UNEXPECTED OUTPUT (errors):
+❌ "Cannot find module..." - Missing import
+❌ "TypeError..." - Code syntax error
+❌ "EADDRINUSE..." - Port already in use
+❌ "Database connection failed..." - DB issue
+
+
+STEP 9: TEST REPLIT PREVIEW
+
+1. In Replit, click the "Run" button (or use preview)
+2. Wait for "Server running on port 5000"
+3. Click the preview URL in Replit
+
+CAN YOU SEE THE HOME PAGE?
+
+✅ YES - Great! Proceed to Step 10
+❌ NO - Copy the browser console errors:
+   - Press F12 in browser
+   - Click "Console" tab
+   - Copy all red errors
+   - Share them
+
+
+STEP 10: TEST REMOTE CONNECTION
+
+The preview works, but remote connection fails? This is usually:
+
+1. Replit deployment settings
+2. Port configuration
+3. Network timeout
+
+FIX REMOTE CONNECTION:
+
+1. UPDATE FILE: server/index.ts
+
+Add connection timeout handling:
+
+const PORT = process.env.PORT || 5000;
+
+// Increase timeouts for remote connections
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  console.log(`🌐 Remote: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+});
+
+// Increase server timeout for slow connections
+server.timeout = 120000; // 2 minutes
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds
+
+2. UPDATE FILE: vite.config.ts
+
+Add server configuration for remote access:
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './client/src'),
+    },
+  },
+  server: {
+    host: '0.0.0.0', // Allow remote connections
+    port: 5173,
+    strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 30000 // 30 second timeout
+      },
+    },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5173,
+  },
+});
+
+3. CHECK REPLIT SETTINGS:
+
+In Replit:
+- Click "Settings" (gear icon)
+- Scroll to "Deployment"
+- Ensure "Enable deployments" is ON
+- Check "Custom domain" settings if using one
+
+4. UPDATE FILE: .replit
+
+Ensure proper run command:
+
+run = "npm run dev"
+
+[deployment]
+run = ["sh", "-c", "npm run build && npm start"]
+deploymentTarget = "cloudrun"
+
+[env]
+NODE_ENV = "production"
+
+
+STEP 11: TEST BASIC FUNCTIONALITY
+
+Once app loads, test each core feature:
+
+1. ✅ Home page loads
+2. ✅ Connect wallet
+3. ✅ Navigate to Mint page
+4. ✅ Navigate to Marketplace
+5. ✅ Navigate to Games (arcade)
+6. ✅ Navigate to Governance
+7. ✅ Navigate to Profile
+
+MAKE A CHECKLIST - Which features work?
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 4: OPTIMIZATION - MAKE IT SMOOTH
+═══════════════════════════════════════════════════════════════════
+
+STEP 12: REDUCE POLLING INTERVALS
+
+1. UPDATE FILE: client/src/hooks/useSubnetEmissions.ts
+
+Reduce update frequency:
+
+const POLLING_INTERVAL = 120000; // 2 minutes instead of 30 seconds
+
+
+2. UPDATE FILE: client/src/components/PriceTicker.tsx
+
+Reduce price updates:
+
+useEffect(() => {
+  fetchPrices();
+  const interval = setInterval(fetchPrices, 180000); // 3 minutes
+  return () => clearInterval(interval);
+}, []);
+
+
+3. UPDATE FILE: client/src/components/ActivityFeed.tsx
+
+Reduce activity polling:
+
+const REFRESH_INTERVAL = 300000; // 5 minutes
+
+
+STEP 13: LAZY LOAD GAMES
+
+1. UPDATE FILE: client/src/App.tsx
+
+Change game imports to lazy:
+
+import { lazy, Suspense } from 'react';
+
+// BEFORE:
+import GuardianSolitaire from '@/pages/GuardianSolitaire';
+import AsteroidMining from '@/pages/AsteroidMining';
+import GuardianDefense from '@/pages/GuardianDefense';
+import BasedArcade from '@/pages/BasedArcade';
+
+// AFTER:
+const GuardianSolitaire = lazy(() => import('@/pages/GuardianSolitaire'));
+const AsteroidMining = lazy(() => import('@/pages/AsteroidMining'));
+const GuardianDefense = lazy(() => import('@/pages/GuardianDefense'));
+const BasedArcade = lazy(() => import('@/pages/BasedArcade'));
+
+Wrap game routes in Suspense:
+
+<Suspense fallback={
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+  </div>
+}>
+  <Route path="/arcade" component={BasedArcade} />
+  <Route path="/games/solitaire" component={GuardianSolitaire} />
+  <Route path="/games/asteroid-mining" component={AsteroidMining} />
+  <Route path="/games/guardian-defense" component={GuardianDefense} />
+</Suspense>
+
+
+STEP 14: OPTIMIZE BUILD
+
+1. UPDATE FILE: vite.config.ts
+
+Add production optimizations:
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './client/src'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'wagmi-vendor': ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
+          'ui-vendor': ['framer-motion', 'lucide-react']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: false, // Keep console.logs for debugging (change to true for production)
+        drop_debugger: true,
+        pure_funcs: ['console.debug']
+      }
+    }
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+
+
+STEP 15: REMOVE UNUSED GAME (OPTIONAL)
+
+If you have 4 games and want to remove one for performance:
+
+To remove a game file:
+mv client/src/pages/OldGameName.tsx client/src/pages/OldGameName.tsx.disabled
+
+Update gameRegistry.ts to remove it from the registry.
+
+Recommended to keep:
+✅ Guardian Solitaire
+✅ Guardian Defense  
+✅ Asteroid Mining
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 5: DOCUMENTATION - KNOW YOUR STATE
+═══════════════════════════════════════════════════════════════════
+
+STEP 16: CREATE STATUS DOCUMENT
+
+Create a file documenting what's working:
+
+1. CREATE FILE: STATUS.md
+
+# App Status - Dec 18, 2024
+
+## ✅ WORKING FEATURES (Enabled)
+- [ ] Home page loads
+- [ ] Wallet connection
+- [ ] Minting
+- [ ] Marketplace (buy/sell/list)
+- [ ] Portfolio (basic view)
+- [ ] Games: Solitaire
+- [ ] Games: Asteroid Mining
+- [ ] Games: Guardian Defense
+- [ ] Governance voting
+- [ ] Custom NFT names
+- [ ] Activity feed
+- [ ] Price ticker
+
+## ⏸️ TEMPORARILY DISABLED (Will re-enable after testing)
+- Multi-collection support
+- NFT gating system
+- Search engine
+- Wallet auto-scanner
+- Collection stats tracking
+- Trending collections
+- Advanced marketplace filters
+
+## 🔧 KNOWN ISSUES
+- Remote connection timeout (fixing...)
+- Slow initial load (optimizing...)
+
+## 📝 NEXT STEPS (Priority Order)
+1. Test all core features thoroughly
+2. Fix any remaining bugs
+3. Optimize performance
+4. Re-enable features ONE at a time
+5. Test each feature for 24 hours before adding next
+
+## 🎯 TIMELINE
+- Dec 18-20: Stabilization & testing
+- Dec 21-24: Performance optimization
+- Dec 25-31: Re-enable advanced features (one by one)
+- Jan 1-7: Final testing before launch
+- Jan 8+: Public launch
+
+
+STEP 17: CREATE TESTING CHECKLIST
+
+2. CREATE FILE: TESTING.md
+
+# Testing Checklist
+
+Run through this every time you make changes:
+
+## Basic Functionality
+- [ ] App loads in Replit preview
+- [ ] App loads via remote URL
+- [ ] No console errors on load
+- [ ] Wallet connects (MetaMask)
+- [ ] Can navigate all pages
+
+## Minting
+- [ ] Mint page loads
+- [ ] Can see mint price
+- [ ] Can see total supply
+- [ ] Can input quantity
+- [ ] Mint button works (test with testnet)
+
+## Marketplace
+- [ ] Marketplace page loads
+- [ ] Can see all listings
+- [ ] Can filter by collection (if enabled)
+- [ ] Can click on NFT
+- [ ] Can list NFT for sale
+- [ ] Can buy NFT (test with testnet)
+- [ ] Can delist NFT
+
+## Games
+- [ ] Arcade hub loads
+- [ ] Can navigate to each game
+- [ ] Solitaire: Cards display and can be moved
+- [ ] Asteroid Mining: Game starts and is playable
+- [ ] Guardian Defense: Game starts and is playable
+- [ ] Points are awarded correctly
+- [ ] Daily play limits work
+
+## Governance
+- [ ] Governance page loads
+- [ ] Can see proposals
+- [ ] Can vote on proposal (if holding NFT)
+- [ ] Vote counts correctly
+
+## Profile
+- [ ] Profile page loads
+- [ ] Shows owned NFTs
+- [ ] Can set custom name (if holding NFT)
+- [ ] Custom name displays correctly
+
+## Performance
+- [ ] Initial load < 5 seconds
+- [ ] Page navigation smooth
+- [ ] No lag when scrolling
+- [ ] Games run at 60fps
+- [ ] No memory leaks (check DevTools)
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 6: FINAL VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+STEP 18: COMMIT CLEAN STATE
+
+Once everything works:
+
+git add -A
+git commit -m "STABLE: Core features working, advanced features disabled temporarily"
+git push
+
+This is your stable baseline.
+
+
+STEP 19: TEST REMOTE CONNECTION AGAIN
+
+1. Get your Replit URL:
+echo "https://${REPL_SLUG}.${REPL_OWNER}.repl.co"
+
+2. Open in different browsers:
+- Chrome (regular)
+- Chrome (incognito)
+- Firefox
+- Safari (if on Mac)
+- Mobile browser
+
+3. Test from different networks:
+- Your home WiFi
+- Mobile data
+- Different computer
+
+DOES IT LOAD?
+✅ YES - Perfect! You're stable.
+❌ NO - Check browser console for errors.
+
+
+STEP 20: PERFORMANCE CHECK
+
+In Chrome DevTools:
+1. Press F12
+2. Click "Lighthouse" tab
+3. Click "Analyze page load"
+4. Check scores:
+   - Performance: Should be > 60
+   - Accessibility: Should be > 80
+   - Best Practices: Should be > 80
+
+If Performance < 60:
+- Check Network tab for slow requests
+- Check if any images are too large
+- Check if RPC calls are timing out
+
+
+═══════════════════════════════════════════════════════════════════
+TROUBLESHOOTING - IF SOMETHING STILL DOESN'T WORK
+═══════════════════════════════════════════════════════════════════
+
+ISSUE: "Cannot find module..."
+
+FIX:
+npm install
+npm run build
+
+ISSUE: "Port 5000 already in use"
+
+FIX:
+killall node
+npm run dev
+
+ISSUE: "Database connection failed"
+
+FIX:
+Check DATABASE_URL in Replit Secrets
+Ensure it starts with postgresql://
+
+ISSUE: "Wallet won't connect"
+
+FIX:
+Check WALLET_CONNECT_PROJECT_ID in constants.ts
+Ensure RPC_ENDPOINTS[0] is accessible
+
+ISSUE: "App loads in preview but not remotely"
+
+FIX:
+1. Check server is listening on 0.0.0.0 (not localhost)
+2. Check Replit deployment settings
+3. Try: npm run build && npm start
+4. Check for firewall/network issues
+
+ISSUE: "Games are laggy"
+
+FIX:
+1. Reduce canvas size
+2. Lower frame rate to 30fps
+3. Disable particles/effects
+4. Remove one game temporarily
+
+ISSUE: "RPC calls timing out"
+
+FIX:
+1. Check RPC_ENDPOINTS in constants.ts
+2. Try alternative RPC: https://rpc.basedai.network
+3. Increase timeout in rpcProvider.ts
+
+ISSUE: "Images not loading"
+
+FIX:
+1. Check IPFS gateway: https://ipfs.io/ipfs/
+2. Add loading="lazy" to img tags
+3. Add error handling for failed images
+
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA - YOU'RE DONE WHEN:
+═══════════════════════════════════════════════════════════════════
+
+✅ App loads in Replit preview
+✅ App loads via remote URL
+✅ Can connect wallet
+✅ Can navigate all pages
+✅ No console errors
+✅ All core features work:
+   - Minting
+   - Marketplace
+   - Games
+   - Governance
+   - Profile
+✅ App runs smoothly (no lag)
+✅ Performance Lighthouse score > 60
+✅ Changes committed to git
+
+WHEN ALL CHECKBOXES ABOVE ARE ✅, YOU HAVE A STABLE BASELINE.
+
+
+═══════════════════════════════════════════════════════════════════
+WHAT TO DO AFTER THIS WORKS
+═══════════════════════════════════════════════════════════════════
+
+SHORT TERM (Next 3-5 days):
+1. Test every feature thoroughly
+2. Play each game multiple times
+3. Try minting, buying, selling
+4. Vote on governance proposals
+5. Check for any edge cases
+
+MEDIUM TERM (Next 1-2 weeks):
+1. Re-enable ONE advanced feature at a time
+2. Test for 24 hours after each
+3. Order: Search → Multi-collection → Gating → Stats
+4. Only add next feature if previous is stable
+
+LONG TERM (Week 3+):
+1. Add AI chatbot (when stable)
+2. Add analytics dashboard
+3. Polish UI/UX
+4. Prepare for public launch
+
+
+═══════════════════════════════════════════════════════════════════
+SUPPORT - WHAT TO SHARE IF YOU NEED HELP
+═══════════════════════════════════════════════════════════════════
+
+If something doesn't work, share:
+
+1. EXACT error message (copy from terminal or browser console)
+2. Which step you're on
+3. What you expected vs what happened
+4. Screenshot (if UI issue)
+5. Browser and device you're using
+
+EXAMPLE:
+"I'm on Step 8 - Clean Rebuild. When I run 'npm run build', I get this error:
+[paste error here]
+I expected it to build successfully."
+
+
+═══════════════════════════════════════════════════════════════════
+END OF COMPREHENSIVE CLEANUP PROMPT
+═══════════════════════════════════════════════════════════════════
+
+START WITH PHASE 1, STEP 1.
+Work through each step in order.
+Don't skip steps.
+
+Report back when you reach "SUCCESS CRITERIA" section.
+Good luck! 🚀

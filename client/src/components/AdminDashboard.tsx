@@ -215,9 +215,12 @@ const GatingControlPanel = () => {
                     type="number"
                     min="1"
                     value={rule.minimumBalance}
-                    onChange={(e) => updateRule(rule.featureKey, { 
-                      minimumBalance: parseInt(e.target.value) 
-                    })}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val >= 1) {
+                        updateRule(rule.featureKey, { minimumBalance: val });
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-black/60 border border-cyan-500/30 rounded-lg text-sm text-white"
                     data-testid={`input-min-balance-${rule.featureKey}`}
                   />
