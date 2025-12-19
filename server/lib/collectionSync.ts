@@ -7,6 +7,7 @@ const RPC_URL = 'https://mainnet.basedaibridge.com/rpc/';
 
 export class CollectionSync {
   private static provider = new ethers.JsonRpcProvider(RPC_URL);
+  private static isSyncing = false;
   
   private static readonly BASEDAI_COLLECTIONS = [
     '0x74f442F6bd614389cA63731f80901f603CDe1b53',
@@ -30,6 +31,12 @@ export class CollectionSync {
   ];
 
   static async syncAll() {
+    if (this.isSyncing) {
+      console.log('[CollectionSync] Sync already in progress, skipping');
+      return { success: 0, failed: 0, skipped: this.BASEDAI_COLLECTIONS.length };
+    }
+    
+    this.isSyncing = true;
     console.log('[CollectionSync] Starting sync for', this.BASEDAI_COLLECTIONS.length, 'collections');
     
     const results = {
@@ -38,16 +45,20 @@ export class CollectionSync {
       skipped: 0,
     };
 
-    for (const address of this.BASEDAI_COLLECTIONS) {
-      try {
-        await this.syncCollection(address);
-        results.success++;
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
-        results.failed++;
-        console.error(`[CollectionSync] Failed ${address}:`, error);
+    try {
+      for (const address of this.BASEDAI_COLLECTIONS) {
+        try {
+          await this.syncCollection(address);
+          results.success++;
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          results.failed++;
+          console.error(`[CollectionSync] Failed ${address}:`, error);
+        }
       }
+    } finally {
+      this.isSyncing = false;
     }
 
     console.log('[CollectionSync] Sync complete:', results);
