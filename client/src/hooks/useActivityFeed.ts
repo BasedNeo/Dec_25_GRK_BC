@@ -96,7 +96,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   const { 
     limit = 50, 
     autoRefresh = true, 
-    refreshInterval = 30000 
+    refreshInterval = 300000 // 5 minutes - reduces RPC calls
   } = options;
 
   const [activities, setActivities] = useState<Activity[]>([]);

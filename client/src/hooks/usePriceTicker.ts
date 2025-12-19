@@ -225,7 +225,7 @@ const DEFAULT_ASSETS: TickerAsset[] = [
   { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', binanceSymbol: 'ETHUSDT', logo: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
 ];
 
-const FETCH_INTERVAL = 30000;
+const FETCH_INTERVAL = 120000; // 2 minutes - matches stale threshold
 
 export function usePriceTicker() {
   const [prices, setPrices] = useState<Map<string, PriceData>>(new Map());

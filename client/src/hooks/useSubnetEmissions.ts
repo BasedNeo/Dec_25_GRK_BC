@@ -341,7 +341,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     fetchEmissions();
   }, [fetchEmissions]);
 
-  useInterval(fetchEmissions, 60000);
+  useInterval(fetchEmissions, 180000); // 3 minutes - reduces server load
 
   // Fetch block info for halving countdown
   useEffect(() => {
