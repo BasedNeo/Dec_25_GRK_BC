@@ -1,0 +1,389 @@
+PERFORMANCE OPTIMIZATION - Make app run smooth and fast.
+
+ANALYSIS: You have 3 games + heavy features. Here's my expert recommendation:
+
+RECOMMENDATION 1: REMOVE JAGUAR RUNNER / RETRO DEFENDER (if it still exists)
+
+If you have 4 games total, remove the oldest/least popular one. Keep:
+✅ Guardian Solitaire - Unique, engaging
+✅ Guardian Defense - Premium, branded
+✅ Asteroid Mining - Action, fun
+
+Remove the redundant game.
+
+
+STEP 1: LAZY LOAD GAMES
+
+Games should only load when accessed, not on app startup.
+
+1. UPDATE FILE: client/src/App.tsx
+
+Change game imports from:
+
+import GuardianSolitaire from '@/pages/GuardianSolitaire';
+import AsteroidMining from '@/pages/AsteroidMining';
+import GuardianDefense from '@/pages/GuardianDefense';
+
+To lazy imports:
+
+import { lazy, Suspense } from 'react';
+
+const GuardianSolitaire = lazy(() => import('@/pages/GuardianSolitaire'));
+const AsteroidMining = lazy(() => import('@/pages/AsteroidMining'));
+const GuardianDefense = lazy(() => import('@/pages/GuardianDefense'));
+const BasedArcade = lazy(() => import('@/pages/BasedArcade'));
+
+Then wrap routes in Suspense:
+
+<Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
+  <Route path="/arcade" component={BasedArcade} />
+  <Route path="/games/solitaire" component={GuardianSolitaire} />
+  <Route path="/games/asteroid-mining" component={AsteroidMining} />
+  <Route path="/games/guardian-defense" component={GuardianDefense} />
+</Suspense>
+
+
+STEP 2: REDUCE POLLING/INTERVALS
+
+Too many setInterval calls slow the app.
+
+1. UPDATE FILE: client/src/hooks/useSubnetEmissions.ts
+
+Increase polling interval from 30s to 60s:
+
+const POLLING_INTERVAL = 60000; // Was 30000
+
+
+2. UPDATE FILE: client/src/components/PriceTicker.tsx
+
+Increase price update interval:
+
+useEffect(() => {
+  fetchPrices();
+  const interval = setInterval(fetchPrices, 120000); // 2 minutes instead of 1
+  return () => clearInterval(interval);
+}, []);
+
+
+3. UPDATE FILE: client/src/components/ActivityFeed.tsx
+
+Reduce activity feed updates:
+
+useEffect(() => {
+  if (isVisible) {
+    fetchActivity();
+    const interval = setInterval(fetchActivity, 300000); // 5 minutes instead of frequent
+    return () => clearInterval(interval);
+  }
+}, [isVisible]);
+
+
+STEP 3: OPTIMIZE IMAGE LOADING
+
+Add lazy loading to all images.
+
+1. CREATE FILE: client/src/components/LazyImage.tsx
+
+import { useState } from 'react';
+
+interface LazyImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+}
+
+export default function LazyImage({ src, alt, className = '' }: LazyImageProps) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className={`relative ${className}`}>
+      {!loaded && (
+        <div className="absolute inset-0 bg-muted animate-pulse" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={`${className} transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
+  );
+}
+
+2. Use LazyImage everywhere you display NFT images:
+
+import LazyImage from '@/components/LazyImage';
+
+// Replace:
+<img src={nft.image} alt={nft.name} />
+
+// With:
+<LazyImage src={nft.image} alt={nft.name} className="w-full h-full object-cover" />
+
+
+STEP 4: ADD VIRTUALIZATION FOR LONG LISTS
+
+If you have 100+ NFTs, virtualize the list.
+
+Install: npm install @tanstack/react-virtual
+
+1. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+For large NFT grids, use virtualization:
+
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef } from 'react';
+
+// In component:
+const parentRef = useRef<HTMLDivElement>(null);
+
+const rowVirtualizer = useVirtualizer({
+  count: Math.ceil(listings.length / 4), // 4 items per row
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 300, // Estimated row height
+  overscan: 5
+});
+
+// Render:
+<div ref={parentRef} className="h-screen overflow-auto">
+  <div
+    style={{
+      height: `${rowVirtualizer.getTotalSize()}px`,
+      width: '100%',
+      position: 'relative'
+    }}
+  >
+    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+      const startIndex = virtualRow.index * 4;
+      const items = listings.slice(startIndex, startIndex + 4);
+      
+      return (
+        <div
+          key={virtualRow.key}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: `${virtualRow.size}px`,
+            transform: `translateY(${virtualRow.start}px)`
+          }}
+          className="grid grid-cols-4 gap-4 px-4"
+        >
+          {items.map(item => (
+            <NFTCard key={item.id} item={item} />
+          ))}
+        </div>
+      );
+    })}
+  </div>
+</div>
+
+
+STEP 5: OPTIMIZE BUNDLE SIZE
+
+1. UPDATE FILE: vite.config.ts
+
+Add build optimizations:
+
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './client/src'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom'],
+          'wagmi': ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
+          'ui': ['framer-motion', 'lucide-react'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true
+      }
+    }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+
+
+STEP 6: REDUCE UNNECESSARY RE-RENDERS
+
+1. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+Wrap expensive components in React.memo:
+
+import { memo } from 'react';
+
+const NFTCard = memo(({ nft }: { nft: any }) => {
+  // Your NFT card JSX
+});
+
+const CollectionCard = memo(({ collection }: { collection: any }) => {
+  // Your collection card JSX
+});
+
+
+STEP 7: DEBOUNCE EXPENSIVE OPERATIONS
+
+1. CREATE FILE: client/src/hooks/useDebounce.ts
+
+import { useEffect, useState } from 'react';
+
+export function useDebounce<T>(value: T, delay: number = 500): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+2. Use in search inputs:
+
+import { useDebounce } from '@/hooks/useDebounce';
+
+const [searchTerm, setSearchTerm] = useState('');
+const debouncedSearch = useDebounce(searchTerm, 500);
+
+useEffect(() => {
+  if (debouncedSearch) {
+    performSearch(debouncedSearch);
+  }
+}, [debouncedSearch]);
+
+
+STEP 8: LIMIT CONCURRENT RPC CALLS
+
+1. UPDATE FILE: client/src/lib/rpcProvider.ts
+
+Add request queue:
+
+class RPCQueue {
+  private queue: Array<() => Promise<any>> = [];
+  private running = 0;
+  private maxConcurrent = 3; // Only 3 concurrent RPC calls
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.running >= this.maxConcurrent) {
+      await new Promise(resolve => {
+        const check = () => {
+          if (this.running < this.maxConcurrent) {
+            resolve(null);
+          } else {
+            setTimeout(check, 100);
+          }
+        };
+        check();
+      });
+    }
+
+    this.running++;
+    try {
+      return await fn();
+    } finally {
+      this.running--;
+    }
+  }
+}
+
+export const rpcQueue = new RPCQueue();
+
+Use it:
+const result = await rpcQueue.add(() => contract.balanceOf(address));
+
+
+STEP 9: REMOVE UNUSED CODE
+
+Delete any unused files:
+
+rm client/src/lib/walletScanner.ts  # If wallet scanning is causing issues
+rm client/src/lib/searchService.ts  # If search is not critical yet
+rm server/lib/gatingService.ts      # If gating is not needed immediately
+rm server/lib/collectionStatsService.ts  # If stats are too heavy
+
+
+STEP 10: PRODUCTION BUILD TEST
+
+Test production build performance:
+
+npm run build
+npm start
+
+Check bundle sizes:
+ls -lh dist/assets/
+
+If any JS file is over 500KB, it needs optimization.
+
+
+EXPERT RECOMMENDATIONS:
+
+1. GAMES: Keep 3 games max (Solitaire, Defense, Asteroid). Remove others.
+
+2. FEATURES: Prioritize by usage:
+   HIGH PRIORITY (Keep):
+   ✅ Minting
+   ✅ Marketplace (buy/sell)
+   ✅ Basic portfolio
+   ✅ Governance
+   ✅ 3 games
+
+   MEDIUM PRIORITY (Optimize):
+   ⚠️ Multi-collection support (lazy load)
+   ⚠️ Search (debounce, cache)
+   ⚠️ Activity feed (reduce polling)
+
+   LOW PRIORITY (Can Remove Temporarily):
+   ❌ Wallet scanning (heavy)
+   ❌ Advanced filtering (if slow)
+   ❌ Collection trending (if slow)
+
+3. PERFORMANCE TARGETS:
+   - Initial load: < 3 seconds
+   - Time to interactive: < 5 seconds
+   - Bundle size: < 500KB main chunk
+   - Lighthouse score: > 80
+
+4. IF STILL SLOW:
+   - Remove 1 game temporarily
+   - Disable multi-collection portfolio
+   - Simplify activity feed
+   - Remove real-time price updates
+
+
+TESTING AFTER OPTIMIZATION:
+
+1. Clear browser cache (Ctrl+Shift+Delete)
+2. Open app in incognito mode
+3. Check Chrome DevTools > Performance
+4. Record load time
+5. Check Chrome DevTools > Network tab
+6. Look for slow requests (>1s)
+
+Share results and I'll provide targeted fixes.

@@ -1,0 +1,180 @@
+EMERGENCY APP RECOVERY - App won't load in any browser. This will systematically restore functionality.
+
+CRITICAL STEP 1: CHECK SERVER STATUS
+
+In Replit terminal, run:
+ps aux | grep node
+
+If you see node processes, kill them:
+killall node
+
+Then check for errors:
+npm run dev
+
+COPY ANY RED ERRORS YOU SEE AND STOP HERE - Share them with me.
+
+
+CRITICAL STEP 2: ROLLBACK NEW FEATURES TEMPORARILY
+
+We'll comment out recently added code that may be breaking the app.
+
+1. UPDATE FILE: server/index.ts
+
+Find these lines and COMMENT THEM OUT:
+
+// TEMPORARY DISABLE - COMMENT THESE OUT:
+// import { GatingService } from './lib/gatingService';
+// import { StatsScheduler } from './lib/statsScheduler';
+
+// Find in app.listen() and comment out:
+// await GatingService.initializeDefaultRules();
+// StatsScheduler.start();
+
+Replace with simple startup:
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
+
+
+2. UPDATE FILE: server/routes.ts
+
+Find and COMMENT OUT any routes that reference new services:
+
+// TEMPORARILY DISABLE THESE ROUTES:
+// - /api/wallet/scan/:address
+// - /api/search
+// - /api/search/collections
+// - /api/trending/collections
+// - /api/gating/*
+// - /api/collections/:address/details
+
+Just add // before each app.get() or app.post() that's breaking.
+
+
+3. UPDATE FILE: client/src/App.tsx
+
+Comment out any new routes:
+
+// TEMPORARILY DISABLE:
+// <Route path="/collection/:address" component={CollectionPage} />
+
+And remove these imports at top:
+// import CollectionPage from '@/pages/CollectionPage';
+
+
+4. UPDATE FILE: client/src/components/Navbar.tsx
+
+Remove SearchBar temporarily:
+
+// TEMPORARILY DISABLE:
+// import SearchBar from './SearchBar';
+
+// In the JSX, comment out:
+// <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+//   <SearchBar />
+// </div>
+
+
+5. UPDATE FILE: client/src/pages/Profile.tsx
+
+Comment out new collection features:
+
+// TEMPORARILY DISABLE:
+// import { useWalletCollections } from '@/hooks/useWalletCollections';
+// import CollectionSelector from '@/components/CollectionSelector';
+
+// Comment out in component:
+// const { collections: walletCollections, loading: collectionsLoading } = useWalletCollections();
+
+// Comment out CollectionSelector JSX:
+// <CollectionSelector ... />
+
+
+6. UPDATE FILE: client/src/pages/BasedArcade.tsx
+
+Simplify - remove NFTGate temporarily:
+
+// TEMPORARILY DISABLE:
+// import NFTGate from '@/components/NFTGate';
+
+// Change from:
+// <NFTGate featureKey="arcade">
+//   {content}
+// </NFTGate>
+
+// To just:
+// {content}
+
+Do the same for ALL game files:
+- GuardianSolitaire.tsx
+- AsteroidMining.tsx
+- GuardianDefense.tsx
+
+
+CRITICAL STEP 3: CLEAR ALL CACHES
+
+In Replit terminal:
+
+rm -rf node_modules/.vite
+rm -rf dist
+rm -rf .cache
+rm -rf client/node_modules/.vite
+rm -rf client/dist
+
+
+CRITICAL STEP 4: REBUILD
+
+npm install
+npm run build
+
+
+CRITICAL STEP 5: START SERVER
+
+npm run dev
+
+WAIT for "Server running on port 5000" message.
+
+Then try to access the app preview in Replit.
+
+IF THIS WORKS, STOP HERE AND TELL ME "Step 5 worked"
+IF THIS DOESN'T WORK, copy the EXACT error message and share it with me.
+
+
+CRITICAL STEP 6: IF STILL NOT WORKING - DATABASE RESET
+
+Your database might have issues. Check if you can connect:
+
+In Replit terminal:
+node -e "const pg = require('pg'); const pool = new pg.Pool({connectionString: process.env.DATABASE_URL}); pool.query('SELECT NOW()').then(() => console.log('DB OK')).catch(e => console.error('DB ERROR:', e));"
+
+If you see "DB ERROR", your database connection is broken.
+
+Try reconnecting:
+- Go to Replit "Tools" > "Secrets"
+- Check DATABASE_URL exists
+- If missing, you need to reconnect your database
+
+
+CRITICAL STEP 7: NUCLEAR OPTION - REVERT TO LAST WORKING VERSION
+
+If nothing else works:
+
+1. In Replit, click "History" in left sidebar
+2. Find a commit from BEFORE we started today's work (look for timestamps)
+3. Click "Restore" on that commit
+4. Run: npm install && npm run dev
+
+This will restore your app to a working state.
+
+
+TESTING:
+
+Once server starts without errors:
+1. Open Replit preview
+2. Try to load home page
+3. Try to connect wallet
+4. Try to navigate to marketplace
+
+Report which step fails (if any).

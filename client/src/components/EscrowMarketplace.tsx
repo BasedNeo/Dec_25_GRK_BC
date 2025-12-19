@@ -79,6 +79,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   // --- Floor Price ---
   const { floorPrice, isLoading: floorPriceLoading } = useFloorPrice();
   
+  // --- Collection Filter ---
+  const [selectedCollection, setSelectedCollection] = useState<string>("all");
+  const { data: collections = [] } = useQuery<Array<{id: number; name: string; contractAddress: string}>>({
+    queryKey: ['collections'],
+    queryFn: async () => {
+      const res = await fetch('/api/collections');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  
   // --- Get user's owned NFTs for sorting priority ---
   const { nfts: ownedNFTs } = useOwnedNFTs();
   const ownedTokenIds = useMemo(() => new Set(ownedNFTs.map(n => n.id)), [ownedNFTs]);
@@ -614,6 +626,18 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     // We just need to handle the tabs (Buy vs Inventory)
     
     let items = [...allItems];
+    
+    // Collection Filter - filter by contract address when multi-collection support is added
+    // Currently all items are Based Guardians (NFT_CONTRACT), so selecting that collection or "all" shows all items
+    // When multi-collection support is added, each MarketItem should include contractAddress
+    const BASED_GUARDIANS_CONTRACT = "0xaE51dc5fD1499A129f8654963560f9340773ad59".toLowerCase();
+    if (selectedCollection !== "all" && selectedCollection.toLowerCase() !== BASED_GUARDIANS_CONTRACT) {
+      // Filter by collection - items without contractAddress are assumed to be Based Guardians
+      items = items.filter(item => {
+        const itemContract = (item as any).contractAddress?.toLowerCase() || BASED_GUARDIANS_CONTRACT;
+        return itemContract === selectedCollection.toLowerCase();
+      });
+    }
 
     // Tab Filter
     if (activeTab === "buy") {
@@ -694,7 +718,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
     }
 
     return items;
-  }, [allItems, activeTab, isConnected, sortBy, ownedTokenIds]);
+  }, [allItems, activeTab, isConnected, sortBy, ownedTokenIds, selectedCollection]);
 
   // Memoize paginated NFTs for performance
   const paginatedNFTs = useMemo(() => {
@@ -725,7 +749,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, debouncedSearch, rarityFilter, traitTypeFilter, traitValueFilter, activeTab]);
+  }, [sortBy, debouncedSearch, rarityFilter, traitTypeFilter, traitValueFilter, activeTab, selectedCollection]);
 
   // Suggested Filters (Premium UX)
   const suggestedFilters = useMemo(() => {
@@ -1007,7 +1031,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
         )}
         
         {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-end mb-8 gap-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start mb-8 gap-6">
           <div>
             <Badge variant="outline" className="mb-2 border-primary/50 text-primary font-mono cursor-pointer hover:bg-primary/10" onClick={() => setUseCsvData(!useCsvData)}>
                 {isPaused ? "MARKET PAUSED" : (useCsvData ? "MARKETPLACE V2 (CSV MODE)" : "MARKETPLACE V2")}
@@ -1023,7 +1047,24 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                     Showing {contractStats.totalMinted} minted NFTs (Pre-Reveal Mode - Images will be revealed soon)
                 </div>
             )}
-            <h2 className="text-4xl text-white font-black mb-2">BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">COLLECTION</span></h2>
+            <div className="flex flex-wrap items-center gap-4 mb-2">
+              <h2 className="text-4xl text-white font-black">BASED GUARDIANS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">COLLECTION</span></h2>
+              {collections.length > 0 && (
+                <Select value={selectedCollection} onValueChange={setSelectedCollection}>
+                  <SelectTrigger className="w-[180px] bg-white/5 border-white/20 text-white" data-testid="select-collection">
+                    <SelectValue placeholder="All Collections" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-black border-white/20">
+                    <SelectItem value="all" className="text-white hover:bg-white/10">All Collections</SelectItem>
+                    {collections.map((col) => (
+                      <SelectItem key={col.id} value={col.contractAddress} className="text-white hover:bg-white/10">
+                        {col.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> NFT Stays in Wallet</span>
               <span className="flex items-center gap-1"><Fingerprint size={12} className="text-accent"/> Biometric Auth</span>
