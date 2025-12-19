@@ -88,13 +88,13 @@ export const config = getDefaultConfig({
     [basedL1.id]: fallback([
       http('https://mainnet.basedaibridge.com/rpc/', {
         timeout: 5000,
-        retryCount: 2,
-        retryDelay: 500,
+        retryCount: 1,
+        retryDelay: 300,
       }),
       http('https://rpc.basedaibridge.com/', {
         timeout: 5000,
-        retryCount: 2,
-        retryDelay: 500,
+        retryCount: 1,
+        retryDelay: 300,
       }),
     ]),
   },

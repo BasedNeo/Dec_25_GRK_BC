@@ -1,0 +1,87 @@
+FIX STUCK LOADING SCREEN - App hangs on "Entering the Giga Brain Galaxy"
+
+ISSUE: App shows loading screen indefinitely instead of rendering main content.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: ADD LOADING TIMEOUT PROTECTION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/App.tsx
+
+Find the loading state logic and add timeout:
+
+import { useState, useEffect } from 'react';
+
+// Inside App component, add timeout:
+const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setLoadingTimeout(true);
+  }, 10000); // 10 second timeout
+  
+  return () => clearTimeout(timer);
+}, []);
+
+// In your return statement, update loading logic:
+if (loadingTimeout) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800">
+      <div className="text-center">
+        <h2 className="text-2xl text-white mb-4">Taking longer than expected...</h2>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-6 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600"
+        >
+          Refresh App
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: REDUCE INITIAL DATA FETCHING
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/wagmi.ts
+
+Reduce connection timeouts:
+
+export const config = createConfig({
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http(RPC_ENDPOINTS[0], {
+      timeout: 5000, // 5 seconds (was probably higher)
+      retryCount: 1,  // Only retry once
+    }),
+  },
+  // ... rest of config
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DEFER NON-CRITICAL DATA LOADING
+═══════════════════════════════════════════════════════════════════
+
+1. Find any useQuery hooks that run on app load and make them lazy:
+
+// BEFORE:
+const { data: emissions } = useQuery({
+  queryKey: ['emissions'],
+  queryFn: fetchEmissions,
+});
+
+// AFTER - Add enabled flag:
+const { data: emissions } = useQuery({
+  queryKey: ['emissions'],
+  queryFn: fetchEmissions,
+  enabled: false, // Don't fetch until needed
+  staleTime: 300000, // 5 minutes
+});
+
+Apply this to non-critical data in:
+- Pool Tracker queries
+- Activity Feed queries  
+- Governance queries
