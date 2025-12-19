@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { useAccount, useReadContract } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -26,17 +27,20 @@ const ERC721_ABI = [
 interface GameCardProps {
   game: GameConfig;
   isLocked: boolean;
+  isConnected: boolean;
   playsToday: number;
   personalBest: number;
   onPlay: () => void;
+  onConnect: () => void;
 }
 
-function GameCard({ game, isLocked, playsToday, personalBest, onPlay }: GameCardProps) {
+function GameCard({ game, isLocked, isConnected, playsToday, personalBest, onPlay, onConnect }: GameCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = game.icon;
   const maxPlays = game.maxPlaysPerDay;
   const playsRemaining = maxPlays - playsToday;
   const canPlay = !isLocked && playsRemaining > 0;
+  const needsConnection = !isConnected;
 
   return (
     <motion.div
@@ -115,20 +119,27 @@ function GameCard({ game, isLocked, playsToday, personalBest, onPlay }: GameCard
           )}
 
           <Button
-            onClick={onPlay}
-            disabled={!canPlay}
+            onClick={needsConnection ? onConnect : onPlay}
+            disabled={!needsConnection && !canPlay}
             className={`w-full font-bold py-3 rounded-xl transition-all ${
-              canPlay
-                ? `bg-gradient-to-r ${game.thumbnailGradient} hover:shadow-lg hover:shadow-purple-500/25 text-white`
-                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              needsConnection
+                ? 'bg-gradient-to-r from-cyan-500 to-purple-600 hover:shadow-lg hover:shadow-cyan-500/25 text-white cursor-pointer'
+                : canPlay
+                  ? `bg-gradient-to-r ${game.thumbnailGradient} hover:shadow-lg hover:shadow-purple-500/25 text-white`
+                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
             }`}
-            aria-label={`Play ${game.name}`}
+            aria-label={needsConnection ? 'Connect Wallet' : `Play ${game.name}`}
             data-testid={`button-play-${game.id}`}
           >
-            {isLocked ? (
+            {needsConnection ? (
               <>
                 <Lock className="w-4 h-4 mr-2" />
                 Connect Wallet
+              </>
+            ) : isLocked ? (
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                NFT Required
               </>
             ) : playsRemaining <= 0 ? (
               <>
@@ -162,6 +173,7 @@ function GameCard({ game, isLocked, playsToday, personalBest, onPlay }: GameCard
 export default function BasedArcade() {
   const [, navigate] = useLocation();
   const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const games = useMemo(() => getEnabledGames(), []);
   const [gameStats, setGameStats] = useState<Record<string, { playsToday: number; personalBest: number }>>({});
 
@@ -305,10 +317,12 @@ export default function BasedArcade() {
             >
               <GameCard
                 game={game}
-                isLocked={!isConnected || (game.nftRequired && !isHolder)}
+                isLocked={game.nftRequired && !isHolder}
+                isConnected={isConnected}
                 playsToday={gameStats[game.id]?.playsToday || 0}
                 personalBest={gameStats[game.id]?.personalBest || 0}
                 onPlay={() => handlePlay(game)}
+                onConnect={() => openConnectModal?.()}
               />
             </motion.div>
           ))}
