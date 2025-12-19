@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { AlertCircle, CheckCircle, Clock, Trash2, PlusCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Trash2, PlusCircle, ThumbsUp, ThumbsDown, Vote, FileText } from 'lucide-react';
 import { CreateProposalModal } from './CreateProposalModal';
 import { useToast } from '@/hooks/use-toast';
 import { ADMIN_WALLETS } from '@/lib/constants';
@@ -157,13 +158,48 @@ export function Governance() {
           )}
         </div>
 
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card className="bg-black/60 border-cyan-500/30 p-4 sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-xl bg-cyan-500/20">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-orbitron font-bold text-white" data-testid="active-proposals-count">
+                  {proposals.filter(p => p.status === 'active' && new Date() < new Date(p.endDate)).length}
+                </div>
+                <div className="text-xs sm:text-sm text-gray-400">Active Proposals</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="bg-black/60 border-purple-500/30 p-4 sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-xl bg-purple-500/20">
+                <Vote className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-orbitron font-bold text-white" data-testid="user-votes-count">
+                  {Object.keys(userVotes).length}
+                </div>
+                <div className="text-xs sm:text-sm text-gray-400">Your Votes</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
         {!isConnected && (
           <Card className="bg-yellow-500/10 border-yellow-500/50 p-4 sm:p-6 mb-6 sm:mb-8">
-            <div className="flex items-start sm:items-center gap-3">
-              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 flex-shrink-0 mt-0.5 sm:mt-0" />
-              <div>
-                <div className="text-yellow-400 font-bold text-sm sm:text-base">Connect Wallet to Vote</div>
-                <div className="text-yellow-200 text-xs sm:text-sm">Connect your wallet to participate in governance</div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3">
+                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <div className="text-yellow-400 font-bold text-sm sm:text-base">Connect Wallet to Vote</div>
+                  <div className="text-yellow-200 text-xs sm:text-sm">Connect your wallet to participate in governance</div>
+                </div>
+              </div>
+              <div className="w-full sm:w-auto" data-testid="governance-connect-wallet">
+                <ConnectButton />
               </div>
             </div>
           </Card>
