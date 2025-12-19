@@ -325,7 +325,8 @@ export const collections = pgTable('collections', {
   royaltyAddress: text('royalty_address'),
   creatorAddress: text('creator_address'),
   createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
+  updatedAt: timestamp('updated_at').defaultNow(),
+  lastSyncedAt: timestamp('last_synced_at').defaultNow()
 });
 
 export const insertCollectionSchema = createInsertSchema(collections).omit({
