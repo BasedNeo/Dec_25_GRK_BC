@@ -4,7 +4,7 @@ import { circuitBreakerManager } from './circuitBreaker';
 
 interface RPCEndpoint {
   url: string;
-  provider: ethers.JsonRpcProvider;
+  provider: ethers.JsonRpcProvider | null;
   healthy: boolean;
   latency: number;
   lastCheck: number;
@@ -14,34 +14,45 @@ interface RPCEndpoint {
 export class RPCProviderManager {
   private endpoints: RPCEndpoint[] = [];
   private currentIndex: number = 0;
-  private readonly HEALTH_CHECK_INTERVAL = 120000; // 120 seconds - reduced for performance
+  private readonly HEALTH_CHECK_INTERVAL = 120000;
   private readonly FAILURE_THRESHOLD = 3;
   private readonly LATENCY_TIMEOUT = 5000;
   private healthCheckTimer?: number;
+  private initialized: boolean = false;
 
   constructor() {
     this.initializeEndpoints();
-    this.startHealthChecks();
   }
 
   private initializeEndpoints() {
     this.endpoints = RPC_ENDPOINTS.map(url => ({
       url,
-      provider: new ethers.JsonRpcProvider(url),
+      provider: null,
       healthy: true,
       latency: 0,
       lastCheck: 0,
       failureCount: 0,
     }));
+  }
 
+  private getOrCreateProvider(endpoint: RPCEndpoint): ethers.JsonRpcProvider {
+    if (!endpoint.provider) {
+      endpoint.provider = new ethers.JsonRpcProvider(endpoint.url, undefined, {
+        staticNetwork: true,
+        polling: false,
+        batchStallTime: 0,
+      });
+    }
+    return endpoint.provider;
   }
 
   private async checkEndpointHealth(endpoint: RPCEndpoint): Promise<void> {
     const start = Date.now();
     
     try {
+      const provider = this.getOrCreateProvider(endpoint);
       await Promise.race([
-        endpoint.provider.getBlockNumber(),
+        provider.getBlockNumber(),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Timeout')), this.LATENCY_TIMEOUT)
         ),
@@ -96,10 +107,10 @@ export class RPCProviderManager {
     
     if (healthyEndpoints.length === 0) {
       console.error('[RPC] No healthy endpoints! Using first available...');
-      return this.endpoints[0].provider;
+      return this.getOrCreateProvider(this.endpoints[0]);
     }
 
-    return healthyEndpoints[0].provider;
+    return this.getOrCreateProvider(healthyEndpoints[0]);
   }
 
   public async executeWithFailover<T>(
@@ -126,9 +137,10 @@ export class RPCProviderManager {
       }
       
       try {
+        const provider = this.getOrCreateProvider(endpoint);
         const result = await breaker.execute(async () => {
           return await Promise.race([
-            fn(endpoint.provider),
+            fn(provider),
             new Promise<never>((_, reject) => 
               setTimeout(() => reject(new Error(`RPC timeout after ${timeoutMs}ms`)), timeoutMs)
             ),
