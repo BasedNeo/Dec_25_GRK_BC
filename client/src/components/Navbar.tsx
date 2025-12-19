@@ -191,6 +191,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     setLocation('/guardian-solitaire');
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
+                  } else if (item.id === 'marketplace') {
+                    setLocation('/marketplace');
                   } else {
                     onTabChange(item.id);
                   }

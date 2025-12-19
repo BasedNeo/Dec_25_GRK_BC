@@ -64,13 +64,16 @@ export class SearchService {
     }
 
     if (filters.query) {
-      const searchTerm = `%${filters.query.toLowerCase()}%`;
-      conditions.push(
-        or(
-          sql`LOWER(${listings.metadata}) LIKE ${searchTerm}`,
-          sql`CAST(${listings.tokenId} AS TEXT) LIKE ${searchTerm}`
-        )
-      );
+      const sanitizedQuery = filters.query.replace(/[%_\\]/g, '').toLowerCase();
+      if (sanitizedQuery.length > 0) {
+        const searchTerm = `%${sanitizedQuery}%`;
+        conditions.push(
+          or(
+            ilike(listings.metadata, searchTerm),
+            sql`CAST(${listings.tokenId} AS TEXT) = ${filters.query}`
+          )
+        );
+      }
     }
 
     let orderBy: any = desc(listings.listedAt);

@@ -2327,23 +2327,46 @@ export async function registerRoutes(
   });
 
   // Search API endpoints
+  const searchListingsSchema = z.object({
+    q: z.string().max(100).optional(),
+    collection: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+    minPrice: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+    maxPrice: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+    rarity: z.string().optional(),
+    sortBy: z.enum(['price_asc', 'price_desc', 'recent', 'oldest']).optional(),
+    page: z.string().regex(/^\d+$/).optional(),
+    limit: z.string().regex(/^\d+$/).optional()
+  });
+
+  const VALID_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
   app.get('/api/search/listings', async (req, res) => {
     try {
+      const parsed = searchListingsSchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid search parameters' });
+      }
+      const { q, collection, minPrice, maxPrice, rarity, sortBy, page, limit } = parsed.data;
+      
+      const rarityArray = rarity 
+        ? rarity.split(',').filter(r => VALID_RARITIES.includes(r.toLowerCase())).map(r => r.toLowerCase())
+        : undefined;
+
       const filters: SearchFilters = {
-        query: req.query.q as string | undefined,
-        collectionAddress: req.query.collection as string | undefined,
-        minPrice: req.query.minPrice as string | undefined,
-        maxPrice: req.query.maxPrice as string | undefined,
-        rarity: req.query.rarity ? (req.query.rarity as string).split(',') : undefined,
-        sortBy: req.query.sortBy as SearchFilters['sortBy'],
-        page: req.query.page ? parseInt(req.query.page as string) : 1,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : 20
+        query: q ? q.replace(/[%_]/g, '') : undefined,
+        collectionAddress: collection,
+        minPrice,
+        maxPrice,
+        rarity: rarityArray,
+        sortBy,
+        page: page ? parseInt(page) : 1,
+        limit: limit ? Math.min(parseInt(limit), 100) : 20
       };
 
       const results = await searchService.searchListings(filters);
       
       const walletAddress = req.headers['x-wallet-address'] as string | null;
-      if (filters.query) {
+      if (filters.query && walletAddress && isValidEthAddress(walletAddress)) {
         await searchService.recordSearch(walletAddress, filters.query, results.total);
       }
 
@@ -2356,12 +2379,17 @@ export async function registerRoutes(
 
   app.get('/api/search/collections', async (req, res) => {
     try {
-      const query = req.query.q as string;
-      if (!query || query.length < 2) {
+      const querySchema = z.object({ q: z.string().min(2).max(50) });
+      const parsed = querySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.json([]);
+      }
+      const sanitizedQuery = parsed.data.q.replace(/[%_\\]/g, '');
+      if (sanitizedQuery.length < 2) {
         return res.json([]);
       }
 
-      const results = await searchService.searchCollections(query);
+      const results = await searchService.searchCollections(sanitizedQuery);
       res.json(results);
     } catch (error) {
       console.error('Search collections failed:', error);
@@ -2371,10 +2399,15 @@ export async function registerRoutes(
 
   app.get('/api/trending/collections', async (req, res) => {
     try {
-      const hours = req.query.hours ? parseInt(req.query.hours as string) : 24;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const trendingSchema = z.object({
+        hours: z.string().regex(/^\d+$/).optional(),
+        limit: z.string().regex(/^\d+$/).optional()
+      });
+      const parsed = trendingSchema.safeParse(req.query);
+      const hours = parsed.success && parsed.data.hours ? Math.min(parseInt(parsed.data.hours), 168) : 24;
+      const limit = parsed.success && parsed.data.limit ? Math.min(parseInt(parsed.data.limit), 50) : 10;
 
-      const trending = await searchService.getTrendingCollections(hours, Math.min(limit, 50));
+      const trending = await searchService.getTrendingCollections(hours, limit);
       res.json(trending);
     } catch (error) {
       console.error('Get trending collections failed:', error);
