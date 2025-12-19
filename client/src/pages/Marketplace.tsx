@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useSearch } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Store, 
@@ -15,32 +14,24 @@ import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/SearchBar';
 import { FilterSidebar, type FilterState } from '@/components/FilterSidebar';
 import { TrendingCollections } from '@/components/TrendingCollections';
+import { useGuardians, type GuardianFilters } from '@/hooks/useGuardians';
+import { Guardian } from '@/lib/mockData';
+import { IPFS_ROOT } from '@/lib/constants';
 
-interface Listing {
-  id: number;
-  tokenId: number;
-  collectionAddress: string;
-  sellerAddress: string;
-  price: string;
-  isActive: boolean;
-  listedAt: string;
-  metadata: string | null;
-  rarity: string | null;
-}
-
-interface SearchResult {
-  listings: Listing[];
-  total: number;
-  page: number;
-  totalPages: number;
-}
+const DEFAULT_FILTERS: FilterState = {
+  minPrice: '',
+  maxPrice: '',
+  rarities: [],
+  sortBy: 'recent',
+  traits: {}
+};
 
 function parseFiltersFromURL(params: URLSearchParams): FilterState {
   const rarityParam = params.get('rarity');
   return {
     minPrice: params.get('minPrice') || '',
     maxPrice: params.get('maxPrice') || '',
-    rarities: rarityParam ? rarityParam.split(',').filter(r => ['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(r)) : [],
+    rarities: rarityParam ? rarityParam.split(',').filter(r => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'].includes(r)) : [],
     sortBy: (params.get('sortBy') as FilterState['sortBy']) || 'recent',
     traits: {}
   };
@@ -53,7 +44,6 @@ export default function Marketplace() {
   
   const [filters, setFilters] = useState<FilterState>(() => parseFiltersFromURL(urlParams));
   const [searchQuery, setSearchQuery] = useState(urlParams.get('q') || '');
-  const [collectionFilter, setCollectionFilter] = useState(urlParams.get('collection') || '');
   const [page, setPage] = useState(1);
   const [gridSize, setGridSize] = useState<'small' | 'large'>('large');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -61,48 +51,72 @@ export default function Marketplace() {
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
     const q = newParams.get('q');
-    const collection = newParams.get('collection');
     
     setSearchQuery(q || '');
-    setCollectionFilter(prev => {
-      if (collection !== prev) {
-        setPage(1);
-      }
-      return collection || '';
-    });
     setFilters(parseFiltersFromURL(newParams));
   }, [searchParams]);
 
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    if (collectionFilter) params.set('collection', collectionFilter);
-    if (filters.minPrice) params.set('minPrice', filters.minPrice);
-    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
-    if (filters.rarities.length > 0) params.set('rarity', filters.rarities.join(','));
-    if (filters.sortBy !== 'recent') params.set('sortBy', filters.sortBy);
-    if (Object.keys(filters.traits).length > 0) params.set('traits', JSON.stringify(filters.traits));
-    params.set('page', page.toString());
-    params.set('limit', '20');
-    return params.toString();
-  }, [searchQuery, collectionFilter, filters, page]);
+  const guardianFilters: GuardianFilters = useMemo(() => {
+    const sortMapping: Record<string, string> = {
+      'recent': 'id-desc',
+      'oldest': 'id-asc',
+      'price_asc': 'price-asc',
+      'price_desc': 'price-desc'
+    };
+    
+    return {
+      search: searchQuery || undefined,
+      rarity: filters.rarities.length === 1 ? filters.rarities[0] : undefined,
+      sortBy: sortMapping[filters.sortBy] || 'id-desc',
+      startOffset: (page - 1) * 20
+    };
+  }, [searchQuery, filters, page]);
 
-  const { data: searchResults, isLoading, error } = useQuery<SearchResult>({
-    queryKey: ['marketplaceSearch', queryParams],
-    queryFn: async () => {
-      const res = await fetch(`/api/search/listings?${queryParams}`);
-      if (!res.ok) throw new Error('Search failed');
-      return res.json();
-    },
-    staleTime: 30000
-  });
+  const { 
+    data, 
+    isLoading, 
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useGuardians(false, true, guardianFilters);
+
+  const allGuardians = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(p => p.nfts);
+  }, [data]);
+
+  const filteredGuardians = useMemo(() => {
+    let result = allGuardians;
+    
+    if (filters.minPrice) {
+      const min = parseFloat(filters.minPrice);
+      result = result.filter(g => (g.price || 0) >= min);
+    }
+    if (filters.maxPrice) {
+      const max = parseFloat(filters.maxPrice);
+      result = result.filter(g => (g.price || 0) <= max);
+    }
+    if (filters.rarities.length > 1) {
+      result = result.filter(g => filters.rarities.includes(g.rarity || 'Common'));
+    }
+    
+    return result;
+  }, [allGuardians, filters]);
+
+  const paginatedGuardians = useMemo(() => {
+    const startIndex = 0;
+    const endIndex = 20;
+    return filteredGuardians.slice(startIndex, endIndex);
+  }, [filteredGuardians]);
+
+  const totalPages = Math.ceil(filteredGuardians.length / 20) || 1;
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setPage(1);
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    if (collectionFilter) params.set('collection', collectionFilter);
     setLocation(`/marketplace${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
@@ -114,9 +128,20 @@ export default function Marketplace() {
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setSearchQuery('');
-    setCollectionFilter('');
     setPage(1);
     setLocation('/marketplace');
+  };
+
+  const handleNextPage = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+    setPage(p => p + 1);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const getImageUrl = (guardian: Guardian) => {
+    if (guardian.image) return guardian.image;
+    return `${IPFS_ROOT}${guardian.id}.json`;
   };
 
   return (
@@ -191,27 +216,13 @@ export default function Marketplace() {
           />
 
           <div className="flex-1">
-            {(searchQuery || collectionFilter || filters.minPrice || filters.maxPrice || filters.rarities.length > 0) && (
+            {(searchQuery || filters.minPrice || filters.maxPrice || filters.rarities.length > 0) && (
               <div className="mb-4 flex flex-wrap gap-2 items-center">
                 <span className="text-gray-400 text-sm">Active filters:</span>
                 {searchQuery && (
                   <span className="bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded text-sm flex items-center gap-1">
                     Search: {searchQuery}
                     <button onClick={() => handleSearch('')} className="hover:text-white">×</button>
-                  </span>
-                )}
-                {collectionFilter && (
-                  <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-sm flex items-center gap-1">
-                    Collection
-                    <button 
-                      onClick={() => {
-                        setCollectionFilter('');
-                        const params = new URLSearchParams();
-                        if (searchQuery) params.set('q', searchQuery);
-                        setLocation(`/marketplace${params.toString() ? `?${params.toString()}` : ''}`);
-                      }} 
-                      className="hover:text-white"
-                    >×</button>
                   </span>
                 )}
                 {filters.minPrice && (
@@ -238,15 +249,15 @@ export default function Marketplace() {
               </div>
             ) : error ? (
               <div className="text-center py-20">
-                <p className="text-red-400 mb-4">Failed to load listings</p>
+                <p className="text-red-400 mb-4">Failed to load NFTs</p>
                 <Button onClick={() => window.location.reload()} variant="outline">
                   Try Again
                 </Button>
               </div>
-            ) : searchResults && searchResults.listings.length > 0 ? (
+            ) : paginatedGuardians.length > 0 ? (
               <>
                 <div className="mb-4 text-gray-400 text-sm">
-                  Showing {(page - 1) * 20 + 1}-{Math.min(page * 20, searchResults.total)} of {searchResults.total} listings
+                  Showing {paginatedGuardians.length} of {filteredGuardians.length} Guardians
                 </div>
                 
                 <motion.div 
@@ -258,46 +269,61 @@ export default function Marketplace() {
                   layout
                 >
                   <AnimatePresence mode="popLayout">
-                    {searchResults.listings.map((listing, index) => (
+                    {paginatedGuardians.map((guardian, index) => (
                       <motion.div
-                        key={listing.id}
+                        key={guardian.id}
                         layout
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: index * 0.02 }}
-                        className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-colors group"
-                        data-testid={`listing-${listing.id}`}
+                        className="bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-colors group cursor-pointer"
+                        data-testid={`guardian-${guardian.id}`}
                       >
-                        <div className={`relative ${gridSize === 'large' ? 'aspect-square' : 'aspect-[4/3]'} bg-gray-800`}>
-                          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                            #{listing.tokenId}
-                          </div>
-                          {listing.rarity && (
+                        <div className={`relative ${gridSize === 'large' ? 'aspect-square' : 'aspect-[4/3]'} bg-gray-800 overflow-hidden`}>
+                          {guardian.image ? (
+                            <img 
+                              src={guardian.image} 
+                              alt={guardian.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                              #{guardian.id}
+                            </div>
+                          )}
+                          {guardian.rarity && (
                             <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium ${
-                              listing.rarity === 'legendary' ? 'bg-yellow-500/20 text-yellow-400' :
-                              listing.rarity === 'epic' ? 'bg-purple-500/20 text-purple-400' :
-                              listing.rarity === 'rare' ? 'bg-blue-500/20 text-blue-400' :
-                              listing.rarity === 'uncommon' ? 'bg-green-500/20 text-green-400' :
+                              guardian.rarity === 'Legendary' ? 'bg-yellow-500/20 text-yellow-400' :
+                              guardian.rarity === 'Epic' ? 'bg-purple-500/20 text-purple-400' :
+                              guardian.rarity === 'Rare' ? 'bg-blue-500/20 text-blue-400' :
+                              guardian.rarity === 'Uncommon' ? 'bg-green-500/20 text-green-400' :
                               'bg-gray-500/20 text-gray-400'
                             }`}>
-                              {listing.rarity}
+                              {guardian.rarity}
+                            </div>
+                          )}
+                          {guardian.isListed && (
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-medium bg-cyan-500/20 text-cyan-400">
+                              Listed
                             </div>
                           )}
                         </div>
                         <div className="p-4">
-                          <div className="font-medium text-white mb-1">Token #{listing.tokenId}</div>
-                          <div className="text-cyan-400 font-bold">{parseFloat(listing.price).toLocaleString()} BASED</div>
-                          <div className="text-gray-500 text-xs mt-1 truncate">
-                            Seller: {listing.sellerAddress.slice(0, 6)}...{listing.sellerAddress.slice(-4)}
-                          </div>
+                          <div className="font-medium text-white mb-1">{guardian.name}</div>
+                          {guardian.price && (
+                            <div className="text-cyan-400 font-bold">
+                              {guardian.price.toLocaleString()} {guardian.currency || 'BASED'}
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     ))}
                   </AnimatePresence>
                 </motion.div>
 
-                {searchResults.totalPages > 1 && (
+                {(hasNextPage || page > 1) && (
                   <div className="flex items-center justify-center gap-4 mt-8">
                     <Button
                       variant="outline"
@@ -311,18 +337,24 @@ export default function Marketplace() {
                       Previous
                     </Button>
                     <span className="text-gray-400">
-                      Page {page} of {searchResults.totalPages}
+                      Page {page}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage(p => Math.min(searchResults.totalPages, p + 1))}
-                      disabled={page === searchResults.totalPages}
+                      onClick={handleNextPage}
+                      disabled={!hasNextPage && page >= totalPages}
                       className="border-gray-700"
                       data-testid="button-next-page"
                     >
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                      {isFetchingNextPage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
@@ -330,11 +362,11 @@ export default function Marketplace() {
             ) : (
               <div className="text-center py-20">
                 <Store className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No listings found</h3>
+                <h3 className="text-xl font-medium text-white mb-2">No Guardians found</h3>
                 <p className="text-gray-400 mb-6">
                   {searchQuery || filters.minPrice || filters.maxPrice || filters.rarities.length > 0
                     ? 'Try adjusting your filters or search terms'
-                    : 'Be the first to list an NFT on the marketplace!'}
+                    : 'Loading Guardians from the blockchain...'}
                 </p>
                 {(searchQuery || filters.minPrice || filters.maxPrice || filters.rarities.length > 0) && (
                   <Button onClick={handleResetFilters} variant="outline" className="border-cyan-500 text-cyan-400">
