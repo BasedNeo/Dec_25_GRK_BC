@@ -32,7 +32,7 @@ export class OriginValidator {
       }
     }
     
-    if (origin.includes('.replit.dev') || origin.includes('.repl.co')) {
+    if (origin.includes('.replit.dev') || origin.includes('.repl.co') || origin.includes('.replit.app')) {
       return true;
     }
     

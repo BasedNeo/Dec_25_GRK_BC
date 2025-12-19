@@ -1,0 +1,90 @@
+RETRIEVE DEPLOYMENT LOGS AND FIX EXTERNAL ACCESS ISSUE
+
+ISSUE: App works inside Replit but external URL (https://based-command-d-app-sonnet--ryanbonelli.replit.app) shows "A Small Glitch in the Galaxy" crash page on all devices (Mac, iPhone, wife's device).
+
+TASK: Find the deployment logs, identify the error causing the crash, and fix it.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: RETRIEVE DEPLOYMENT LOGS
+═══════════════════════════════════════════════════════════════════
+
+In the Replit interface:
+
+1. Go to "Deployments" tab (left sidebar)
+2. Click on the most recent deployment
+3. Find and open the "Logs" section
+4. Copy the full logs, especially any ERROR or CRASH messages
+5. Show me the logs so we can diagnose the issue
+
+Look for error patterns like:
+- "Error: Cannot find module..."
+- "DATABASE_URL is not defined"
+- "Error: connect ECONNREFUSED"
+- "TypeError: ..."
+- "ReferenceError: ..."
+- Stack traces with file paths
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CHECK PRODUCTION ENVIRONMENT VARIABLES
+═══════════════════════════════════════════════════════════════════
+
+Check if these secrets/environment variables are set:
+
+1. DATABASE_URL - Required for database connection
+2. PORT - Should default to 5000
+3. NODE_ENV - Should be "production" in deployment
+
+Show me which ones exist and which are missing.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: TEST SERVER LOCALLY IN PRODUCTION MODE
+═══════════════════════════════════════════════════════════════════
+
+In terminal, test if server starts correctly:
+
+NODE_ENV=production tsx server/index.ts
+
+Watch for:
+- Does it start successfully?
+- Any error messages?
+- What does it print?
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ANALYZE AND FIX THE ROOT CAUSE
+═══════════════════════════════════════════════════════════════════
+
+Based on the deployment logs, identify why the server crashes in production and fix it.
+
+Common fixes:
+- If DATABASE_URL missing: Add it to Secrets
+- If module not found: Install missing dependency
+- If import error: Fix import paths
+- If tsx not found: Ensure tsx is in dependencies not devDependencies
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: VERIFY FIX AND REDEPLOY
+═══════════════════════════════════════════════════════════════════
+
+After fixing:
+
+1. Test locally: NODE_ENV=production npm start
+2. Verify it runs without crashing
+3. Rebuild: npm run build
+4. Republish the deployment
+5. Check deployment logs show successful startup
+6. Test external URL
+
+
+═══════════════════════════════════════════════════════════════════
+EXPECTED OUTPUT
+═══════════════════════════════════════════════════════════════════
+
+Show me:
+1. The deployment logs (full error message)
+2. What the root cause was
+3. What you fixed
+4. Confirmation that external URL now works
