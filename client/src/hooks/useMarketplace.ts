@@ -22,6 +22,7 @@ import { parseContractError } from '@/lib/errorParser';
 import { SafeMath } from '@/lib/safeMath';
 import { rpcCache } from '@/lib/rpcCache';
 import { perfMonitor } from '@/lib/performanceMonitor';
+import { logTransactionReceipt, updateTransactionReceipt, markTransactionFailed } from '@/lib/receiptLogger';
 
 // Marketplace ABI - all the functions we need
 const MARKETPLACE_ABI = [
@@ -217,6 +218,9 @@ export function useMarketplace() {
     }
     return true;
   };
+
+  const pendingReceiptRef = useRef<{ tokenId?: number; amount?: string; action?: string } | null>(null);
+  const receiptLoggedRef = useRef<string | null>(null);
   
   const [state, setState] = useState<MarketplaceState>({
     isPending: false,
@@ -296,12 +300,28 @@ export function useMarketplace() {
       showTransaction(txHash, txType, lastActionRef.current.description, lastActionRef.current.retryFn);
     }
 
+    if (txHash && address && receiptLoggedRef.current !== txHash && state.action !== 'idle' && state.action !== 'approve') {
+      receiptLoggedRef.current = txHash;
+      const actionMap: Record<string, 'list' | 'delist' | 'buy' | 'offer' | 'accept_offer' | 'cancel_offer'> = {
+        list: 'list', delist: 'delist', buy: 'buy', offer: 'offer', acceptOffer: 'accept_offer', cancelOffer: 'cancel_offer'
+      };
+      const txType = actionMap[state.action] || 'buy';
+      logTransactionReceipt({
+        walletAddress: address,
+        transactionType: txType,
+        transactionHash: txHash,
+        tokenId: pendingReceiptRef.current?.tokenId,
+        amount: pendingReceiptRef.current?.amount,
+      });
+    }
+
     if (isConfirmed && txHash) {
       refetchApproval();
       refetchListings();
       refetchListingCount();
+      updateTransactionReceipt(txHash, {});
     }
-  }, [isWritePending, isConfirming, isConfirmed, txHash, state.action]);
+  }, [isWritePending, isConfirming, isConfirmed, txHash, state.action, address]);
 
   useEffect(() => {
     if (isWriteError || isReceiptError) {
@@ -317,8 +337,12 @@ export function useMarketplace() {
         const txType = state.action === 'buy' ? 'buy' : state.action === 'offer' ? 'offer' : state.action === 'approve' ? 'approve' : 'list';
         showError(friendlyError, txType, lastActionRef.current.description, lastActionRef.current.retryFn);
       }
+
+      if (txHash && isReceiptError) {
+        markTransactionFailed(txHash);
+      }
     }
-  }, [isWriteError, isReceiptError, writeError, receiptError]);
+  }, [isWriteError, isReceiptError, writeError, receiptError, txHash]);
 
   const approveMarketplace = useCallback(async () => {
     if (!checkNetwork()) return;
@@ -412,6 +436,8 @@ export function useMarketplace() {
     setState(prev => ({ ...prev, action: 'list' }));
     const priceFormatted = SafeMath.format(priceWei);
     lastActionRef.current = { action: 'list', description: `Listing Guardian #${tokenId} for ${priceFormatted} $BASED`, retryFn: () => listNFT(tokenId, priceInBased) };
+    pendingReceiptRef.current = { tokenId, amount: priceFormatted };
+    receiptLoggedRef.current = null;
 
     toast({
       title: "List NFT",
@@ -434,6 +460,8 @@ export function useMarketplace() {
 
     setState(prev => ({ ...prev, action: 'delist' }));
     lastActionRef.current = { action: 'delist', description: `Delisting Guardian #${tokenId} from marketplace`, retryFn: () => delistNFT(tokenId) };
+    pendingReceiptRef.current = { tokenId };
+    receiptLoggedRef.current = null;
 
     toast({
       title: "Delist NFT",
@@ -457,6 +485,8 @@ export function useMarketplace() {
     setState(prev => ({ ...prev, action: 'buy' }));
     const priceFormatted = formatEther(priceWei);
     lastActionRef.current = { action: 'buy', description: `Buying Guardian #${tokenId} for ${Number(priceFormatted).toLocaleString()} $BASED`, retryFn: () => buyNFT(tokenId, priceWei) };
+    pendingReceiptRef.current = { tokenId, amount: priceFormatted };
+    receiptLoggedRef.current = null;
 
     toast({
       title: "Buy NFT",
@@ -480,6 +510,8 @@ export function useMarketplace() {
 
     setState(prev => ({ ...prev, action: 'offer' }));
     lastActionRef.current = { action: 'offer', description: `Making offer of ${offerAmountBased.toLocaleString()} $BASED for Guardian #${tokenId}`, retryFn: () => makeOffer(tokenId, offerAmountBased, expirationDays) };
+    pendingReceiptRef.current = { tokenId, amount: offerAmountBased.toString() };
+    receiptLoggedRef.current = null;
 
     toast({
       title: "Make Offer",
@@ -505,6 +537,8 @@ export function useMarketplace() {
 
     setState(prev => ({ ...prev, action: 'cancelOffer' }));
     lastActionRef.current = { action: 'cancelOffer', description: `Cancelling offer for Guardian #${tokenId}`, retryFn: () => cancelOffer(tokenId) };
+    pendingReceiptRef.current = { tokenId };
+    receiptLoggedRef.current = null;
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,
@@ -521,6 +555,8 @@ export function useMarketplace() {
 
     setState(prev => ({ ...prev, action: 'acceptOffer' }));
     lastActionRef.current = { action: 'acceptOffer', description: `Accepting offer for Guardian #${tokenId}`, retryFn: () => acceptOffer(tokenId, offererAddress) };
+    pendingReceiptRef.current = { tokenId };
+    receiptLoggedRef.current = null;
 
     writeContract({
       address: MARKETPLACE_CONTRACT as `0x${string}`,

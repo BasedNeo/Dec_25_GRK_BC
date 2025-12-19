@@ -1,0 +1,398 @@
+Implement multi-signature wallet control for the community treasury to prevent single point of failure and meet insurance requirements.
+
+STEP 1: INSTALL GNOSIS SAFE SDK
+
+1. RUN IN TERMINAL:
+
+npm install @safe-global/safe-core-sdk @safe-global/safe-ethers-lib
+
+STEP 2: UPDATE CONSTANTS
+
+2. UPDATE FILE: client/src/lib/constants.ts
+
+Add this after existing exports:
+
+export const TREASURY_CONFIG = {
+  multiSigEnabled: true,
+  requiredSignatures: 2,
+  totalSigners: 3,
+  withdrawalThresholds: {
+    small: { amount: 10000, signatures: 2 },
+    large: { amount: 100000, signatures: 3 },
+  },
+  timeLockHours: 24,
+};
+
+export const GNOSIS_SAFE_ADDRESS = '0x...'; // Will be set after creating Safe
+
+STEP 3: CREATE TREASURY WITHDRAWAL TABLE
+
+3. UPDATE FILE: shared/schema.ts
+
+Add this table:
+
+export const treasuryWithdrawals = pgTable('treasury_withdrawals', {
+  id: serial('id').primaryKey(),
+  amount: text('amount').notNull(),
+  recipient: text('recipient').notNull(),
+  proposedBy: text('proposed_by').notNull(),
+  proposedAt: timestamp('proposed_at').defaultNow(),
+  status: text('status').notNull().default('pending'),
+  requiredSignatures: integer('required_signatures').notNull(),
+  signatures: text('signatures').$type<string>(),
+  executedAt: timestamp('executed_at'),
+  executedTxHash: text('executed_tx_hash'),
+  reason: text('reason'),
+});
+
+export type TreasuryWithdrawal = typeof treasuryWithdrawals.$inferSelect;
+export type InsertTreasuryWithdrawal = typeof treasuryWithdrawals.$inferInsert;
+
+STEP 4: PUSH DATABASE
+
+4. RUN IN TERMINAL:
+
+npm run db:push
+
+STEP 5: ADD DATABASE METHODS
+
+5. UPDATE FILE: server/storage.ts
+
+Add import:
+
+import { treasuryWithdrawals, type TreasuryWithdrawal, type InsertTreasuryWithdrawal } from "@shared/schema";
+
+Add methods:
+
+async createTreasuryWithdrawal(data: InsertTreasuryWithdrawal): Promise<TreasuryWithdrawal> {
+  const [withdrawal] = await db.insert(treasuryWithdrawals).values(data).returning();
+  return withdrawal;
+}
+
+async getTreasuryWithdrawal(id: number): Promise<TreasuryWithdrawal | undefined> {
+  const [withdrawal] = await db.select().from(treasuryWithdrawals).where(eq(treasuryWithdrawals.id, id));
+  return withdrawal;
+}
+
+async getAllPendingWithdrawals(): Promise<TreasuryWithdrawal[]> {
+  return db.select()
+    .from(treasuryWithdrawals)
+    .where(eq(treasuryWithdrawals.status, 'pending'))
+    .orderBy(desc(treasuryWithdrawals.proposedAt));
+}
+
+async addWithdrawalSignature(id: number, signature: { signer: string; signature: string; signedAt: string }): Promise<void> {
+  const withdrawal = await this.getTreasuryWithdrawal(id);
+  if (!withdrawal) throw new Error('Withdrawal not found');
+  
+  const signatures = withdrawal.signatures ? JSON.parse(withdrawal.signatures) : [];
+  signatures.push(signature);
+  
+  await db.update(treasuryWithdrawals)
+    .set({ signatures: JSON.stringify(signatures) })
+    .where(eq(treasuryWithdrawals.id, id));
+}
+
+async markWithdrawalExecuted(id: number, txHash: string): Promise<void> {
+  await db.update(treasuryWithdrawals)
+    .set({ 
+      status: 'executed',
+      executedAt: new Date(),
+      executedTxHash: txHash
+    })
+    .where(eq(treasuryWithdrawals.id, id));
+}
+
+STEP 6: ADD API ENDPOINTS
+
+6. UPDATE FILE: server/routes.ts
+
+Add endpoints:
+
+app.post('/api/treasury/withdraw/propose', isAdmin, async (req, res) => {
+  try {
+    const { amount, recipient, reason } = req.body;
+    
+    if (!amount || !recipient) {
+      return res.status(400).json({ error: 'Amount and recipient required' });
+    }
+    
+    const amountNum = parseFloat(amount);
+    const requiredSigs = amountNum > 100000 ? 3 : 2;
+    
+    const withdrawal = await storage.createTreasuryWithdrawal({
+      amount: amount.toString(),
+      recipient,
+      proposedBy: req.body.proposedBy || 'admin',
+      requiredSignatures: requiredSigs,
+      reason: reason || 'Treasury withdrawal',
+      status: 'pending'
+    });
+    
+    res.json({ withdrawal });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/treasury/withdraw/:id/sign', isAdmin, async (req, res) => {
+  try {
+    const { signature, signer } = req.body;
+    const id = parseInt(req.params.id);
+    
+    await storage.addWithdrawalSignature(id, {
+      signer,
+      signature,
+      signedAt: new Date().toISOString()
+    });
+    
+    const withdrawal = await storage.getTreasuryWithdrawal(id);
+    const signatures = withdrawal?.signatures ? JSON.parse(withdrawal.signatures) : [];
+    
+    res.json({ 
+      success: true, 
+      signaturesCount: signatures.length,
+      requiredSignatures: withdrawal?.requiredSignatures
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/treasury/withdrawals', isAdmin, async (req, res) => {
+  try {
+    const withdrawals = await storage.getAllPendingWithdrawals();
+    res.json({ withdrawals });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/treasury/withdraw/:id/execute', isAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const withdrawal = await storage.getTreasuryWithdrawal(id);
+    
+    if (!withdrawal) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+    
+    const signatures = withdrawal.signatures ? JSON.parse(withdrawal.signatures) : [];
+    
+    if (signatures.length < withdrawal.requiredSignatures) {
+      return res.status(400).json({ error: 'Not enough signatures' });
+    }
+    
+    const hoursElapsed = (Date.now() - new Date(withdrawal.proposedAt).getTime()) / (1000 * 60 * 60);
+    if (hoursElapsed < 24) {
+      return res.status(400).json({ error: 'Time-lock active. Wait 24 hours.' });
+    }
+    
+    const txHash = 'EXECUTE_ON_BLOCKCHAIN';
+    await storage.markWithdrawalExecuted(id, txHash);
+    
+    res.json({ success: true, txHash });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 7: ADD ADMIN UI
+
+7. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add this component:
+
+const TreasuryMultiSigPanel = () => {
+  const { address } = useAccount();
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
+  const [amount, setAmount] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [reason, setReason] = useState('');
+  
+  useEffect(() => {
+    fetchWithdrawals();
+  }, []);
+  
+  const fetchWithdrawals = async () => {
+    try {
+      const res = await fetch('/api/treasury/withdrawals');
+      const data = await res.json();
+      setPendingWithdrawals(data.withdrawals || []);
+    } catch (error) {
+      console.error('Failed to fetch withdrawals:', error);
+    }
+  };
+  
+  const proposeWithdrawal = async () => {
+    if (!amount || !recipient) {
+      showToast('Amount and recipient required', 'error');
+      return;
+    }
+    
+    const confirmed = window.confirm(`Propose withdrawal of ${amount} $BASED to ${recipient}?`);
+    if (!confirmed) return;
+    
+    try {
+      const res = await fetch('/api/treasury/withdraw/propose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, recipient, reason, proposedBy: address })
+      });
+      
+      if (res.ok) {
+        showToast('Withdrawal proposed', 'success');
+        setAmount('');
+        setRecipient('');
+        setReason('');
+        fetchWithdrawals();
+      }
+    } catch (error) {
+      showToast('Failed to propose withdrawal', 'error');
+    }
+  };
+  
+  const signWithdrawal = async (id: number) => {
+    const confirmed = window.confirm('Sign this withdrawal proposal?');
+    if (!confirmed) return;
+    
+    try {
+      const message = `Approve treasury withdrawal #${id}`;
+      const signature = 'MOCK_SIGNATURE';
+      
+      const res = await fetch(`/api/treasury/withdraw/${id}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature, signer: address })
+      });
+      
+      if (res.ok) {
+        showToast('Withdrawal signed', 'success');
+        fetchWithdrawals();
+      }
+    } catch (error) {
+      showToast('Failed to sign withdrawal', 'error');
+    }
+  };
+  
+  return (
+    <div className="p-6 border border-green-500/30 rounded-xl">
+      <h3 className="text-xl font-bold mb-4">🏦 Treasury Multi-Sig</h3>
+      
+      <div className="mb-4 p-3 bg-black/40 rounded text-sm">
+        <div className="text-gray-400">Configuration:</div>
+        <div className="text-white">2-of-3 signatures (&lt;100k $BASED)</div>
+        <div className="text-white">3-of-3 signatures (&gt;100k $BASED)</div>
+        <div className="text-white">24-hour time-lock on all withdrawals</div>
+      </div>
+      
+      <div className="space-y-3 mb-4">
+        <input
+          type="number"
+          placeholder="Amount ($BASED)"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full p-2 bg-black/40 border border-white/10 rounded text-white"
+        />
+        <input
+          type="text"
+          placeholder="Recipient Address (0x...)"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          className="w-full p-2 bg-black/40 border border-white/10 rounded text-white"
+        />
+        <input
+          type="text"
+          placeholder="Reason (optional)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full p-2 bg-black/40 border border-white/10 rounded text-white"
+        />
+        <Button onClick={proposeWithdrawal} className="w-full bg-green-500">
+          Propose Withdrawal
+        </Button>
+      </div>
+      
+      <div>
+        <h4 className="font-bold mb-2">Pending Withdrawals:</h4>
+        {pendingWithdrawals.length === 0 ? (
+          <div className="text-gray-400 text-sm">No pending withdrawals</div>
+        ) : (
+          <div className="space-y-2">
+            {pendingWithdrawals.map((w) => {
+              const sigs = w.signatures ? JSON.parse(w.signatures) : [];
+              return (
+                <div key={w.id} className="p-3 bg-black/40 rounded">
+                  <div className="text-white font-bold">{w.amount} $BASED</div>
+                  <div className="text-xs text-gray-400">To: {w.recipient}</div>
+                  <div className="text-xs text-gray-400">
+                    Signatures: {sigs.length}/{w.requiredSignatures}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Proposed: {new Date(w.proposedAt).toLocaleString()}
+                  </div>
+                  {sigs.length < w.requiredSignatures && (
+                    <Button 
+                      size="sm" 
+                      onClick={() => signWithdrawal(w.id)}
+                      className="mt-2"
+                    >
+                      Sign
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+Then add <TreasuryMultiSigPanel /> to the dashboard render.
+
+STEP 8: DOCUMENTATION
+
+8. CREATE FILE: docs/MULTI_SIG_SETUP.md
+
+# Multi-Sig Treasury Setup
+
+## Create Gnosis Safe
+
+1. Go to https://safe.global
+2. Connect admin wallet
+3. Click "Create Safe"
+4. Add 3 admin wallet addresses
+5. Set threshold: 2 of 3
+6. Deploy Safe contract
+7. Copy Safe address
+8. Update GNOSIS_SAFE_ADDRESS in constants.ts
+
+## Configure Smart Contracts
+
+Update your NFT and Marketplace contracts to send funds to the Safe address instead of a single wallet.
+
+## Testing
+
+1. Admin 1 proposes withdrawal
+2. Admin 2 signs the withdrawal
+3. Wait 24 hours (time-lock)
+4. Execute withdrawal through Safe interface
+
+VERIFICATION STEPS:
+1. Check database has treasury_withdrawals table
+2. Open Admin Dashboard
+3. Try proposing a withdrawal of 5000 $BASED
+4. Should see proposal in "Pending Withdrawals"
+5. Try signing the proposal (needs 2 signatures)
+6. Verify signature count increases
+7. Check that withdrawals require 24-hour wait
+8. Verify large withdrawals (>100k) require 3 signatures
+
+IMPORTANT NOTES:
+- This creates the DATABASE structure for multi-sig
+- Actual Gnosis Safe deployment requires using their UI
+- Blockchain execution requires Safe SDK integration
+- For now, this tracks proposals and signatures
+- Full blockchain integration is Phase 3

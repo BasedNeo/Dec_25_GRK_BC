@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
 import { SecureStorage } from '@/lib/secureStorage';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
+import { logTransactionReceipt, updateTransactionReceipt, markTransactionFailed } from '@/lib/receiptLogger';
 
 const DOMAIN = {
   name: 'BasedGuardiansMarketplace',
@@ -218,8 +219,11 @@ export function useOffersV3() {
   const [userNonce, setUserNonce] = useState<number>(0);
   
   const { signTypedDataAsync } = useSignTypedData();
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const { writeContract, data: txHash, isPending, reset, isError: isWriteError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError: isReceiptError } = useWaitForTransactionReceipt({ hash: txHash });
+  
+  const pendingReceiptRef = useRef<{ tokenId?: number; amount?: string; txType?: 'offer' | 'accept_offer' | 'buy' } | null>(null);
+  const receiptLoggedRef = useRef<string | null>(null);
 
   const fetchNonce = useCallback(async () => {
     if (!address) return;
@@ -382,6 +386,8 @@ export function useOffersV3() {
 
         try {
           setIsLoading(true);
+          pendingReceiptRef.current = { tokenId: offer.tokenId, amount: offer.price, txType: 'accept_offer' };
+          receiptLoggedRef.current = null;
 
           toast({
             title: "Accept Offer",
@@ -424,6 +430,8 @@ export function useOffersV3() {
 
     try {
       setIsLoading(true);
+      pendingReceiptRef.current = { tokenId, amount: formatEther(priceWei), txType: 'buy' };
+      receiptLoggedRef.current = null;
 
       toast({
         title: "Complete Purchase",
@@ -508,6 +516,19 @@ export function useOffersV3() {
   }, []);
 
   useEffect(() => {
+    if (txHash && address && receiptLoggedRef.current !== txHash && pendingReceiptRef.current) {
+      receiptLoggedRef.current = txHash;
+      logTransactionReceipt({
+        walletAddress: address,
+        transactionType: pendingReceiptRef.current.txType || 'offer',
+        transactionHash: txHash,
+        tokenId: pendingReceiptRef.current.tokenId,
+        amount: pendingReceiptRef.current.amount,
+      });
+    }
+  }, [txHash, address]);
+
+  useEffect(() => {
     if (isSuccess && txHash) {
       toast({
         title: "Transaction Confirmed!",
@@ -516,8 +537,15 @@ export function useOffersV3() {
       });
       loadOffers();
       fetchNonce();
+      updateTransactionReceipt(txHash, {});
     }
   }, [isSuccess, txHash, toast, loadOffers, fetchNonce]);
+
+  useEffect(() => {
+    if ((isWriteError || isReceiptError) && txHash) {
+      markTransactionFailed(txHash);
+    }
+  }, [isWriteError, isReceiptError, txHash]);
 
   return {
     isLoading: isLoading || isPending || isConfirming,

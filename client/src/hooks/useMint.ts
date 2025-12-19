@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, usePublicClient } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import { NFT_CONTRACT, CHAIN_ID } from '@/lib/constants';
 import { useContractData } from './useContractData';
 import { parseContractError, isUserRejection } from '@/lib/errorParser';
+import { logTransactionReceipt, updateTransactionReceipt, markTransactionFailed } from '@/lib/receiptLogger';
 
 const MINT_PRICE = 69420;
 
@@ -23,6 +24,8 @@ export function useMint() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('idle');
+  const mintQuantityRef = useRef<number>(1);
+  const receiptLoggedRef = useRef<string | null>(null);
 
   const { 
     writeContract, 
@@ -72,10 +75,18 @@ export function useMint() {
   }, [isPending]);
 
   useEffect(() => {
-    if (hash) {
+    if (hash && address && receiptLoggedRef.current !== hash) {
       setStatus('Transaction submitted! Waiting for confirmation...');
+      receiptLoggedRef.current = hash;
+      const totalPrice = mintPrice * mintQuantityRef.current;
+      logTransactionReceipt({
+        walletAddress: address,
+        transactionType: 'mint',
+        transactionHash: hash,
+        amount: totalPrice.toString(),
+      });
     }
-  }, [hash]);
+  }, [hash, address, mintPrice]);
 
   useEffect(() => {
     if (isConfirming && hash) {
@@ -84,12 +95,13 @@ export function useMint() {
   }, [isConfirming, hash]);
 
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && hash) {
       setStatus('Mint successful!');
       setIsLoading(false);
       setError(null);
+      updateTransactionReceipt(hash, {});
     }
-  }, [isSuccess]);
+  }, [isSuccess, hash]);
 
   useEffect(() => {
     if (writeError) {
@@ -106,15 +118,16 @@ export function useMint() {
   }, [writeError]);
 
   useEffect(() => {
-    if (isConfirmError) {
+    if (isConfirmError && hash) {
       const parsedError = confirmationError 
         ? parseContractError(confirmationError)
         : 'Transaction may have failed. Check your wallet.';
       setError(parsedError);
       setIsLoading(false);
       setStatus('idle');
+      markTransactionFailed(hash);
     }
-  }, [isConfirmError, confirmationError]);
+  }, [isConfirmError, confirmationError, hash]);
 
   const mint = useCallback(async (quantity: number = 1) => {
     if (!isConnected || !address) {
@@ -138,6 +151,8 @@ export function useMint() {
       setIsLoading(true);
       setError(null);
       setStatus('Preparing transaction...');
+      mintQuantityRef.current = quantity;
+      receiptLoggedRef.current = null;
 
       const totalPrice = MINT_PRICE * quantity;
       const valueInWei = parseEther(totalPrice.toString());
