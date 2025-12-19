@@ -12,6 +12,9 @@ import {
   sanitizeQueryParams
 } from './middleware/validation';
 import { InputSanitizer } from './lib/sanitizer';
+import { sqlInjectionGuard } from './middleware/sqlInjectionGuard';
+import { QueryAuditor } from './lib/queryValidator';
+import { SecureDatabaseConnection } from './lib/dbSecurity';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
@@ -118,9 +121,32 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Apply SQL injection guard globally to all API routes
+  app.use('/api', sqlInjectionGuard);
+
   // Health check endpoint - must respond immediately for deployment health checks
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: Date.now() });
+  });
+
+  // Database health check endpoint
+  app.get('/api/health/database', async (_req, res) => {
+    try {
+      const dbConn = SecureDatabaseConnection.getInstance();
+      const healthy = await dbConn.healthCheck();
+      const stats = await dbConn.getConnectionStats();
+      
+      res.json({
+        healthy,
+        stats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        healthy: false,
+        error: error.message
+      });
+    }
   });
 
   // Financial health check endpoint - validates calculation systems
@@ -1100,6 +1126,28 @@ export async function registerRoutes(
       res.status(400).json({ error: error.message });
     }
   });
+
+  // Security Audit Endpoint (Admin only)
+  app.get('/api/admin/security/audit', requireAdmin, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const queries = QueryAuditor.getSuspiciousQueries(limit);
+      
+      res.json({ 
+        queries,
+        total: queries.length 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // SQL Injection Test Endpoint (Development only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.post('/api/test-injection', async (req, res) => {
+      res.json({ message: 'Test passed - no injection detected' });
+    });
+  }
 
   return httpServer;
 }
