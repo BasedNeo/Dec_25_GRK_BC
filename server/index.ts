@@ -12,6 +12,7 @@ const app = express();
 const httpServer = createServer(app);
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 app.use(compression());
 
 declare module "http" {
