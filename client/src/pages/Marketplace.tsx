@@ -17,6 +17,8 @@ import { TrendingCollections } from '@/components/TrendingCollections';
 import { useGuardians, type GuardianFilters } from '@/hooks/useGuardians';
 import { Guardian } from '@/lib/mockData';
 import { IPFS_ROOT } from '@/lib/constants';
+import { Navbar } from '@/components/Navbar';
+import { useAccount } from 'wagmi';
 
 const DEFAULT_FILTERS: FilterState = {
   minPrice: '',
@@ -41,12 +43,23 @@ export default function Marketplace() {
   const searchParams = useSearch();
   const [, setLocation] = useLocation();
   const urlParams = new URLSearchParams(searchParams);
+  const { isConnected } = useAccount();
   
   const [filters, setFilters] = useState<FilterState>(() => parseFiltersFromURL(urlParams));
   const [searchQuery, setSearchQuery] = useState(urlParams.get('q') || '');
   const [page, setPage] = useState(1);
   const [gridSize, setGridSize] = useState<'small' | 'large'>('large');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState('marketplace');
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'hub') setLocation('/');
+    else if (tab === 'guardians') setLocation('/');
+    else if (tab === 'odyssey') setLocation('/odyssey');
+    else if (tab === 'arcade') setLocation('/arcade');
+    else if (tab === 'marketplace') setLocation('/marketplace');
+  };
 
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
@@ -146,7 +159,12 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
-      <div className="container mx-auto px-4 py-8">
+      <Navbar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isConnected={isConnected}
+      />
+      <div className="container mx-auto px-4 py-8 pt-24">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Store className="h-8 w-8 text-cyan-500" />
