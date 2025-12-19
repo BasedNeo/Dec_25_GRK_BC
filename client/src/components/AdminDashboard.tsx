@@ -64,6 +64,77 @@ const FinancialHealthCheck = () => {
   );
 };
 
+const TransactionStatsPanel = () => {
+  const [stats, setStats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetch('/api/admin/transactions/stats')
+      .then(res => res.json())
+      .then(data => {
+        setStats(data.stats || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setStats([]);
+        setLoading(false);
+      });
+  }, []);
+  
+  const exportAll = () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      startDate: thirtyDaysAgo.toISOString(),
+      endDate: new Date().toISOString()
+    });
+    window.open(`/api/admin/transactions/export?${params}`, '_blank');
+  };
+  
+  return (
+    <div className="p-4 bg-black/40 border border-purple-500/30 rounded" data-testid="transaction-stats-panel">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-bold text-white">Transaction Statistics</h4>
+        <Button onClick={exportAll} size="sm" variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20" data-testid="button-export-all-tx">
+          <Download className="w-4 h-4 mr-2" />
+          Export All
+        </Button>
+      </div>
+      
+      {loading ? (
+        <div className="text-gray-500 text-sm">Loading stats...</div>
+      ) : stats.length === 0 ? (
+        <div className="text-gray-500 text-sm">No transaction data yet</div>
+      ) : (
+        <div className="space-y-3">
+          {stats.map((stat) => (
+            <div key={stat.transactionType} className="p-3 bg-black/60 rounded border border-purple-500/20">
+              <div className="font-bold mb-2 text-purple-400">{stat.transactionType.toUpperCase()}</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="text-gray-400">Count</div>
+                  <div className="text-white font-mono">{stat.count}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Total Volume</div>
+                  <div className="text-white font-mono">{parseFloat(stat.totalAmount || '0').toLocaleString()} $BASED</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Platform Fees</div>
+                  <div className="text-purple-400 font-mono">{parseFloat(stat.totalPlatformFees || '0').toLocaleString()} $BASED</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Royalty Fees</div>
+                  <div className="text-blue-400 font-mono">{parseFloat(stat.totalRoyaltyFees || '0').toLocaleString()} $BASED</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -1166,6 +1237,13 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               💰 Financial System Health
             </h3>
             <FinancialHealthCheck />
+          </Card>
+
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              📊 Transaction Statistics
+            </h3>
+            <TransactionStatsPanel />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
