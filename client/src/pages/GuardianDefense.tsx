@@ -123,21 +123,21 @@ interface GameState {
 interface GuardianDefenseSettings extends BaseGameSettings {
 }
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
-const GROUND_Y = 550;
+const CANVAS_WIDTH = 640;
+const CANVAS_HEIGHT = 480;
+const GROUND_Y = 440;
 
 const BATTERY_POSITIONS = [
-  { x: 100, y: GROUND_Y },
-  { x: 400, y: GROUND_Y },
-  { x: 700, y: GROUND_Y },
+  { x: 80, y: GROUND_Y },
+  { x: 320, y: GROUND_Y },
+  { x: 560, y: GROUND_Y },
 ];
 
 const CITY_POSITIONS = [
-  { x: 200, y: GROUND_Y, name: 'NEON JAGUAR LAIR' },
-  { x: 300, y: GROUND_Y, name: 'SERPENT SANCTUM' },
-  { x: 500, y: GROUND_Y, name: 'PHOENIX ROOST' },
-  { x: 600, y: GROUND_Y, name: 'WOLF DEN' },
+  { x: 160, y: GROUND_Y, name: 'NEON JAGUAR LAIR' },
+  { x: 240, y: GROUND_Y, name: 'SERPENT SANCTUM' },
+  { x: 400, y: GROUND_Y, name: 'PHOENIX ROOST' },
+  { x: 480, y: GROUND_Y, name: 'WOLF DEN' },
 ];
 
 const MISSILE_COLORS: Record<MissileColor, string> = {
@@ -147,9 +147,9 @@ const MISSILE_COLORS: Record<MissileColor, string> = {
 };
 
 const MISSILE_POINTS: Record<MissileColor, number> = {
-  green: 150,
-  red: 200,
-  yellow: 250,
+  green: 15,
+  red: 20,
+  yellow: 25,
 };
 
 const MISSILES_PER_BATTERY = 10;
@@ -422,11 +422,11 @@ export default function GuardianDefense() {
     // Bot protection: minimum play duration check
     const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
     
-    const citiesBonus = state.cities.filter(c => c.active).length * 500;
+    const citiesBonus = state.cities.filter(c => c.active).length * 50;
     const accuracyBonus = state.accuracy.shots > 0 
-      ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 1000)
+      ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 100)
       : 0;
-    const waveBonus = (state.wave - 1) * 200;
+    const waveBonus = (state.wave - 1) * 20;
     
     let finalScore = Math.min(
       state.score + citiesBonus + accuracyBonus + waveBonus,
@@ -760,9 +760,9 @@ export default function GuardianDefense() {
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
-      const waveBonus = state.wave * 100;
+      const waveBonus = state.wave * 10;
       const chainBonus = state.waveChainBonus;
-      const perfectBonus = perfectDefense ? 500 : 0;
+      const perfectBonus = perfectDefense ? 50 : 0;
       state.score += waveBonus + perfectBonus;
       
       toast({
