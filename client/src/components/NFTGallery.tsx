@@ -28,6 +28,8 @@ import { RetrieveOldListing } from "./RetrieveOldListing";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { MyOffersPanel } from "./MyOffersPanel";
+import CollectionSelector from "./CollectionSelector";
+import { useWalletCollections } from "@/hooks/useWalletCollections";
 
 interface NFTGalleryProps {
   title?: string;
@@ -75,6 +77,13 @@ export function NFTGallery({
   const { nfts: ownedNFTs, isLoading: isLoadingOwned, refetch: refetchOwned, balance: ownedBalance } = useOwnedNFTs();
   const { offers: allOffers } = useOffersForOwner();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
+  
+  const { 
+    collections: walletCollections, 
+    loading: collectionsLoading, 
+    error: collectionsError 
+  } = useWalletCollections();
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -335,6 +344,25 @@ export function NFTGallery({
 
               {/* Retrieve Old Listing - Hidden for now, kept for future use */}
               {/* {filterByOwner && isConnected && <RetrieveOldListing />} */}
+              
+              {/* Multi-Collection Portfolio Selector */}
+              {filterByOwner && isConnected && walletCollections.length > 1 && (
+                <div className="mb-8">
+                  <CollectionSelector
+                    collections={walletCollections}
+                    selectedCollection={selectedCollection}
+                    onSelectCollection={setSelectedCollection}
+                    loading={collectionsLoading}
+                  />
+                  {collectionsError && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-3 mt-4">
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                        Could not scan all collections: {collectionsError}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                 <div className="w-full">
