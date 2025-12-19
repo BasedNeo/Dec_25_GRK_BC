@@ -35,20 +35,23 @@ interface SearchResult {
   totalPages: number;
 }
 
-const DEFAULT_FILTERS: FilterState = {
-  minPrice: '',
-  maxPrice: '',
-  rarities: [],
-  sortBy: 'recent',
-  traits: {}
-};
+function parseFiltersFromURL(params: URLSearchParams): FilterState {
+  const rarityParam = params.get('rarity');
+  return {
+    minPrice: params.get('minPrice') || '',
+    maxPrice: params.get('maxPrice') || '',
+    rarities: rarityParam ? rarityParam.split(',').filter(r => ['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(r)) : [],
+    sortBy: (params.get('sortBy') as FilterState['sortBy']) || 'recent',
+    traits: {}
+  };
+}
 
 export default function Marketplace() {
   const searchParams = useSearch();
   const [, setLocation] = useLocation();
   const urlParams = new URLSearchParams(searchParams);
   
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<FilterState>(() => parseFiltersFromURL(urlParams));
   const [searchQuery, setSearchQuery] = useState(urlParams.get('q') || '');
   const [collectionFilter, setCollectionFilter] = useState(urlParams.get('collection') || '');
   const [page, setPage] = useState(1);
@@ -56,10 +59,18 @@ export default function Marketplace() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   useEffect(() => {
-    const q = urlParams.get('q');
-    const collection = urlParams.get('collection');
-    if (q) setSearchQuery(q);
-    if (collection) setCollectionFilter(collection);
+    const newParams = new URLSearchParams(searchParams);
+    const q = newParams.get('q');
+    const collection = newParams.get('collection');
+    
+    setSearchQuery(q || '');
+    setCollectionFilter(prev => {
+      if (collection !== prev) {
+        setPage(1);
+      }
+      return collection || '';
+    });
+    setFilters(parseFiltersFromURL(newParams));
   }, [searchParams]);
 
   const queryParams = useMemo(() => {
@@ -70,6 +81,7 @@ export default function Marketplace() {
     if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
     if (filters.rarities.length > 0) params.set('rarity', filters.rarities.join(','));
     if (filters.sortBy !== 'recent') params.set('sortBy', filters.sortBy);
+    if (Object.keys(filters.traits).length > 0) params.set('traits', JSON.stringify(filters.traits));
     params.set('page', page.toString());
     params.set('limit', '20');
     return params.toString();

@@ -76,6 +76,20 @@ export class SearchService {
       }
     }
 
+    if (filters.traits && Object.keys(filters.traits).length > 0) {
+      for (const [traitType, traitValues] of Object.entries(filters.traits)) {
+        if (traitValues && traitValues.length > 0) {
+          const sanitizedType = traitType.replace(/[%_\\'"]/g, '');
+          const sanitizedValues = traitValues.map(v => v.replace(/[%_\\'"]/g, ''));
+          for (const value of sanitizedValues) {
+            conditions.push(
+              sql`${listings.traits}::jsonb @> ${JSON.stringify({ [sanitizedType]: value })}::jsonb`
+            );
+          }
+        }
+      }
+    }
+
     let orderBy: any = desc(listings.listedAt);
     if (filters.sortBy === 'price_asc') {
       orderBy = sql`CAST(${listings.price} AS DECIMAL) ASC`;

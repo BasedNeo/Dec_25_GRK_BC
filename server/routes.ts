@@ -2347,10 +2347,28 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Invalid search parameters' });
       }
       const { q, collection, minPrice, maxPrice, rarity, sortBy, page, limit } = parsed.data;
+      const traitsParam = req.query.traits as string | undefined;
       
       const rarityArray = rarity 
         ? rarity.split(',').filter(r => VALID_RARITIES.includes(r.toLowerCase())).map(r => r.toLowerCase())
         : undefined;
+
+      let traitsObject: Record<string, string[]> | undefined;
+      if (traitsParam) {
+        try {
+          const parsed = JSON.parse(traitsParam);
+          if (typeof parsed === 'object' && parsed !== null) {
+            traitsObject = {};
+            for (const [key, values] of Object.entries(parsed)) {
+              if (Array.isArray(values)) {
+                traitsObject[key] = values.filter(v => typeof v === 'string').map(v => v.replace(/[%_\\'"]/g, ''));
+              }
+            }
+          }
+        } catch {
+          // Invalid JSON, ignore traits
+        }
+      }
 
       const filters: SearchFilters = {
         query: q ? q.replace(/[%_]/g, '') : undefined,
@@ -2358,6 +2376,7 @@ export async function registerRoutes(
         minPrice,
         maxPrice,
         rarity: rarityArray,
+        traits: traitsObject,
         sortBy,
         page: page ? parseInt(page) : 1,
         limit: limit ? Math.min(parseInt(limit), 100) : 20
