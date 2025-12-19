@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 
 export const DegradationBanner = () => {
   const { degraded, failedServices } = useGracefulDegradation({
-    criticalServices: ['rpc-base-mainnet', 'coingecko-api', 'binance-api']
+    criticalServices: ['rpc-mainnet.basedaibridge.com', 'coingecko-api', 'binance-api', 'coincap-api']
   });
   
   if (!degraded) return null;
