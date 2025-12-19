@@ -3,16 +3,155 @@ import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Gamepad2, Trophy, Lock, Unlock, Star, Sparkles, 
-  Home, Zap, Clock, Target, ChevronRight
+  Home, Zap, Clock, Target, ChevronRight, Crown, Medal, Award
 } from 'lucide-react';
 import { getEnabledGames, GameConfig } from '@/lib/gameRegistry';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
+
+interface LeaderboardEntry {
+  id: string;
+  walletAddress: string;
+  customName: string | null;
+  lifetimeScore: number;
+  highScore: number;
+  gamesPlayed: number;
+  rank: string;
+}
+
+function GlobalLeaderboard() {
+  const { data: leaderboard, isLoading } = useQuery<LeaderboardEntry[]>({
+    queryKey: ['game-leaderboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/game/leaderboard?limit=20');
+      if (!res.ok) throw new Error('Failed to fetch leaderboard');
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const getRankIcon = (index: number) => {
+    if (index === 0) return <Crown className="w-5 h-5 text-yellow-400" />;
+    if (index === 1) return <Medal className="w-5 h-5 text-gray-300" />;
+    if (index === 2) return <Award className="w-5 h-5 text-amber-600" />;
+    return <span className="w-5 h-5 flex items-center justify-center text-gray-500 font-mono text-sm">{index + 1}</span>;
+  };
+
+  const getRankColor = (rank: string) => {
+    const colors: Record<string, string> = {
+      'Cadet': 'text-gray-400',
+      'Ensign': 'text-green-400',
+      'Lieutenant': 'text-blue-400',
+      'Commander': 'text-purple-400',
+      'Captain': 'text-orange-400',
+      'Star Commander': 'text-pink-400',
+      'Fleet Admiral': 'text-cyan-400',
+      'Based Eternal': 'text-yellow-400',
+    };
+    return colors[rank] || 'text-gray-400';
+  };
+
+  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  return (
+    <motion.div
+      className="mt-16"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5 }}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <Trophy className="w-8 h-8 text-yellow-400" />
+        <h2 className="text-2xl md:text-3xl font-orbitron font-bold text-white">
+          Global Leaderboard
+        </h2>
+      </div>
+
+      <Card className="bg-black/60 border-white/10 backdrop-blur-xl overflow-hidden">
+        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-cyan-500/10">
+          <div className="grid grid-cols-12 gap-2 text-xs font-mono text-gray-400 uppercase tracking-wider">
+            <div className="col-span-1 text-center">#</div>
+            <div className="col-span-4">Player</div>
+            <div className="col-span-2 text-right">Lifetime</div>
+            <div className="col-span-2 text-right">High Score</div>
+            <div className="col-span-1 text-center">Games</div>
+            <div className="col-span-2 text-center">Rank</div>
+          </div>
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {isLoading ? (
+            [...Array(5)].map((_, i) => (
+              <div key={i} className="p-4 animate-pulse">
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-1"><div className="w-6 h-6 bg-white/10 rounded-full mx-auto" /></div>
+                  <div className="col-span-4"><div className="w-24 h-4 bg-white/10 rounded" /></div>
+                  <div className="col-span-2"><div className="w-16 h-4 bg-white/10 rounded ml-auto" /></div>
+                  <div className="col-span-2"><div className="w-16 h-4 bg-white/10 rounded ml-auto" /></div>
+                  <div className="col-span-1"><div className="w-8 h-4 bg-white/10 rounded mx-auto" /></div>
+                  <div className="col-span-2"><div className="w-16 h-4 bg-white/10 rounded mx-auto" /></div>
+                </div>
+              </div>
+            ))
+          ) : leaderboard && leaderboard.length > 0 ? (
+            leaderboard.map((entry, index) => (
+              <motion.div
+                key={entry.id}
+                className={`p-4 transition-colors hover:bg-white/5 ${index < 3 ? 'bg-gradient-to-r from-yellow-500/5 to-transparent' : ''}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                data-testid={`leaderboard-row-${index}`}
+              >
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-1 flex justify-center">
+                    {getRankIcon(index)}
+                  </div>
+                  <div className="col-span-4">
+                    <span className="text-white font-medium">
+                      {entry.customName || formatAddress(entry.walletAddress)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <span className="text-cyan-400 font-mono">
+                      {entry.lifetimeScore.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <span className="text-yellow-400 font-mono">
+                      {entry.highScore.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="text-gray-400 font-mono">
+                      {entry.gamesPlayed}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className={`text-sm font-medium ${getRankColor(entry.rank)}`}>
+                      {entry.rank}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              <Gamepad2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No scores yet. Be the first to play!</p>
+            </div>
+          )}
+        </div>
+      </Card>
+    </motion.div>
+  );
+}
 
 const ERC721_ABI = [
   {
@@ -351,6 +490,8 @@ export default function BasedArcade() {
             </div>
           </div>
         </motion.div>
+
+        <GlobalLeaderboard />
       </div>
     </section>
   );
