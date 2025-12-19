@@ -1,0 +1,267 @@
+FIX EXTERNAL URL ACCESS - Make app accessible on all devices
+
+ISSUE: App works in Replit preview and wallet connects, but external URL (based-command-d-app-sonnet--ryanbonelli.replit.app) doesn't load on Mac or iPhone.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: VERIFY PRODUCTION BUILD EXISTS
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+ls -la dist/
+
+You should see:
+- dist/public/ (with index.html, assets/, etc.)
+- dist/index.cjs (or similar server file)
+
+If dist/ folder is EMPTY or MISSING:
+
+npm run build
+
+Wait for it to complete. Should see: "✓ built in Xs"
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: FIX SERVER TO SERVE PRODUCTION BUILD
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/index.ts
+
+Add at the very top after imports:
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production' || process.env.REPL_ID;
+
+2. Find where you setup express middleware, add BEFORE your API routes:
+
+// Serve static files in production
+if (isProduction) {
+  const distPath = path.join(process.cwd(), 'dist', 'public');
+  console.log(`📦 Serving static files from: ${distPath}`);
+  
+  app.use(express.static(distPath, {
+    maxAge: '1d',
+    etag: true,
+  }));
+}
+
+3. At the BOTTOM after all API routes, add catch-all:
+
+// Catch-all: serve index.html for client-side routing
+if (isProduction) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'dist', 'public', 'index.html'));
+  });
+}
+
+4. Update server listen (at very bottom):
+
+const PORT = parseInt(process.env.PORT || '5000', 10);
+const HOST = '0.0.0.0'; // CRITICAL for external access
+
+const server = app.listen(PORT, HOST, () => {
+  console.log(`
+═══════════════════════════════════════════════
+🚀 SERVER STARTED
+═══════════════════════════════════════════════
+🌍 Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}
+🔌 Host: ${HOST}:${PORT}
+📦 Static: ${isProduction ? 'dist/public' : 'vite dev server'}
+🔗 External: https://${process.env.REPL_SLUG}--${process.env.REPL_OWNER}.replit.app
+═══════════════════════════════════════════════
+  `);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: UPDATE .replit CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+1. CREATE/UPDATE FILE: .replit (in root directory)
+
+entrypoint = "server/index.ts"
+run = "npm run deploy"
+
+[deployment]
+run = ["sh", "-c", "npm run build && NODE_ENV=production npm start"]
+deploymentTarget = "cloudrun"
+ignorePorts = false
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: UPDATE PACKAGE.JSON SCRIPTS
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: package.json
+
+Make sure you have these exact scripts:
+
+"scripts": {
+  "dev": "node --loader tsx server/index.ts",
+  "build": "vite build",
+  "start": "node dist/index.cjs",
+  "deploy": "npm run build && NODE_ENV=production node dist/index.cjs",
+  "db:push": "drizzle-kit push",
+  "db:studio": "drizzle-kit studio"
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: ENSURE VITE BUILDS SERVER BUNDLE
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: vite.config.ts
+
+Make sure it looks like this:
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./client/src"),
+      "@db": path.resolve(__dirname, "./db"),
+    },
+  },
+  build: {
+    outDir: "dist/public",
+    emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          wagmi: ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
+        },
+      },
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5000,
+    strictPort: false,
+  },
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: STOP EVERYTHING AND REBUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Stop all node processes
+killall node
+
+# Wait 3 seconds
+sleep 3
+
+# Clean old builds
+rm -rf dist/
+
+# Build fresh
+npm run build
+
+# Verify build completed
+ls -la dist/public/
+
+# Should see index.html, assets/, etc.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: START IN PRODUCTION MODE
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+NODE_ENV=production npm start
+
+Watch the output. You MUST see:
+🌍 Mode: PRODUCTION
+📦 Static: dist/public
+
+If you see "DEVELOPMENT" - something is wrong.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: CLICK REPLIT DEPLOY/REPUBLISH BUTTON
+═══════════════════════════════════════════════════════════════════
+
+1. In Replit interface, look for "Deploy" or "Republish" button
+
+2. Click it
+
+3. Wait for deployment to complete (may take 1-2 minutes)
+
+4. Replit should show "Deployment successful"
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: TEST EXTERNAL URL
+═══════════════════════════════════════════════════════════════════
+
+1. On your Mac, open INCOGNITO/PRIVATE window
+
+2. Go to: https://based-command-d-app-sonnet--ryanbonelli.replit.app
+
+3. Wait 30-60 seconds (first load can be slow)
+
+4. On iPhone, open Safari in Private mode
+
+5. Go to same URL
+
+6. Wait 30-60 seconds
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: IF STILL NOT WORKING - CHECK REPLIT DEPLOYMENT TAB
+═══════════════════════════════════════════════════════════════════
+
+In Replit:
+
+1. Look for "Deployments" tab in left sidebar
+
+2. Check if deployment is "Active" or "Stopped"
+
+3. If stopped, click "Start" or "Resume"
+
+4. Check deployment logs for errors
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After completing steps, reply with:
+
+1. Terminal shows: [PRODUCTION or DEVELOPMENT]
+2. dist/public/ exists: [yes/no]
+3. Deploy button clicked: [yes/no]
+4. Mac browser loads URL: [yes/no/timeout]
+5. iPhone browser loads URL: [yes/no/timeout]
+
+Reply format:
+"Terminal: PRODUCTION
+dist/public: yes
+Deployed: yes
+Mac: [loads/timeout/error]
+iPhone: [loads/timeout/error]"
