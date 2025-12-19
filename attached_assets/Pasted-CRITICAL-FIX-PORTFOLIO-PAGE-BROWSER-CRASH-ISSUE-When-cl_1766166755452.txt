@@ -1,0 +1,172 @@
+CRITICAL: FIX PORTFOLIO PAGE BROWSER CRASH
+
+ISSUE: When clicking Portfolio tab, the entire Chrome browser crashes and requires force quit. This happens in development. It's caused by wallet scanning or collection detection features added recently.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: FIND AND DISABLE WALLET SCANNER
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/pages/Portfolio.tsx (or Profile.tsx)
+
+2. Look for code that scans for collections or all NFTs:
+
+// FIND AND COMMENT OUT code like this:
+/*
+const { data: allCollections } = useQuery({
+  queryKey: ['wallet-collections', address],
+  queryFn: () => scanWalletForCollections(address),
+  ...
+});
+*/
+
+// Or:
+/*
+useEffect(() => {
+  if (address) {
+    scanForAllNFTs(address);
+  }
+}, [address]);
+*/
+
+3. Replace with SIMPLE Guardian-only query:
+
+const { data: guardianNFTs } = useQuery({
+  queryKey: ['guardian-nfts', address],
+  queryFn: async () => {
+    if (!address) return [];
+    const res = await fetch(`/api/nfts?owner=${address}`);
+    return res.json();
+  },
+  enabled: !!address,
+  staleTime: 60000,
+  refetchOnWindowFocus: false, // CRITICAL
+  refetchOnMount: false, // CRITICAL
+  retry: 1,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: DISABLE AUTO-COLLECTION DETECTION
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/hooks/useWalletNFTs.ts (or similar)
+
+If this file exists, comment out the entire hook:
+
+/*
+export function useWalletNFTs(address: string) {
+  // All code commented out
+}
+*/
+
+// Replace with no-op:
+export function useWalletNFTs(address: string) {
+  return {
+    data: [],
+    isLoading: false,
+    error: null
+  };
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REMOVE COLLECTION CARDS FROM PORTFOLIO
+═══════════════════════════════════════════════════════════════════
+
+1. In Portfolio.tsx, remove any code showing collection cards:
+
+// REMOVE/COMMENT OUT:
+/*
+{collections?.map(collection => (
+  <CollectionCard key={collection.address} collection={collection} />
+))}
+*/
+
+// Keep only Guardian NFTs display:
+<div className="grid grid-cols-3 gap-4">
+  {guardianNFTs?.map(nft => (
+    <NFTCard key={nft.tokenId} nft={nft} />
+  ))}
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: DISABLE RPC BATCH CALLS
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: server/lib/walletScanner.ts
+
+If this exists, disable the scanning function:
+
+export async function scanWalletForCollections(address: string) {
+  console.log('[WALLET SCANNER] Disabled for performance');
+  return [];
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: FIX INFINITE LOOP IN PORTFOLIO
+═══════════════════════════════════════════════════════════════════
+
+1. In Portfolio.tsx, find any useEffect hooks:
+
+// DANGEROUS - causes infinite loop:
+/*
+useEffect(() => {
+  fetchData();
+}, [data]); // Re-runs every time data changes!
+*/
+
+// SAFE:
+useEffect(() => {
+  fetchData();
+}, []); // Only runs once on mount
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: SIMPLIFY PORTFOLIO TO BARE MINIMUM
+═══════════════════════════════════════════════════════════════════
+
+Make Portfolio.tsx super simple:
+
+1. Show only Guardian NFTs owned by connected wallet
+2. No collection scanning
+3. No auto-detection
+4. No batch RPC calls
+5. Simple API call to /api/nfts?owner={address}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: TEST PORTFOLIO WITHOUT CRASHING
+═══════════════════════════════════════════════════════════════════
+
+After fixes:
+
+1. Save all files
+2. Restart dev server if needed
+3. Open app in Replit preview
+4. Connect wallet
+5. Click "Portfolio" tab
+6. Should load WITHOUT crashing
+
+Confirm:
+- Browser stays open
+- Chrome doesn't crash
+- Portfolio shows Guardian NFTs (or empty state)
+- No memory warnings in console
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After fixes, test 3 times:
+
+1. Click Portfolio - does it load? (yes/no)
+2. Does Chrome crash? (yes/no)
+3. What does Portfolio show? (describe)
+
+Reply:
+"Portfolio loads: [yes/no]
+Chrome crashes: [yes/no]
+Shows: [Guardian NFTs / Empty / Error]"
