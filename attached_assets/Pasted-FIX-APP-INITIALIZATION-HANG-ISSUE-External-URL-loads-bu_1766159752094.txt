@@ -1,0 +1,213 @@
+FIX APP INITIALIZATION HANG
+
+ISSUE: External URL loads but gets stuck on "Entering the Giga Brain Galaxy" loading screen. The deployment works but app initialization is hanging.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: ADD LOADING TIMEOUT PROTECTION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/App.tsx
+
+At the top after imports, add:
+
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+
+2. Inside App component, add timeout logic:
+
+function App() {
+  const [initTimeout, setInitTimeout] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const { isConnected } = useAccount();
+  
+  // Timeout protection - force app to load after 8 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitTimeout(true);
+      setIsReady(true);
+    }, 8000);
+    
+    // Also mark ready when connected or after 3 seconds
+    const readyTimer = setTimeout(() => {
+      setIsReady(true);
+    }, 3000);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(readyTimer);
+    };
+  }, []);
+  
+  // Mark ready when wallet connects
+  useEffect(() => {
+    if (isConnected) {
+      setIsReady(true);
+    }
+  }, [isConnected]);
+
+3. Update the loading/render logic:
+
+  // Don't show loading screen after timeout or ready
+  if (!isReady && !initTimeout) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-6 animate-bounce">🛸</div>
+          <h1 className="text-3xl font-bold text-cyan-400 mb-4">BASED GUARDIANS</h1>
+          <p className="text-xl text-gray-300 animate-pulse">Entering the Giga Brain Galaxy...</p>
+          <p className="text-sm text-gray-500 mt-4">If this takes too long, try refreshing</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show app immediately after timeout or ready
+  return (
+    <Router>
+      {/* Your normal app content */}
+    </Router>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: REDUCE RPC TIMEOUTS
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/lib/wagmi.ts
+
+Find the RPC configuration and reduce timeouts:
+
+import { http } from 'wagmi';
+import { RPC_ENDPOINTS } from './constants';
+
+export const config = createConfig({
+  chains: [basedAI],
+  transports: {
+    [basedAI.id]: http(RPC_ENDPOINTS[0], {
+      timeout: 5000,  // 5 seconds max
+      retryCount: 1,   // Only retry once
+      retryDelay: 1000 // 1 second between retries
+    }),
+  },
+  // ... rest of config
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DEFER NON-CRITICAL QUERIES
+═══════════════════════════════════════════════════════════════════
+
+1. FIND FILE: client/src/hooks/useSubnetEmissions.ts (or similar auto-loading hooks)
+
+Add enabled flag to prevent auto-loading:
+
+export function useSubnetEmissions() {
+  const { isConnected } = useAccount();
+  
+  return useQuery({
+    queryKey: ['subnet-emissions'],
+    queryFn: fetchEmissions,
+    enabled: false, // Don't auto-fetch on mount
+    staleTime: 300000,
+    refetchInterval: false, // Don't auto-refetch
+  });
+}
+
+2. Apply same pattern to:
+- useActivityFeed.ts
+- useTotalSupply.ts  
+- Any other hooks that fetch data on mount
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD ERROR BOUNDARY AROUND APP
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/main.tsx
+
+Wrap App with error boundary:
+
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }: any) {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+      <div className="text-center max-w-md p-8">
+        <h1 className="text-2xl font-bold mb-4">🚨 Something went wrong</h1>
+        <p className="text-gray-400 mb-6">{error.message}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 bg-cyan-500 rounded-lg hover:bg-cyan-600"
+        >
+          Reload App
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Wrap root:
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            <App />
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ErrorBoundary>
+  </React.StrictMode>
+);
+
+2. Install if needed:
+npm install react-error-boundary
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: REBUILD AND REDEPLOY
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Rebuild with fixes
+npm run build
+
+# The build should complete successfully
+
+# Then click "Deploy" or "Republish" button in Replit interface
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: TEST WITH BROWSER CONSOLE OPEN
+═══════════════════════════════════════════════════════════════════
+
+After redeploying:
+
+1. Open INCOGNITO window
+
+2. Press F12 to open DevTools BEFORE loading
+
+3. Go to Console tab
+
+4. Visit: https://based-command-d-app-sonnet--ryanbonelli.replit.app
+
+5. Watch for errors (red text)
+
+6. Copy any errors you see
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After deploying, reply with:
+
+1. Does app load after 8 seconds now? (yes/no)
+2. Any errors in browser console? (paste them)
+3. What page appears after loading? (home/marketplace/error)
+
+Reply format:
+"App loads:

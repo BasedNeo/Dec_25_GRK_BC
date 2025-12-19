@@ -278,17 +278,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const timer = requestIdleCallback ? 
-      requestIdleCallback(() => setWalletReady(true), { timeout: 500 }) :
-      setTimeout(() => setWalletReady(true), 100);
-    
-    return () => {
-      if (requestIdleCallback && typeof timer === 'number') {
-        cancelIdleCallback(timer);
-      } else {
-        clearTimeout(timer as unknown as number);
-      }
-    };
+    // Force wallet ready after short delay - don't wait for idle callback
+    const timer = setTimeout(() => setWalletReady(true), 500);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -300,7 +292,7 @@ function App() {
         setLoadingTimeout(true);
         console.warn('[App] Loading timeout reached - showing fallback UI');
       }
-    }, 10000);
+    }, 5000);
     
     return () => clearTimeout(timeoutTimer);
   }, [walletReady]);
