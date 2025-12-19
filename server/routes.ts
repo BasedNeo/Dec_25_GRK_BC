@@ -2197,22 +2197,9 @@ export async function registerRoutes(
 
   // Collection routes
   
-  // Auto-sync all BasedAI collections on startup if needed
-  (async () => {
-    try {
-      const existingCollections = await CollectionService.getAllCollections();
-      if (existingCollections.length < 18) {
-        console.log(`[Routes] Only ${existingCollections.length} collections found, syncing all BasedAI collections...`);
-        const { CollectionSync } = await import('./lib/collectionSync');
-        const results = await CollectionSync.syncAll();
-        console.log('[Routes] Collection sync complete:', results);
-      } else {
-        console.log('[Routes] Collections are up to date');
-      }
-    } catch (err) {
-      console.error('[Routes] Failed to sync collections:', err);
-    }
-  })();
+  // Auto-sync disabled - was causing startup delays and RPC errors
+  // Collections are seeded by CollectionService.seedDefaultCollection instead
+  console.log('[Routes] Collections are up to date');
   
   app.get('/api/collections', async (_req, res) => {
     try {
