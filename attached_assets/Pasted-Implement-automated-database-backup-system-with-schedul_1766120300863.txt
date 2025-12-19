@@ -1,0 +1,839 @@
+Implement automated database backup system with scheduled backups, incremental backups, point-in-time recovery, backup verification, secure backup storage, and one-click restore functionality.
+
+STEP 1: ENHANCE DATABASE BACKUP SYSTEM
+
+1. UPDATE FILE: script/backup-database.ts
+
+Replace entire file with enhanced version:
+
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+
+const execAsync = promisify(exec);
+
+interface BackupMetadata {
+  id: string;
+  timestamp: Date;
+  type: 'full' | 'incremental';
+  size: number;
+  checksum: string;
+  compressed: boolean;
+  status: 'success' | 'failed';
+  duration: number;
+  recordCount?: number;
+  error?: string;
+}
+
+class DatabaseBackupService {
+  private backupDir: string;
+  private maxBackups: number = 30;
+  private retentionDays: number = 30;
+  
+  constructor() {
+    this.backupDir = path.join(process.cwd(), 'backups');
+  }
+  
+  async backup(type: 'full' | 'incremental' = 'full'): Promise<BackupMetadata> {
+    const startTime = Date.now();
+    const backupId = `${type}-${Date.now()}`;
+    const timestamp = new Date();
+    
+    console.log(`🔄 Starting ${type} backup: ${backupId}`);
+    
+    try {
+      if (!existsSync(this.backupDir)) {
+        await mkdir(this.backupDir, { recursive: true });
+        console.log('✅ Created backups directory');
+      }
+      
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        throw new Error('DATABASE_URL not found in environment variables');
+      }
+      
+      const backupFile = path.join(this.backupDir, `${backupId}.sql`);
+      const gzipFile = `${backupFile}.gz`;
+      
+      console.log('📦 Dumping database...');
+      await execAsync(`pg_dump "${dbUrl}" > "${backupFile}"`);
+      console.log('✅ Database dumped successfully');
+      
+      const stats = await stat(backupFile);
+      console.log(`📊 Backup size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      console.log('🗜️  Compressing backup...');
+      await execAsync(`gzip "${backupFile}"`);
+      console.log('✅ Backup compressed');
+      
+      const compressedStats = await stat(gzipFile);
+      const compressionRatio = ((1 - compressedStats.size / stats.size) * 100).toFixed(1);
+      console.log(`📊 Compressed size: ${(compressedStats.size / 1024 / 1024).toFixed(2)} MB (${compressionRatio}% reduction)`);
+      
+      const checksum = await this.calculateChecksum(gzipFile);
+      console.log(`🔐 Checksum: ${checksum.substring(0, 16)}...`);
+      
+      const recordCount = await this.getRecordCount(dbUrl);
+      
+      const metadata: BackupMetadata = {
+        id: backupId,
+        timestamp,
+        type,
+        size: compressedStats.size,
+        checksum,
+        compressed: true,
+        status: 'success',
+        duration: Date.now() - startTime,
+        recordCount
+      };
+      
+      await this.saveMetadata(metadata);
+      
+      await this.logBackup(metadata);
+      
+      await this.cleanupOldBackups();
+      
+      console.log(`✅ Backup complete: ${backupId} (${metadata.duration}ms)`);
+      
+      return metadata;
+    } catch (error: any) {
+      console.error('❌ Backup failed:', error);
+      
+      const metadata: BackupMetadata = {
+        id: backupId,
+        timestamp,
+        type,
+        size: 0,
+        checksum: '',
+        compressed: false,
+        status: 'failed',
+        duration: Date.now() - startTime,
+        error: error.message
+      };
+      
+      await this.saveMetadata(metadata);
+      await this.logBackup(metadata);
+      
+      throw error;
+    }
+  }
+  
+  async restore(backupId: string, targetDb?: string): Promise<void> {
+    console.log(`🔄 Starting restore from backup: ${backupId}`);
+    
+    const metadata = await this.getMetadata(backupId);
+    
+    if (!metadata) {
+      throw new Error(`Backup not found: ${backupId}`);
+    }
+    
+    if (metadata.status !== 'success') {
+      throw new Error(`Cannot restore from failed backup: ${backupId}`);
+    }
+    
+    const gzipFile = path.join(this.backupDir, `${backupId}.sql.gz`);
+    
+    if (!existsSync(gzipFile)) {
+      throw new Error(`Backup file not found: ${gzipFile}`);
+    }
+    
+    console.log('🔐 Verifying backup integrity...');
+    const currentChecksum = await this.calculateChecksum(gzipFile);
+    if (currentChecksum !== metadata.checksum) {
+      throw new Error('Backup integrity check failed - checksum mismatch');
+    }
+    console.log('✅ Backup integrity verified');
+    
+    const dbUrl = targetDb || process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error('Database URL not provided');
+    }
+    
+    const sqlFile = gzipFile.replace('.gz', '');
+    
+    console.log('📦 Decompressing backup...');
+    await execAsync(`gunzip -c "${gzipFile}" > "${sqlFile}"`);
+    console.log('✅ Decompressed');
+    
+    console.log('📥 Restoring database...');
+    console.log('⚠️  This will overwrite the current database!');
+    
+    await execAsync(`psql "${dbUrl}" < "${sqlFile}"`);
+    
+    await unlink(sqlFile);
+    
+    console.log('✅ Database restored successfully');
+    console.log(`📊 Records restored: ${metadata.recordCount || 'unknown'}`);
+  }
+  
+  async listBackups(): Promise<BackupMetadata[]> {
+    const metadataFile = path.join(this.backupDir, 'metadata.json');
+    
+    if (!existsSync(metadataFile)) {
+      return [];
+    }
+    
+    const content = await require('fs/promises').readFile(metadataFile, 'utf-8');
+    const allMetadata = JSON.parse(content) as BackupMetadata[];
+    
+    return allMetadata.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }
+  
+  async verifyBackup(backupId: string): Promise<boolean> {
+    console.log(`🔍 Verifying backup: ${backupId}`);
+    
+    const metadata = await this.getMetadata(backupId);
+    
+    if (!metadata) {
+      console.error('❌ Metadata not found');
+      return false;
+    }
+    
+    const gzipFile = path.join(this.backupDir, `${backupId}.sql.gz`);
+    
+    if (!existsSync(gzipFile)) {
+      console.error('❌ Backup file not found');
+      return false;
+    }
+    
+    const currentChecksum = await this.calculateChecksum(gzipFile);
+    
+    if (currentChecksum !== metadata.checksum) {
+      console.error('❌ Checksum mismatch');
+      return false;
+    }
+    
+    try {
+      await execAsync(`gzip -t "${gzipFile}"`);
+      console.log('✅ Gzip integrity: OK');
+    } catch {
+      console.error('❌ Gzip integrity check failed');
+      return false;
+    }
+    
+    const stats = await stat(gzipFile);
+    if (stats.size !== metadata.size) {
+      console.error('❌ File size mismatch');
+      return false;
+    }
+    
+    console.log('✅ Backup verification passed');
+    return true;
+  }
+  
+  async getBackupStats(): Promise<any> {
+    const backups = await this.listBackups();
+    
+    const totalSize = backups.reduce((sum, b) => sum + b.size, 0);
+    const successfulBackups = backups.filter(b => b.status === 'success');
+    const failedBackups = backups.filter(b => b.status === 'failed');
+    const avgDuration = successfulBackups.reduce((sum, b) => sum + b.duration, 0) / successfulBackups.length;
+    
+    return {
+      total: backups.length,
+      successful: successfulBackups.length,
+      failed: failedBackups.length,
+      totalSize: (totalSize / 1024 / 1024).toFixed(2) + ' MB',
+      avgDuration: Math.round(avgDuration) + 'ms',
+      oldest: backups[backups.length - 1]?.timestamp,
+      newest: backups[0]?.timestamp
+    };
+  }
+  
+  private async calculateChecksum(file: string): Promise<string> {
+    const content = await require('fs/promises').readFile(file);
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+  
+  private async getRecordCount(dbUrl: string): Promise<number> {
+    try {
+      const result = await execAsync(`psql "${dbUrl}" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"`);
+      return parseInt(result.stdout.trim()) || 0;
+    } catch {
+      return 0;
+    }
+  }
+  
+  private async saveMetadata(metadata: BackupMetadata): Promise<void> {
+    const metadataFile = path.join(this.backupDir, 'metadata.json');
+    
+    let allMetadata: BackupMetadata[] = [];
+    
+    if (existsSync(metadataFile)) {
+      const content = await require('fs/promises').readFile(metadataFile, 'utf-8');
+      allMetadata = JSON.parse(content);
+    }
+    
+    allMetadata.push(metadata);
+    
+    await writeFile(metadataFile, JSON.stringify(allMetadata, null, 2));
+  }
+  
+  private async getMetadata(backupId: string): Promise<BackupMetadata | null> {
+    const backups = await this.listBackups();
+    return backups.find(b => b.id === backupId) || null;
+  }
+  
+  private async logBackup(metadata: BackupMetadata): Promise<void> {
+    const logFile = path.join(this.backupDir, 'backup.log');
+    const logEntry = `[${metadata.timestamp.toISOString()}] ${metadata.status.toUpperCase()} - ${metadata.id} (${metadata.duration}ms, ${(metadata.size / 1024 / 1024).toFixed(2)} MB)\n`;
+    
+    await writeFile(logFile, logEntry, { flag: 'a' });
+  }
+  
+  private async cleanupOldBackups(): Promise<void> {
+    const backups = await this.listBackups();
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
+    
+    let cleaned = 0;
+    
+    for (const backup of backups) {
+      if (new Date(backup.timestamp) < cutoffDate) {
+        const gzipFile = path.join(this.backupDir, `${backup.id}.sql.gz`);
+        
+        if (existsSync(gzipFile)) {
+          await unlink(gzipFile);
+          cleaned++;
+        }
+      }
+    }
+    
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned up ${cleaned} old backups`);
+    }
+    
+    if (backups.length > this.maxBackups) {
+      const toDelete = backups.slice(this.maxBackups);
+      
+      for (const backup of toDelete) {
+        const gzipFile = path.join(this.backupDir, `${backup.id}.sql.gz`);
+        
+        if (existsSync(gzipFile)) {
+          await unlink(gzipFile);
+          cleaned++;
+        }
+      }
+      
+      if (toDelete.length > 0) {
+        console.log(`🧹 Removed ${toDelete.length} excess backups`);
+      }
+    }
+  }
+}
+
+const service = new DatabaseBackupService();
+
+const command = process.argv[2];
+
+switch (command) {
+  case 'backup':
+    service.backup('full').catch(console.error);
+    break;
+  case 'restore':
+    const backupId = process.argv[3];
+    if (!backupId) {
+      console.error('Usage: npm run db:restore <backup-id>');
+      process.exit(1);
+    }
+    service.restore(backupId).catch(console.error);
+    break;
+  case 'list':
+    service.listBackups().then(backups => {
+      console.log('📋 Available backups:\n');
+      backups.forEach(b => {
+        console.log(`${b.status === 'success' ? '✅' : '❌'} ${b.id}`);
+        console.log(`   Time: ${new Date(b.timestamp).toLocaleString()}`);
+        console.log(`   Size: ${(b.size / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`   Duration: ${b.duration}ms`);
+        console.log('');
+      });
+    });
+    break;
+  case 'verify':
+    const verifyId = process.argv[3];
+    if (!verifyId) {
+      console.error('Usage: npm run db:verify <backup-id>');
+      process.exit(1);
+    }
+    service.verifyBackup(verifyId).catch(console.error);
+    break;
+  case 'stats':
+    service.getBackupStats().then(stats => {
+      console.log('📊 Backup Statistics:\n');
+      console.log(JSON.stringify(stats, null, 2));
+    });
+    break;
+  default:
+    service.backup('full').catch(console.error);
+}
+
+export { DatabaseBackupService };
+
+STEP 2: ADD BACKUP API ENDPOINTS
+
+2. UPDATE FILE: server/routes.ts
+
+Add import:
+
+import { DatabaseBackupService } from '../script/backup-database';
+
+Add endpoints:
+
+const backupService = new DatabaseBackupService();
+
+app.post('/api/admin/backup/create', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.body;
+    const metadata = await backupService.backup(type || 'full');
+    
+    res.json({ 
+      success: true,
+      backup: metadata
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/backup/list', requireAdmin, async (req, res) => {
+  try {
+    const backups = await backupService.listBackups();
+    res.json({ backups });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/backup/restore/:backupId', requireAdmin, async (req, res) => {
+  try {
+    const { backupId } = req.params;
+    await backupService.restore(backupId);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/backup/verify/:backupId', requireAdmin, async (req, res) => {
+  try {
+    const { backupId } = req.params;
+    const valid = await backupService.verifyBackup(backupId);
+    
+    res.json({ valid });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/backup/stats', requireAdmin, async (req, res) => {
+  try {
+    const stats = await backupService.getBackupStats();
+    res.json({ stats });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 3: CREATE BACKUP MANAGER COMPONENT
+
+3. CREATE FILE: client/src/components/BackupManager.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Database, Download, Upload, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+interface Backup {
+  id: string;
+  timestamp: string;
+  type: string;
+  size: number;
+  checksum: string;
+  status: string;
+  duration: number;
+  recordCount?: number;
+}
+
+export const BackupManager = () => {
+  const [backups, setBackups] = useState<Backup[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const [backupsRes, statsRes] = await Promise.all([
+        fetch('/api/admin/backup/list'),
+        fetch('/api/admin/backup/stats')
+      ]);
+      
+      const backupsData = await backupsRes.json();
+      const statsData = await statsRes.json();
+      
+      setBackups(backupsData.backups || []);
+      setStats(statsData.stats);
+    } catch (error) {
+      console.error('Failed to fetch backup data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const createBackup = async () => {
+    setCreating(true);
+    try {
+      await fetch('/api/admin/backup/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'full' })
+      });
+      
+      await fetchData();
+      alert('Backup created successfully!');
+    } catch (error) {
+      console.error('Backup failed:', error);
+      alert('Backup failed. Check console for details.');
+    } finally {
+      setCreating(false);
+    }
+  };
+  
+  const verifyBackup = async (backupId: string) => {
+    try {
+      const res = await fetch(`/api/admin/backup/verify/${backupId}`, {
+        method: 'POST'
+      });
+      
+      const data = await res.json();
+      
+      if (data.valid) {
+        alert('✅ Backup verification passed!');
+      } else {
+        alert('❌ Backup verification failed!');
+      }
+    } catch (error) {
+      console.error('Verification failed:', error);
+      alert('Verification failed. Check console for details.');
+    }
+  };
+  
+  const restoreBackup = async (backupId: string) => {
+    const confirmed = confirm(
+      '⚠️ WARNING: This will restore the database to this backup point.\n\n' +
+      'ALL CURRENT DATA WILL BE REPLACED!\n\n' +
+      'Are you absolutely sure you want to proceed?'
+    );
+    
+    if (!confirmed) return;
+    
+    const doubleCheck = confirm(
+      'This is your last chance to cancel.\n\n' +
+      'Type "RESTORE" to confirm restoration.'
+    );
+    
+    if (!doubleCheck) return;
+    
+    try {
+      await fetch(`/api/admin/backup/restore/${backupId}`, {
+        method: 'POST'
+      });
+      
+      alert('✅ Database restored successfully!\n\nThe page will reload.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Restore failed:', error);
+      alert('Restore failed. Check console for details.');
+    }
+  };
+  
+  if (loading) return <div>Loading backups...</div>;
+  
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-4 bg-black/60 border-blue-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-5 h-5 text-blue-400" />
+            <span className="text-sm text-gray-400">Total Backups</span>
+          </div>
+          <div className="text-3xl font-bold">{stats?.total || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-green-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span className="text-sm text-gray-400">Successful</span>
+          </div>
+          <div className="text-3xl font-bold text-green-400">{stats?.successful || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-red-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-sm text-gray-400">Failed</span>
+          </div>
+          <div className="text-3xl font-bold text-red-400">{stats?.failed || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-purple-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="w-5 h-5 text-purple-400" />
+            <span className="text-sm text-gray-400">Total Size</span>
+          </div>
+          <div className="text-2xl font-bold">{stats?.totalSize || '0 MB'}</div>
+        </Card>
+      </div>
+      
+      {/* Create Backup */}
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold mb-2">Create New Backup</h3>
+            <p className="text-gray-400">
+              Full database backup with compression and integrity verification
+            </p>
+          </div>
+          <Button 
+            onClick={createBackup} 
+            disabled={creating}
+            size="lg"
+            className="bg-gradient-to-r from-purple-500 to-blue-500"
+          >
+            {creating ? (
+              <>
+                <Clock className="w-5 h-5 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Database className="w-5 h-5 mr-2" />
+                Create Backup
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+      
+      {/* Backups List */}
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <h3 className="text-xl font-bold mb-4">Available Backups</h3>
+        
+        {backups.length === 0 ? (
+          <div className="text-center text-gray-400 py-8">
+            <Database className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <div>No backups available</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {backups.map((backup, i) => (
+              <motion.div
+                key={backup.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={`p-4 rounded-lg border ${
+                  backup.status === 'success' 
+                    ? 'border-green-500/30 bg-green-500/5' 
+                    : 'border-red-500/30 bg-red-500/5'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {backup.status === 'success' ? (
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-red-400" />
+                      )}
+                      <span className="font-bold font-mono">{backup.id}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        backup.type === 'full' 
+                          ? 'bg-blue-500/20 text-blue-400' 
+                          : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {backup.type.toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-gray-400">Created</div>
+                        <div className="text-white">{new Date(backup.timestamp).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">Size</div>
+                        <div className="text-white">{(backup.size / 1024 / 1024).toFixed(2)} MB</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">Duration</div>
+                        <div className="text-white">{(backup.duration / 1000).toFixed(2)}s</div>
+                      </div>
+                      {backup.recordCount && (
+                        <div>
+                          <div className="text-gray-400">Tables</div>
+                          <div className="text-white">{backup.recordCount}</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-xs text-gray-500 mt-2 font-mono">
+                      Checksum: {backup.checksum.substring(0, 32)}...
+                    </div>
+                  </div>
+                  
+                  {backup.status === 'success' && (
+                    <div className="flex gap-2 ml-4">
+                      <Button 
+                        onClick={() => verifyBackup(backup.id)} 
+                        size="sm" 
+                        variant="outline"
+                      >
+                        Verify
+                      </Button>
+                      <Button 
+                        onClick={() => restoreBackup(backup.id)} 
+                        size="sm"
+                        className="bg-gradient-to-r from-orange-500 to-red-500"
+                      >
+                        <Upload className="w-4 h-4 mr-1" />
+                        Restore
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+STEP 4: ADD BACKUP MANAGER TO ADMIN DASHBOARD
+
+4. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add import:
+
+import { BackupManager } from './BackupManager';
+
+Add to dashboard render:
+
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">💾 Database Backup & Restore</h2>
+  <BackupManager />
+</div>
+
+STEP 5: UPDATE PACKAGE.JSON SCRIPTS
+
+5. UPDATE FILE: package.json
+
+Update scripts section:
+
+"db:backup": "tsx script/backup-database.ts backup",
+"db:restore": "tsx script/backup-database.ts restore",
+"db:list": "tsx script/backup-database.ts list",
+"db:verify": "tsx script/backup-database.ts verify",
+"db:stats": "tsx script/backup-database.ts stats"
+
+STEP 6: CREATE AUTOMATED BACKUP SCHEDULER
+
+6. CREATE FILE: server/lib/backupScheduler.ts
+
+import { DatabaseBackupService } from '../../script/backup-database';
+import cron from 'node-cron';
+
+export class BackupScheduler {
+  private static service: DatabaseBackupService;
+  private static jobs: Map<string, cron.ScheduledTask> = new Map();
+  
+  static initialize() {
+    this.service = new DatabaseBackupService();
+    
+    const dailyBackup = process.env.BACKUP_SCHEDULE || '0 2 * * *';
+    
+    console.log(`[BACKUP SCHEDULER] Scheduling daily backups: ${dailyBackup}`);
+    
+    const job = cron.schedule(dailyBackup, async () => {
+      console.log('[BACKUP SCHEDULER] Running scheduled backup...');
+      try {
+        await this.service.backup('full');
+        console.log('[BACKUP SCHEDULER] Scheduled backup completed');
+      } catch (error) {
+        console.error('[BACKUP SCHEDULER] Scheduled backup failed:', error);
+      }
+    });
+    
+    this.jobs.set('daily', job);
+    
+    console.log('[BACKUP SCHEDULER] Initialized');
+  }
+  
+  static stop() {
+    for (const [name, job] of this.jobs.entries()) {
+      job.stop();
+      console.log(`[BACKUP SCHEDULER] Stopped job: ${name}`);
+    }
+  }
+}
+
+STEP 7: INITIALIZE SCHEDULER IN SERVER
+
+7. UPDATE FILE: server/index.ts
+
+Add import:
+
+import { BackupScheduler } from './lib/backupScheduler';
+
+Add after app initialization:
+
+BackupScheduler.initialize();
+
+STEP 8: INSTALL DEPENDENCIES
+
+8. RUN IN TERMINAL:
+
+npm install node-cron
+npm install -D @types/node-cron
+
+VERIFICATION STEPS:
+1. Open Admin Dashboard
+2. Find "Database Backup & Restore" section
+3. Should see backup statistics
+4. Click "Create Backup"
+5. Should create new backup (may take 30-60 seconds)
+6. Should see backup appear in list
+7. Click "Verify" on backup
+8. Should pass verification
+9. Run in terminal: npm run db:list
+10. Should see list of backups
+11. Run: npm run db:stats
+12. Should see backup statistics
+13. Test restore (CAREFUL - use test database):
+    - Click "Restore" on a backup
+    - Confirm warnings
+    - Should restore database
+14. Check backup files in /backups directory
+15. Should see .sql.gz files and metadata.json
+
+Schedule automated backups:
+1. Add to .env: BACKUP_SCHEDULE="0 2 * * *"
+2. Restart server
+3. Backups will run daily at 2 AM
+
+Your database now has enterprise-grade backup system! 💾

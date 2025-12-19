@@ -18,6 +18,10 @@ import { InputSanitizer } from './lib/sanitizer';
 import { sqlInjectionGuard } from './middleware/sqlInjectionGuard';
 import { QueryAuditor } from './lib/queryValidator';
 import { SecureDatabaseConnection } from './lib/dbSecurity';
+import { SessionManager } from './lib/sessionManager';
+import { SignatureVerifier } from './lib/signatureVerifier';
+import { NonceManager } from './lib/nonceManager';
+import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
@@ -226,6 +230,130 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error generating nonce:", error);
       return res.status(500).json({ error: "Failed to generate nonce" });
+    }
+  });
+
+  // Session-based authentication endpoints
+  app.post('/api/auth/nonce', authLimiter, async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress || !isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      
+      const nonce = NonceManager.createNonce(walletAddress);
+      const message = SignatureVerifier.createSignInMessage(walletAddress, nonce);
+      
+      res.json({ nonce, message });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/auth/verify', authLimiter, async (req, res) => {
+    try {
+      const { walletAddress, signature, message, nonce } = req.body;
+      
+      if (!walletAddress || !signature || !message || !nonce) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      if (!SignatureVerifier.verifyMessageAge(message, 5)) {
+        return res.status(400).json({ error: 'Message expired' });
+      }
+      
+      if (!NonceManager.validateNonce(nonce, walletAddress)) {
+        return res.status(400).json({ error: 'Invalid or expired nonce' });
+      }
+      
+      if (!SignatureVerifier.verifySignature(message, signature, walletAddress)) {
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+      
+      const ipAddress = req.ip || 'unknown';
+      const userAgent = req.get('user-agent') || 'unknown';
+      const isAdmin = ADMIN_WALLETS.includes(walletAddress.toLowerCase());
+      
+      const sessionId = SessionManager.createSession(walletAddress, ipAddress, userAgent, isAdmin);
+      
+      res.json({ 
+        sessionId,
+        walletAddress,
+        isAdmin,
+        expiresIn: 24 * 60 * 60 * 1000
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/auth/refresh', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const sessionId = req.session!.id;
+      const refreshed = SessionManager.refreshSession(sessionId);
+      
+      if (!refreshed) {
+        return res.status(401).json({ error: 'Failed to refresh session' });
+      }
+      
+      res.json({ success: true, expiresIn: 24 * 60 * 60 * 1000 });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/auth/logout', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      SessionManager.destroySession(req.session!.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/auth/sessions', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const sessions = SessionManager.getUserSessions(req.session!.walletAddress);
+      res.json({ 
+        sessions: sessions.map(s => ({
+          id: s.id.slice(0, 8) + '...',
+          createdAt: new Date(s.createdAt),
+          lastActivity: new Date(s.lastActivity),
+          ipAddress: s.ipAddress,
+          userAgent: s.userAgent
+        }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/sessions/stats', requireAdmin, async (_req, res) => {
+    try {
+      const stats = SessionManager.getStats();
+      const nonceStats = NonceManager.getStats();
+      res.json({ sessions: stats, nonces: nonceStats });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/sessions/active', requireAdmin, async (_req, res) => {
+    try {
+      const sessions = SessionManager.getActiveSessions();
+      res.json({ 
+        sessions: sessions.map(s => ({
+          id: s.id.slice(0, 8) + '...',
+          walletAddress: s.walletAddress,
+          isAdmin: s.isAdmin,
+          createdAt: new Date(s.createdAt),
+          lastActivity: new Date(s.lastActivity),
+          ipAddress: s.ipAddress
+        }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
