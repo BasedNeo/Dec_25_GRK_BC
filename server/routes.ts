@@ -1861,7 +1861,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/health/detailed', requireAdmin, async (req, res) => {
+  app.get('/api/health/detailed', async (req, res) => {
     try {
       const checks = await HealthCheckService.runAllChecks();
       res.json({ checks });
