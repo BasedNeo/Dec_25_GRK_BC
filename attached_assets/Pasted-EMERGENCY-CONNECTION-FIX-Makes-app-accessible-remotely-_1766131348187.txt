@@ -1,0 +1,241 @@
+EMERGENCY CONNECTION FIX - Makes app accessible remotely
+
+CONTEXT: App works in Replit preview but times out on remote URLs. This fixes server configuration, health checks, and production settings.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: FIX SERVER TIMEOUT CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/index.ts
+
+Find the app.listen() section (around line 144) and replace it with:
+
+const port = parseInt(process.env.PORT || "5000", 10);
+
+// Configure server with extended timeouts for remote connections
+const serverOptions = {
+  port,
+  host: "0.0.0.0", // Critical: allows remote connections
+  reusePort: true,
+};
+
+httpServer.listen(serverOptions, () => {
+  log(`serving on port ${port}`);
+  log(`local: http://localhost:${port}`);
+  log(`remote: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+});
+
+// Increase timeouts for remote connections (was causing timeouts)
+httpServer.keepAliveTimeout = 90000; // 90 seconds
+httpServer.headersTimeout = 91000;   // Must be > keepAliveTimeout
+httpServer.requestTimeout = 120000;  // 2 minutes max per request
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  log('SIGTERM received, closing server gracefully');
+  httpServer.close(() => {
+    log('Server closed');
+    process.exit(0);
+  });
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: FIX HEALTH CHECK (WAS INTERFERING WITH APP)
+═══════════════════════════════════════════════════════════════════
+
+2. UPDATE FILE: server/index.ts
+
+Find the root route handler (around line 86) and replace the entire section with:
+
+// Fast health check at root - MUST be first for deployment health checks
+app.get("/", (req, res, next) => {
+  const acceptHeader = req.headers['accept'] || '';
+  const userAgent = req.headers['user-agent'] || '';
+  
+  // Health checkers don't accept HTML
+  const isHealthChecker = !acceptHeader.includes('text/html') && (
+    !userAgent || 
+    userAgent.includes('HealthChecker') || 
+    userAgent.includes('kube-probe') ||
+    userAgent.includes('GoogleHC')
+  );
+  
+  // Respond immediately to health checks
+  if (isHealthChecker) {
+    return res.status(200).send('OK');
+  }
+  
+  // All other requests fall through to static file serving
+  next();
+});
+
+// Additional health check endpoints
+app.get("/_health", (_req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: Date.now() });
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: OPTIMIZE VITE CONFIG FOR PRODUCTION
+═══════════════════════════════════════════════════════════════════
+
+3. UPDATE FILE: vite.config.ts
+
+Replace entire file with optimized production config:
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { metaImagesPlugin } from "./vite-plugin-meta-images";
+
+export default defineConfig({
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    tailwindcss(),
+    metaImagesPlugin(),
+    ...(process.env.NODE_ENV !== "production" &&
+    process.env.REPL_ID !== undefined
+      ? [
+          await import("@replit/vite-plugin-cartographer").then((m) =>
+            m.cartographer(),
+          ),
+          await import("@replit/vite-plugin-dev-banner").then((m) =>
+            m.devBanner(),
+          ),
+        ]
+      : []),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+    },
+  },
+  css: {
+    postcss: {
+      plugins: [],
+    },
+  },
+  root: path.resolve(import.meta.dirname, "client"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+    sourcemap: false, // Disable in production for smaller bundle
+    minify: 'esbuild', // Fast minification
+    target: 'es2015', // Broader browser support
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom'],
+          'wallet': ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
+          'ui': ['framer-motion', 'lucide-react'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000, // Warn on large chunks
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+    strictPort: false,
+    allowedHosts: true,
+    hmr: {
+      clientPort: 443, // For Replit
+    },
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
+    },
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 5173,
+  },
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: FIX CONNECTION MANAGER TIMEOUTS
+═══════════════════════════════════════════════════════════════════
+
+4. UPDATE FILE: client/src/lib/connectionManager.ts
+
+Find the constructor and update timeouts:
+
+private readonly MAX_RETRIES = 3;
+private readonly BASE_TIMEOUT = 10000; // Increased from 5s to 10s
+private readonly CHECK_INTERVAL = 60000; // Reduced frequency from 30s to 60s
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: REMOVE AGGRESSIVE LOADING TIMEOUT
+═══════════════════════════════════════════════════════════════════
+
+5. UPDATE FILE: client/src/App.tsx
+
+Find the useEffect with connectionManager (around line 258) and simplify:
+
+useEffect(() => {
+  // Start periodic health checks (reduced frequency)
+  connectionManager.startAutoCheck(60000); // Every minute instead of 30s
+  
+  return () => {
+    connectionManager.stopAutoCheck();
+  };
+}, []);
+
+Remove any "maxWaitTimeout" logic that forces reload - let connection manager handle it.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: CLEAR CACHES AND REBUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal, run these commands:
+
+# Clear all caches
+rm -rf node_modules/.vite
+rm -rf dist
+rm -rf client/dist
+
+# Rebuild with new config
+npm run build
+
+# Start server
+npm run dev
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: TEST CONNECTIVITY
+═══════════════════════════════════════════════════════════════════
+
+1. Wait for "serving on port 5000" message
+2. Test Replit preview - should load
+3. Get remote URL from terminal output
+4. Open remote URL in new browser tab
+5. Try on mobile phone (different network)
+
+EXPECTED: App loads in <5 seconds from any network
+
+If still fails, check terminal for errors and report them.
+
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+✅ App loads in Replit preview
+✅ App loads via remote URL
+✅ App loads on mobile device
+✅ No timeout errors in console
+✅ Health check returns "OK"
+✅ Can connect wallet
+✅ Can navigate pages
+
+If all ✅ above, proceed to PROMPT 2.
+If any ❌, copy terminal errors and share them.

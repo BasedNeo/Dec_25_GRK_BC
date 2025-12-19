@@ -1,0 +1,377 @@
+STRIP UNNECESSARY CODE - Remove premature optimizations and advanced features
+
+CONTEXT: You added 40+ enterprise features before validating core marketplace. This removes unnecessary complexity while keeping everything that matters for launch.
+
+PHILOSOPHY: "Make it work, make it right, make it fast" - We're at step 1.
+
+═══════════════════════════════════════════════════════════════════
+WHAT WE'RE KEEPING (CORE FEATURES)
+═══════════════════════════════════════════════════════════════════
+
+✅ Minting NFTs
+✅ Marketplace (buy/sell/list/delist)
+✅ Wallet connection
+✅ 3 Games (Solitaire, Asteroid Mining, Guardian Defense)
+✅ Governance voting
+✅ Custom names
+✅ Activity feed (basic)
+✅ Profile page
+✅ Admin panel (simplified)
+✅ Database backups (simple)
+✅ Basic security (rate limiting, CSRF, sanitization)
+
+═══════════════════════════════════════════════════════════════════
+WHAT WE'RE REMOVING (CAN ADD BACK LATER)
+═══════════════════════════════════════════════════════════════════
+
+❌ Point-in-time recovery (PITR)
+❌ Disaster recovery automation
+❌ Transaction log service
+❌ State snapshots
+❌ Config version control
+❌ Runbook executor
+❌ Incident management
+❌ Encrypted storage service
+❌ Advanced security monitoring
+❌ Threat detection
+❌ Wallet scanner (too slow)
+❌ Advanced search (implement simple later)
+❌ Collection trending algorithms
+❌ Multi-collection support (add after launch)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: DISABLE ADVANCED SERVICES IN SERVER
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/routes.ts
+
+Find and COMMENT OUT these entire route sections (add // before each line):
+
+// COMMENT OUT: Point-in-time recovery routes (lines ~1730-1815)
+// app.get('/api/admin/pitr/recovery-points', ...
+// app.post('/api/admin/pitr/test', ...
+// app.post('/api/admin/pitr/recover', ...
+// app.get('/api/admin/pitr/transaction-logs/stats', ...
+// app.get('/api/admin/pitr/transaction-logs', ...
+
+// COMMENT OUT: Disaster recovery routes (lines ~1815-1875)
+// app.post('/api/admin/disaster-recovery/plan', ...
+// app.post('/api/admin/disaster-recovery/execute', ...
+// app.post('/api/admin/disaster-recovery/test', ...
+
+// COMMENT OUT: State snapshot routes (lines ~1925-2000)
+// app.post('/api/admin/snapshots/capture', ...
+// app.get('/api/admin/snapshots/list', ...
+// app.post('/api/admin/snapshots/restore/:snapshotId', ...
+// app.post('/api/admin/snapshots/compare', ...
+// app.delete('/api/admin/snapshots/:snapshotId', ...
+// app.get('/api/admin/snapshots/stats', ...
+
+// COMMENT OUT: Config version control (lines ~2000-2012)
+// app.get('/api/admin/config-versions', ...
+
+// COMMENT OUT: Runbook routes (lines ~2012-2070)
+// app.get('/api/admin/runbooks', ...
+// app.get('/api/admin/runbooks/:id', ...
+// app.post('/api/admin/runbooks/:id/execute', ...
+// app.get('/api/admin/runbooks/executions/history', ...
+
+// COMMENT OUT: Incident management routes (lines ~2070-2127)
+// app.post('/api/admin/incidents', ...
+// app.get('/api/admin/incidents', ...
+// app.post('/api/admin/incidents/:id/resolve', ...
+// app.get('/api/admin/incidents/:id/post-mortem', ...
+
+// COMMENT OUT: Encrypted storage routes (lines ~1457-1575)
+// app.post('/api/admin/encryption/test', ...
+// app.post('/api/admin/encryption/store', ...
+// app.get('/api/admin/encryption/retrieve/:key', ...
+// app.get('/api/admin/encryption/status', ...
+// app.delete('/api/admin/encryption/delete/:key', ...
+// app.post('/api/admin/encryption/cleanup', ...
+
+// COMMENT OUT: Advanced security monitoring (lines ~1576-1650)
+// app.get('/api/admin/security/events', ...
+// app.get('/api/admin/security/metrics', ...
+// app.get('/api/admin/security/threats', ...
+// app.post('/api/admin/security/events/:eventId/handle', ...
+// app.get('/api/admin/security/export', ...
+// app.post('/api/admin/security/clear-events', ...
+
+// COMMENT OUT: Wallet scanner routes (lines ~2277-2327) - TOO SLOW
+// app.get('/api/wallet/scan/:address', ...
+// app.get('/api/nft/metadata/:contractAddress/:tokenId', ...
+
+// COMMENT OUT: Advanced search routes (lines ~2328-2413) - Implement simple version later
+// app.get('/api/search/listings', ...
+// app.get('/api/search/collections', ...
+// app.get('/api/trending/collections', ...
+// app.get('/api/collection/:address/stats', ...
+// app.get('/api/search/popular', ...
+
+// COMMENT OUT: Multi-collection routes (lines ~2128-2223) - Add after launch
+// app.get('/api/collections', ...
+// app.post('/api/collections/register', ...
+// app.get('/api/collections/:address', ...
+// app.post('/api/admin/collections', ...
+// app.put('/api/admin/collections/:address', ...
+// app.delete('/api/admin/collections/:address', ...
+
+// COMMENT OUT: Gating routes (lines ~2225-2275) - Simplify for now
+// app.get('/api/gating/rules', ...
+// app.get('/api/gating/rules/:featureKey', ...
+// app.put('/api/admin/gating/rules/:featureKey', ...
+// app.post('/api/admin/gating/initialize', ...
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: COMMENT OUT SERVICE IMPORTS
+═══════════════════════════════════════════════════════════════════
+
+2. UPDATE FILE: server/routes.ts
+
+At the top of the file (lines 1-50), comment out imports for services you disabled:
+
+// COMMENT OUT these imports:
+// import { WalletScanner } from './lib/walletScanner';
+// import { searchService, type SearchFilters } from './lib/searchService';
+
+Comment out dynamic imports (around lines 1730-1816):
+// const { PointInTimeRecovery } = await import('./lib/pointInTimeRecovery');
+// const { TransactionLogService } = await import('./lib/transactionLog');
+// const { DisasterRecoveryService } = await import('./lib/disasterRecovery');
+// const { HealthCheckService } = await import('./lib/healthCheck');
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DISABLE NFT GATING (TOO COMPLEX FOR NOW)
+═══════════════════════════════════════════════════════════════════
+
+3. UPDATE FILE: client/src/App.tsx
+
+Find all NFTGate wrappers and remove them (keep the content):
+
+BEFORE:
+<Route path="/games">
+  <ErrorBoundary feature="Based Arcade">
+    <NFTGate featureKey="arcade">
+      <BasedArcade />
+    </NFTGate>
+  </ErrorBoundary>
+</Route>
+
+AFTER:
+<Route path="/games">
+  <ErrorBoundary feature="Based Arcade">
+    <BasedArcade />
+  </ErrorBoundary>
+</Route>
+
+Do this for:
+- /games (BasedArcade)
+- /games/guardian-defense (GuardianDefense)
+- /games/guardian-solitaire (GuardianSolitaire)
+- /games/asteroid-mining (AsteroidMining)
+- /arcade (BasedArcade - duplicate route)
+- All other duplicate game routes
+
+Remove the import at the top:
+// import NFTGate from "@/components/NFTGate";
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: DISABLE WALLET COLLECTIONS HOOK (TOO SLOW)
+═══════════════════════════════════════════════════════════════════
+
+4. UPDATE FILE: client/src/hooks/useWalletCollections.ts
+
+Add at the very top of the file (before all code):
+
+// TEMPORARILY DISABLED - Re-enable post-launch
+// This hook scans 500k blocks which is too slow
+export function useWalletCollections() {
+  return {
+    collections: [],
+    loading: false,
+    error: null,
+    refetch: () => Promise.resolve()
+  };
+}
+
+/*
+// Comment out the entire original implementation below
+// Original code follows...
+
+Then wrap the entire existing code in /* */
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: SIMPLIFY ADMIN DASHBOARD
+═══════════════════════════════════════════════════════════════════
+
+5. CREATE FILE: client/src/components/AdminDashboardSimple.tsx
+
+Create a simplified admin panel with only essentials:
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAccount } from 'wagmi';
+import { ADMIN_WALLETS } from '@/lib/constants';
+
+export default function AdminDashboardSimple() {
+  const { address } = useAccount();
+  const [backupStatus, setBackupStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const isAdmin = address && ADMIN_WALLETS.some(
+    admin => admin.toLowerCase() === address.toLowerCase()
+  );
+
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
+        <p className="text-muted-foreground">This page requires admin access.</p>
+      </div>
+    );
+  }
+
+  async function triggerBackup() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/backup', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Backup completed successfully!');
+        await checkBackupStatus();
+      } else {
+        alert('Backup failed: ' + data.error);
+      }
+    } catch (error) {
+      alert('Backup error: ' + error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function checkBackupStatus() {
+    try {
+      const res = await fetch('/api/admin/backup/status');
+      const data = await res.json();
+      setBackupStatus(data);
+    } catch (error) {
+      console.error('Failed to check backup status:', error);
+    }
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Database Backup */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Database Backup</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={triggerBackup} 
+              disabled={loading}
+              className="w-full mb-4"
+            >
+              {loading ? 'Creating Backup...' : 'Backup Database Now'}
+            </Button>
+            
+            <Button 
+              onClick={checkBackupStatus}
+              variant="outline"
+              className="w-full mb-4"
+            >
+              Check Backup Status
+            </Button>
+
+            {backupStatus && (
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <p className="text-sm">
+                  <strong>Last Backup:</strong>{' '}
+                  {backupStatus.lastBackup 
+                    ? new Date(backupStatus.lastBackup.created).toLocaleString()
+                    : 'Never'
+                  }
+                </p>
+                {backupStatus.lastBackup && (
+                  <p className="text-sm mt-2">
+                    <strong>Size:</strong> {(backupStatus.lastBackup.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Links */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Links</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <a href="/api/emails/csv" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="w-full">Export Email List</Button>
+            </a>
+            <a href="/api/health/complete" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="w-full">System Health Check</Button>
+            </a>
+            <p className="text-xs text-muted-foreground mt-4">
+              Admin Wallet: {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8 p-6 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
+        <h3 className="font-bold mb-2">📝 Simplified Admin Panel</h3>
+        <p className="text-sm text-muted-foreground">
+          Advanced features temporarily disabled for performance. Core admin functions available.
+          Full dashboard will return post-launch.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+6. UPDATE FILE: Update the route that loads admin dashboard to use the simple version
+
+Find where AdminDashboard is imported and comment it out, use the simple version instead.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: COMMIT CHANGES
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Save current state
+git add -A
+git commit -m "Simplify: Remove advanced features for launch"
+
+# Rebuild
+npm run build
+npm run dev
+
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+✅ App starts without errors
+✅ Routes load faster
+✅ No console warnings about missing services
+✅ Core features still work (mint, buy, sell, games)
+✅ Admin dashboard shows simplified version
+✅ Codebase feels cleaner
+
+If all ✅ above, proceed to PROMPT 3.
+If any errors, share them.

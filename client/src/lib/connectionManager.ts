@@ -18,8 +18,8 @@ class ConnectionManager {
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private checkInterval: ReturnType<typeof setInterval> | null = null;
   private readonly MAX_RETRIES = 3;
-  private readonly BASE_TIMEOUT = 5000;
-  private readonly CHECK_INTERVAL = 30000;
+  private readonly BASE_TIMEOUT = 10000; // Increased from 5s to 10s
+  private readonly CHECK_INTERVAL = 60000; // Reduced frequency from 30s to 60s
 
   private constructor() {}
 

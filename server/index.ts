@@ -142,14 +142,31 @@ app.use(decryptSensitiveRequest);
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+
+  // Configure server with extended timeouts for remote connections
+  const serverOptions = {
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  };
+
+  httpServer.listen(serverOptions, () => {
+    log(`serving on port ${port}`);
+    log(`local: http://localhost:${port}`);
+    log(`remote: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+  });
+
+  // Increase timeouts for remote connections (was causing timeouts)
+  httpServer.keepAliveTimeout = 90000; // 90 seconds
+  httpServer.headersTimeout = 91000;   // Must be > keepAliveTimeout
+  httpServer.requestTimeout = 120000;  // 2 minutes max per request
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    log('SIGTERM received, closing server gracefully');
+    httpServer.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
+  });
 })();
