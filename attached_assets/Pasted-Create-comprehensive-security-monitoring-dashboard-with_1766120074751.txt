@@ -1,0 +1,917 @@
+Create comprehensive security monitoring dashboard with real-time threat detection, security alerts, automated incident response, security scoring, vulnerability tracking, and consolidated security reporting.
+
+STEP 1: CREATE SECURITY MONITORING SERVICE
+
+1. CREATE FILE: server/lib/securityMonitor.ts
+
+interface SecurityEvent {
+  id: string;
+  timestamp: Date;
+  type: 'xss' | 'sql_injection' | 'rate_limit' | 'cors' | 'auth_failure' | 'suspicious_activity' | 'encryption_error';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  source: string;
+  details: any;
+  ipAddress?: string;
+  userAgent?: string;
+  handled: boolean;
+}
+
+interface SecurityMetrics {
+  totalEvents: number;
+  criticalEvents: number;
+  highEvents: number;
+  mediumEvents: number;
+  lowEvents: number;
+  blockedRequests: number;
+  failedAuth: number;
+  activeBans: number;
+  activeThreats: number;
+}
+
+export class SecurityMonitor {
+  private static events: SecurityEvent[] = [];
+  private static readonly MAX_EVENTS = 10000;
+  private static alertCallbacks: Array<(event: SecurityEvent) => void> = [];
+  
+  static logEvent(
+    type: SecurityEvent['type'],
+    severity: SecurityEvent['severity'],
+    source: string,
+    details: any,
+    metadata?: { ipAddress?: string; userAgent?: string }
+  ): void {
+    const event: SecurityEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      timestamp: new Date(),
+      type,
+      severity,
+      source,
+      details,
+      ipAddress: metadata?.ipAddress,
+      userAgent: metadata?.userAgent,
+      handled: false
+    };
+    
+    this.events.unshift(event);
+    
+    if (this.events.length > this.MAX_EVENTS) {
+      this.events = this.events.slice(0, this.MAX_EVENTS);
+    }
+    
+    console.log(`[SECURITY] ${severity.toUpperCase()} - ${type} at ${source}:`, details);
+    
+    if (severity === 'critical' || severity === 'high') {
+      this.triggerAlert(event);
+    }
+  }
+  
+  static triggerAlert(event: SecurityEvent): void {
+    console.error(`[SECURITY ALERT] ${event.severity.toUpperCase()} - ${event.type}:`, {
+      source: event.source,
+      details: event.details,
+      ipAddress: event.ipAddress
+    });
+    
+    for (const callback of this.alertCallbacks) {
+      try {
+        callback(event);
+      } catch (error) {
+        console.error('[SECURITY] Alert callback failed:', error);
+      }
+    }
+  }
+  
+  static onAlert(callback: (event: SecurityEvent) => void): void {
+    this.alertCallbacks.push(callback);
+  }
+  
+  static getEvents(filters?: {
+    type?: SecurityEvent['type'];
+    severity?: SecurityEvent['severity'];
+    since?: Date;
+    limit?: number;
+  }): SecurityEvent[] {
+    let filtered = [...this.events];
+    
+    if (filters?.type) {
+      filtered = filtered.filter(e => e.type === filters.type);
+    }
+    
+    if (filters?.severity) {
+      filtered = filtered.filter(e => e.severity === filters.severity);
+    }
+    
+    if (filters?.since) {
+      filtered = filtered.filter(e => e.timestamp >= filters.since);
+    }
+    
+    if (filters?.limit) {
+      filtered = filtered.slice(0, filters.limit);
+    }
+    
+    return filtered;
+  }
+  
+  static getMetrics(): SecurityMetrics {
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recent = this.events.filter(e => e.timestamp >= last24h);
+    
+    return {
+      totalEvents: recent.length,
+      criticalEvents: recent.filter(e => e.severity === 'critical').length,
+      highEvents: recent.filter(e => e.severity === 'high').length,
+      mediumEvents: recent.filter(e => e.severity === 'medium').length,
+      lowEvents: recent.filter(e => e.severity === 'low').length,
+      blockedRequests: recent.filter(e => e.type === 'rate_limit').length,
+      failedAuth: recent.filter(e => e.type === 'auth_failure').length,
+      activeBans: 0, // Will be populated from rate limiter
+      activeThreats: recent.filter(e => !e.handled && (e.severity === 'critical' || e.severity === 'high')).length
+    };
+  }
+  
+  static getSecurityScore(): number {
+    const metrics = this.getMetrics();
+    
+    let score = 100;
+    
+    score -= metrics.criticalEvents * 10;
+    score -= metrics.highEvents * 5;
+    score -= metrics.mediumEvents * 2;
+    score -= metrics.lowEvents * 0.5;
+    
+    if (metrics.activeThreats > 0) {
+      score -= 20;
+    }
+    
+    if (metrics.failedAuth > 10) {
+      score -= 10;
+    }
+    
+    return Math.max(0, Math.min(100, score));
+  }
+  
+  static markHandled(eventId: string): void {
+    const event = this.events.find(e => e.id === eventId);
+    if (event) {
+      event.handled = true;
+    }
+  }
+  
+  static clearEvents(): void {
+    this.events = [];
+  }
+  
+  static exportEvents(format: 'json' | 'csv' = 'json'): string {
+    if (format === 'json') {
+      return JSON.stringify(this.events, null, 2);
+    }
+    
+    const headers = ['Timestamp', 'Type', 'Severity', 'Source', 'IP Address', 'Details', 'Handled'];
+    const rows = this.events.map(e => [
+      e.timestamp.toISOString(),
+      e.type,
+      e.severity,
+      e.source,
+      e.ipAddress || '',
+      JSON.stringify(e.details),
+      e.handled ? 'Yes' : 'No'
+    ]);
+    
+    return [
+      headers.join(','),
+      ...rows.map(r => r.map(c => `"${c}"`).join(','))
+    ].join('\n');
+  }
+}
+
+STEP 2: CREATE THREAT DETECTION SERVICE
+
+2. CREATE FILE: server/lib/threatDetection.ts
+
+import { SecurityMonitor } from './securityMonitor';
+
+interface ThreatPattern {
+  name: string;
+  description: string;
+  pattern: RegExp | ((data: any) => boolean);
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  action: 'log' | 'block' | 'ban';
+}
+
+export class ThreatDetection {
+  private static patterns: ThreatPattern[] = [
+    {
+      name: 'SQL Injection Attempt',
+      description: 'Detected SQL injection pattern in input',
+      pattern: /(\bOR\b|\bAND\b)\s+[\d\w]+\s*=\s*[\d\w]+|UNION\s+SELECT|;\s*DROP/i,
+      severity: 'critical',
+      action: 'block'
+    },
+    {
+      name: 'XSS Attack',
+      description: 'Detected XSS pattern in input',
+      pattern: /<script|javascript:|onerror=|onload=/i,
+      severity: 'critical',
+      action: 'block'
+    },
+    {
+      name: 'Path Traversal',
+      description: 'Detected path traversal attempt',
+      pattern: /\.\.[\/\\]|\.\.%2[fF]|\.\.%5[cC]/,
+      severity: 'high',
+      action: 'block'
+    },
+    {
+      name: 'Command Injection',
+      description: 'Detected command injection pattern',
+      pattern: /[;&|`$\(\)]/,
+      severity: 'critical',
+      action: 'block'
+    },
+    {
+      name: 'Excessive Requests',
+      description: 'Abnormal request volume detected',
+      pattern: (data: any) => data.requestCount > 100,
+      severity: 'medium',
+      action: 'log'
+    }
+  ];
+  
+  static scanInput(input: string, source: string, metadata?: any): boolean {
+    let threatDetected = false;
+    
+    for (const pattern of this.patterns) {
+      let matches = false;
+      
+      if (pattern.pattern instanceof RegExp) {
+        matches = pattern.pattern.test(input);
+      } else if (typeof pattern.pattern === 'function') {
+        matches = pattern.pattern({ input, ...metadata });
+      }
+      
+      if (matches) {
+        threatDetected = true;
+        
+        SecurityMonitor.logEvent(
+          'suspicious_activity',
+          pattern.severity,
+          source,
+          {
+            pattern: pattern.name,
+            description: pattern.description,
+            input: input.substring(0, 100),
+            action: pattern.action
+          },
+          metadata
+        );
+        
+        if (pattern.action === 'block' || pattern.action === 'ban') {
+          return false; // Block the request
+        }
+      }
+    }
+    
+    return !threatDetected; // Allow if no threats detected
+  }
+  
+  static addPattern(pattern: ThreatPattern): void {
+    this.patterns.push(pattern);
+  }
+  
+  static getPatterns(): ThreatPattern[] {
+    return this.patterns;
+  }
+  
+  static analyzeTraffic(requests: Array<{ ip: string; endpoint: string; timestamp: number }>): void {
+    const now = Date.now();
+    const recentWindow = 60000; // 1 minute
+    
+    const ipCounts: Map<string, number> = new Map();
+    
+    for (const req of requests) {
+      if (now - req.timestamp < recentWindow) {
+        ipCounts.set(req.ip, (ipCounts.get(req.ip) || 0) + 1);
+      }
+    }
+    
+    for (const [ip, count] of ipCounts.entries()) {
+      if (count > 100) {
+        SecurityMonitor.logEvent(
+          'suspicious_activity',
+          'high',
+          'traffic_analyzer',
+          {
+            ip,
+            requestCount: count,
+            timeWindow: '1 minute',
+            threshold: 100
+          },
+          { ipAddress: ip }
+        );
+      }
+    }
+  }
+}
+
+STEP 3: CREATE AUTOMATED INCIDENT RESPONSE
+
+3. CREATE FILE: server/lib/incidentResponse.ts
+
+import { SecurityMonitor } from './securityMonitor';
+import { AdvancedRateLimiter } from './advancedRateLimiter';
+
+interface IncidentAction {
+  type: 'ban_ip' | 'notify_admin' | 'throttle' | 'block_endpoint' | 'force_logout';
+  target: string;
+  duration?: number;
+  reason: string;
+}
+
+export class IncidentResponse {
+  private static blockedEndpoints: Map<string, number> = new Map();
+  
+  static initialize(): void {
+    SecurityMonitor.onAlert((event) => {
+      this.handleSecurityEvent(event);
+    });
+  }
+  
+  private static handleSecurityEvent(event: any): void {
+    const actions: IncidentAction[] = [];
+    
+    if (event.severity === 'critical') {
+      if (event.ipAddress) {
+        actions.push({
+          type: 'ban_ip',
+          target: event.ipAddress,
+          duration: 24 * 60 * 60 * 1000, // 24 hours
+          reason: `Critical security event: ${event.type}`
+        });
+      }
+      
+      actions.push({
+        type: 'notify_admin',
+        target: 'security@example.com',
+        reason: `Critical: ${event.type} at ${event.source}`
+      });
+    } else if (event.severity === 'high') {
+      if (event.ipAddress) {
+        actions.push({
+          type: 'ban_ip',
+          target: event.ipAddress,
+          duration: 60 * 60 * 1000, // 1 hour
+          reason: `High severity event: ${event.type}`
+        });
+      }
+    }
+    
+    this.executeActions(actions);
+  }
+  
+  private static executeActions(actions: IncidentAction[]): void {
+    for (const action of actions) {
+      try {
+        switch (action.type) {
+          case 'ban_ip':
+            AdvancedRateLimiter.banIP(action.target, action.duration!, action.reason);
+            console.log(`[INCIDENT RESPONSE] Banned IP ${action.target} for ${action.duration}ms`);
+            break;
+            
+          case 'notify_admin':
+            this.notifyAdmin(action.target, action.reason);
+            break;
+            
+          case 'block_endpoint':
+            this.blockEndpoint(action.target, action.duration!);
+            break;
+            
+          default:
+            console.warn(`[INCIDENT RESPONSE] Unknown action type: ${action.type}`);
+        }
+      } catch (error) {
+        console.error(`[INCIDENT RESPONSE] Failed to execute action:`, error);
+      }
+    }
+  }
+  
+  private static notifyAdmin(recipient: string, message: string): void {
+    console.error(`[ADMIN NOTIFICATION] ${recipient}: ${message}`);
+    // In production, send email/SMS/Slack notification
+  }
+  
+  private static blockEndpoint(endpoint: string, duration: number): void {
+    this.blockedEndpoints.set(endpoint, Date.now() + duration);
+    console.warn(`[INCIDENT RESPONSE] Blocked endpoint ${endpoint} for ${duration}ms`);
+  }
+  
+  static isEndpointBlocked(endpoint: string): boolean {
+    const blockedUntil = this.blockedEndpoints.get(endpoint);
+    
+    if (!blockedUntil) {
+      return false;
+    }
+    
+    if (Date.now() > blockedUntil) {
+      this.blockedEndpoints.delete(endpoint);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static getBlockedEndpoints(): Array<{ endpoint: string; until: Date }> {
+    const blocked: Array<{ endpoint: string; until: Date }> = [];
+    
+    for (const [endpoint, until] of this.blockedEndpoints.entries()) {
+      if (Date.now() < until) {
+        blocked.push({ endpoint, until: new Date(until) });
+      } else {
+        this.blockedEndpoints.delete(endpoint);
+      }
+    }
+    
+    return blocked;
+  }
+}
+
+IncidentResponse.initialize();
+
+STEP 4: INTEGRATE SECURITY MONITORING
+
+4. UPDATE FILE: server/middleware/sqlInjectionGuard.ts
+
+Add import:
+
+import { SecurityMonitor } from '../lib/securityMonitor';
+
+Update the middleware to log security events:
+
+const clientId = req.ip || 'unknown';
+
+if (QueryValidator.detectSqlInjection(value)) {
+  console.error(`[SECURITY] SQL injection attempt detected at ${path}:`, value);
+  
+  SecurityMonitor.logEvent(
+    'sql_injection',
+    'critical',
+    path,
+    { value: value.substring(0, 100) },
+    { ipAddress: clientId, userAgent: req.get('user-agent') }
+  );
+  
+  return false;
+}
+
+STEP 5: UPDATE XSS PROTECTION WITH MONITORING
+
+5. UPDATE FILE: server/lib/sanitizer.ts
+
+Add import at top:
+
+import { SecurityMonitor } from './securityMonitor';
+
+Update sanitizeString method to log XSS attempts:
+
+if (sanitized.match(/<script|javascript:|onerror=|onload=/i)) {
+  SecurityMonitor.logEvent(
+    'xss',
+    'critical',
+    'input_sanitizer',
+    { input: input.substring(0, 100) }
+  );
+}
+
+STEP 6: ADD SECURITY MONITORING ENDPOINTS
+
+6. UPDATE FILE: server/routes.ts
+
+Add imports:
+
+import { SecurityMonitor } from './lib/securityMonitor';
+import { ThreatDetection } from './lib/threatDetection';
+import { IncidentResponse } from './lib/incidentResponse';
+
+Add endpoints:
+
+app.get('/api/admin/security/events', requireAdmin, async (req, res) => {
+  try {
+    const { type, severity, since, limit } = req.query;
+    
+    const events = SecurityMonitor.getEvents({
+      type: type as any,
+      severity: severity as any,
+      since: since ? new Date(since as string) : undefined,
+      limit: limit ? parseInt(limit as string) : 100
+    });
+    
+    res.json({ events });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/security/metrics', requireAdmin, async (req, res) => {
+  try {
+    const metrics = SecurityMonitor.getMetrics();
+    const score = SecurityMonitor.getSecurityScore();
+    const blockedEndpoints = IncidentResponse.getBlockedEndpoints();
+    
+    res.json({ 
+      metrics,
+      score,
+      blockedEndpoints
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/security/threats', requireAdmin, async (req, res) => {
+  try {
+    const patterns = ThreatDetection.getPatterns();
+    res.json({ patterns });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/security/events/:eventId/handle', requireAdmin, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    SecurityMonitor.markHandled(eventId);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/security/export', requireAdmin, async (req, res) => {
+  try {
+    const format = (req.query.format as 'json' | 'csv') || 'json';
+    const exported = SecurityMonitor.exportEvents(format);
+    
+    res.setHeader('Content-Type', format === 'json' ? 'application/json' : 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=security-events.${format}`);
+    res.send(exported);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/security/clear-events', requireAdmin, async (req, res) => {
+  try {
+    SecurityMonitor.clearEvents();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 7: CREATE COMPREHENSIVE SECURITY DASHBOARD
+
+7. CREATE FILE: client/src/components/SecurityDashboard.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Shield, AlertTriangle, Activity, TrendingUp, Download } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+export const SecurityDashboard = () => {
+  const [metrics, setMetrics] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const [metricsRes, eventsRes] = await Promise.all([
+        fetch('/api/admin/security/metrics'),
+        fetch('/api/admin/security/events?limit=50')
+      ]);
+      
+      const metricsData = await metricsRes.json();
+      const eventsData = await eventsRes.json();
+      
+      setMetrics(metricsData);
+      setEvents(eventsData.events || []);
+    } catch (error) {
+      console.error('Failed to fetch security data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleEvent = async (eventId: string) => {
+    try {
+      await fetch(`/api/admin/security/events/${eventId}/handle`, { method: 'POST' });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to handle event:', error);
+    }
+  };
+  
+  const exportEvents = (format: 'json' | 'csv') => {
+    window.open(`/api/admin/security/export?format=${format}`, '_blank');
+  };
+  
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return 'text-green-400';
+    if (score >= 70) return 'text-yellow-400';
+    if (score >= 50) return 'text-orange-400';
+    return 'text-red-400';
+  };
+  
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'bg-red-500/20 border-red-500 text-red-400';
+      case 'high': return 'bg-orange-500/20 border-orange-500 text-orange-400';
+      case 'medium': return 'bg-yellow-500/20 border-yellow-500 text-yellow-400';
+      default: return 'bg-blue-500/20 border-blue-500 text-blue-400';
+    }
+  };
+  
+  if (loading) return <div>Loading security dashboard...</div>;
+  
+  return (
+    <div className="space-y-6">
+      {/* Security Score */}
+      <Card className="p-8 bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Security Score</h2>
+            <p className="text-gray-400">Overall security health (last 24h)</p>
+          </div>
+          <div className={`text-7xl font-bold ${getScoreColor(metrics?.score || 0)}`}>
+            {metrics?.score || 0}
+          </div>
+        </div>
+      </Card>
+      
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-4 bg-black/60 border-purple-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className="w-5 h-5 text-purple-400" />
+            <span className="text-sm text-gray-400">Total Events</span>
+          </div>
+          <div className="text-3xl font-bold">{metrics?.metrics?.totalEvents || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-red-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <span className="text-sm text-gray-400">Critical</span>
+          </div>
+          <div className="text-3xl font-bold text-red-400">{metrics?.metrics?.criticalEvents || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-orange-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-orange-400" />
+            <span className="text-sm text-gray-400">High</span>
+          </div>
+          <div className="text-3xl font-bold text-orange-400">{metrics?.metrics?.highEvents || 0}</div>
+        </Card>
+        
+        <Card className="p-4 bg-black/60 border-yellow-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="w-5 h-5 text-yellow-400" />
+            <span className="text-sm text-gray-400">Blocked</span>
+          </div>
+          <div className="text-3xl font-bold text-yellow-400">{metrics?.metrics?.blockedRequests || 0}</div>
+        </Card>
+      </div>
+      
+      {/* Active Threats */}
+      {metrics?.metrics?.activeThreats > 0 && (
+        <Card className="p-6 bg-red-500/10 border-red-500">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-red-400" />
+            <div>
+              <div className="text-xl font-bold text-red-400">
+                {metrics.metrics.activeThreats} Active Threat{metrics.metrics.activeThreats !== 1 ? 's' : ''}
+              </div>
+              <div className="text-sm text-red-300">Requires immediate attention</div>
+            </div>
+          </div>
+        </Card>
+      )}
+      
+      {/* Security Events */}
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold">Recent Security Events</h3>
+          <div className="flex gap-2">
+            <Button onClick={() => exportEvents('json')} size="sm" variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              JSON
+            </Button>
+            <Button onClick={() => exportEvents('csv')} size="sm" variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+          </div>
+        </div>
+        
+        {events.length === 0 ? (
+          <div className="text-center text-gray-400 py-8">
+            <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <div>No security events detected</div>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {events.map((event, i) => (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={`p-4 rounded-lg border ${getSeverityColor(event.severity)} ${
+                  event.handled ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold">{event.type.replace('_', ' ').toUpperCase()}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${getSeverityColor(event.severity)}`}>
+                        {event.severity}
+                      </span>
+                      {event.handled && (
+                        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
+                          Handled
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-300 mb-1">Source: {event.source}</div>
+                    {event.ipAddress && (
+                      <div className="text-xs text-gray-400">IP: {event.ipAddress}</div>
+                    )}
+                    <div className="text-xs font-mono bg-black/60 p-2 rounded mt-2">
+                      {JSON.stringify(event.details, null, 2)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(event.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                  {!event.handled && (
+                    <Button 
+                      onClick={() => handleEvent(event.id)} 
+                      size="sm" 
+                      variant="outline"
+                    >
+                      Mark Handled
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+STEP 8: ADD SECURITY DASHBOARD TO ADMIN
+
+8. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add import:
+
+import { SecurityDashboard } from './SecurityDashboard';
+
+Add to dashboard render at the TOP:
+
+<div className="mb-8">
+  <h1 className="text-3xl font-bold mb-6">🛡️ Security Command Center</h1>
+  <SecurityDashboard />
+</div>
+
+STEP 9: CREATE SECURITY HEALTH CHECK
+
+9. CREATE FILE: server/routes.ts
+
+Add endpoint:
+
+app.get('/api/health/security', async (req, res) => {
+  try {
+    const metrics = SecurityMonitor.getMetrics();
+    const score = SecurityMonitor.getSecurityScore();
+    
+    const health = {
+      score,
+      healthy: score >= 70,
+      metrics: {
+        criticalThreats: metrics.criticalEvents,
+        activeThreats: metrics.activeThreats,
+        blockedRequests: metrics.blockedRequests
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    res.json(health);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 10: CREATE SECURITY REPORT GENERATOR
+
+10. CREATE FILE: script/generate-security-report.ts
+
+import { SecurityMonitor } from '../server/lib/securityMonitor';
+
+async function generateReport() {
+  console.log('🔒 SECURITY REPORT');
+  console.log('==================\n');
+  console.log(`Generated: ${new Date().toISOString()}\n`);
+  
+  const metrics = SecurityMonitor.getMetrics();
+  const score = SecurityMonitor.getSecurityScore();
+  const events = SecurityMonitor.getEvents({ limit: 10 });
+  
+  console.log('📊 SECURITY SCORE');
+  console.log(`Overall Score: ${score}/100`);
+  console.log(`Status: ${score >= 90 ? '✅ Excellent' : score >= 70 ? '⚠️  Good' : score >= 50 ? '⚠️  Fair' : '❌ Poor'}\n`);
+  
+  console.log('📈 METRICS (Last 24 Hours)');
+  console.log(`Total Events: ${metrics.totalEvents}`);
+  console.log(`Critical: ${metrics.criticalEvents}`);
+  console.log(`High: ${metrics.highEvents}`);
+  console.log(`Medium: ${metrics.mediumEvents}`);
+  console.log(`Low: ${metrics.lowEvents}`);
+  console.log(`Blocked Requests: ${metrics.blockedRequests}`);
+  console.log(`Failed Auth: ${metrics.failedAuth}`);
+  console.log(`Active Threats: ${metrics.activeThreats}\n`);
+  
+  if (events.length > 0) {
+    console.log('🚨 RECENT SECURITY EVENTS');
+    events.slice(0, 5).forEach((event, i) => {
+      console.log(`${i + 1}. [${event.severity.toUpperCase()}] ${event.type}`);
+      console.log(`   Source: ${event.source}`);
+      console.log(`   Time: ${new Date(event.timestamp).toLocaleString()}`);
+      console.log(`   Handled: ${event.handled ? 'Yes' : 'No'}\n`);
+    });
+  }
+  
+  console.log('✅ Report complete\n');
+}
+
+generateReport();
+
+STEP 11: ADD TO PACKAGE.JSON
+
+11. UPDATE FILE: package.json
+
+Add script:
+
+"security:report": "tsx script/generate-security-report.ts"
+
+VERIFICATION STEPS:
+1. Open Admin Dashboard
+2. Should see Security Command Center at top
+3. Check Security Score (should be 100 or close)
+4. View security metrics (events, threats, blocks)
+5. Trigger some security events:
+   - Try SQL injection in search
+   - Try XSS in custom name
+   - Hit rate limits
+6. Refresh dashboard
+7. Should see events logged with severity
+8. Click "Mark Handled" on events
+9. Export events as JSON and CSV
+10. Run: npm run security:report
+11. Should see comprehensive security report
+12. Check /api/health/security endpoint
+13. Should show security health status
+
+Test automated response:
+1. Trigger multiple critical events from same IP
+2. IP should be auto-banned
+3. Check Rate Limiting section
+4. Should see banned IP
+5. Unban IP
+6. Should work again
+
+🎉 PHASE 2 COMPLETE! 🎉
+
+Your app now has:
+✅ XSS Protection
+✅ SQL Injection Prevention  
+✅ Advanced Rate Limiting
+✅ Secure Sessions
+✅ CORS Hardening
+✅ Input Validation
+✅ End-to-End Encryption
+✅ Real-Time Security Monitoring
+✅ Automated Incident Response
+✅ Comprehensive Security Dashboard
+
+Your security is now BULLETPROOF! 🛡️

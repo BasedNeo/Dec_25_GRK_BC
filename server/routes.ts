@@ -5,6 +5,9 @@ import { insertFeedbackSchema, insertStorySchema, analyticsEvents } from "@share
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
+import { ipBanGuard } from './middleware/ipBanGuard';
+import { EndpointLimiters } from './lib/endpointLimiters';
+import { AdvancedRateLimiter, readLimiter } from './lib/advancedRateLimiter';
 import { 
   validateCustomName, 
   validateProposal, 
@@ -181,6 +184,22 @@ export async function registerRoutes(
     } catch (error: any) {
       res.status(500).json({ healthy: false, error: error.message });
     }
+  });
+
+  // Apply IP ban guard to all API routes (except health checks)
+  app.use('/api/*', (req, res, next) => {
+    if (req.path === '/api/health' || req.path.startsWith('/api/health/')) {
+      return next();
+    }
+    return ipBanGuard(req, res, next);
+  });
+
+  // Apply read limiter to GET requests
+  app.use('/api/*', (req, res, next) => {
+    if (req.method === 'GET') {
+      return readLimiter(req, res, next);
+    }
+    next();
   });
 
   // Admin auth nonce endpoint - get a nonce for signing
@@ -1149,6 +1168,66 @@ export async function registerRoutes(
       res.json({ message: 'Test passed - no injection detected' });
     });
   }
+
+  // Rate Limit Monitoring Endpoints (Admin only)
+  app.get('/api/admin/rate-limits/suspicious', requireAdmin, async (req, res) => {
+    try {
+      const suspicious = AdvancedRateLimiter.getSuspiciousIPs();
+      res.json({ suspicious });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/rate-limits/banned', requireAdmin, async (req, res) => {
+    try {
+      const banned = AdvancedRateLimiter.getBannedIPs();
+      res.json({ banned });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/rate-limits/ban', requireAdmin, async (req, res) => {
+    try {
+      const { ip, durationMs, reason } = req.body;
+      
+      if (!ip || !durationMs || !reason) {
+        return res.status(400).json({ error: 'Missing required fields: ip, durationMs, reason' });
+      }
+      
+      AdvancedRateLimiter.banIP(ip, durationMs, reason);
+      
+      res.json({ success: true, message: `Banned ${ip} for ${durationMs}ms` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/rate-limits/unban', requireAdmin, async (req, res) => {
+    try {
+      const { ip } = req.body;
+      
+      if (!ip) {
+        return res.status(400).json({ error: 'IP address required' });
+      }
+      
+      AdvancedRateLimiter.unbanIP(ip);
+      
+      res.json({ success: true, message: `Unbanned ${ip}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/rate-limits/clear-suspicious', requireAdmin, async (req, res) => {
+    try {
+      AdvancedRateLimiter.clearSuspiciousIPs();
+      res.json({ success: true, message: 'Cleared suspicious IP list' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   return httpServer;
 }
