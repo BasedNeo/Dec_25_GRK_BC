@@ -307,3 +307,32 @@ export const transactionLogs = pgTable('transaction_logs', {
 });
 
 export type TransactionLog = typeof transactionLogs.$inferSelect;
+
+export const collections = pgTable('collections', {
+  id: serial('id').primaryKey(),
+  contractAddress: text('contract_address').notNull().unique(),
+  name: text('name').notNull(),
+  symbol: text('symbol').notNull(),
+  description: text('description'),
+  bannerImage: text('banner_image'),
+  thumbnailImage: text('thumbnail_image'),
+  totalSupply: integer('total_supply').default(0),
+  floorPrice: text('floor_price').default('0'),
+  volumeTraded: text('volume_traded').default('0'),
+  isActive: boolean('is_active').default(true),
+  isFeatured: boolean('is_featured').default(false),
+  royaltyPercent: integer('royalty_percent').default(0),
+  royaltyAddress: text('royalty_address'),
+  creatorAddress: text('creator_address'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const insertCollectionSchema = createInsertSchema(collections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCollection = z.infer<typeof insertCollectionSchema>;
+export type Collection = typeof collections.$inferSelect;

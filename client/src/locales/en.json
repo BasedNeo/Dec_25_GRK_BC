@@ -5,11 +5,20 @@
     "mint": "Mint",
     "gallery": "Portfolio",
     "escrow": "Market",
+    "collections": "Collections",
     "voting": "Voting",
     "pool": "Pool",
     "stats": "Stats",
     "activity": "Activity",
-    "game": "Game"
+    "game": "Game",
+    "games": "Games"
+  },
+  "collections": {
+    "title": "NFT Collections",
+    "subtitle": "Discover and trade NFTs from verified collections across the BasedAI ecosystem",
+    "featured": "Featured Collections",
+    "all": "All Collections",
+    "empty": "No collections available yet"
   },
   "common": {
     "connectWallet": "Connect Wallet",

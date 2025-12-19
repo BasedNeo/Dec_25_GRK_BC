@@ -1,7 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFeedbackSchema, insertStorySchema, analyticsEvents } from "@shared/schema";
+import { insertFeedbackSchema, insertStorySchema, analyticsEvents, collections } from "@shared/schema";
+import { CollectionService } from './lib/collectionService';
 import { z } from "zod";
 import { containsProfanity } from "./profanityFilter";
 import { writeLimiter, authLimiter, gameLimiter } from './middleware/rateLimiter';
@@ -2118,6 +2119,77 @@ export async function registerRoutes(
       res.send(postMortem);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Collection routes
+  app.get('/api/collections', async (_req, res) => {
+    try {
+      const allCollections = await CollectionService.getAllCollections();
+      res.json(allCollections);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch collections' });
+    }
+  });
+
+  app.get('/api/collections/:address', async (req, res) => {
+    try {
+      const collection = await CollectionService.getCollection(req.params.address);
+      if (!collection) {
+        return res.status(404).json({ error: 'Collection not found' });
+      }
+      res.json(collection);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch collection' });
+    }
+  });
+
+  app.post('/api/admin/collections', requireAdmin, async (req, res) => {
+    const { contractAddress } = req.body;
+    
+    if (!contractAddress || !ethers.isAddress(contractAddress)) {
+      return res.status(400).json({ error: 'Invalid contract address' });
+    }
+    
+    try {
+      const collection = await CollectionService.addCollection(contractAddress);
+      res.json(collection);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/admin/collections/:address', requireAdmin, async (req, res) => {
+    const { name, description, bannerImage, thumbnailImage, isActive, isFeatured } = req.body;
+    
+    try {
+      const { eq } = await import('drizzle-orm');
+      await db.update(collections)
+        .set({
+          ...(name && { name }),
+          ...(description && { description }),
+          ...(bannerImage && { bannerImage }),
+          ...(thumbnailImage && { thumbnailImage }),
+          ...(typeof isActive === 'boolean' && { isActive }),
+          ...(typeof isFeatured === 'boolean' && { isFeatured }),
+          updatedAt: new Date()
+        })
+        .where(eq(collections.contractAddress, req.params.address.toLowerCase()));
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update collection' });
+    }
+  });
+
+  app.delete('/api/admin/collections/:address', requireAdmin, async (req, res) => {
+    try {
+      const { eq } = await import('drizzle-orm');
+      await db.delete(collections)
+        .where(eq(collections.contractAddress, req.params.address.toLowerCase()));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete collection' });
     }
   });
 

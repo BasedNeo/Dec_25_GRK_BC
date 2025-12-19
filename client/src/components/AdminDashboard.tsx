@@ -27,7 +27,196 @@ import { DisasterRecoveryPanel } from './DisasterRecoveryPanel';
 import { SnapshotManager } from './SnapshotManager';
 import { RunbookManager } from './RunbookManager';
 import { PerformanceDashboard } from './PerformanceDashboard';
-import { Camera, Book } from 'lucide-react';
+import { Camera, Book, Layers } from 'lucide-react';
+
+const CollectionManagementPanel = () => {
+  const [collections, setCollections] = useState<any[]>([]);
+  const [newAddress, setNewAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { address } = useAccount();
+
+  useEffect(() => {
+    fetchCollections();
+  }, []);
+
+  async function fetchCollections() {
+    try {
+      const res = await fetch('/api/collections');
+      const data = await res.json();
+      setCollections(data);
+    } catch (error) {
+      console.error('Failed to fetch collections:', error);
+    }
+  }
+
+  async function addCollection() {
+    if (!newAddress || !address) return;
+    
+    setLoading(true);
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      
+      if (!nonceRes.ok) {
+        alert('Not authorized');
+        setLoading(false);
+        return;
+      }
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const message = `Based Guardians Admin Auth\nNonce: ${nonce}`;
+      const signature = await signer.signMessage(message);
+      
+      const res = await fetch('/api/admin/collections', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        },
+        body: JSON.stringify({ contractAddress: newAddress })
+      });
+      
+      if (res.ok) {
+        setNewAddress('');
+        await fetchCollections();
+        alert('Collection added successfully');
+      } else {
+        const error = await res.json();
+        alert(`Failed: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Failed to add collection');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleFeatured(contractAddress: string, isFeatured: boolean) {
+    if (!address) return;
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      if (!nonceRes.ok) return;
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(`Based Guardians Admin Auth\nNonce: ${nonce}`);
+      
+      await fetch(`/api/admin/collections/${contractAddress}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        },
+        body: JSON.stringify({ isFeatured: !isFeatured })
+      });
+      await fetchCollections();
+    } catch (error) {
+      console.error('Failed to toggle featured:', error);
+    }
+  }
+
+  async function toggleActive(contractAddress: string, isActive: boolean) {
+    if (!address) return;
+    if (!confirm(`Are you sure you want to ${isActive ? 'disable' : 'enable'} this collection?`)) return;
+    
+    try {
+      const nonceRes = await fetch('/api/admin/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      if (!nonceRes.ok) return;
+      
+      const { nonce } = await nonceRes.json();
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(`Based Guardians Admin Auth\nNonce: ${nonce}`);
+      
+      await fetch(`/api/admin/collections/${contractAddress}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-wallet-address': address,
+          'x-admin-signature': signature
+        },
+        body: JSON.stringify({ isActive: !isActive })
+      });
+      await fetchCollections();
+    } catch (error) {
+      console.error('Failed to toggle active:', error);
+    }
+  }
+
+  return (
+    <div className="space-y-4" data-testid="collection-management-panel">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Contract Address (0x...)"
+          value={newAddress}
+          onChange={(e) => setNewAddress(e.target.value)}
+          className="flex-1 px-3 py-2 bg-black/60 border border-cyan-500/30 rounded-lg text-white placeholder-gray-500"
+          data-testid="input-collection-address"
+        />
+        <button
+          onClick={addCollection}
+          disabled={loading}
+          className="px-6 py-2 bg-cyan-500 text-black rounded-lg font-orbitron hover:bg-cyan-400 disabled:opacity-50"
+          data-testid="button-add-collection"
+        >
+          {loading ? 'Adding...' : 'Add'}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {collections.length === 0 ? (
+          <p className="text-gray-500 text-sm">No collections added yet</p>
+        ) : (
+          collections.map(collection => (
+            <div key={collection.id} className="flex items-center gap-3 p-3 bg-black/40 border border-cyan-500/20 rounded-lg" data-testid={`collection-row-${collection.id}`}>
+              <div className="flex-1">
+                <p className="font-medium text-white">{collection.name}</p>
+                <p className="text-xs text-gray-400 font-mono">{collection.contractAddress}</p>
+              </div>
+              
+              <button
+                onClick={() => toggleFeatured(collection.contractAddress, collection.isFeatured)}
+                className={`px-3 py-1 rounded text-xs font-orbitron ${
+                  collection.isFeatured ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'
+                }`}
+                data-testid={`button-featured-${collection.id}`}
+              >
+                {collection.isFeatured ? 'Featured' : 'Feature'}
+              </button>
+              
+              <button
+                onClick={() => toggleActive(collection.contractAddress, collection.isActive)}
+                className={`px-3 py-1 rounded text-xs font-orbitron ${
+                  collection.isActive ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
+                }`}
+                data-testid={`button-active-${collection.id}`}
+              >
+                {collection.isActive ? 'Active' : 'Disabled'}
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1459,6 +1648,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Disaster Recovery Runbooks
             </h3>
             <RunbookManager />
+          </Card>
+          
+          <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6" data-testid="collection-management-card">
+            <h3 className="text-xl font-orbitron font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              Collection Management
+            </h3>
+            <CollectionManagementPanel />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">

@@ -137,6 +137,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'mint', label: t('nav.mint', 'Mint') },
     { id: 'gallery', label: t('nav.gallery', 'Portfolio') },
     { id: 'escrow', label: t('nav.escrow', 'Market') },
+    { id: 'collections', label: t('nav.collections', 'Collections') },
     { id: 'universe', label: t('nav.universe', 'Universe') },
     { id: 'pool', label: t('nav.pool', 'Pool') },
     { id: 'stats', label: t('nav.stats', 'Stats') },
@@ -187,6 +188,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     setLocation('/games');
                   } else if (item.id === 'game') {
                     setLocation('/guardian-solitaire');
+                  } else if (item.id === 'collections') {
+                    setLocation('/collections');
                   } else {
                     onTabChange(item.id);
                   }
@@ -403,6 +406,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       setLocation('/game');
                     } else if (item.id === 'solitaire') {
                       setLocation('/guardian-solitaire');
+                    } else if (item.id === 'games') {
+                      setLocation('/games');
+                    } else if (item.id === 'collections') {
+                      setLocation('/collections');
                     } else {
                       onTabChange(item.id);
                     }
