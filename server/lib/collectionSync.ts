@@ -122,13 +122,20 @@ export class CollectionSync {
       console.warn(`[CollectionSync] Could not fetch image for ${address}`);
     }
 
+    // Set banner image - use NFT #345 for Based Guardians
+    const isBasedGuardians = address.toLowerCase() === '0xae51dc5fd1499a129f8654963560f9340773ad59';
+    const bannerImage = isBasedGuardians 
+      ? 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/345.png'
+      : imageUrl;
+
     await this.upsertCollection({
       contractAddress: address,
       name,
       symbol,
       totalSupply: Number(totalSupply),
       thumbnailImage: imageUrl,
-      isFeatured: address.toLowerCase() === '0xae51dc5fd1499a129f8654963560f9340773ad59',
+      bannerImage: bannerImage,
+      isFeatured: isBasedGuardians,
     });
   }
 
@@ -138,6 +145,7 @@ export class CollectionSync {
     symbol: string;
     totalSupply: number;
     thumbnailImage?: string | null;
+    bannerImage?: string | null;
     isFeatured?: boolean;
   }) {
     const normalizedAddress = data.contractAddress.toLowerCase();
@@ -154,6 +162,7 @@ export class CollectionSync {
           symbol: data.symbol,
           totalSupply: data.totalSupply,
           thumbnailImage: data.thumbnailImage || existing[0].thumbnailImage,
+          bannerImage: data.bannerImage || existing[0].bannerImage,
           lastSyncedAt: new Date(),
           updatedAt: new Date(),
         })
@@ -165,6 +174,7 @@ export class CollectionSync {
         symbol: data.symbol,
         totalSupply: data.totalSupply,
         thumbnailImage: data.thumbnailImage,
+        bannerImage: data.bannerImage,
         isFeatured: data.isFeatured || false,
         isActive: true,
         lastSyncedAt: new Date(),
