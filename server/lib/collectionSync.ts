@@ -122,10 +122,10 @@ export class CollectionSync {
       console.warn(`[CollectionSync] Could not fetch image for ${address}`);
     }
 
-    // Set banner image - use NFT #345 for Based Guardians
+    // Set banner image - use NFT #345 for Based Guardians (Star Systems Officers)
     const isBasedGuardians = address.toLowerCase() === '0xae51dc5fd1499a129f8654963560f9340773ad59';
     const bannerImage = isBasedGuardians 
-      ? 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/345.png'
+      ? 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeigklna3comgshfndjcbmdjechrj6qkl74dnn77piysmfli7jvlzfq/Star%20Systems%20Officers/Star_Systems_Officers_345.jpg'
       : imageUrl;
 
     await this.upsertCollection({
