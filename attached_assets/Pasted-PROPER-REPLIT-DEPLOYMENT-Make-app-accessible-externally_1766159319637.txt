@@ -1,0 +1,180 @@
+PROPER REPLIT DEPLOYMENT - Make app accessible externally
+
+ISSUE: App runs in Replit but external URL doesn't work. Need to deploy properly.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: BUILD PRODUCTION VERSION
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+npm run build
+
+Wait for it to complete. Should see:
+✅ "Build completed"
+✅ Files created in dist/public/
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: UPDATE SERVER FOR PRODUCTION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: server/index.ts
+
+At the very top, add:
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.REPL_ID;
+
+2. Find where you serve static files, update to:
+
+if (isProduction) {
+  // Serve built frontend in production
+  app.use(express.static(path.join(process.cwd(), 'dist/public')));
+  
+  // Serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'dist/public/index.html'));
+  });
+}
+
+3. At bottom where server starts:
+
+const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`✅ Server running on ${HOST}:${PORT}`);
+  console.log(`🌍 Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  console.log(`📦 Serving from: ${isProduction ? 'dist/public' : 'vite dev server'}`);
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: CREATE REPLIT RUN COMMAND
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: .replit (create if doesn't exist)
+
+run = "npm run build && NODE_ENV=production npm start"
+
+[deployment]
+run = ["sh", "-c", "npm run build && NODE_ENV=production npm start"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: UPDATE PACKAGE.JSON
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: package.json
+
+Ensure you have:
+
+"scripts": {
+  "dev": "node server/index.ts",
+  "build": "vite build",
+  "start": "node server/index.ts",
+  "deploy": "npm run build && NODE_ENV=production npm start"
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: STOP CURRENT SERVER AND DEPLOY
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal:
+
+# Stop everything
+killall node
+
+# Build
+npm run build
+
+# Start in production mode
+NODE_ENV=production npm start
+
+# You should see:
+# ✅ Server running on 0.0.0.0:5000
+# 🌍 Mode: PRODUCTION
+# 📦 Serving from: dist/public
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: USE REPLIT'S DEPLOY BUTTON
+═══════════════════════════════════════════════════════════════════
+
+In Replit interface:
+
+1. Look for "Deploy" button at top right (or in sidebar)
+
+2. Click it
+
+3. Choose "Deploy" or "Autoscale deployment" 
+
+4. Replit will give you a LIVE URL (different from dev URL)
+
+5. That URL will be your production URL
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: CLEAR ALL CACHES
+═══════════════════════════════════════════════════════════════════
+
+1. In your browser (visiting the external URL):
+
+- Open DevTools (F12)
+- Right-click the refresh button
+- Select "Empty Cache and Hard Reload"
+
+2. Or use incognito/private window:
+
+- Open new incognito window
+- Visit external URL
+- Should load fresh
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: TEST EXTERNAL ACCESS
+═══════════════════════════════════════════════════════════════════
+
+1. Copy your Replit deployment URL
+
+2. Open in NEW INCOGNITO WINDOW
+
+3. Wait 30 seconds for first load
+
+4. Should see app load (not timeout)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: IF STILL NOT WORKING - CHECK REPLIT WEBVIEW
+═══════════════════════════════════════════════════════════════════
+
+The Replit webview URL (in the Replit interface) is different from the deployment URL.
+
+Look for the actual deployed URL in:
+- Replit Dashboard → Your Repl → Deployments
+- Should be something like: https://your-app.replit.app
+
+NOT: https://based-command-d-app-sonnet--ryanbonelli.replit.app
+
+
+═══════════════════════════════════════════════════════════════════
+✅ VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After deployment, reply with:
+
+1. Terminal output when you run: NODE_ENV=production npm start
+2. Does Replit show "Deploy" button or is it already deployed?
+3. What is your actual deployment URL?
+4. Does incognito window load the app?
+
+Reply format:
+"Terminal shows: [MODE: PRODUCTION / DEVELOPMENT]
+Deployed: [yes/no]
+Deployment URL: [paste URL]
+Incognito test: [loads/timeout/error]"
