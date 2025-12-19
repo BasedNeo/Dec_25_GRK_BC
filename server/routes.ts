@@ -1870,5 +1870,92 @@ export async function registerRoutes(
     }
   });
 
+  app.post('/api/admin/snapshots/capture', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const { description } = req.body;
+      const capturedBy = (req as any).session?.walletAddress || 'admin';
+      
+      const snapshot = await StateSnapshotService.captureSnapshot(
+        description || 'Manual snapshot',
+        capturedBy
+      );
+      
+      res.json({ snapshot });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/snapshots/list', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const snapshots = await StateSnapshotService.listSnapshots();
+      res.json({ snapshots });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/snapshots/restore/:snapshotId', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const { snapshotId } = req.params;
+      await StateSnapshotService.restoreSnapshot(snapshotId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/snapshots/compare', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const { snapshot1, snapshot2 } = req.body;
+      
+      if (!snapshot1 || !snapshot2) {
+        return res.status(400).json({ error: 'Two snapshots required' });
+      }
+      
+      const diff = await StateSnapshotService.compareSnapshots(snapshot1, snapshot2);
+      res.json({ diff });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/admin/snapshots/:snapshotId', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const { snapshotId } = req.params;
+      await StateSnapshotService.deleteSnapshot(snapshotId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/snapshots/stats', requireAdmin, async (req, res) => {
+    try {
+      const { StateSnapshotService } = await import('./lib/stateSnapshot');
+      const stats = await StateSnapshotService.getStats();
+      res.json({ stats });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/config-versions', requireAdmin, async (req, res) => {
+    try {
+      const { ConfigVersionControl } = await import('./lib/configVersionControl');
+      const versions = await ConfigVersionControl.listVersions();
+      res.json({ versions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
