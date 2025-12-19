@@ -4,6 +4,22 @@ import { getCached, setCache, CACHE_KEYS } from "@/lib/cache";
 const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
 const TOKEN_ID = "basedai";
 
+function isMobileConnection(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  if ('connection' in navigator) {
+    const conn = (navigator as any).connection;
+    if (conn) {
+      const effectiveType = conn.effectiveType;
+      return effectiveType === '2g' || effectiveType === 'slow-2g' || effectiveType === '3g';
+    }
+  }
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+}
+
+function getTimeout(): number {
+  return isMobileConnection() ? 3000 : 8000;
+}
+
 interface PriceData {
   usdPrice: number;
   basedL1Price: number;
@@ -24,8 +40,11 @@ export function useTokenPrice() {
       }
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), getTimeout());
         const directUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
-        const res = await fetch(directUrl);
+        const res = await fetch(directUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
         if (res.ok) {
           const data = await res.json();
@@ -50,10 +69,13 @@ export function useTokenPrice() {
       }
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), getTimeout());
         const targetUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
         const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
         
-        const res = await fetch(proxyUrl);
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const data = await res.json();
           const tokenData = data[TOKEN_ID];

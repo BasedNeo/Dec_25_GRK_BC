@@ -12,6 +12,22 @@ const SECURITY_CONFIG = {
   STALE_THRESHOLD_MS: 120000,
 };
 
+function isMobileConnection(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  if ('connection' in navigator) {
+    const conn = (navigator as any).connection;
+    if (conn) {
+      const effectiveType = conn.effectiveType;
+      return effectiveType === '2g' || effectiveType === 'slow-2g' || effectiveType === '3g';
+    }
+  }
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+}
+
+function getTimeout(defaultMs: number): number {
+  return isMobileConnection() ? Math.min(defaultMs, 3000) : defaultMs;
+}
+
 interface TickerAsset {
   id: string;
   symbol: string;
@@ -89,7 +105,7 @@ async function fetchFromBinance(symbols: string[]): Promise<Map<string, { price:
   const results = new Map();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
     
     const requests = symbols.map(async (symbol) => {
       try {
@@ -128,7 +144,7 @@ async function fetchFromCoinGecko(ids: string[]): Promise<Map<string, { price: n
   const results = new Map();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), getTimeout(6000));
     
     const response = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`,
@@ -158,7 +174,7 @@ async function fetchFromCoinCap(): Promise<Map<string, { price: number; change: 
   const results = new Map();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), getTimeout(5000));
     
     const [btcRes, ethRes] = await Promise.all([
       fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: controller.signal }),
