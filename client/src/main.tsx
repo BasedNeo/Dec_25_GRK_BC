@@ -21,9 +21,30 @@ window.addEventListener('error', (event) => {
 });
 
 import { createRoot } from "react-dom/client";
+import { ErrorBoundary } from 'react-error-boundary';
 import App from "./App";
 import "./index.css";
 import { initAnalytics } from "@/lib/analytics";
+
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.08)_0%,transparent_50%)]" />
+      <div className="text-center p-8 relative z-10 max-w-lg">
+        <div className="text-6xl mb-6">🛸</div>
+        <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
+        <p className="mb-6 text-gray-400 text-sm">{error.message}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-purple-500 text-black rounded-xl font-bold hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all"
+          data-testid="button-error-refresh"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Emergency: Clear all caches if app version changed
 const APP_VERSION = '1.0.3';
@@ -79,4 +100,8 @@ if ('serviceWorker' in navigator) {
   }
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <App />
+  </ErrorBoundary>
+);
