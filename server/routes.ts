@@ -1957,5 +1957,120 @@ export async function registerRoutes(
     }
   });
 
+  // Runbook management endpoints
+  app.get('/api/admin/runbooks', requireAdmin, async (req, res) => {
+    try {
+      const { RunbookExecutor } = await import('./lib/runbookExecutor');
+      RunbookExecutor.initialize();
+      const runbooks = RunbookExecutor.getAllRunbooks();
+      res.json({ runbooks });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/runbooks/:id', requireAdmin, async (req, res) => {
+    try {
+      const { RunbookExecutor } = await import('./lib/runbookExecutor');
+      RunbookExecutor.initialize();
+      const { id } = req.params;
+      const runbook = RunbookExecutor.getRunbook(id);
+      
+      if (!runbook) {
+        return res.status(404).json({ error: 'Runbook not found' });
+      }
+      
+      res.json({ runbook });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/runbooks/:id/execute', requireAdmin, async (req, res) => {
+    try {
+      const { RunbookExecutor } = await import('./lib/runbookExecutor');
+      RunbookExecutor.initialize();
+      const { id } = req.params;
+      const { automated } = req.body;
+      const executedBy = (req as any).session?.walletAddress || 'admin';
+      
+      const execution = await RunbookExecutor.executeRunbook(id, executedBy, automated);
+      
+      res.json({ execution });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/runbooks/executions/history', requireAdmin, async (req, res) => {
+    try {
+      const { RunbookExecutor } = await import('./lib/runbookExecutor');
+      RunbookExecutor.initialize();
+      const { runbookId } = req.query;
+      const history = RunbookExecutor.getExecutionHistory(runbookId as string);
+      
+      res.json({ history });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Incident management endpoints
+  app.post('/api/admin/incidents', requireAdmin, async (req, res) => {
+    try {
+      const { IncidentPostMortemService } = await import('./lib/incidentPostMortem');
+      const { title, severity, description, impactedSystems } = req.body;
+      
+      const incident = IncidentPostMortemService.createIncident(
+        title,
+        severity,
+        description,
+        impactedSystems
+      );
+      
+      res.json({ incident });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/incidents', requireAdmin, async (req, res) => {
+    try {
+      const { IncidentPostMortemService } = await import('./lib/incidentPostMortem');
+      const incidents = IncidentPostMortemService.getAllIncidents();
+      res.json({ incidents });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/incidents/:id/resolve', requireAdmin, async (req, res) => {
+    try {
+      const { IncidentPostMortemService } = await import('./lib/incidentPostMortem');
+      const { id } = req.params;
+      const { rootCause, resolution, preventativeMeasures } = req.body;
+      
+      IncidentPostMortemService.resolveIncident(id, rootCause, resolution, preventativeMeasures);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/incidents/:id/post-mortem', requireAdmin, async (req, res) => {
+    try {
+      const { IncidentPostMortemService } = await import('./lib/incidentPostMortem');
+      const { id } = req.params;
+      const postMortem = IncidentPostMortemService.generatePostMortem(id);
+      
+      res.setHeader('Content-Type', 'text/markdown');
+      res.setHeader('Content-Disposition', `attachment; filename=incident-${id}.md`);
+      res.send(postMortem);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

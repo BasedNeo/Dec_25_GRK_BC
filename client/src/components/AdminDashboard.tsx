@@ -25,7 +25,8 @@ import { BackupManager } from './BackupManager';
 import { PointInTimeRecovery } from './PointInTimeRecovery';
 import { DisasterRecoveryPanel } from './DisasterRecoveryPanel';
 import { SnapshotManager } from './SnapshotManager';
-import { Camera } from 'lucide-react';
+import { RunbookManager } from './RunbookManager';
+import { Camera, Book } from 'lucide-react';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1441,6 +1442,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               State Snapshots
             </h3>
             <SnapshotManager />
+          </Card>
+          
+          <Card className="bg-black/60 border-orange-500/30 p-6 mb-6" data-testid="runbook-manager-card">
+            <h3 className="text-xl font-orbitron font-bold text-orange-400 mb-4 flex items-center gap-2">
+              <Book className="w-5 h-5" />
+              Disaster Recovery Runbooks
+            </h3>
+            <RunbookManager />
           </Card>
           
           <div className="text-[10px] text-gray-500 text-center pt-4 border-t border-white/5">
