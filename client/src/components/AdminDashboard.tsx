@@ -20,6 +20,7 @@ import { circuitBreakerManager } from '@/lib/circuitBreaker';
 import { RateLimitMonitor } from './RateLimitMonitor';
 import { SessionMonitor } from './SessionMonitor';
 import { SecurityMonitor } from './SecurityMonitor';
+import { SecurityDashboard } from './SecurityDashboard';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1359,6 +1360,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Security Audit
             </h3>
             <SecurityAuditPanel walletAddress={address} />
+          </Card>
+
+          <Card className="bg-black/60 border-red-500/30 p-6 mb-6" data-testid="security-dashboard-card">
+            <h3 className="text-xl font-orbitron font-bold text-red-400 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Security Command Center
+            </h3>
+            <SecurityDashboard />
           </Card>
           
           <Card className="bg-black/60 border-orange-500/30 p-6 mb-6" data-testid="rate-limit-card">

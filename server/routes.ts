@@ -28,6 +28,9 @@ import { OriginValidator } from './lib/originValidator';
 import { CSRFProtection } from './lib/csrfProtection';
 import { EncryptionService } from './lib/encryption';
 import { EncryptedStorageService } from './lib/encryptedStorage';
+import { SecurityMonitor } from './lib/securityMonitor';
+import { ThreatDetection } from './lib/threatDetection';
+import { IncidentResponse } from './lib/incidentResponse';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -1560,6 +1563,100 @@ export async function registerRoutes(
         success: true,
         cleanedUp: count,
         message: `Removed ${count} expired entries`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/events', requireAdmin, async (req, res) => {
+    try {
+      const { type, severity, since, limit } = req.query;
+      
+      const events = SecurityMonitor.getEvents({
+        type: type as any,
+        severity: severity as any,
+        since: since ? new Date(since as string) : undefined,
+        limit: limit ? parseInt(limit as string) : 100
+      });
+      
+      res.json({ events });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/metrics', requireAdmin, async (req, res) => {
+    try {
+      const metrics = SecurityMonitor.getMetrics();
+      const score = SecurityMonitor.getSecurityScore();
+      const blockedEndpoints = IncidentResponse.getBlockedEndpoints();
+      
+      res.json({ 
+        metrics,
+        score,
+        blockedEndpoints
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/threats', requireAdmin, async (req, res) => {
+    try {
+      const patterns = ThreatDetection.getPatterns();
+      res.json({ patterns });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/security/events/:eventId/handle', requireAdmin, async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      SecurityMonitor.markHandled(eventId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/export', requireAdmin, async (req, res) => {
+    try {
+      const format = (req.query.format as 'json' | 'csv') || 'json';
+      const exported = SecurityMonitor.exportEvents(format);
+      
+      res.setHeader('Content-Type', format === 'json' ? 'application/json' : 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=security-events.${format}`);
+      res.send(exported);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/security/clear-events', requireAdmin, async (req, res) => {
+    try {
+      SecurityMonitor.clearEvents();
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/health/security', async (req, res) => {
+    try {
+      const metrics = SecurityMonitor.getMetrics();
+      const score = SecurityMonitor.getSecurityScore();
+      
+      res.json({
+        score,
+        healthy: score >= 70,
+        metrics: {
+          criticalThreats: metrics.criticalEvents,
+          activeThreats: metrics.activeThreats,
+          blockedRequests: metrics.blockedRequests
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {

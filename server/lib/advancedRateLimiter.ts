@@ -65,6 +65,10 @@ export class AdvancedRateLimiter {
     
     if (Date.now() > ban.until) {
       this.bannedIPs.delete(clientId);
+      const { SecurityMonitor } = require('./securityMonitor');
+      if (typeof SecurityMonitor?.decrementActiveBans === 'function') {
+        SecurityMonitor.decrementActiveBans();
+      }
       return false;
     }
     
@@ -82,6 +86,10 @@ export class AdvancedRateLimiter {
   
   static unbanIP(clientId: string) {
     this.bannedIPs.delete(clientId);
+    const { SecurityMonitor } = require('./securityMonitor');
+    if (typeof SecurityMonitor?.decrementActiveBans === 'function') {
+      SecurityMonitor.decrementActiveBans();
+    }
     console.log(`[SECURITY] Unbanned ${clientId}`);
   }
   

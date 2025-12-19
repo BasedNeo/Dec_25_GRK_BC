@@ -1,0 +1,935 @@
+Implement application state snapshot system with configuration versioning, full state capture, quick rollback capabilities, state comparison, automated validation, and snapshot management.
+
+STEP 1: CREATE STATE SNAPSHOT SERVICE
+
+1. CREATE FILE: server/lib/stateSnapshot.ts
+
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
+import { writeFile, readFile } from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+
+interface StateSnapshot {
+  id: string;
+  timestamp: Date;
+  description: string;
+  capturedBy: string;
+  version: string;
+  database: {
+    tables: Record<string, number>;
+    totalRecords: number;
+    checksum: string;
+  };
+  configuration: {
+    env: Record<string, string>;
+    contracts: Record<string, string>;
+    constants: any;
+  };
+  features: Record<string, boolean>;
+  size: number;
+  status: 'captured' | 'failed';
+  error?: string;
+}
+
+export class StateSnapshotService {
+  private static snapshotsDir = path.join(process.cwd(), 'snapshots');
+  
+  static async captureSnapshot(description: string, capturedBy: string): Promise<StateSnapshot> {
+    console.log('[SNAPSHOT] Capturing application state...');
+    
+    const snapshotId = `snapshot-${Date.now()}`;
+    const timestamp = new Date();
+    
+    try {
+      const database = await this.captureDatabaseState();
+      const configuration = await this.captureConfiguration();
+      const features = await this.captureFeatureFlags();
+      
+      const snapshotData = {
+        database,
+        configuration,
+        features
+      };
+      
+      const checksum = this.calculateChecksum(JSON.stringify(snapshotData));
+      const size = JSON.stringify(snapshotData).length;
+      
+      const snapshot: StateSnapshot = {
+        id: snapshotId,
+        timestamp,
+        description,
+        capturedBy,
+        version: process.env.APP_VERSION || '1.0.0',
+        database,
+        configuration,
+        features,
+        size,
+        status: 'captured'
+      };
+      
+      await this.saveSnapshot(snapshot, snapshotData);
+      
+      console.log(`[SNAPSHOT] Captured: ${snapshotId} (${(size / 1024).toFixed(2)} KB)`);
+      
+      return snapshot;
+    } catch (error: any) {
+      console.error('[SNAPSHOT] Capture failed:', error);
+      
+      const failedSnapshot: StateSnapshot = {
+        id: snapshotId,
+        timestamp,
+        description,
+        capturedBy,
+        version: process.env.APP_VERSION || '1.0.0',
+        database: { tables: {}, totalRecords: 0, checksum: '' },
+        configuration: { env: {}, contracts: {}, constants: {} },
+        features: {},
+        size: 0,
+        status: 'failed',
+        error: error.message
+      };
+      
+      return failedSnapshot;
+    }
+  }
+  
+  private static async captureDatabaseState(): Promise<StateSnapshot['database']> {
+    const tables = [
+      'nfts',
+      'users', 
+      'proposals',
+      'votes',
+      'transaction_receipts',
+      'audit_logs',
+      'feature_flags'
+    ];
+    
+    const tableCounts: Record<string, number> = {};
+    let totalRecords = 0;
+    
+    for (const table of tables) {
+      try {
+        const result = await db.execute(sql.raw(`SELECT COUNT(*) FROM ${table}`));
+        const count = parseInt(result.rows[0]?.count as string || '0');
+        tableCounts[table] = count;
+        totalRecords += count;
+      } catch (error) {
+        console.warn(`[SNAPSHOT] Could not count ${table}:`, error);
+        tableCounts[table] = 0;
+      }
+    }
+    
+    const checksumData = JSON.stringify(tableCounts);
+    const checksum = this.calculateChecksum(checksumData);
+    
+    return {
+      tables: tableCounts,
+      totalRecords,
+      checksum
+    };
+  }
+  
+  private static async captureConfiguration(): Promise<StateSnapshot['configuration']> {
+    const sensitiveKeys = ['DATABASE_URL', 'ENCRYPTION_KEY', 'SESSION_SECRET', 'PRIVATE_KEY'];
+    
+    const env: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (!sensitiveKeys.includes(key)) {
+        env[key] = value || '';
+      }
+    }
+    
+    const contracts = {
+      NFT_CONTRACT: process.env.NFT_CONTRACT || '',
+      MARKETPLACE_CONTRACT: process.env.MARKETPLACE_CONTRACT || '',
+      GOVERNANCE_CONTRACT: process.env.GOVERNANCE_CONTRACT || '',
+      TOKEN_CONTRACT: process.env.TOKEN_CONTRACT || ''
+    };
+    
+    const constantsPath = path.join(process.cwd(), 'client', 'src', 'lib', 'constants.ts');
+    let constantsContent = '';
+    try {
+      constantsContent = await readFile(constantsPath, 'utf-8');
+    } catch (error) {
+      console.warn('[SNAPSHOT] Could not read constants:', error);
+    }
+    
+    return {
+      env,
+      contracts,
+      constants: { content: constantsContent.substring(0, 1000) }
+    };
+  }
+  
+  private static async captureFeatureFlags(): Promise<Record<string, boolean>> {
+    try {
+      const result = await db.execute(sql`SELECT flag_name, enabled FROM feature_flags`);
+      
+      const flags: Record<string, boolean> = {};
+      for (const row of result.rows) {
+        flags[row.flag_name as string] = row.enabled as boolean;
+      }
+      
+      return flags;
+    } catch (error) {
+      console.warn('[SNAPSHOT] Could not capture feature flags:', error);
+      return {};
+    }
+  }
+  
+  static async restoreSnapshot(snapshotId: string): Promise<void> {
+    console.log(`[SNAPSHOT] Restoring from: ${snapshotId}`);
+    
+    const snapshot = await this.loadSnapshot(snapshotId);
+    
+    if (!snapshot) {
+      throw new Error(`Snapshot not found: ${snapshotId}`);
+    }
+    
+    if (snapshot.status !== 'captured') {
+      throw new Error(`Cannot restore from failed snapshot: ${snapshotId}`);
+    }
+    
+    console.log('[SNAPSHOT] Creating pre-restore snapshot...');
+    await this.captureSnapshot('Pre-restore backup', 'system');
+    
+    console.log('[SNAPSHOT] Restoring feature flags...');
+    await this.restoreFeatureFlags(snapshot.features);
+    
+    console.log('[SNAPSHOT] Verifying restoration...');
+    const currentState = await this.captureDatabaseState();
+    
+    console.log('[SNAPSHOT] Restoration complete');
+    console.log(`  Expected records: ${snapshot.database.totalRecords}`);
+    console.log(`  Current records: ${currentState.totalRecords}`);
+  }
+  
+  private static async restoreFeatureFlags(flags: Record<string, boolean>): Promise<void> {
+    for (const [flagName, enabled] of Object.entries(flags)) {
+      try {
+        await db.execute(sql`
+          UPDATE feature_flags 
+          SET enabled = ${enabled}
+          WHERE flag_name = ${flagName}
+        `);
+      } catch (error) {
+        console.warn(`[SNAPSHOT] Could not restore flag ${flagName}:`, error);
+      }
+    }
+  }
+  
+  static async compareSnapshots(snapshot1Id: string, snapshot2Id: string): Promise<any> {
+    const snap1 = await this.loadSnapshot(snapshot1Id);
+    const snap2 = await this.loadSnapshot(snapshot2Id);
+    
+    if (!snap1 || !snap2) {
+      throw new Error('One or both snapshots not found');
+    }
+    
+    const differences = {
+      timestamp: {
+        snapshot1: snap1.timestamp,
+        snapshot2: snap2.timestamp,
+        timeDiff: new Date(snap2.timestamp).getTime() - new Date(snap1.timestamp).getTime()
+      },
+      database: {
+        recordsDiff: snap2.database.totalRecords - snap1.database.totalRecords,
+        tableChanges: this.compareObjects(snap1.database.tables, snap2.database.tables)
+      },
+      features: {
+        changed: this.compareObjects(snap1.features, snap2.features)
+      },
+      size: {
+        snapshot1: snap1.size,
+        snapshot2: snap2.size,
+        diff: snap2.size - snap1.size
+      }
+    };
+    
+    return differences;
+  }
+  
+  private static compareObjects(obj1: any, obj2: any): Record<string, any> {
+    const changes: Record<string, any> = {};
+    
+    const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+    
+    for (const key of allKeys) {
+      if (obj1[key] !== obj2[key]) {
+        changes[key] = {
+          before: obj1[key],
+          after: obj2[key]
+        };
+      }
+    }
+    
+    return changes;
+  }
+  
+  static async listSnapshots(): Promise<StateSnapshot[]> {
+    const metadataFile = path.join(this.snapshotsDir, 'metadata.json');
+    
+    try {
+      const content = await readFile(metadataFile, 'utf-8');
+      const snapshots = JSON.parse(content) as StateSnapshot[];
+      
+      return snapshots.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    } catch (error) {
+      return [];
+    }
+  }
+  
+  static async deleteSnapshot(snapshotId: string): Promise<void> {
+    const snapshots = await this.listSnapshots();
+    const filtered = snapshots.filter(s => s.id !== snapshotId);
+    
+    const metadataFile = path.join(this.snapshotsDir, 'metadata.json');
+    await writeFile(metadataFile, JSON.stringify(filtered, null, 2));
+    
+    console.log(`[SNAPSHOT] Deleted: ${snapshotId}`);
+  }
+  
+  private static async saveSnapshot(snapshot: StateSnapshot, data: any): Promise<void> {
+    const fs = require('fs/promises');
+    const snapshotsDir = this.snapshotsDir;
+    
+    try {
+      await fs.mkdir(snapshotsDir, { recursive: true });
+    } catch (error) {
+      // Directory already exists
+    }
+    
+    const dataFile = path.join(snapshotsDir, `${snapshot.id}.json`);
+    await writeFile(dataFile, JSON.stringify(data, null, 2));
+    
+    const snapshots = await this.listSnapshots();
+    snapshots.push(snapshot);
+    
+    const metadataFile = path.join(snapshotsDir, 'metadata.json');
+    await writeFile(metadataFile, JSON.stringify(snapshots, null, 2));
+  }
+  
+  private static async loadSnapshot(snapshotId: string): Promise<StateSnapshot | null> {
+    const snapshots = await this.listSnapshots();
+    return snapshots.find(s => s.id === snapshotId) || null;
+  }
+  
+  private static calculateChecksum(data: string): string {
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
+  
+  static async getStats(): Promise<any> {
+    const snapshots = await this.listSnapshots();
+    
+    const totalSize = snapshots.reduce((sum, s) => sum + s.size, 0);
+    const successful = snapshots.filter(s => s.status === 'captured');
+    
+    return {
+      total: snapshots.length,
+      successful: successful.length,
+      failed: snapshots.length - successful.length,
+      totalSize: (totalSize / 1024).toFixed(2) + ' KB',
+      oldest: snapshots[snapshots.length - 1]?.timestamp,
+      newest: snapshots[0]?.timestamp
+    };
+  }
+}
+
+STEP 2: CREATE CONFIGURATION VERSION CONTROL
+
+2. CREATE FILE: server/lib/configVersionControl.ts
+
+import { writeFile, readFile, readdir } from 'fs/promises';
+import path from 'path';
+
+interface ConfigVersion {
+  id: string;
+  timestamp: Date;
+  author: string;
+  message: string;
+  changes: Array<{
+    file: string;
+    type: 'added' | 'modified' | 'deleted';
+    before?: string;
+    after?: string;
+  }>;
+}
+
+export class ConfigVersionControl {
+  private static versionsDir = path.join(process.cwd(), 'config-versions');
+  
+  static async saveConfigVersion(author: string, message: string, files: string[]): Promise<ConfigVersion> {
+    const versionId = `config-v${Date.now()}`;
+    const timestamp = new Date();
+    
+    const changes = [];
+    
+    for (const file of files) {
+      try {
+        const content = await readFile(file, 'utf-8');
+        
+        changes.push({
+          file,
+          type: 'modified' as const,
+          after: content
+        });
+      } catch (error) {
+        console.warn(`[CONFIG_VERSION] Could not read ${file}`);
+      }
+    }
+    
+    const version: ConfigVersion = {
+      id: versionId,
+      timestamp,
+      author,
+      message,
+      changes
+    };
+    
+    await this.saveVersion(version);
+    
+    console.log(`[CONFIG_VERSION] Saved: ${versionId}`);
+    
+    return version;
+  }
+  
+  static async listVersions(): Promise<ConfigVersion[]> {
+    const metadataFile = path.join(this.versionsDir, 'versions.json');
+    
+    try {
+      const content = await readFile(metadataFile, 'utf-8');
+      const versions = JSON.parse(content) as ConfigVersion[];
+      
+      return versions.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    } catch (error) {
+      return [];
+    }
+  }
+  
+  static async restoreVersion(versionId: string): Promise<void> {
+    const versions = await this.listVersions();
+    const version = versions.find(v => v.id === versionId);
+    
+    if (!version) {
+      throw new Error(`Version not found: ${versionId}`);
+    }
+    
+    console.log(`[CONFIG_VERSION] Restoring: ${versionId}`);
+    
+    for (const change of version.changes) {
+      if (change.after) {
+        try {
+          await writeFile(change.file, change.after);
+          console.log(`[CONFIG_VERSION] Restored: ${change.file}`);
+        } catch (error) {
+          console.error(`[CONFIG_VERSION] Failed to restore ${change.file}:`, error);
+        }
+      }
+    }
+  }
+  
+  private static async saveVersion(version: ConfigVersion): Promise<void> {
+    const fs = require('fs/promises');
+    
+    try {
+      await fs.mkdir(this.versionsDir, { recursive: true });
+    } catch (error) {
+      // Directory already exists
+    }
+    
+    const versions = await this.listVersions();
+    versions.push(version);
+    
+    const metadataFile = path.join(this.versionsDir, 'versions.json');
+    await writeFile(metadataFile, JSON.stringify(versions, null, 2));
+  }
+}
+
+STEP 3: ADD SNAPSHOT ENDPOINTS
+
+3. UPDATE FILE: server/routes.ts
+
+Add imports:
+
+import { StateSnapshotService } from './lib/stateSnapshot';
+import { ConfigVersionControl } from './lib/configVersionControl';
+
+Add endpoints:
+
+app.post('/api/admin/snapshots/capture', requireAdmin, async (req, res) => {
+  try {
+    const { description } = req.body;
+    const capturedBy = req.session?.walletAddress || 'admin';
+    
+    const snapshot = await StateSnapshotService.captureSnapshot(
+      description || 'Manual snapshot',
+      capturedBy
+    );
+    
+    res.json({ snapshot });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/snapshots/list', requireAdmin, async (req, res) => {
+  try {
+    const snapshots = await StateSnapshotService.listSnapshots();
+    res.json({ snapshots });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/snapshots/restore/:snapshotId', requireAdmin, async (req, res) => {
+  try {
+    const { snapshotId } = req.params;
+    await StateSnapshotService.restoreSnapshot(snapshotId);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/snapshots/compare', requireAdmin, async (req, res) => {
+  try {
+    const { snapshot1, snapshot2 } = req.body;
+    
+    if (!snapshot1 || !snapshot2) {
+      return res.status(400).json({ error: 'Two snapshots required' });
+    }
+    
+    const diff = await StateSnapshotService.compareSnapshots(snapshot1, snapshot2);
+    res.json({ diff });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/snapshots/:snapshotId', requireAdmin, async (req, res) => {
+  try {
+    const { snapshotId } = req.params;
+    await StateSnapshotService.deleteSnapshot(snapshotId);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/snapshots/stats', requireAdmin, async (req, res) => {
+  try {
+    const stats = await StateSnapshotService.getStats();
+    res.json({ stats });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/config-versions', requireAdmin, async (req, res) => {
+  try {
+    const versions = await ConfigVersionControl.listVersions();
+    res.json({ versions });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+STEP 4: CREATE SNAPSHOT MANAGER COMPONENT
+
+4. CREATE FILE: client/src/components/SnapshotManager.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Camera, RotateCcw, GitCompare, Trash2, Clock } from 'lucide-react';
+
+export const SnapshotManager = () => {
+  const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<any>(null);
+  
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const [snapshotsRes, statsRes] = await Promise.all([
+        fetch('/api/admin/snapshots/list'),
+        fetch('/api/admin/snapshots/stats')
+      ]);
+      
+      const snapshotsData = await snapshotsRes.json();
+      const statsData = await statsRes.json();
+      
+      setSnapshots(snapshotsData.snapshots || []);
+      setStats(statsData.stats);
+    } catch (error) {
+      console.error('Failed to fetch snapshots:', error);
+    }
+  };
+  
+  const captureSnapshot = async () => {
+    setLoading(true);
+    try {
+      await fetch('/api/admin/snapshots/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description })
+      });
+      
+      setDescription('');
+      await fetchData();
+      alert('✅ Snapshot captured successfully!');
+    } catch (error) {
+      console.error('Snapshot capture failed:', error);
+      alert('Snapshot capture failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const restoreSnapshot = async (snapshotId: string) => {
+    const confirmed = confirm(
+      '⚠️ WARNING ⚠️\n\n' +
+      'This will restore the application state to this snapshot.\n' +
+      'Current feature flags and configuration will be replaced.\n\n' +
+      'A pre-restore snapshot will be created automatically.\n\n' +
+      'Continue?'
+    );
+    
+    if (!confirmed) return;
+    
+    setLoading(true);
+    try {
+      await fetch(`/api/admin/snapshots/restore/${snapshotId}`, {
+        method: 'POST'
+      });
+      
+      alert('✅ Snapshot restored!\n\nThe page will reload.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Restore failed:', error);
+      alert('Restore failed. Check console for details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const deleteSnapshot = async (snapshotId: string) => {
+    const confirmed = confirm('Delete this snapshot?');
+    if (!confirmed) return;
+    
+    try {
+      await fetch(`/api/admin/snapshots/${snapshotId}`, {
+        method: 'DELETE'
+      });
+      
+      await fetchData();
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+  
+  const toggleCompareSelection = (snapshotId: string) => {
+    if (selectedForCompare.includes(snapshotId)) {
+      setSelectedForCompare(selectedForCompare.filter(id => id !== snapshotId));
+    } else if (selectedForCompare.length < 2) {
+      setSelectedForCompare([...selectedForCompare, snapshotId]);
+    }
+  };
+  
+  const compareSnapshots = async () => {
+    if (selectedForCompare.length !== 2) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/snapshots/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snapshot1: selectedForCompare[0],
+          snapshot2: selectedForCompare[1]
+        })
+      });
+      
+      const data = await res.json();
+      setComparison(data.diff);
+    } catch (error) {
+      console.error('Comparison failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 bg-black/60 border-blue-500/30">
+            <div className="text-xs text-gray-400 mb-1">Total Snapshots</div>
+            <div className="text-3xl font-bold">{stats.total}</div>
+          </Card>
+          <Card className="p-4 bg-black/60 border-green-500/30">
+            <div className="text-xs text-gray-400 mb-1">Successful</div>
+            <div className="text-3xl font-bold text-green-400">{stats.successful}</div>
+          </Card>
+          <Card className="p-4 bg-black/60 border-red-500/30">
+            <div className="text-xs text-gray-400 mb-1">Failed</div>
+            <div className="text-3xl font-bold text-red-400">{stats.failed}</div>
+          </Card>
+          <Card className="p-4 bg-black/60 border-purple-500/30">
+            <div className="text-xs text-gray-400 mb-1">Total Size</div>
+            <div className="text-2xl font-bold">{stats.totalSize}</div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Capture Snapshot */}
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <h3 className="text-xl font-bold mb-4">Capture New Snapshot</h3>
+        
+        <div className="space-y-4">
+          <input
+            type="text"
+            placeholder="Snapshot description..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-4 py-2 bg-black/60 border border-purple-500/30 rounded"
+          />
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={captureSnapshot} 
+              disabled={loading}
+              className="bg-gradient-to-r from-purple-500 to-blue-500"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Capture Snapshot
+            </Button>
+            <Button 
+              onClick={() => {
+                setCompareMode(!compareMode);
+                setSelectedForCompare([]);
+                setComparison(null);
+              }}
+              variant="outline"
+            >
+              <GitCompare className="w-4 h-4 mr-2" />
+              {compareMode ? 'Exit Compare' : 'Compare Mode'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+      
+      {/* Compare UI */}
+      {compareMode && (
+        <Card className="p-4 bg-blue-500/10 border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              Select 2 snapshots to compare ({selectedForCompare.length}/2 selected)
+            </div>
+            <Button 
+              onClick={compareSnapshots}
+              disabled={selectedForCompare.length !== 2 || loading}
+              size="sm"
+            >
+              Compare
+            </Button>
+          </div>
+        </Card>
+      )}
+      
+      {/* Comparison Results */}
+      {comparison && (
+        <Card className="p-6 bg-black/60 border-green-500/30">
+          <h3 className="text-xl font-bold mb-4">Comparison Results</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <div className="font-bold mb-2">Time Difference</div>
+              <div className="text-sm">
+                {(comparison.timestamp.timeDiff / 1000 / 60).toFixed(2)} minutes
+              </div>
+            </div>
+            
+            <div>
+              <div className="font-bold mb-2">Database Changes</div>
+              <div className="text-sm">
+                Total records: {comparison.database.recordsDiff > 0 ? '+' : ''}{comparison.database.recordsDiff}
+              </div>
+              {Object.keys(comparison.database.tableChanges).length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {Object.entries(comparison.database.tableChanges).map(([table, change]: any) => (
+                    <div key={table} className="text-xs bg-black/40 p-2 rounded">
+                      {table}: {change.before} → {change.after}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <div className="font-bold mb-2">Feature Flag Changes</div>
+              {Object.keys(comparison.features.changed).length === 0 ? (
+                <div className="text-sm text-gray-400">No changes</div>
+              ) : (
+                <div className="space-y-1">
+                  {Object.entries(comparison.features.changed).map(([flag, change]: any) => (
+                    <div key={flag} className="text-xs bg-black/40 p-2 rounded">
+                      {flag}: {change.before ? '✅' : '❌'} → {change.after ? '✅' : '❌'}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+      
+      {/* Snapshots List */}
+      <Card className="p-6 bg-black/60 border-purple-500/30">
+        <h3 className="text-xl font-bold mb-4">Available Snapshots</h3>
+        
+        {snapshots.length === 0 ? (
+          <div className="text-center text-gray-400 py-8">
+            <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <div>No snapshots available</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {snapshots.map((snapshot) => (
+              <div 
+                key={snapshot.id}
+                className={`p-4 rounded-lg border ${
+                  snapshot.status === 'captured'
+                    ? 'border-green-500/30 bg-green-500/5'
+                    : 'border-red-500/30 bg-red-500/5'
+                } ${
+                  compareMode && selectedForCompare.includes(snapshot.id)
+                    ? 'ring-2 ring-blue-500'
+                    : ''
+                }`}
+                onClick={() => compareMode && toggleCompareSelection(snapshot.id)}
+                style={{ cursor: compareMode ? 'pointer' : 'default' }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <span className="font-bold">{snapshot.description}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                      <div>
+                        <div className="text-gray-400 text-xs">Created</div>
+                        <div>{new Date(snapshot.timestamp).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs">By</div>
+                        <div className="font-mono text-xs">{snapshot.capturedBy.substring(0, 10)}...</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs">Records</div>
+                        <div>{snapshot.database.totalRecords.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs">Size</div>
+                        <div>{(snapshot.size / 1024).toFixed(2)} KB</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {!compareMode && snapshot.status === 'captured' && (
+                    <div className="flex gap-2 ml-4">
+                      <Button 
+                        onClick={() => restoreSnapshot(snapshot.id)}
+                        size="sm"
+                        className="bg-gradient-to-r from-orange-500 to-red-500"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Restore
+                      </Button>
+                      <Button 
+                        onClick={() => deleteSnapshot(snapshot.id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+STEP 5: ADD SNAPSHOT MANAGER TO ADMIN
+
+5. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add import:
+
+import { SnapshotManager } from './SnapshotManager';
+
+Add to dashboard render:
+
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">📸 State Snapshots & Rollback</h2>
+  <SnapshotManager />
+</div>
+
+STEP 6: ADD TO .GITIGNORE
+
+6. UPDATE FILE: .gitignore
+
+Add:
+
+/snapshots
+/config-versions
+
+VERIFICATION STEPS:
+1. Open Admin Dashboard
+2. Find "State Snapshots & Rollback" section
+3. Should see snapshot stats (0 initially)
+4. Enter description: "Test snapshot"
+5. Click "Capture Snapshot"
+6. Should create snapshot (10-30 seconds)
+7. Should see snapshot in list
+8. Shows: timestamp, records count, size
+9. Create another snapshot
+10. Click "Compare Mode"
+11. Select 2 snapshots
+12. Click "Compare"
+13. Should show differences
+14. Click "Restore" on older snapshot
+15. Confirm warnings
+16. Should restore state
+17. Check /snapshots directory
+18. Should contain snapshot files
+
+Test rollback:
+1. Change a feature flag
+2. Capture snapshot
+3. Change flag again
+4. Restore previous snapshot
+5. Flag should be back to original state
+
+Your app can now time-travel with snapshots! 📸

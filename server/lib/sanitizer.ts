@@ -1,4 +1,5 @@
 import DOMPurify from 'isomorphic-dompurify';
+import { SecurityMonitor } from './securityMonitor';
 
 interface SanitizationOptions {
   maxLength?: number;
@@ -14,6 +15,15 @@ export class InputSanitizer {
   ): string {
     if (typeof input !== 'string') {
       throw new Error('Input must be a string');
+    }
+    
+    if (/<script|javascript:|onerror=|onload=/i.test(input)) {
+      SecurityMonitor.logEvent(
+        'xss',
+        'critical',
+        'input_sanitizer',
+        { input: input.substring(0, 100) }
+      );
     }
     
     let sanitized = input.trim();

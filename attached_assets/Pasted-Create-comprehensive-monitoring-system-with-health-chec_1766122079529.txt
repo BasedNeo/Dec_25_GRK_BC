@@ -1,0 +1,283 @@
+Create comprehensive monitoring system with health checks, performance metrics, error tracking, structured logging, and real-time dashboards - all in one implementation.
+
+STEP 1: CREATE MONITORING SERVICE
+
+1. CREATE FILE: server/lib/monitoring.ts
+
+interface Metric {
+  name: string;
+  value: number;
+  timestamp: Date;
+  tags?: Record<string, string>;
+}
+
+export class MonitoringService {
+  private static metrics: Metric[] = [];
+  private static readonly MAX_METRICS = 10000;
+  
+  static recordMetric(name: string, value: number, tags?: Record<string, string>) {
+    this.metrics.push({
+      name,
+      value,
+      timestamp: new Date(),
+      tags
+    });
+    
+    if (this.metrics.length > this.MAX_METRICS) {
+      this.metrics = this.metrics.slice(-this.MAX_METRICS);
+    }
+  }
+  
+  static getMetrics(name?: string, since?: Date): Metric[] {
+    let filtered = this.metrics;
+    
+    if (name) {
+      filtered = filtered.filter(m => m.name === name);
+    }
+    
+    if (since) {
+      filtered = filtered.filter(m => m.timestamp >= since);
+    }
+    
+    return filtered;
+  }
+  
+  static getAverageMetric(name: string, minutes: number = 5): number {
+    const since = new Date(Date.now() - minutes * 60 * 1000);
+    const metrics = this.getMetrics(name, since);
+    
+    if (metrics.length === 0) return 0;
+    
+    return metrics.reduce((sum, m) => sum + m.value, 0) / metrics.length;
+  }
+}
+
+STEP 2: CREATE UNIFIED HEALTH CHECK
+
+2. UPDATE FILE: server/routes.ts
+
+Add comprehensive health endpoint:
+
+app.get('/api/health/complete', async (req, res) => {
+  const checks = {
+    database: { status: 'checking' },
+    rpc: { status: 'checking' },
+    storage: { status: 'checking' },
+    memory: { status: 'checking' },
+    backups: { status: 'checking' }
+  };
+  
+  // Database
+  try {
+    await db.execute(sql\`SELECT 1\`);
+    checks.database = { status: 'healthy', latency: '< 100ms' };
+  } catch (e: any) {
+    checks.database = { status: 'unhealthy', error: e.message };
+  }
+  
+  // Memory
+  const mem = process.memoryUsage();
+  const heapPercent = (mem.heapUsed / mem.heapTotal) * 100;
+  checks.memory = { 
+    status: heapPercent > 90 ? 'unhealthy' : 'healthy',
+    heapUsed: \`\${(mem.heapUsed / 1024 / 1024).toFixed(2)} MB\`,
+    percent: \`\${heapPercent.toFixed(1)}%\`
+  };
+  
+  // Backups
+  try {
+    const backups = await backupService.listBackups();
+    const lastBackup = backups[0];
+    const hoursOld = lastBackup ? (Date.now() - new Date(lastBackup.timestamp).getTime()) / 3600000 : 999;
+    checks.backups = {
+      status: hoursOld > 48 ? 'unhealthy' : hoursOld > 24 ? 'degraded' : 'healthy',
+      lastBackup: lastBackup?.timestamp,
+      hoursOld: hoursOld.toFixed(1)
+    };
+  } catch (e: any) {
+    checks.backups = { status: 'unknown', error: e.message };
+  }
+  
+  const healthy = Object.values(checks).every(c => c.status === 'healthy');
+  
+  res.json({
+    healthy,
+    checks,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+STEP 3: ADD PERFORMANCE MONITORING
+
+3. CREATE FILE: server/middleware/performanceMonitor.ts
+
+import { Request, Response, NextFunction } from 'express';
+import { MonitoringService } from '../lib/monitoring';
+
+export function performanceMonitor(req: Request, res: Response, next: NextFunction) {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    
+    MonitoringService.recordMetric('api_response_time', duration, {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode.toString()
+    });
+    
+    if (duration > 1000) {
+      console.warn(\`[PERF] Slow request: \${req.method} \${req.path} - \${duration}ms\`);
+    }
+  });
+  
+  next();
+}
+
+Apply in server/index.ts:
+
+app.use(performanceMonitor);
+
+STEP 4: CREATE PERFORMANCE DASHBOARD
+
+4. CREATE FILE: client/src/components/PerformanceDashboard.tsx
+
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Activity, Database, HardDrive, Cpu } from 'lucide-react';
+
+export const PerformanceDashboard = () => {
+  const [health, setHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch('/api/health/complete');
+        const data = await res.json();
+        setHealth(data);
+      } catch (error) {
+        console.error('Health check failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  if (loading) return <div>Loading...</div>;
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'border-green-500/30 bg-green-500/10';
+      case 'degraded': return 'border-yellow-500/30 bg-yellow-500/10';
+      case 'unhealthy': return 'border-red-500/30 bg-red-500/10';
+      default: return 'border-gray-500/30 bg-gray-500/10';
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className={\`p-6 rounded-lg border-2 \${health?.healthy ? 'border-green-500' : 'border-red-500'}\`}>
+        <div className="text-3xl font-bold text-center">
+          {health?.healthy ? '✅ ALL SYSTEMS OPERATIONAL' : '⚠️ ISSUES DETECTED'}
+        </div>
+        <div className="text-center text-gray-400 mt-2">
+          Uptime: {Math.floor((health?.uptime || 0) / 3600)}h {Math.floor(((health?.uptime || 0) % 3600) / 60)}m
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card className={\`p-4 \${getStatusColor(health?.checks?.database?.status)}\`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-5 h-5" />
+            <span className="font-bold">Database</span>
+          </div>
+          <div className="text-2xl font-bold">{health?.checks?.database?.status?.toUpperCase()}</div>
+          {health?.checks?.database?.latency && (
+            <div className="text-xs text-gray-400">{health.checks.database.latency}</div>
+          )}
+        </Card>
+        
+        <Card className={\`p-4 \${getStatusColor(health?.checks?.memory?.status)}\`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Cpu className="w-5 h-5" />
+            <span className="font-bold">Memory</span>
+          </div>
+          <div className="text-2xl font-bold">{health?.checks?.memory?.percent}</div>
+          <div className="text-xs text-gray-400">{health?.checks?.memory?.heapUsed}</div>
+        </Card>
+        
+        <Card className={\`p-4 \${getStatusColor(health?.checks?.backups?.status)}\`}>
+          <div className="flex items-center gap-2 mb-2">
+            <HardDrive className="w-5 h-5" />
+            <span className="font-bold">Backups</span>
+          </div>
+          <div className="text-2xl font-bold">{health?.checks?.backups?.status?.toUpperCase()}</div>
+          <div className="text-xs text-gray-400">
+            {health?.checks?.backups?.hoursOld}h old
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+STEP 5: ADD TO ADMIN DASHBOARD
+
+5. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add at the very top:
+
+import { PerformanceDashboard } from './PerformanceDashboard';
+
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">📊 System Performance & Health</h2>
+  <PerformanceDashboard />
+</div>
+
+STEP 6: ADD STRUCTURED LOGGING
+
+6. CREATE FILE: server/lib/logger.ts
+
+export class Logger {
+  static info(component: string, message: string, meta?: any) {
+    console.log(\`[INFO] [\${component}] \${message}\`, meta || '');
+  }
+  
+  static warn(component: string, message: string, meta?: any) {
+    console.warn(\`[WARN] [\${component}] \${message}\`, meta || '');
+  }
+  
+  static error(component: string, message: string, error?: any) {
+    console.error(\`[ERROR] [\${component}] \${message}\`, error || '');
+  }
+  
+  static security(message: string, meta?: any) {
+    console.error(\`[SECURITY] \${message}\`, meta || '');
+  }
+}
+
+Use throughout codebase:
+
+Logger.info('BACKUP', 'Backup started');
+Logger.error('DATABASE', 'Query failed', error);
+Logger.security('Failed login attempt', { ip, walletAddress });
+
+VERIFICATION:
+1. Open Admin Dashboard
+2. Should see Performance & Health at top
+3. All systems should show GREEN
+4. Check /api/health/complete endpoint
+5. Should return detailed health
+6. Monitor console logs
+7. Should see structured logging
+8. Check memory usage
+9. Check backup age
+10. All should be healthy
+
+Your app is now fully monitored! 📊
