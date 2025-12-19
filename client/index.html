@@ -73,7 +73,7 @@
       window.addEventListener('error', function(e) {
         var loader = document.getElementById('app-loader');
         if (loader && e.filename && e.filename.includes('.js')) {
-          loader.innerHTML = '<div style="text-align: center; max-width: 400px;"><div style="font-size: 4rem; margin-bottom: 1rem;">🛸</div><h1 style="font-size: 1.25rem; color: white; margin-bottom: 0.5rem; font-weight: bold;">A Small Glitch in the Galaxy</h1><p style="color: #aaa; font-size: 0.9rem; margin-bottom: 1.5rem;">The ship hit some turbulence loading resources.</p><button onclick="location.reload()" style="background: linear-gradient(to right, #00ffff, #bf00ff); color: black; border: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">🚀 LAUNCH AGAIN</button><p style="color: #555; font-size: 0.7rem; margin-top: 2rem;">If this persists, check your connection.</p></div>';
+          loader.innerHTML = '<div style="text-align: center; max-width: 400px;"><div style="font-size: 4rem; margin-bottom: 1rem; transform: rotate(180deg); display: inline-block;">🚀</div><h1 style="font-size: 1.25rem; color: white; margin-bottom: 0.5rem; font-weight: bold;">A Small Glitch in the Galaxy</h1><p style="color: #aaa; font-size: 0.9rem; margin-bottom: 1.5rem;">The ship hit some turbulence loading resources.</p><button onclick="location.reload()" style="background: linear-gradient(to right, #00ffff, #bf00ff); color: black; border: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">🚀 RELAUNCH</button><p style="color: #555; font-size: 0.7rem; margin-top: 2rem;">If this persists, check your connection.</p></div>';
         }
       });
       // Progressive loading messages for slow connections
@@ -99,7 +99,7 @@
         var loader = document.getElementById('app-loader');
         var root = document.getElementById('root');
         if (loader && root && root.children.length <= 2) {
-          loader.innerHTML = '<div style="text-align: center; max-width: 400px;"><div style="font-size: 4rem; margin-bottom: 1rem;">🛸</div><h1 style="font-size: 1.25rem; color: white; margin-bottom: 0.5rem; font-weight: bold;">A Small Glitch in the Galaxy</h1><p style="color: #aaa; font-size: 0.9rem; margin-bottom: 1.5rem;">Taking longer than expected to reach the stars.</p><button onclick="location.reload()" style="background: linear-gradient(to right, #00ffff, #bf00ff); color: black; border: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">🚀 LAUNCH AGAIN</button><p style="color: #555; font-size: 0.7rem; margin-top: 2rem;">Try refreshing or check your connection.</p></div>';
+          loader.innerHTML = '<div style="text-align: center; max-width: 400px;"><div style="font-size: 4rem; margin-bottom: 1rem; transform: rotate(180deg); display: inline-block;">🚀</div><h1 style="font-size: 1.25rem; color: white; margin-bottom: 0.5rem; font-weight: bold;">A Small Glitch in the Galaxy</h1><p style="color: #aaa; font-size: 0.9rem; margin-bottom: 1.5rem;">Taking longer than expected to reach the stars.</p><button onclick="location.reload()" style="background: linear-gradient(to right, #00ffff, #bf00ff); color: black; border: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">🚀 RELAUNCH</button><p style="color: #555; font-size: 0.7rem; margin-top: 2rem;">Try refreshing or check your connection.</p></div>';
         }
       }, 30000);
     </script>
