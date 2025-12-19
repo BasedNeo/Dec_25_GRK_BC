@@ -1,0 +1,344 @@
+Create a comprehensive automated database backup system for the Based Guardians PostgreSQL database.
+
+STEP 1: CREATE BACKUP SCRIPT
+
+1. CREATE FILE: script/backup-database.ts
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
+
+const execAsync = promisify(exec);
+
+async function backupDatabase() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = path.join(process.cwd(), 'backups');
+  const backupFile = path.join(backupDir, `backup-${timestamp}.sql`);
+  const gzipFile = `${backupFile}.gz`;
+  
+  console.log('🔄 Starting database backup...');
+  
+  if (!existsSync(backupDir)) {
+    await mkdir(backupDir, { recursive: true });
+    console.log('✅ Created backups directory');
+  }
+  
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL not found in environment variables');
+  }
+  
+  try {
+    console.log('📦 Dumping database...');
+    await execAsync(`pg_dump "${dbUrl}" > "${backupFile}"`);
+    console.log('✅ Database dumped successfully');
+    
+    console.log('🗜️  Compressing backup...');
+    await execAsync(`gzip "${backupFile}"`);
+    console.log('✅ Backup compressed');
+    
+    const logMessage = `[${new Date().toISOString()}] Backup created: ${gzipFile}\n`;
+    await writeFile(path.join(backupDir, 'backup.log'), logMessage, { flag: 'a' });
+    
+    console.log(`✅ Backup complete: ${gzipFile}`);
+    
+    await cleanupOldBackups(backupDir);
+    
+    return gzipFile;
+  } catch (error) {
+    console.error('❌ Backup failed:', error);
+    const logMessage = `[${new Date().toISOString()}] Backup FAILED: ${error}\n`;
+    await writeFile(path.join(backupDir, 'backup.log'), logMessage, { flag: 'a' });
+    throw error;
+  }
+}
+
+async function cleanupOldBackups(backupDir: string) {
+  try {
+    await execAsync(`find "${backupDir}" -name "backup-*.sql.gz" -mtime +30 -delete`);
+    console.log('🧹 Cleaned up backups older than 30 days');
+  } catch (error) {
+    console.warn('⚠️  Cleanup warning:', error);
+  }
+}
+
+backupDatabase().catch(console.error);
+```
+
+STEP 2: CREATE RESTORE SCRIPT
+
+2. CREATE FILE: script/restore-database.ts
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { existsSync } from 'fs';
+
+const execAsync = promisify(exec);
+
+async function restoreDatabase(backupFile: string) {
+  console.log('🔄 Starting database restore...');
+  
+  if (!existsSync(backupFile)) {
+    throw new Error(`Backup file not found: ${backupFile}`);
+  }
+  
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL not found');
+  }
+  
+  try {
+    let sqlFile = backupFile;
+    if (backupFile.endsWith('.gz')) {
+      console.log('📦 Decompressing backup...');
+      await execAsync(`gunzip -k "${backupFile}"`);
+      sqlFile = backupFile.replace('.gz', '');
+      console.log('✅ Decompressed');
+    }
+    
+    console.log('📥 Restoring database...');
+    await execAsync(`psql "${dbUrl}" < "${sqlFile}"`);
+    console.log('✅ Database restored successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Restore failed:', error);
+    throw error;
+  }
+}
+
+const backupFile = process.argv[2];
+if (!backupFile) {
+  console.error('Usage: npm run restore:db <backup-file>');
+  process.exit(1);
+}
+
+restoreDatabase(backupFile).catch(console.error);
+```
+
+STEP 3: CREATE VERIFICATION SCRIPT
+
+3. CREATE FILE: script/verify-backup.ts
+
+```typescript
+import { stat } from 'fs/promises';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import { existsSync, readdirSync } from 'fs';
+
+const execAsync = promisify(exec);
+
+async function verifyBackup() {
+  const backupDir = path.join(process.cwd(), 'backups');
+  
+  console.log('🔍 Verifying latest backup...');
+  
+  if (!existsSync(backupDir)) {
+    throw new Error('Backups directory does not exist');
+  }
+  
+  try {
+    const files = readdirSync(backupDir)
+      .filter(f => f.startsWith('backup-') && f.endsWith('.sql.gz'))
+      .sort()
+      .reverse();
+    
+    if (files.length === 0) {
+      throw new Error('No backups found');
+    }
+    
+    const latestBackup = path.join(backupDir, files[0]);
+    console.log(`📦 Latest backup: ${files[0]}`);
+    
+    const stats = await stat(latestBackup);
+    const sizeMB = stats.size / (1024 * 1024);
+    
+    console.log(`📊 Size: ${sizeMB.toFixed(2)} MB`);
+    
+    if (stats.size < 100 * 1024) {
+      throw new Error('Backup file suspiciously small');
+    }
+    
+    await execAsync(`gzip -t "${latestBackup}"`);
+    console.log('✅ Gzip integrity: OK');
+    
+    const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
+    console.log(`⏰ Age: ${ageHours.toFixed(1)} hours`);
+    
+    if (ageHours > 24) {
+      console.warn('⚠️  Backup is older than 24 hours');
+    }
+    
+    console.log('✅ Backup verification passed');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Verification failed:', error);
+    throw error;
+  }
+}
+
+verifyBackup().catch(console.error);
+```
+
+STEP 4: UPDATE PACKAGE.JSON
+
+4. UPDATE FILE: package.json
+
+Add these scripts:
+
+```json
+"backup:db": "tsx script/backup-database.ts",
+"restore:db": "tsx script/restore-database.ts",
+"verify:backup": "tsx script/verify-backup.ts"
+```
+
+STEP 5: UPDATE GITIGNORE
+
+5. UPDATE FILE: .gitignore
+
+Add:
+
+```
+/backups
+*.sql
+*.sql.gz
+backup.log
+```
+
+STEP 6: ADD ADMIN UI
+
+6. UPDATE FILE: client/src/components/AdminDashboard.tsx
+
+Add this component inside AdminDashboard:
+
+```typescript
+const BackupPanel = () => {
+  const [lastBackup, setLastBackup] = useState<any>(null);
+  
+  useEffect(() => {
+    fetch('/api/admin/backup/status')
+      .then(res => res.json())
+      .then(data => setLastBackup(data.lastBackup))
+      .catch(() => {});
+  }, []);
+  
+  const runBackup = async () => {
+    setLoading('backup');
+    addLog('Starting database backup...');
+    
+    try {
+      const res = await fetch('/api/admin/backup', { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.success) {
+        setLastBackup(data.backup);
+        addLog('✅ Backup created');
+        showToast('Database backed up', 'success');
+      }
+    } catch (error: any) {
+      addLog(`❌ Backup failed: ${error.message}`);
+      showToast('Backup failed', 'error');
+    } finally {
+      setLoading(null);
+    }
+  };
+  
+  return (
+    <div className="p-6 border border-green-500/30 rounded-xl bg-green-500/5">
+      <h3 className="text-xl font-bold mb-4">💾 Database Backups</h3>
+      
+      {lastBackup && (
+        <div className="mb-4 p-3 bg-black/40 rounded">
+          <div className="text-sm text-gray-400">Last Backup:</div>
+          <div className="text-white">{lastBackup.time}</div>
+          <div className="text-xs text-gray-500">Size: {lastBackup.size}</div>
+        </div>
+      )}
+      
+      <Button onClick={runBackup} disabled={loading === 'backup'} className="w-full bg-green-500">
+        {loading === 'backup' ? 'Backing up...' : 'Backup Now'}
+      </Button>
+    </div>
+  );
+};
+```
+
+STEP 7: ADD API ENDPOINT
+
+7. UPDATE FILE: server/routes.ts
+
+Add:
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { stat, readdir } from 'fs/promises';
+import path from 'path';
+
+const execAsync = promisify(exec);
+
+app.post('/api/admin/backup', isAdmin, async (req, res) => {
+  try {
+    await execAsync('npm run backup:db');
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/backup/status', isAdmin, async (req, res) => {
+  try {
+    const backupDir = path.join(process.cwd(), 'backups');
+    const files = await readdir(backupDir);
+    const backupFiles = files.filter(f => f.startsWith('backup-') && f.endsWith('.sql.gz'));
+    
+    if (backupFiles.length === 0) {
+      return res.json({ lastBackup: null });
+    }
+    
+    const latestFile = backupFiles.sort().reverse()[0];
+    const filePath = path.join(backupDir, latestFile);
+    const stats = await stat(filePath);
+    
+    res.json({
+      lastBackup: {
+        time: stats.mtime.toISOString(),
+        size: `${(stats.size / (1024 * 1024)).toFixed(2)} MB`,
+      }
+    });
+  } catch (error) {
+    res.json({ lastBackup: null });
+  }
+});
+```
+
+VERIFICATION:
+1. Run: npm run backup:db
+2. Check /backups folder has .sql.gz file
+3. Run: npm run verify:backup
+4. Open Admin Dashboard → Click "Backup Now"
+5. Verify new backup created
+
+===================== COPY TO HERE =====================
+```
+
+**Checklist**:
+- [ ] Backup script runs successfully
+- [ ] `/backups` folder exists with file
+- [ ] Verify script passes
+- [ ] Admin button works
+
+---
+
+## ✅ PROMPT 1.2: Transaction Receipt Storage
+
+**Time**: 2 hours  
+**Priority**: 🔴 CRITICAL
+
+```

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Sparkles, BookOpen, Eye, EyeOff, Lock, Unlock, 
@@ -29,6 +29,27 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   const [currentIndex, setCurrentIndex] = useState(0);
   const [images, setImages] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Lazy load - only fetch images when component is visible
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+    
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, []);
   
   const fetchImage = useCallback(async (tokenId: number) => {
     try {
@@ -48,9 +69,12 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   }, []);
   
   useEffect(() => {
+    if (!isVisible) return;
+    
     const loadImages = async () => {
       setLoading(true);
-      const imagePromises = tokenIds.slice(0, 5).map(async (id) => {
+      // Only load first 3 images initially for faster load
+      const imagePromises = tokenIds.slice(0, 3).map(async (id) => {
         const url = await fetchImage(id);
         return { id, url };
       });
@@ -63,9 +87,9 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
       setLoading(false);
     };
     loadImages();
-  }, [tokenIds, fetchImage]);
+  }, [tokenIds, fetchImage, isVisible]);
   
-  const displayIds = tokenIds.slice(0, 5);
+  const displayIds = tokenIds.slice(0, 3);
   const currentTokenId = displayIds[currentIndex];
   const currentImage = images[currentTokenId];
   
@@ -73,9 +97,9 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   const prevImage = () => setCurrentIndex((i) => (i - 1 + displayIds.length) % displayIds.length);
   
   return (
-    <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-black/50 mb-3">
-      {loading ? (
-        <div className="absolute inset-0 flex items-center justify-center">
+    <div ref={containerRef} className="relative w-full aspect-square rounded-lg overflow-hidden bg-black/50 mb-3">
+      {!isVisible || loading ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
           <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
         </div>
       ) : currentImage ? (
