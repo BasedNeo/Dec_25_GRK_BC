@@ -18,7 +18,7 @@ import {
   uniswapWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
-import { http } from 'wagmi';
+import { http, fallback } from 'wagmi';
 
 const basedL1 = {
   id: 32323,
@@ -85,11 +85,18 @@ export const config = getDefaultConfig({
   projectId: projectId,
   chains: [basedL1],
   transports: {
-    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
-      timeout: 5000,
-      retryCount: 2,
-      retryDelay: 500,
-    }),
+    [basedL1.id]: fallback([
+      http('https://mainnet.basedaibridge.com/rpc/', {
+        timeout: 5000,
+        retryCount: 2,
+        retryDelay: 500,
+      }),
+      http('https://rpc.basedaibridge.com/', {
+        timeout: 5000,
+        retryCount: 2,
+        retryDelay: 500,
+      }),
+    ]),
   },
   ssr: false,
   wallets: wallets,
