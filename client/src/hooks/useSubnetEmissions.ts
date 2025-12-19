@@ -172,10 +172,20 @@ export interface SubnetEmissionsData {
 }
 
 async function getWorkingProvider(): Promise<ethers.JsonRpcProvider> {
+  // First try BasedAI L1 RPC (primary source for brain wallet data)
+  try {
+    const basedProvider = new ethers.JsonRpcProvider(BRAIN_CONFIG.basedaiRpc);
+    await basedProvider.getBlockNumber();
+    return basedProvider;
+  } catch {
+    console.warn('BasedAI RPC failed, trying Ethereum fallbacks...');
+  }
+  
+  // Fallback to Ethereum mainnet RPCs
   for (const rpc of ETH_RPC_ENDPOINTS) {
     try {
       const provider = new ethers.JsonRpcProvider(rpc);
-      await provider.getBlockNumber(); // Test connection
+      await provider.getBlockNumber();
       return provider;
     } catch {
       continue;
