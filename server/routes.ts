@@ -913,5 +913,81 @@ export async function registerRoutes(
     }
   });
 
+  app.post('/api/transactions/receipt', async (req, res) => {
+    try {
+      const { walletAddress, transactionType, transactionHash, tokenId, amount, fromAddress, toAddress, platformFee, royaltyFee, metadata } = req.body;
+      
+      if (!walletAddress || !transactionType || !transactionHash) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      
+      const receipt = await storage.createTransactionReceipt({
+        walletAddress,
+        transactionType,
+        transactionHash,
+        tokenId,
+        amount,
+        fromAddress,
+        toAddress,
+        platformFee,
+        royaltyFee,
+        metadata,
+        status: 'pending'
+      });
+      res.json({ receipt });
+    } catch (error: any) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Transaction already recorded' });
+      }
+      console.error('[Transaction] Error creating receipt:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/transactions/receipt/:hash', async (req, res) => {
+    try {
+      const { status, blockNumber, gasUsed, gasPrice } = req.body;
+      await storage.updateTransactionStatus(req.params.hash, status, { blockNumber, gasUsed, gasPrice });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Transaction] Error updating receipt:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/transactions/history/:address', async (req, res) => {
+    try {
+      const address = req.params.address;
+      if (!isValidEthAddress(address)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      const history = await storage.getUserTransactionHistory(address);
+      res.json({ history });
+    } catch (error: any) {
+      console.error('[Transaction] Error fetching history:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/transactions/export/:address/csv', async (req, res) => {
+    try {
+      const address = req.params.address;
+      if (!isValidEthAddress(address)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      const csv = await storage.exportUserTransactionsCSV(address);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=transactions-${address}.csv`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error('[Transaction] Error exporting CSV:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

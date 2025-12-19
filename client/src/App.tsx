@@ -21,6 +21,7 @@ const GuardianDefense = lazy(() => import("@/pages/GuardianDefense"));
 const GuardianSolitaire = lazy(() => import("@/pages/GuardianSolitaire"));
 const AsteroidMining = lazy(() => import("@/pages/AsteroidMining"));
 const BasedArcade = lazy(() => import("@/pages/BasedArcade"));
+const TransactionHistory = lazy(() => import("@/pages/TransactionHistory"));
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config } from "./lib/wagmi";
@@ -211,6 +212,11 @@ function Router() {
         <Route path="/asteroid-mining">
           <ErrorBoundary feature="Asteroid Mining">
             <AsteroidMining />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/transactions">
+          <ErrorBoundary feature="Transaction History">
+            <TransactionHistory />
           </ErrorBoundary>
         </Route>
         <Route>

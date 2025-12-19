@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne } from "drizzle-orm";
@@ -480,6 +480,48 @@ export class DatabaseStorage implements IStorage {
   async cleanupExpiredNonces(): Promise<void> {
     const now = new Date();
     await db.delete(adminNonces).where(sql`${adminNonces.expiresAt} < ${now}`);
+  }
+
+  async createTransactionReceipt(data: InsertTransactionReceipt): Promise<TransactionReceipt> {
+    const [receipt] = await db.insert(transactionReceipts).values({
+      ...data,
+      walletAddress: data.walletAddress.toLowerCase()
+    }).returning();
+    return receipt;
+  }
+
+  async updateTransactionStatus(txHash: string, status: 'confirmed' | 'failed', updates: Partial<TransactionReceipt> = {}): Promise<void> {
+    await db.update(transactionReceipts)
+      .set({ status, ...updates, confirmedAt: new Date() })
+      .where(eq(transactionReceipts.transactionHash, txHash));
+  }
+
+  async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | undefined> {
+    const [receipt] = await db.select()
+      .from(transactionReceipts)
+      .where(eq(transactionReceipts.transactionHash, txHash));
+    return receipt;
+  }
+
+  async getUserTransactionHistory(walletAddress: string, limit: number = 50): Promise<TransactionReceipt[]> {
+    return db.select()
+      .from(transactionReceipts)
+      .where(eq(transactionReceipts.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(transactionReceipts.createdAt))
+      .limit(limit);
+  }
+
+  async exportUserTransactionsCSV(walletAddress: string): Promise<string> {
+    const receipts = await this.getUserTransactionHistory(walletAddress, 1000);
+    
+    let csv = 'Date,Type,Amount,Gas,Status,TX Hash,Token ID\n';
+    
+    for (const receipt of receipts) {
+      const date = receipt.createdAt ? new Date(receipt.createdAt).toISOString() : '';
+      csv += `${date},${receipt.transactionType},${receipt.amount || '0'},${receipt.gasUsed || '0'},${receipt.status},${receipt.transactionHash},${receipt.tokenId || ''}\n`;
+    }
+    
+    return csv;
   }
 }
 
