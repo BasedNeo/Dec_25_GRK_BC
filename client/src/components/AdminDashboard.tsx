@@ -26,6 +26,7 @@ import { PointInTimeRecovery } from './PointInTimeRecovery';
 import { DisasterRecoveryPanel } from './DisasterRecoveryPanel';
 import { SnapshotManager } from './SnapshotManager';
 import { RunbookManager } from './RunbookManager';
+import { PerformanceDashboard } from './PerformanceDashboard';
 import { Camera, Book } from 'lucide-react';
 
 const FinancialHealthCheck = () => {
@@ -1328,6 +1329,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
             {!conversions && !analyticsData && (
               <div className="text-gray-500 text-sm">No analytics data yet. Analytics will appear as users interact with the app.</div>
             )}
+          </Card>
+          
+          <Card className="bg-black/60 border-green-500/30 p-6 mb-6" data-testid="performance-dashboard-card">
+            <h3 className="text-xl font-orbitron font-bold text-green-400 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              System Performance & Health
+            </h3>
+            <PerformanceDashboard />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">

@@ -6,6 +6,7 @@ import compression from "compression";
 import { apiLimiter } from './middleware/rateLimiter';
 import { helmetConfig, corsConfig, sanitizeRequest, secureLogger } from './middleware/security';
 import { encryptSensitiveResponse, decryptSensitiveRequest } from './middleware/encryptedPayload';
+import { performanceMonitor } from './middleware/performanceMonitor';
 
 const app = express();
 const httpServer = createServer(app);
@@ -44,6 +45,7 @@ app.use(helmetConfig);
 app.use(corsConfig);
 app.use(sanitizeRequest);
 app.use(secureLogger);
+app.use(performanceMonitor);
 app.use('/api', apiLimiter);
 app.use(encryptSensitiveResponse);
 app.use(decryptSensitiveRequest);

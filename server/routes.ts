@@ -1870,6 +1870,55 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/health/complete', async (req, res) => {
+    const checks: Record<string, any> = {
+      database: { status: 'checking' },
+      memory: { status: 'checking' },
+      backups: { status: 'checking' }
+    };
+    
+    try {
+      const dbStart = Date.now();
+      await db.execute(sql`SELECT 1`);
+      const dbLatency = Date.now() - dbStart;
+      checks.database = { 
+        status: dbLatency > 1000 ? 'degraded' : 'healthy', 
+        latency: `${dbLatency}ms` 
+      };
+    } catch (e: any) {
+      checks.database = { status: 'unhealthy', error: e.message };
+    }
+    
+    const mem = process.memoryUsage();
+    const heapPercent = (mem.heapUsed / mem.heapTotal) * 100;
+    checks.memory = { 
+      status: heapPercent > 90 ? 'unhealthy' : 'healthy',
+      heapUsed: `${(mem.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+      percent: `${heapPercent.toFixed(1)}%`
+    };
+    
+    try {
+      const backupCheck = await HealthCheckService.checkBackupSystem();
+      checks.backups = {
+        status: backupCheck.status,
+        lastBackup: backupCheck.details?.lastBackup,
+        hoursOld: backupCheck.details?.hoursOld || 'N/A',
+        error: backupCheck.error
+      };
+    } catch (e: any) {
+      checks.backups = { status: 'unknown', error: e.message, hoursOld: 'N/A' };
+    }
+    
+    const healthy = Object.values(checks).every((c: any) => c.status === 'healthy');
+    
+    res.json({
+      healthy,
+      checks,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
   app.post('/api/admin/snapshots/capture', requireAdmin, async (req, res) => {
     try {
       const { StateSnapshotService } = await import('./lib/stateSnapshot');
