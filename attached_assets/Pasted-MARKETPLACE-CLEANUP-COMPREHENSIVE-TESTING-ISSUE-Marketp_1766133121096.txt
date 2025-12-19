@@ -1,0 +1,385 @@
+MARKETPLACE CLEANUP & COMPREHENSIVE TESTING
+
+ISSUE: Marketplace has duplicate pages (Browse/Collection) from multi-collection feature. Need to simplify to single collection (Guardians) and test all features.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: SIMPLIFY MARKETPLACE TO SINGLE COLLECTION
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/App.tsx
+
+Find the marketplace routes and simplify:
+
+// BEFORE (if you see these routes):
+<Route path="/marketplace/browse" element={<MarketplaceBrowse />} />
+<Route path="/marketplace/collections" element={<Collections />} />
+<Route path="/marketplace/:collectionAddress" element={<CollectionPage />} />
+<Route path="/marketplace" element={<Marketplace />} />
+
+// AFTER - Keep only one clean route:
+<Route path="/marketplace" element={<Marketplace />} />
+
+// Remove any import statements at top for MarketplaceBrowse, Collections, CollectionPage if they exist
+
+
+2. UPDATE FILE: client/src/components/Navbar.tsx
+
+Ensure marketplace link is simple:
+
+// Make sure navigation has:
+{ name: t('nav.marketplace'), href: '/marketplace' }
+
+// NOT:
+// { name: 'Browse', href: '/marketplace/browse' }
+// { name: 'Collections', href: '/marketplace/collections' }
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: ENSURE MARKETPLACE SHOWS GUARDIANS ONLY
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Marketplace.tsx
+
+At the top of the file, ensure it's fetching only Guardian listings:
+
+import { NFT_CONTRACT } from '@/lib/constants';
+
+// In the component, make sure listings query is simple:
+const { data: listings, isLoading } = useQuery({
+  queryKey: ['marketplace-listings'],
+  queryFn: async () => {
+    const res = await fetch('/api/marketplace/listings');
+    if (!res.ok) throw new Error('Failed to fetch listings');
+    return res.json();
+  }
+});
+
+// Remove any collection filter dropdowns or tabs if they exist
+
+
+2. Make sure the page title is clear:
+
+<h1>Guardian Marketplace</h1>
+// or
+<h1>Marketplace</h1>
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REMOVE UNUSED MULTI-COLLECTION FILES
+═══════════════════════════════════════════════════════════════════
+
+If these files exist, delete them (they're not needed for v1):
+
+1. DELETE (if exists): client/src/pages/MarketplaceBrowse.tsx
+2. DELETE (if exists): client/src/pages/Collections.tsx  
+3. DELETE (if exists): client/src/pages/CollectionPage.tsx
+4. DELETE (if exists): client/src/hooks/useCollections.ts
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: RUN COMPREHENSIVE FEATURE TESTS
+═══════════════════════════════════════════════════════════════════
+
+Test each feature systematically. Open app in browser and go through this checklist:
+
+
+🔌 WALLET CONNECTION TEST
+─────────────────────────────────────────
+1. Click "Connect Wallet"
+   ✅ Should open RainbowKit modal
+   ✅ Should connect successfully
+   ✅ Should show wallet address in navbar
+   
+2. Check network
+   ✅ Should show BasedAI network
+   ✅ If wrong network, should show banner to switch
+   
+3. Disconnect and reconnect
+   ✅ Should work smoothly
+
+
+🎨 NFT DISPLAY TEST
+─────────────────────────────────────────
+1. Navigate to "Guardians" page
+   ✅ Page loads without errors
+   ✅ NFT images display
+   ✅ NFT names/IDs show correctly
+   ✅ Traits display (if applicable)
+   ✅ Loading skeleton appears first, then content
+   
+2. Check console (F12 > Console)
+   ✅ No red errors
+   ✅ No "undefined" errors
+   ✅ IPFS loading working
+
+
+💰 MINTING TEST
+─────────────────────────────────────────
+1. Go to Mint page
+   ✅ Page loads
+   ✅ Mint price displays correctly
+   ✅ "Max Affordable" calculates correctly
+   ✅ Quantity selector works
+   
+2. Try minting (if you have test funds)
+   ✅ Wallet popup appears
+   ✅ Transaction submits
+   ✅ Success message appears
+   ✅ New NFT appears in collection
+   
+3. Try without wallet connected
+   ✅ Shows "Connect wallet" message
+
+
+🛒 MARKETPLACE TEST
+─────────────────────────────────────────
+1. Navigate to Marketplace
+   ✅ Page loads cleanly
+   ✅ Shows listings OR "No listings yet"
+   ✅ NOT showing "Browse" or "Collections" tabs
+   ✅ NOT showing multiple collections
+   
+2. If listings exist:
+   ✅ NFT images load
+   ✅ Prices display correctly
+   ✅ "Buy" button visible
+   ✅ Owner address shows
+   
+3. Try buying (if listing exists and you have funds)
+   ✅ Buy button works
+   ✅ Wallet popup appears
+   ✅ Transaction submits
+   ✅ Success message
+   ✅ NFT removed from listings
+
+
+👤 PROFILE/PORTFOLIO TEST
+─────────────────────────────────────────
+1. Go to Profile page
+   ✅ Page loads
+   ✅ Shows "Your Guardians" or similar
+   ✅ Displays owned NFTs
+   ✅ NFT count accurate
+   
+2. If you own NFTs:
+   ✅ All owned NFTs display
+   ✅ Images load correctly
+   ✅ Can click for details
+   
+3. Try other wallet address in URL
+   ✅ Shows that wallet's NFTs
+
+
+📊 ACTIVITY FEED TEST
+─────────────────────────────────────────
+1. Go to Activity page
+   ✅ Page loads
+   ✅ Shows recent transactions OR "No activity"
+   ✅ Events display correctly (Minted, Listed, Sold)
+   ✅ Timestamps show
+   ✅ Links to block explorer work
+   
+2. Check if your recent transactions appear
+   ✅ Your mints show up
+   ✅ Your buys/sells show up
+
+
+🗳️ GOVERNANCE TEST
+─────────────────────────────────────────
+1. Go to Governance page
+   ✅ Page loads
+   ✅ Shows proposals OR "No proposals"
+   
+2. If proposals exist:
+   ✅ Proposal text displays
+   ✅ Vote counts show
+   ✅ Can click "Yes" or "No"
+   ✅ Vote registers
+   
+3. If you're admin:
+   ✅ "Create Proposal" button visible
+   ✅ Can create new proposal
+
+
+📈 POOL TRACKER TEST
+─────────────────────────────────────────
+1. Go to Pool Tracker page
+   ✅ Page loads
+   ✅ TVL displays (even if $0)
+   ✅ Volume displays
+   ✅ Brain status shows
+   ✅ NO "undefined" values
+   ✅ NO "NaN" values
+   ✅ Emission rate shows
+
+
+🎮 GAMES TEST (if you own NFT)
+─────────────────────────────────────────
+1. Go to Arcade page
+   ✅ Page loads
+   ✅ Game cards display
+   ✅ Game images/titles show
+   
+2. Click a game card
+   ✅ Game loads
+   ✅ Game is playable
+   ✅ Controls work
+   ✅ Score tracks
+   
+3. Exit game
+   ✅ Returns to arcade
+   ✅ Points saved
+
+4. Try without NFT (disconnect wallet or use wallet without NFT)
+   ✅ Shows "Retro Defender" unlocked
+   ✅ Shows other games locked
+
+
+⚡ PERFORMANCE TEST
+─────────────────────────────────────────
+1. Open browser DevTools (F12)
+2. Go to Network tab
+3. Refresh page
+   ✅ Initial load < 5 seconds
+   ✅ Page becomes interactive quickly
+   
+4. Navigate between pages
+   ✅ Navigation feels instant
+   ✅ No lag or freezing
+   
+5. Check Performance tab
+   ✅ No excessive re-renders
+   ✅ No memory leaks
+
+
+🛡️ ERROR HANDLING TEST
+─────────────────────────────────────────
+1. Wrong network test:
+   - Switch MetaMask to Ethereum mainnet
+   ✅ Banner appears to switch network
+   ✅ Can click to switch back
+   
+2. No wallet test:
+   - Disconnect wallet
+   - Try to mint
+   ✅ Shows "Connect wallet" message
+   
+3. Failed transaction test:
+   - Try to buy with insufficient funds
+   ✅ Shows error message
+   ✅ Doesn't freeze app
+
+
+📱 MOBILE RESPONSIVE TEST
+─────────────────────────────────────────
+1. Open DevTools (F12) > Device Toolbar
+2. Select iPhone or mobile view
+   ✅ Layout adjusts properly
+   ✅ Navigation works
+   ✅ All buttons accessible
+   ✅ No horizontal scroll
+   ✅ Text readable
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: CHECK FOR COMMON ISSUES
+═══════════════════════════════════════════════════════════════════
+
+In Replit terminal, check for errors:
+
+1. Check recent logs:
+npm run dev
+
+Look for:
+❌ Red error messages
+❌ "Cannot read property of undefined"
+❌ Database connection errors
+❌ RPC timeout errors
+
+2. Check browser console (F12):
+Look for:
+❌ Red errors
+❌ Failed API calls (red in Network tab)
+❌ CORS errors
+❌ 404 errors
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: QUICK FIXES FOR COMMON ISSUES
+═══════════════════════════════════════════════════════════════════
+
+IF YOU SEE "undefined" IN POOL TRACKER:
+
+1. UPDATE FILE: client/src/pages/PoolTracker.tsx
+
+Find any values that might be undefined and add fallback:
+
+// BEFORE:
+<div>{totalVolume}</div>
+
+// AFTER:
+<div>{totalVolume || '0'}</div>
+
+// Apply to all displayed values
+
+
+IF YOU SEE RPC ERRORS:
+
+1. UPDATE FILE: client/src/lib/constants.ts
+
+Make sure RPC_ENDPOINTS has multiple endpoints:
+
+export const RPC_ENDPOINTS = [
+  'https://rpc.basedai.network',
+  'https://rpc1.basedai.network',
+  'https://rpc2.basedai.network'
+];
+
+
+IF IMAGES NOT LOADING:
+
+1. Check IPFS gateway in constants.ts:
+
+export const IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
+
+// Try alternative:
+export const IPFS_GATEWAY = 'https://cloudflare-ipfs.com/ipfs/';
+
+
+═══════════════════════════════════════════════════════════════════
+✅ FINAL CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After testing everything, confirm:
+
+CRITICAL (Must Pass):
+- [ ] App loads remotely (not just Replit preview)
+- [ ] Wallet connects
+- [ ] Guardians page displays NFTs
+- [ ] Marketplace page loads (no Browse/Collections confusion)
+- [ ] Minting works
+- [ ] No console errors
+
+IMPORTANT (Should Pass):
+- [ ] Activity feed shows data
+- [ ] Profile shows owned NFTs
+- [ ] Pool tracker displays correctly
+- [ ] Games work (if NFT owned)
+- [ ] Performance is smooth
+
+NICE TO HAVE (Can fix later):
+- [ ] Mobile fully responsive
+- [ ] All translations working
+- [ ] Loading states elegant
+
+
+Reply with your test results in this format:
+
+"✅ Wallet: Working
+✅ NFT Display: Working  
+✅ Marketplace: Working - no more Browse page
+❌ Pool Tracker: Shows 'undefined' for TVL
+⚠️  Games: Solitaire loads slow
+✅ Performance: Good
+
+Issues found: [list any]"

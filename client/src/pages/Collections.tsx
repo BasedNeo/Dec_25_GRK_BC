@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, TrendingUp, Users, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NFT_CONTRACT } from '@/lib/constants';
+import { Navbar } from '@/components/Navbar';
+import { useAccount } from 'wagmi';
 
 interface Collection {
   id: number;
@@ -38,9 +40,22 @@ const BASED_GUARDIANS_DEFAULT: Collection = {
 
 export default function Collections() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
+  const { isConnected } = useAccount();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('collections');
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'hub') setLocation('/');
+    else if (tab === 'guardians') setLocation('/');
+    else if (tab === 'odyssey') setLocation('/odyssey');
+    else if (tab === 'arcade') setLocation('/arcade');
+    else if (tab === 'marketplace') setLocation('/marketplace');
+    else if (tab === 'collections') setLocation('/collections');
+  };
 
   useEffect(() => {
     fetchCollections();
@@ -88,8 +103,14 @@ export default function Collections() {
   const other = filteredCollections.filter(c => !c.isFeatured);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header with Project Selector */}
+    <>
+      <Navbar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isConnected={isConnected}
+      />
+      <div className="container mx-auto px-4 py-8">
+        {/* Header with Project Selector */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-6">
         <div className="text-center md:text-left">
           <h1 className="text-5xl font-orbitron font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent" data-testid="collections-title">
@@ -171,7 +192,8 @@ export default function Collections() {
           </div>
         ) : null}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
