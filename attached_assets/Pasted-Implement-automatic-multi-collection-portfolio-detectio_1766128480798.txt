@@ -1,0 +1,761 @@
+Implement automatic multi-collection portfolio detection that scans user's wallet for ALL NFT collections on BasedAI network, displays collection cards with representative images, and allows switching between collections with elegant UI.
+
+STEP 1: CREATE WALLET SCANNER SERVICE
+
+1. CREATE FILE: server/lib/walletScanner.ts
+
+import { ethers } from 'ethers';
+
+interface NFTCollection {
+  contractAddress: string;
+  name: string;
+  symbol: string;
+  balance: number;
+  tokenIds: number[];
+}
+
+interface NFTMetadata {
+  tokenId: number;
+  name: string;
+  image: string;
+  attributes?: any[];
+}
+
+export class WalletScanner {
+  
+  // Scan wallet for all NFT collections
+  static async scanWalletCollections(walletAddress: string, rpcUrl: string): Promise<NFTCollection[]> {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const collections: NFTCollection[] = [];
+      
+      // Get all Transfer events TO this wallet across all blocks
+      // This is a simplified version - in production you'd use an indexer or subgraph
+      
+      console.log(`🔍 Scanning wallet: ${walletAddress}`);
+      
+      // For BasedAI network, we'll scan Transfer events
+      // ERC721 Transfer event signature
+      const transferTopic = ethers.id('Transfer(address,address,uint256)');
+      const toAddressFilter = ethers.zeroPadValue(walletAddress.toLowerCase(), 32);
+      
+      // Get current block
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 500000); // Last ~500k blocks
+      
+      console.log(`📊 Scanning blocks ${fromBlock} to ${currentBlock}`);
+      
+      // Query logs
+      const logs = await provider.getLogs({
+        fromBlock,
+        toBlock: currentBlock,
+        topics: [
+          transferTopic,
+          null, // from any address
+          toAddressFilter // to our wallet
+        ]
+      });
+      
+      console.log(`📝 Found ${logs.length} transfer events`);
+      
+      // Group by contract address
+      const contractMap = new Map<string, Set<number>>();
+      
+      for (const log of logs) {
+        const contractAddress = log.address.toLowerCase();
+        const tokenId = Number(log.topics[3]); // tokenId is 3rd indexed parameter
+        
+        if (!contractMap.has(contractAddress)) {
+          contractMap.set(contractAddress, new Set());
+        }
+        contractMap.get(contractAddress)!.add(tokenId);
+      }
+      
+      console.log(`🎨 Found ${contractMap.size} unique collections`);
+      
+      // For each contract, verify current ownership and get metadata
+      for (const [contractAddress, tokenIdsSet] of contractMap.entries()) {
+        try {
+          const collectionData = await this.verifyAndGetCollection(
+            contractAddress,
+            walletAddress,
+            Array.from(tokenIdsSet),
+            provider
+          );
+          
+          if (collectionData && collectionData.balance > 0) {
+            collections.push(collectionData);
+          }
+        } catch (error) {
+          console.warn(`Failed to verify collection ${contractAddress}:`, error);
+        }
+      }
+      
+      console.log(`✅ Verified ${collections.length} collections with current ownership`);
+      
+      return collections;
+      
+    } catch (error) {
+      console.error('Wallet scan failed:', error);
+      throw error;
+    }
+  }
+  
+  // Verify ownership and get collection info
+  private static async verifyAndGetCollection(
+    contractAddress: string,
+    walletAddress: string,
+    potentialTokenIds: number[],
+    provider: ethers.JsonRpcProvider
+  ): Promise<NFTCollection | null> {
+    const abi = [
+      'function name() view returns (string)',
+      'function symbol() view returns (string)',
+      'function balanceOf(address owner) view returns (uint256)',
+      'function ownerOf(uint256 tokenId) view returns (address)',
+      'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
+      'function supportsInterface(bytes4 interfaceId) view returns (bool)'
+    ];
+    
+    try {
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      
+      // Check if it's ERC721
+      const isERC721 = await contract.supportsInterface('0x80ac58cd').catch(() => false);
+      if (!isERC721) {
+        return null;
+      }
+      
+      // Get name and symbol
+      const [name, symbol, balance] = await Promise.all([
+        contract.name().catch(() => 'Unknown Collection'),
+        contract.symbol().catch(() => 'UNKNOWN'),
+        contract.balanceOf(walletAddress)
+      ]);
+      
+      const balanceNum = Number(balance);
+      
+      if (balanceNum === 0) {
+        return null;
+      }
+      
+      // Get actual owned token IDs
+      const ownedTokenIds: number[] = [];
+      
+      // Try enumerable method first
+      try {
+        for (let i = 0; i < balanceNum && i < 100; i++) { // Cap at 100 for performance
+          const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+          ownedTokenIds.push(Number(tokenId));
+        }
+      } catch (error) {
+        // Not enumerable, verify from potential IDs
+        for (const tokenId of potentialTokenIds.slice(0, 100)) {
+          try {
+            const owner = await contract.ownerOf(tokenId);
+            if (owner.toLowerCase() === walletAddress.toLowerCase()) {
+              ownedTokenIds.push(tokenId);
+            }
+          } catch (e) {
+            // Token doesn't exist or error
+          }
+        }
+      }
+      
+      return {
+        contractAddress: contractAddress.toLowerCase(),
+        name,
+        symbol,
+        balance: balanceNum,
+        tokenIds: ownedTokenIds
+      };
+      
+    } catch (error) {
+      console.error(`Failed to get collection info for ${contractAddress}:`, error);
+      return null;
+    }
+  }
+  
+  // Get NFT metadata
+  static async getNFTMetadata(
+    contractAddress: string,
+    tokenId: number,
+    provider: ethers.JsonRpcProvider
+  ): Promise<NFTMetadata | null> {
+    try {
+      const abi = [
+        'function tokenURI(uint256 tokenId) view returns (string)'
+      ];
+      
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      const tokenURI = await contract.tokenURI(tokenId);
+      
+      // Fetch metadata from IPFS or HTTP
+      let metadataUrl = tokenURI;
+      if (tokenURI.startsWith('ipfs://')) {
+        metadataUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      }
+      
+      const response = await fetch(metadataUrl, { 
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch metadata');
+      }
+      
+      const metadata = await response.json();
+      
+      let image = metadata.image || '';
+      if (image.startsWith('ipfs://')) {
+        image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      }
+      
+      return {
+        tokenId,
+        name: metadata.name || `#${tokenId}`,
+        image,
+        attributes: metadata.attributes || []
+      };
+      
+    } catch (error) {
+      console.error(`Failed to get metadata for ${contractAddress} #${tokenId}:`, error);
+      return null;
+    }
+  }
+}
+
+
+STEP 2: ADD API ENDPOINTS FOR WALLET SCANNING
+
+1. UPDATE FILE: server/routes.ts
+
+Add wallet scanning endpoints:
+
+// Scan wallet for all collections
+app.get('/api/wallet/scan/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+    
+    const rpcUrl = process.env.RPC_URL || 'https://rpc.basedai.network';
+    const collections = await WalletScanner.scanWalletCollections(address, rpcUrl);
+    
+    res.json({ 
+      address, 
+      collections,
+      scannedAt: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Wallet scan failed:', error);
+    res.status(500).json({ error: 'Failed to scan wallet' });
+  }
+});
+
+// Get NFT metadata
+app.get('/api/nft/metadata/:contractAddress/:tokenId', async (req, res) => {
+  try {
+    const { contractAddress, tokenId } = req.params;
+    
+    if (!ethers.isAddress(contractAddress)) {
+      return res.status(400).json({ error: 'Invalid contract address' });
+    }
+    
+    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://rpc.basedai.network');
+    const metadata = await WalletScanner.getNFTMetadata(
+      contractAddress,
+      parseInt(tokenId),
+      provider
+    );
+    
+    if (!metadata) {
+      return res.status(404).json({ error: 'Metadata not found' });
+    }
+    
+    res.json(metadata);
+    
+  } catch (error) {
+    console.error('Metadata fetch failed:', error);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
+  }
+});
+
+Add import at top:
+import { WalletScanner } from './lib/walletScanner';
+
+
+STEP 3: CREATE MULTI-COLLECTION PORTFOLIO HOOK
+
+1. CREATE FILE: client/src/hooks/useWalletCollections.ts
+
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+
+interface CollectionSummary {
+  contractAddress: string;
+  name: string;
+  symbol: string;
+  balance: number;
+  tokenIds: number[];
+  representativeImage?: string;
+}
+
+export function useWalletCollections() {
+  const { address, isConnected } = useAccount();
+  const [collections, setCollections] = useState<CollectionSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setCollections([]);
+      return;
+    }
+
+    scanWallet();
+  }, [address, isConnected]);
+
+  async function scanWallet() {
+    if (!address) return;
+
+    // Check cache first (30 minute cache)
+    const cacheKey = `wallet_collections_${address}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      const age = Date.now() - timestamp;
+      
+      if (age < 30 * 60 * 1000) { // 30 minutes
+        setCollections(data);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/wallet/scan/${address}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to scan wallet');
+      }
+
+      const data = await response.json();
+      const collectionsData = data.collections || [];
+
+      // Fetch representative image for each collection
+      const collectionsWithImages = await Promise.all(
+        collectionsData.map(async (col: CollectionSummary) => {
+          if (col.tokenIds.length > 0) {
+            try {
+              const tokenId = col.tokenIds[0]; // Use first token as representative
+              const metadataRes = await fetch(
+                `/api/nft/metadata/${col.contractAddress}/${tokenId}`
+              );
+              
+              if (metadataRes.ok) {
+                const metadata = await metadataRes.json();
+                return { ...col, representativeImage: metadata.image };
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch representative image for ${col.name}`);
+            }
+          }
+          return col;
+        })
+      );
+
+      // Cache result
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        data: collectionsWithImages
+      }));
+
+      setCollections(collectionsWithImages);
+
+    } catch (err: any) {
+      console.error('Wallet scan error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return {
+    collections,
+    loading,
+    error,
+    refetch: scanWallet
+  };
+}
+
+
+STEP 4: CREATE COLLECTION CARD SELECTOR COMPONENT
+
+1. CREATE FILE: client/src/components/CollectionSelector.tsx
+
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+
+interface Collection {
+  contractAddress: string;
+  name: string;
+  symbol: string;
+  balance: number;
+  representativeImage?: string;
+}
+
+interface CollectionSelectorProps {
+  collections: Collection[];
+  selectedCollection: string | null;
+  onSelectCollection: (address: string | null) => void;
+  loading?: boolean;
+}
+
+export default function CollectionSelector({ 
+  collections, 
+  selectedCollection, 
+  onSelectCollection,
+  loading 
+}: CollectionSelectorProps) {
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Scanning wallet for NFT collections...</span>
+      </div>
+    );
+  }
+
+  if (collections.length === 0) {
+    return null;
+  }
+
+  const totalNFTs = collections.reduce((sum, col) => sum + col.balance, 0);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Your Collections ({collections.length})</h3>
+        <span className="text-sm text-muted-foreground">{totalNFTs} Total NFTs</span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {/* All Collections Card */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-lg ${
+            selectedCollection === null
+              ? 'ring-2 ring-primary shadow-lg'
+              : 'hover:ring-1 hover:ring-primary/50'
+          }`}
+          onClick={() => onSelectCollection(null)}
+        >
+          <CardContent className="p-4">
+            <div className="aspect-square bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg mb-3 flex items-center justify-center">
+              <span className="text-4xl">🎨</span>
+            </div>
+            <h4 className="font-semibold text-sm mb-1 truncate">All Collections</h4>
+            <p className="text-xs text-muted-foreground">{totalNFTs} NFTs</p>
+          </CardContent>
+        </Card>
+
+        {/* Individual Collection Cards */}
+        {collections.map(collection => (
+          <Card
+            key={collection.contractAddress}
+            className={`cursor-pointer transition-all hover:shadow-lg ${
+              selectedCollection === collection.contractAddress
+                ? 'ring-2 ring-primary shadow-lg'
+                : 'hover:ring-1 hover:ring-primary/50'
+            }`}
+            onClick={() => onSelectCollection(
+              selectedCollection === collection.contractAddress 
+                ? null 
+                : collection.contractAddress
+            )}
+          >
+            <CardContent className="p-4">
+              <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
+                {collection.representativeImage ? (
+                  <img
+                    src={collection.representativeImage}
+                    alt={collection.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23374151"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="%239CA3AF"%3E%F0%9F%96%BC%3C/text%3E%3C/svg%3E';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">
+                    🖼️
+                  </div>
+                )}
+              </div>
+              <h4 className="font-semibold text-sm mb-1 truncate" title={collection.name}>
+                {collection.name}
+              </h4>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{collection.balance} NFT{collection.balance !== 1 ? 's' : ''}</p>
+                <Badge variant="outline" className="text-xs">{collection.symbol}</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+STEP 5: UPDATE PROFILE PAGE WITH MULTI-COLLECTION SUPPORT
+
+1. UPDATE FILE: client/src/pages/Profile.tsx
+
+Add at the top of the Profile component (after imports):
+
+import { useWalletCollections } from '@/hooks/useWalletCollections';
+import CollectionSelector from '@/components/CollectionSelector';
+
+export default function Profile() {
+  const { address, isConnected } = useAccount();
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  
+  // Add wallet collections hook
+  const { 
+    collections: walletCollections, 
+    loading: collectionsLoading, 
+    error: collectionsError 
+  } = useWalletCollections();
+
+  // Your existing NFT loading logic
+  const [userNFTs, setUserNFTs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter NFTs by selected collection
+  const filteredNFTs = useMemo(() => {
+    if (!selectedCollection) {
+      return userNFTs;
+    }
+    return userNFTs.filter(nft => 
+      nft.contractAddress?.toLowerCase() === selectedCollection.toLowerCase()
+    );
+  }, [userNFTs, selectedCollection]);
+
+  // Update your NFT fetching to include contract address
+  useEffect(() => {
+    if (!isConnected || !address) return;
+    
+    async function fetchAllNFTs() {
+      setLoading(true);
+      try {
+        // Fetch NFTs from all collections detected
+        const allNFTs: any[] = [];
+        
+        for (const collection of walletCollections) {
+          for (const tokenId of collection.tokenIds) {
+            try {
+              // Fetch metadata for each NFT
+              const metadataRes = await fetch(
+                `/api/nft/metadata/${collection.contractAddress}/${tokenId}`
+              );
+              
+              if (metadataRes.ok) {
+                const metadata = await metadataRes.json();
+                allNFTs.push({
+                  ...metadata,
+                  contractAddress: collection.contractAddress,
+                  collectionName: collection.name,
+                  collectionSymbol: collection.symbol
+                });
+              }
+            } catch (error) {
+              console.error(`Failed to fetch NFT ${collection.contractAddress}:${tokenId}`);
+            }
+          }
+        }
+        
+        setUserNFTs(allNFTs);
+      } catch (error) {
+        console.error('Failed to fetch NFTs:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (walletCollections.length > 0) {
+      fetchAllNFTs();
+    }
+  }, [address, isConnected, walletCollections]);
+
+  // In your JSX, add CollectionSelector before the NFT grid:
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">My Portfolio</h1>
+
+      {isConnected ? (
+        <>
+          {/* Collection Selector */}
+          <CollectionSelector
+            collections={walletCollections}
+            selectedCollection={selectedCollection}
+            onSelectCollection={setSelectedCollection}
+            loading={collectionsLoading}
+          />
+
+          {collectionsError && (
+            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-6">
+              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                ⚠️ {collectionsError}
+              </p>
+            </div>
+          )}
+
+          {/* Selected Collection Info */}
+          {selectedCollection && (
+            <div className="mb-6">
+              {(() => {
+                const selected = walletCollections.find(
+                  c => c.contractAddress === selectedCollection
+                );
+                return selected ? (
+                  <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    {selected.representativeImage && (
+                      <img
+                        src={selected.representativeImage}
+                        alt={selected.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-semibold">{selected.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Viewing {filteredNFTs.length} of {selected.balance} NFTs
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedCollection(null)}
+                      className="ml-auto px-3 py-1 text-sm bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                    >
+                      View All
+                    </button>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {/* NFT Grid */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : filteredNFTs.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredNFTs.map((nft) => (
+                <Card key={`${nft.contractAddress}-${nft.tokenId}`} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-square overflow-hidden bg-muted">
+                    <img
+                      src={nft.image}
+                      alt={nft.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-1">{nft.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {nft.collectionName} #{nft.tokenId}
+                    </p>
+                    {/* Your existing buttons */}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">
+                {selectedCollection 
+                  ? 'No NFTs found in this collection'
+                  : 'No NFTs found in your wallet'
+                }
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-16">
+          <p className="text-muted-foreground mb-4">Connect your wallet to view your portfolio</p>
+          <ConnectButton />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+STEP 6: ADD REFRESH BUTTON FOR MANUAL RESCAN
+
+1. UPDATE FILE: client/src/pages/Profile.tsx
+
+Add refresh button near the title:
+
+import { RefreshCw } from 'lucide-react';
+
+<div className="flex items-center justify-between mb-8">
+  <h1 className="text-4xl font-bold">My Portfolio</h1>
+  {isConnected && (
+    <button
+      onClick={() => {
+        // Clear cache and refetch
+        sessionStorage.removeItem(`wallet_collections_${address}`);
+        window.location.reload();
+      }}
+      className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+    >
+      <RefreshCw className="w-4 h-4" />
+      Rescan Wallet
+    </button>
+  )}
+</div>
+
+
+TESTING CHECKLIST:
+
+✅ Wallet scanner detects all NFT collections
+✅ Collection cards display with representative images
+✅ Can click to filter by collection
+✅ Can click "All Collections" to view everything
+✅ NFT count accurate per collection
+✅ Representative image loads correctly
+✅ Fallback image shows if representative fails
+✅ Collection metadata fetched correctly
+✅ Scanning caches for 30 minutes
+✅ Rescan button clears cache and reloads
+✅ Works with multiple collections
+✅ Works with single collection
+✅ Shows appropriate message when no NFTs
+✅ Mobile responsive
+✅ Loading states display properly
+
+PERFORMANCE NOTES:
+
+1. First scan may take 30-60 seconds for wallets with many NFTs
+2. Results are cached for 30 minutes to improve performance
+3. For production, consider using a blockchain indexer (The Graph, Moralis, etc.)
+4. Block scanning limited to last 500k blocks for performance
+
+POST-IMPLEMENTATION:
+
+Test with wallets that:
+- Hold only Guardian NFTs
+- Hold multiple different collections
+- Hold no NFTs
+- Recently minted/bought NFTs

@@ -227,23 +227,20 @@ class RPCQueue {
     });
   }
 
-  private async processQueue() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) {
-      return;
-    }
+  private processQueue() {
+    // Drain queue up to maxConcurrent slots
+    while (this.running < this.maxConcurrent && this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (!item) break;
 
-    const item = this.queue.shift();
-    if (!item) return;
-
-    this.running++;
-    try {
-      const result = await item.fn();
-      item.resolve(result);
-    } catch (error) {
-      item.reject(error);
-    } finally {
-      this.running--;
-      this.processQueue();
+      this.running++;
+      item.fn()
+        .then(result => item.resolve(result))
+        .catch(error => item.reject(error))
+        .finally(() => {
+          this.running--;
+          this.processQueue();
+        });
     }
   }
 
