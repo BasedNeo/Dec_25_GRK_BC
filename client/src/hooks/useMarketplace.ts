@@ -256,7 +256,7 @@ export function useMarketplace() {
     functionName: 'isApprovedForAll',
     args: address ? [address, MARKETPLACE_CONTRACT as `0x${string}`] : undefined,
     chainId: CHAIN_ID,
-    query: { enabled: !!address, refetchInterval: 5000 },
+    query: { enabled: !!address, refetchInterval: 30000 },
   });
 
   // Refetch approval after approval transaction confirms

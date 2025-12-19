@@ -55,7 +55,7 @@ export function useUserVote(proposalId: string | undefined, voter: string | unde
       return res.json();
     },
     enabled: !!proposalId && !!voter,
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
 }
 

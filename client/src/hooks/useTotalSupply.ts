@@ -21,7 +21,7 @@ export function useTotalSupply() {
     abi: contractAbi,
     functionName: 'totalMinted',
     chainId: CHAIN_ID,
-    query: { refetchInterval: 10000, initialData: cachedSupply ? BigInt(cachedSupply) : undefined }
+    query: { refetchInterval: 30000, initialData: cachedSupply ? BigInt(cachedSupply) : undefined }
   });
 
   const { data: maxSupply } = useReadContract({
