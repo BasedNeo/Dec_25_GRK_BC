@@ -19,6 +19,7 @@ import { CircuitBreakerMonitor } from './CircuitBreakerMonitor';
 import { circuitBreakerManager } from '@/lib/circuitBreaker';
 import { RateLimitMonitor } from './RateLimitMonitor';
 import { SessionMonitor } from './SessionMonitor';
+import { SecurityMonitor } from './SecurityMonitor';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1374,6 +1375,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Session Management
             </h3>
             <SessionMonitor />
+          </Card>
+
+          <Card className="bg-black/60 border-green-500/30 p-6 mb-6" data-testid="security-monitor-card">
+            <h3 className="text-xl font-orbitron font-bold text-green-400 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Security Headers & CORS
+            </h3>
+            <SecurityMonitor />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">

@@ -21,6 +21,8 @@ import { SecureDatabaseConnection } from './lib/dbSecurity';
 import { SessionManager } from './lib/sessionManager';
 import { SignatureVerifier } from './lib/signatureVerifier';
 import { NonceManager } from './lib/nonceManager';
+import { OriginValidator } from './lib/originValidator';
+import { CSRFProtection } from './lib/csrfProtection';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -1352,6 +1354,67 @@ export async function registerRoutes(
     try {
       AdvancedRateLimiter.clearSuspiciousIPs();
       res.json({ success: true, message: 'Cleared suspicious IP list' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/auth/csrf-token', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const sessionId = req.session!.id;
+      const csrfToken = CSRFProtection.generateToken(sessionId);
+      res.json({ csrfToken });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/cors-violations', requireAdmin, async (req, res) => {
+    try {
+      const suspicious = OriginValidator.getSuspiciousOrigins();
+      res.json({ suspicious });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/security/clear-cors-violations', requireAdmin, async (req, res) => {
+    try {
+      OriginValidator.clearSuspiciousOrigins();
+      res.json({ success: true, message: 'Cleared CORS violation list' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/security/add-origin', requireAdmin, async (req, res) => {
+    try {
+      const { origin } = req.body;
+      
+      if (!origin || !origin.startsWith('http')) {
+        return res.status(400).json({ error: 'Invalid origin format' });
+      }
+      
+      OriginValidator.addAllowedOrigin(origin);
+      res.json({ success: true, message: `Added origin: ${origin}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/allowed-origins', requireAdmin, async (req, res) => {
+    try {
+      const origins = OriginValidator.getAllowedOrigins();
+      res.json({ origins });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/admin/security/csrf-stats', requireAdmin, async (req, res) => {
+    try {
+      const stats = CSRFProtection.getStats();
+      res.json(stats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

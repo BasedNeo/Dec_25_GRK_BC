@@ -28,19 +28,61 @@ export class AuthManager {
       throw new Error('No active session');
     }
     
-    const headers = {
-      ...options.headers,
+    const method = options.method?.toUpperCase() || 'GET';
+    const needsCsrf = method === 'POST' || method === 'PUT' || method === 'DELETE';
+    
+    let csrfToken = localStorage.getItem('csrfToken');
+    
+    if (!csrfToken && needsCsrf) {
+      try {
+        const csrfRes = await fetch('/api/auth/csrf-token', {
+          headers: { 'X-Session-ID': sessionId }
+        });
+        if (csrfRes.ok) {
+          const csrfData = await csrfRes.json();
+          csrfToken = csrfData.csrfToken;
+          if (csrfToken) {
+            localStorage.setItem('csrfToken', csrfToken);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch CSRF token:', err);
+      }
+    }
+    
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string>),
       'X-Session-ID': sessionId
     };
+    
+    if (csrfToken && needsCsrf) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
     
     const response = await fetch(url, { ...options, headers });
     
     if (response.status === 401) {
       this.clearSession();
+      localStorage.removeItem('csrfToken');
       throw new Error('Session expired');
     }
     
+    if (response.status === 403) {
+      try {
+        const data = await response.clone().json();
+        if (data.code === 'INVALID_CSRF_TOKEN') {
+          localStorage.removeItem('csrfToken');
+          throw new Error('CSRF token invalid, please try again');
+        }
+      } catch (e) {
+      }
+    }
+    
     return response;
+  }
+  
+  static clearCsrfToken() {
+    localStorage.removeItem('csrfToken');
   }
 }
 

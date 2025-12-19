@@ -1,6 +1,7 @@
 import helmet from 'helmet';
 import cors from 'cors';
 import type { Request, Response, NextFunction } from 'express';
+import { OriginValidator } from '../lib/originValidator';
 
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
@@ -41,30 +42,29 @@ export const helmetConfig = helmet({
 
 export const corsConfig = cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      'http://localhost:5000',
-      'http://localhost:5173',
-      'https://basedguardians.com',
-      'https://www.basedguardians.com'
-    ];
-    
     if (!origin) return callback(null, true);
     
-    if (process.env.NODE_ENV === 'production') {
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS] Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    } else {
+    if (OriginValidator.isOriginAllowed(origin)) {
       callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      OriginValidator.trackSuspiciousOrigin(origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'X-Session-ID',
+    'X-CSRF-Token',
+    'X-Wallet-Address',
+    'X-Admin-Signature',
+    'X-Requested-With'
+  ],
+  exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
   maxAge: 86400
 });
 
