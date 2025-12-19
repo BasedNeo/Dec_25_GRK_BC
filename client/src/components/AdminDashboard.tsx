@@ -18,6 +18,7 @@ import { perfMonitor } from '@/lib/performanceMonitor';
 import { CircuitBreakerMonitor } from './CircuitBreakerMonitor';
 import { circuitBreakerManager } from '@/lib/circuitBreaker';
 import { RateLimitMonitor } from './RateLimitMonitor';
+import { SessionMonitor } from './SessionMonitor';
 
 const FinancialHealthCheck = () => {
   const [health, setHealth] = useState<any>(null);
@@ -1365,6 +1366,14 @@ export function AdminDashboard({ isOpen, onClose, onOpenInbox }: AdminDashboardP
               Rate Limiting & DDoS Protection
             </h3>
             <RateLimitMonitor />
+          </Card>
+
+          <Card className="bg-black/60 border-purple-500/30 p-6 mb-6" data-testid="session-monitor-card">
+            <h3 className="text-xl font-orbitron font-bold text-purple-400 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Session Management
+            </h3>
+            <SessionMonitor />
           </Card>
           
           <Card className="bg-black/60 border-cyan-500/30 p-6 mb-6">
