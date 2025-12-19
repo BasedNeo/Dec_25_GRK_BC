@@ -30,9 +30,7 @@ export function HealthCheckBanner() {
     return () => clearTimeout(delay);
   }, []);
 
-  if (initialLoading) return null;
-
-  const checkHealth = async () => {
+  const checkHealth = useCallback(async () => {
     setHealth({ rpc: 'checking', contracts: 'checking' });
     
     let rpcStatus: HealthStatus['rpc'] = 'down';
@@ -97,17 +95,23 @@ export function HealthCheckBanner() {
 
     setHealth({ rpc: rpcStatus, contracts: contractsStatus, message });
     setLastCheck(new Date());
-  };
-
-  useEffect(() => {
-    checkHealth();
   }, []);
 
-  useInterval(checkHealth, 60000);
+  useEffect(() => {
+    if (!initialLoading) {
+      checkHealth();
+    }
+  }, [initialLoading, checkHealth]);
+
+  useInterval(() => {
+    if (!initialLoading) {
+      checkHealth();
+    }
+  }, 60000);
 
   const hasIssues = health.rpc === 'down' || health.rpc === 'degraded' || health.contracts === 'paused' || health.contracts === 'error';
 
-  if (!isAdmin || !hasIssues || dismissed) return null;
+  if (initialLoading || !isAdmin || !hasIssues || dismissed) return null;
 
   const bgColor = health.rpc === 'down' ? 'bg-red-500/10 border-red-500/50' : 'bg-amber-500/10 border-amber-500/50';
   const textColor = health.rpc === 'down' ? 'text-red-400' : 'text-amber-400';
