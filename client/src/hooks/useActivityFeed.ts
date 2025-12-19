@@ -92,6 +92,36 @@ interface UseActivityFeedOptions {
   refreshInterval?: number; // ms
 }
 
+// PERSISTENT CACHE KEY for instant loading
+const ACTIVITY_CACHE_KEY = 'based_activity_feed_v2';
+const ACTIVITY_CACHE_DURATION = 120000; // 2 minutes
+
+interface CachedActivityData {
+  activities: Activity[];
+  stats: ContractStats;
+  lastBlock: number;
+  timestamp: number;
+}
+
+function loadCachedActivity(): CachedActivityData | null {
+  try {
+    const cached = localStorage.getItem(ACTIVITY_CACHE_KEY);
+    if (!cached) return null;
+    const data = JSON.parse(cached) as CachedActivityData;
+    // Accept cache up to 10 minutes old for instant display
+    if (Date.now() - data.timestamp > 600000) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedActivity(data: CachedActivityData): void {
+  try {
+    localStorage.setItem(ACTIVITY_CACHE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
 export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   const { 
     limit = 50, 
@@ -99,17 +129,28 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
     refreshInterval = 300000 // 5 minutes - reduces RPC calls
   } = options;
 
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // OPTIMIZATION: Load cached data using lazy initialization for instant display
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    const cached = loadCachedActivity();
+    return cached?.activities || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !loadCachedActivity());
+  const [isRefreshing, setIsRefreshing] = useState(() => !!loadCachedActivity());
   const [error, setError] = useState<string | null>(null);
-  const [lastBlock, setLastBlock] = useState<number>(0);
+  const [lastBlock, setLastBlock] = useState<number>(() => {
+    const cached = loadCachedActivity();
+    return cached?.lastBlock || 0;
+  });
   
   // Contract state for accurate cumulative stats
-  const [contractStats, setContractStats] = useState<ContractStats>({
-    totalMinted: 0,
-    maxSupply: 3732,
-    activeListings: 0,
-    activeOffers: 0,
+  const [contractStats, setContractStats] = useState<ContractStats>(() => {
+    const cached = loadCachedActivity();
+    return cached?.stats || {
+      totalMinted: 0,
+      maxSupply: 3732,
+      activeListings: 0,
+      activeOffers: 0,
+    };
   });
 
   // RPC retry helper for resilience against transient failures
@@ -273,15 +314,30 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       // Sort by timestamp descending (newest first)
       parsedActivities.sort((a, b) => b.timestamp - a.timestamp);
       
-      setActivities(parsedActivities.slice(0, limit));
+      const finalActivities = parsedActivities.slice(0, limit);
+      setActivities(finalActivities);
       setLastBlock(currentBlock);
       setError(null);
+      
+      // OPTIMIZATION: Persist to localStorage for instant load on next visit
+      saveCachedActivity({
+        activities: finalActivities,
+        stats: {
+          totalMinted: Number(totalMinted),
+          maxSupply: 3732,
+          activeListings: 0,
+          activeOffers: 0,
+        },
+        lastBlock: currentBlock,
+        timestamp: Date.now(),
+      });
       
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || 'Failed to fetch activity');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
       endTimer();
     }
     });
@@ -339,6 +395,7 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
   return {
     activities,
     isLoading,
+    isRefreshing, // True when showing cached data and refreshing in background
     error,
     lastBlock,
     stats,
