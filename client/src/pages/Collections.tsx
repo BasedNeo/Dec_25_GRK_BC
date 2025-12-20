@@ -114,17 +114,13 @@ export default function Collections() {
       const res = await fetch('/api/collections');
       const data = await res.json();
       
-      console.log('[Collections] Fetched collections:', data.length, data);
-      
       const hasBasedGuardians = data.some(
         (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
       );
       
       if (!hasBasedGuardians) {
-        console.log('[Collections] Adding default Based Guardians');
         setCollections([BASED_GUARDIANS_DEFAULT, ...data]);
       } else {
-        console.log('[Collections] Setting all collections:', data.length);
         setCollections(data);
       }
     } catch (error) {
@@ -232,14 +228,6 @@ export default function Collections() {
 
   const featured = filteredCollections.filter(c => c.isFeatured);
   const other = filteredCollections.filter(c => !c.isFeatured);
-  
-  console.log('[Collections] State:', { 
-    collectionsCount: collections.length, 
-    filteredCount: filteredCollections.length,
-    featuredCount: featured.length, 
-    otherCount: other.length,
-    collections: collections.map(c => ({ name: c.name, isFeatured: c.isFeatured }))
-  });
 
   return (
     <>
@@ -297,11 +285,6 @@ export default function Collections() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Debug info - remove after fixing */}
-          <div className="mb-4 p-3 bg-red-900/50 rounded text-white text-sm">
-            DEBUG: Total: {collections.length} | Featured: {featured.length} | Other: {other.length}
           </div>
 
           {featured.length > 0 && (
