@@ -1,0 +1,108 @@
+FINAL COLLECTIONS FIX - MAKE CLICKING WORK OR DISABLE FEATURE
+
+═══════════════════════════════════════════════════════════════════
+OPTION 1: FIX COLLECTION LINKS (ONE LAST TRY)
+═══════════════════════════════════════════════════════════════════
+
+UPDATE FILE: client/src/pages/Collections.tsx
+
+FIND the CollectionCard function (line ~165) and CHANGE THE LINK:
+
+FIND THIS LINE (around line 172):
+<Link href="/marketplace">
+
+REPLACE WITH:
+<Link href={`/browse?collection=${collection.contractAddress}`}>
+
+That's it. Just change that ONE line.
+
+This will make clicking a collection take you to the Browse page filtered
+by that collection.
+
+
+═══════════════════════════════════════════════════════════════════
+TEST IT
+═══════════════════════════════════════════════════════════════════
+
+1. Save the file
+2. Go to /collections
+3. Click on "Based Guardians" card
+4. Does it take you to a page showing Based Guardians NFTs?
+
+If YES → We're done! Collections work!
+If NO → Move to Option 2 below.
+
+
+═══════════════════════════════════════════════════════════════════
+OPTION 2: DISABLE OTHER COLLECTIONS - SHOW ONLY BASED GUARDIANS
+═══════════════════════════════════════════════════════════════════
+
+If Option 1 doesn't work, let's hide all other collections and ship with
+just Based Guardians for now.
+
+UPDATE FILE: client/src/pages/Collections.tsx
+
+FIND the fetchCollections function (line ~61) and REPLACE IT with:
+
+async function fetchCollections() {
+  try {
+    console.log('[Collections] Showing only Based Guardians for launch');
+    
+    // LAUNCH MODE: Only show Based Guardians
+    // We'll add multi-collection support in a future update
+    setCollections([BASED_GUARDIANS_DEFAULT]);
+    
+  } catch (error) {
+    console.error('[Collections] Failed to fetch collections:', error);
+    setCollections([BASED_GUARDIANS_DEFAULT]);
+  } finally {
+    setLoading(false);
+  }
+}
+
+This disables the API call and ONLY shows Based Guardians.
+
+ALSO UPDATE the CollectionCard link to go to the main Browse page:
+
+FIND THIS LINE (around line 172):
+<Link href="/marketplace">
+
+REPLACE WITH:
+<Link href="/browse">
+
+Now the Collections page will:
+✅ Show ONLY Based Guardians
+✅ Clicking it goes to Browse page
+✅ No other collections visible
+✅ No crashes, no complexity
+
+
+═══════════════════════════════════════════════════════════════════
+HIDE THE COLLECTIONS NAV ITEM (OPTIONAL)
+═══════════════════════════════════════════════════════════════════
+
+If you want to completely hide the Collections page from navigation until
+we add multi-collection support:
+
+UPDATE FILE: client/src/components/Navbar.tsx
+
+FIND the nav items array and COMMENT OUT the collections item:
+
+// Temporarily disabled for launch - will add in v2
+// { id: 'collections', label: t('nav.collections', 'Collections'), icon: Grid3x3 },
+
+
+═══════════════════════════════════════════════════════════════════
+RECOMMENDATION
+═══════════════════════════════════════════════════════════════════
+
+Try Option 1 first. If clicking a collection doesn't show its NFTs,
+immediately switch to Option 2.
+
+Option 2 gives you:
+✅ Clean, simple Collections page
+✅ No broken features
+✅ Focus on core functionality
+✅ Can add multi-collection in v2 after launch
+
+This is the smart move for launch.
