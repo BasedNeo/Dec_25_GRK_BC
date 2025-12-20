@@ -1,0 +1,230 @@
+SET COLLECTION IMAGES FROM AFTERMINT
+
+ISSUE: Collections are active but imageUrl is null or broken.
+
+EASIEST FIX: Get image URLs directly from AfterMint where these collections already display.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: MANUAL IMAGE URLS (FASTEST - 2 MINUTES)
+═══════════════════════════════════════════════════════════════════
+
+Since I can see the collections on AfterMint, let me give you the direct SQL to set images.
+
+Run these SQL commands in your database (paste into Drizzle Studio SQL tab or psql):
+
+-- BASEDAI 2140
+UPDATE collections 
+SET image_url = 'https://aftermint.trade/_next/image?url=https%3A%2F%2Fipfs.io%2Fipfs%2FQmXYZ...&w=640&q=75'
+WHERE address = '0x74f442F6bd614389cA63731f80901f603CDe1b53';
+
+-- Brain Punks  
+UPDATE collections
+SET image_url = 'https://aftermint.trade/_next/image?url=https%3A%2F%2Fipfs.io%2Fipfs%2FQmABC...&w=640&q=75'
+WHERE address = '0x8EB23fefe4900ecEb8354Bee78B6f49c5983b87C';
+
+-- Based Beasts
+UPDATE collections
+SET image_url = 'https://aftermint.trade/_next/image?url=https%3A%2F%2Fipfs.io%2Fipfs%2FQmDEF...&w=640&q=75'
+WHERE address = '0x3BFa8d4a9D77A54B623a272A558F9b471DbDd21f';
+
+PROBLEM: I don't have the actual image URLs from AfterMint.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: FETCH IMAGES FROM AFTERMINT API (EASIEST AUTOMATED WAY)
+═══════════════════════════════════════════════════════════════════
+
+Let me create a script that fetches the actual image URLs from AfterMint.
+
+1. CREATE FILE: script/fetch-aftermint-images.ts
+
+import fetch from 'node-fetch';
+import { db } from '../server/db';
+import { collections } from '../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const AFTERMINT_API = 'https://aftermint.trade/api';
+
+async function fetchCollectionImage(address: string) {
+  try {
+    console.log(`\nFetching image for ${address}...`);
+    
+    // Try AfterMint's collection page
+    const pageUrl = `https://aftermint.trade/collection/${address}`;
+    const response = await fetch(pageUrl);
+    const html = await response.text();
+    
+    // Method 1: Look for og:image meta tag
+    const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/);
+    if (ogImageMatch && ogImageMatch[1]) {
+      const imageUrl = ogImageMatch[1];
+      console.log(`✓ Found og:image: ${imageUrl}`);
+      return imageUrl;
+    }
+    
+    // Method 2: Look for the first collection image in the page
+    const imgRegex = /<img[^>]+src="([^"]*(?:ipfs|collection|nft)[^"]*)"[^>]*>/gi;
+    const imgMatches = html.matchAll(imgRegex);
+    
+    for (const match of imgMatches) {
+      if (match[1] && !match[1].includes('icon') && !match[1].includes('logo')) {
+        console.log(`✓ Found img src: ${match[1]}`);
+        return match[1];
+      }
+    }
+    
+    // Method 3: Look for Next.js image URLs
+    const nextImageMatch = html.match(/_next\/image\?url=([^&"]+)/);
+    if (nextImageMatch) {
+      const imageUrl = decodeURIComponent(nextImageMatch[1]);
+      console.log(`✓ Found Next.js image: ${imageUrl}`);
+      return imageUrl;
+    }
+    
+    console.log('✗ No image found on AfterMint page');
+    return null;
+    
+  } catch (error) {
+    console.error(`Error fetching from AfterMint:`, error);
+    return null;
+  }
+}
+
+async function updateCollectionImages() {
+  try {
+    // Get all collections with missing images
+    const collectionsToUpdate = await db
+      .select()
+      .from(collections)
+      .where(eq(collections.imageUrl, null))
+      .execute();
+    
+    console.log(`Found ${collectionsToUpdate.length} collections without images\n`);
+    
+    for (const collection of collectionsToUpdate) {
+      const imageUrl = await fetchCollectionImage(collection.address);
+      
+      if (imageUrl) {
+        await db
+          .update(collections)
+          .set({ imageUrl })
+          .where(eq(collections.address, collection.address))
+          .execute();
+        
+        console.log(`✓ Updated ${collection.symbol}: ${imageUrl}\n`);
+      } else {
+        // Set a styled placeholder
+        const placeholderUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol || collection.name)}`;
+        
+        await db
+          .update(collections)
+          .set({ imageUrl: placeholderUrl })
+          .where(eq(collections.address, collection.address))
+          .execute();
+        
+        console.log(`✓ Set placeholder for ${collection.symbol}\n`);
+      }
+      
+      // Wait 2 seconds between requests to be polite
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    console.log('\n✅ All collections updated!');
+    
+  } catch (error) {
+    console.error('Error updating collections:', error);
+  }
+}
+
+updateCollectionImages().then(() => process.exit(0));
+
+2. Run the script:
+npx tsx script/fetch-aftermint-images.ts
+
+This will:
+- Fetch each collection's page from AfterMint
+- Extract the image URL
+- Update your database
+- Use styled placeholders for any that fail
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: ALTERNATIVE - USE STYLED PLACEHOLDERS FOR ALL
+═══════════════════════════════════════════════════════════════════
+
+The fastest way if AfterMint scraping doesn't work:
+
+Run this SQL to give EVERY collection a nice styled placeholder:
+
+UPDATE collections 
+SET image_url = CONCAT(
+  'https://via.placeholder.com/400/6366f1/ffffff?text=',
+  REPLACE(symbol, ' ', '+')
+)
+WHERE image_url IS NULL OR image_url = '';
+
+This creates placeholders like:
+- https://via.placeholder.com/400/6366f1/ffffff?text=BASEDAI2140
+- https://via.placeholder.com/400/6366f1/ffffff?text=BPUNKS
+- https://via.placeholder.com/400/6366f1/ffffff?text=BEASTS
+
+They'll match your site's primary color (#6366f1).
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: MANUAL ENTRY (IF YOU KNOW THE IMAGES)
+═══════════════════════════════════════════════════════════════════
+
+If you can access AfterMint and see the images:
+
+1. Go to https://aftermint.trade/collection
+2. Right-click each collection image
+3. Choose "Copy Image Address"
+4. Run this SQL for each one:
+
+UPDATE collections 
+SET image_url = 'PASTE_IMAGE_URL_HERE'
+WHERE address = '0x74f442F6bd614389cA63731f80901f603CDe1b53';
+
+Repeat for all 17 collections.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: VERIFY IMAGES SHOW ON YOUR SITE
+═══════════════════════════════════════════════════════════════════
+
+1. After running any of the above methods, go to:
+   http://localhost:5000/api/collections/all
+
+2. Check that each collection has an imageUrl (not null)
+
+3. Go to /collections in your app
+
+4. Hard refresh (Cmd+Shift+R or Ctrl+Shift+R)
+
+5. All collection cards should now show images!
+
+
+═══════════════════════════════════════════════════════════════════
+RECOMMENDATION: USE STEP 3 (STYLED PLACEHOLDERS) NOW
+═══════════════════════════════════════════════════════════════════
+
+The fastest, safest solution is styled placeholders because:
+✓ Works immediately (one SQL command)
+✓ No external dependencies
+✓ Matches your site design
+✓ No scraping or timeouts
+✓ Can replace with real images later
+
+Run this NOW:
+
+UPDATE collections 
+SET image_url = CONCAT(
+  'https://via.placeholder.com/400/6366f1/ffffff?text=',
+  REPLACE(REPLACE(name, ' ', '+'), '#', '%23')
+)
+WHERE image_url IS NULL OR image_url = '';
+
+Then refresh /collections - all cards will have styled images!
+
+Later, you can manually upload real collection images and update them one by one.
