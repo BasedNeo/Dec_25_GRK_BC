@@ -120,16 +120,23 @@ app.use(decryptSensitiveRequest);
   const { BackupScheduler } = await import('./lib/backupScheduler');
   BackupScheduler.initialize();
 
-  // Initialize collection sync on startup if needed
+  // Initialize collection sync on startup if needed (with safeguards)
   (async () => {
     try {
       const { CollectionSync } = await import('./lib/collectionSync');
       const needsSync = await CollectionSync.needsSync();
       if (needsSync) {
         log('Collections need sync, starting background sync...');
-        CollectionSync.syncAll().catch(err => 
-          console.error('[Server] Background sync failed:', err)
+        
+        // Run in background with 5-minute timeout
+        const syncPromise = CollectionSync.syncAll();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Sync timeout after 5 minutes')), 5 * 60 * 1000)
         );
+        
+        Promise.race([syncPromise, timeoutPromise])
+          .then(() => log('Background collection sync completed'))
+          .catch(err => console.error('[Server] Background sync failed:', err));
       } else {
         log('Collections are up to date');
       }
@@ -138,12 +145,20 @@ app.use(decryptSensitiveRequest);
     }
   })();
 
-  // Set up hourly collection sync
+  // Hourly collection sync with safeguards
   setInterval(async () => {
     try {
       log('Running scheduled collection sync...');
       const { CollectionSync } = await import('./lib/collectionSync');
-      await CollectionSync.syncAll();
+      
+      // Add 5-minute timeout
+      const syncPromise = CollectionSync.syncAll();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sync timeout')), 5 * 60 * 1000)
+      );
+      
+      await Promise.race([syncPromise, timeoutPromise]);
+      log('Scheduled collection sync completed');
     } catch (error) {
       console.error('[Server] Scheduled sync failed:', error);
     }
