@@ -196,8 +196,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
                   } else {
-                    setLocation('/');
-                    onTabChange(item.id);
+                    // Navigate to hash URL for tab-based navigation
+                    const currentPath = window.location.pathname;
+                    if (currentPath === '/') {
+                      // Already on home page, just change tab
+                      onTabChange(item.id);
+                    } else {
+                      // Navigate to home with hash
+                      window.location.href = item.id === 'hub' ? '/' : `/#${item.id}`;
+                    }
                   }
                 }}
                 className={`relative px-3 py-2.5 font-orbitron text-[11px] tracking-[0.15em] transition-all duration-300 rounded-lg group ${
@@ -417,9 +424,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     } else if (item.id === 'collections') {
                       setLocation('/collections');
                     } else {
-                      // Navigate to home page and set the tab
-                      setLocation('/');
-                      onTabChange(item.id);
+                      // Navigate to hash URL for tab-based navigation
+                      const currentPath = window.location.pathname;
+                      if (currentPath === '/') {
+                        // Already on home page, just change tab
+                        onTabChange(item.id);
+                      } else {
+                        // Navigate to home with hash
+                        window.location.href = item.id === 'hub' ? '/' : `/#${item.id}`;
+                      }
                     }
                     setIsMobileMenuOpen(false);
                   }}

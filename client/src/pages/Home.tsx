@@ -24,8 +24,32 @@ const ActivityFeed = lazy(() => import("@/components/ActivityFeed").then(m => ({
 
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState("hub");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  
+  // Initialize tab from URL hash (e.g., /#mint -> "mint")
+  const getTabFromHash = () => {
+    const hash = window.location.hash.slice(1); // Remove the #
+    const validTabs = ['hub', 'mint', 'gallery', 'escrow', 'universe', 'pool', 'stats', 'voting', 'activity'];
+    return validTabs.includes(hash) ? hash : 'hub';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getTabFromHash);
+
+  // Sync URL hash with tab state
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Update URL hash without triggering navigation
+    window.history.replaceState(null, '', tab === 'hub' ? '/' : `/#${tab}`);
+  };
+
+  // Listen for hash changes (browser back/forward)
+  useEffect(() => {
+    const handleHashChange = () => {
+      setActiveTab(getTabFromHash());
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Scroll to top on tab change and track page visits
   useEffect(() => {
@@ -48,7 +72,7 @@ export default function Home() {
   useEffect(() => {
     const handleNavigateTab = (e: CustomEvent) => {
       if (e.detail) {
-        setActiveTab(e.detail);
+        handleTabChange(e.detail);
       }
     };
     window.addEventListener('navigate-tab', handleNavigateTab as EventListener);
@@ -60,7 +84,7 @@ export default function Home() {
       <OnboardingTour />
       <Navbar 
         activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+        onTabChange={handleTabChange} 
         isConnected={isConnected}
       />
       
@@ -74,7 +98,7 @@ export default function Home() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
             >
-              <HomeHub onNavigate={setActiveTab} onOpenAdmin={() => setShowAdminPanel(true)} />
+              <HomeHub onNavigate={handleTabChange} onOpenAdmin={() => setShowAdminPanel(true)} />
             </motion.div>
           )}
 
@@ -86,7 +110,7 @@ export default function Home() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
             >
-              <UniverseTab onMintClick={() => setActiveTab("mint")} />
+              <UniverseTab onMintClick={() => handleTabChange("mint")} />
             </motion.div>
           )}
 
