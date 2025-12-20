@@ -91,10 +91,15 @@ export class CollectionSync {
 
     let imageUrl: string | null = null;
     try {
-      if (Number(totalSupply) > 0) {
-        console.log(`[CollectionSync] Fetching image for ${symbol}...`);
+      const supplyNum = Number(totalSupply);
+      if (supplyNum > 0) {
+        console.log(`[CollectionSync] Fetching image for ${symbol} (supply: ${supplyNum})...`);
         
-        const tokenIdsToTry = [0, 1, 2, 3, 4, 5];
+        const tokenIdsToTry = [
+          1, 10, 100, 345,
+          Math.max(1, supplyNum - 1),
+          Math.max(1, Math.floor(supplyNum / 2)),
+        ].filter((id, i, arr) => arr.indexOf(id) === i && id > 0);
         
         for (const tokenId of tokenIdsToTry) {
           try {
