@@ -1,0 +1,276 @@
+DIAGNOSE COLLECTION IMAGE FETCHING ISSUES
+
+ISSUE: Collection card images still not showing after sync improvements.
+
+GOAL: Identify exactly why images are failing and implement a working solution.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: RUN SYNC WITH DETAILED LOGGING
+═══════════════════════════════════════════════════════════════════
+
+Let's see what's actually happening when we try to fetch images.
+
+In Replit terminal, run:
+
+curl -X POST http://localhost:5000/api/collections/sync
+
+WATCH THE SERVER LOGS CAREFULLY.
+
+Copy and paste the COMPLETE output here, especially lines that say:
+- "Fetching image for..."
+- "Trying token #..."
+- "✓ Found image for..."
+- "✗ Failed..." 
+- Any error messages
+
+THEN PROCEED TO STEP 2 WHILE WAITING.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CHECK WHAT'S IN THE DATABASE RIGHT NOW
+═══════════════════════════════════════════════════════════════════
+
+1. Open database studio:
+npm run db:studio
+
+2. Click on "collections" table
+
+3. For each collection, check the "imageUrl" field
+
+4. REPORT BACK:
+   - BASEDAI 2140: imageUrl = ?
+   - Brain Punks: imageUrl = ?
+   - Based Beasts: imageUrl = ?
+   
+Are they:
+   a) null (empty)
+   b) placeholder URLs (via.placeholder.com)
+   c) IPFS URLs (ipfs.io/ipfs/...)
+   d) Other URLs (https://...)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: TEST INDIVIDUAL COLLECTION CONTRACTS
+═══════════════════════════════════════════════════════════════════
+
+Let's manually test if these contracts even support tokenURI.
+
+1. CREATE FILE: script/test-collection-metadata.ts
+
+import { ethers } from 'ethers';
+import { RPC_URL } from '../client/src/lib/constants';
+
+const collections = [
+  { name: 'BASEDAI 2140', address: '0x74f442F6bd614389cA63731f80901f603CDe1b53' },
+  { name: 'Brain Punks', address: '0x8EB23fefe4900ecEb8354Bee78B6f49c5983b87C' },
+  { name: 'Based Beasts', address: '0x3BFa8d4a9D77A54B623a272A558F9b471DbDd21f' },
+];
+
+async function testCollection(name: string, address: string) {
+  console.log(`\n========== TESTING ${name} ==========`);
+  console.log(`Address: ${address}`);
+  
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(
+      address,
+      [
+        'function name() view returns (string)',
+        'function symbol() view returns (string)',
+        'function totalSupply() view returns (uint256)',
+        'function tokenURI(uint256) view returns (string)',
+      ],
+      provider
+    );
+
+    // Test basic info
+    const [collectionName, symbol, totalSupply] = await Promise.all([
+      contract.name().catch(() => 'ERROR'),
+      contract.symbol().catch(() => 'ERROR'),
+      contract.totalSupply().catch(() => 'ERROR'),
+    ]);
+
+    console.log(`Name: ${collectionName}`);
+    console.log(`Symbol: ${symbol}`);
+    console.log(`Total Supply: ${totalSupply}`);
+
+    // Try to get tokenURI for first 5 tokens
+    console.log('\nTrying to fetch tokenURI...');
+    for (let i = 0; i <= 5; i++) {
+      try {
+        const uri = await contract.tokenURI(i);
+        console.log(`✓ Token #${i}: ${uri.substring(0, 100)}${uri.length > 100 ? '...' : ''}`);
+        
+        // Try to fetch the metadata
+        if (uri.startsWith('http')) {
+          const response = await fetch(uri, { signal: AbortSignal.timeout(5000) });
+          const metadata = await response.json();
+          console.log(`  → Metadata fetched successfully`);
+          console.log(`  → Image: ${metadata.image?.substring(0, 80) || 'NONE'}`);
+          break; // Found working token
+        } else if (uri.startsWith('ipfs://')) {
+          const httpUrl = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+          console.log(`  → Converted to: ${httpUrl.substring(0, 80)}...`);
+          const response = await fetch(httpUrl, { signal: AbortSignal.timeout(5000) });
+          const metadata = await response.json();
+          console.log(`  → Metadata fetched successfully`);
+          console.log(`  → Image: ${metadata.image?.substring(0, 80) || 'NONE'}`);
+          break; // Found working token
+        } else if (uri.startsWith('data:')) {
+          console.log(`  → Base64 encoded metadata detected`);
+          break;
+        }
+      } catch (err: any) {
+        console.log(`✗ Token #${i}: ${err.message}`);
+      }
+    }
+  } catch (error: any) {
+    console.error(`ERROR testing ${name}:`, error.message);
+  }
+}
+
+async function main() {
+  for (const collection of collections) {
+    await testCollection(collection.name, collection.address);
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 sec between tests
+  }
+}
+
+main().catch(console.error);
+
+2. Run the test script:
+npx tsx script/test-collection-metadata.ts
+
+3. COPY THE COMPLETE OUTPUT and share it with me.
+
+This will tell us EXACTLY what's wrong with each collection.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ALTERNATIVE - USE STATIC IMAGES FOR NOW
+═══════════════════════════════════════════════════════════════════
+
+While we debug, let's give each collection a proper placeholder image.
+
+1. UPDATE FILE: server/lib/collectionSync.ts
+
+Find where we set the placeholder image and replace with collection-specific images:
+
+// If no image found, use collection-specific placeholder
+if (!imageUrl) {
+  // Map of known collections to their representative images
+  const knownImages: Record<string, string> = {
+    '0x74f442F6bd614389cA63731f80901f603CDe1b53': 'https://i.imgur.com/placeholder1.png', // BASEDAI 2140
+    '0x8EB23fefe4900ecEb8354Bee78B6f49c5983b87C': 'https://i.imgur.com/placeholder2.png', // Brain Punks
+    '0x3BFa8d4a9D77A54B623a272A558F9b471DbDd21f': 'https://i.imgur.com/placeholder3.png', // Based Beasts
+  };
+  
+  imageUrl = knownImages[address.toLowerCase()] || 
+    `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(symbol)}`;
+}
+
+NOTE: Replace the imgur URLs with actual images when you have them.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: QUICK FIX - MANUALLY SET IMAGES VIA DATABASE
+═══════════════════════════════════════════════════════════════════
+
+As a temporary fix, let's manually set placeholder images.
+
+1. Open database studio:
+npm run db:studio
+
+2. Click on "collections" table
+
+3. For each collection that has no image:
+   - Click the row
+   - Find "imageUrl" field
+   - Set it to: https://via.placeholder.com/400/6366f1/ffffff?text=BASEDAI2140
+     (replace BASEDAI2140 with each collection's symbol)
+   - Click Save
+
+4. Refresh /collections page - images should now show (as styled placeholders)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: ALTERNATIVE APPROACH - SCRAPE FROM AFTERMINT
+═══════════════════════════════════════════════════════════════════
+
+Since these collections ARE showing on AfterMint with images, we could fetch from there.
+
+1. CREATE FILE: script/scrape-collection-images.ts
+
+import fetch from 'node-fetch';
+
+const collections = [
+  '0x74f442F6bd614389cA63731f80901f603CDe1b53',
+  '0x8EB23fefe4900ecEb8354Bee78B6f49c5983b87C',
+  '0x3BFa8d4a9D77A54B623a272A558F9b471DbDd21f',
+];
+
+async function scrapeAfterMintImage(address: string) {
+  try {
+    const url = `https://aftermint.trade/collection/${address}`;
+    console.log(`Fetching: ${url}`);
+    
+    const response = await fetch(url);
+    const html = await response.text();
+    
+    // Look for og:image meta tag
+    const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+    if (ogImageMatch) {
+      console.log(`✓ Found image: ${ogImageMatch[1]}`);
+      return ogImageMatch[1];
+    }
+    
+    // Look for img tags with collection images
+    const imgMatch = html.match(/<img[^>]+src="([^"]+)"[^>]*alt="[^"]*collection[^"]*"/i);
+    if (imgMatch) {
+      console.log(`✓ Found image: ${imgMatch[1]}`);
+      return imgMatch[1];
+    }
+    
+    console.log('✗ No image found');
+    return null;
+  } catch (error) {
+    console.error(`Error scraping ${address}:`, error);
+    return null;
+  }
+}
+
+async function main() {
+  for (const address of collections) {
+    console.log(`\n=== ${address} ===`);
+    await scrapeAfterMintImage(address);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+}
+
+main();
+
+2. Run it:
+npx tsx script/scrape-collection-images.ts
+
+This might give us the actual images AfterMint uses.
+
+
+═══════════════════════════════════════════════════════════════════
+NEXT STEPS - REPORT BACK
+═══════════════════════════════════════════════════════════════════
+
+Please run these diagnostics and tell me:
+
+1. What does the sync output show? (Step 1)
+2. What are the imageUrl values in database? (Step 2)
+3. What does the test script output? (Step 3)
+
+With this information, I can give you the EXACT fix for your specific situation.
+
+The issue is likely one of:
+- Contracts don't implement tokenURI (need different approach)
+- Metadata URLs are unreachable (use static images)
+- IPFS is too slow/timing out (use AfterMint images)
+- Token IDs start at different numbers (need to adjust logic)
+
+SHARE THE OUTPUTS FROM STEPS 1-3 AND I'LL GIVE YOU THE PERFECT FIX!
