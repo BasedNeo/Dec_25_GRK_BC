@@ -113,6 +113,7 @@ export default function Collections() {
     try {
       const res = await fetch('/api/collections');
       const data = await res.json();
+      console.log('First collection data:', data[0]);
       
       const hasBasedGuardians = data.some(
         (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
