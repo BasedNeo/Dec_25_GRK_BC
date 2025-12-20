@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import { NFT_CONTRACT, RPC_URL, IPFS_ROOT } from '@/lib/constants';
@@ -27,6 +27,8 @@ export function useUserNFTs() {
   const [nfts, setNfts] = useState<NFTData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [totalOwned, setTotalOwned] = useState<number | null>(null);
 
   const fetchUserNFTs = useCallback(async (userAddress: string) => {
     try {
@@ -37,6 +39,7 @@ export function useUserNFTs() {
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         console.log('[useUserNFTs] Using cached data');
         setNfts(cached.data);
+        setHasLoaded(true);
         setLoading(false);
         return;
       }
@@ -55,9 +58,15 @@ export function useUserNFTs() {
       const balanceNum = Number(balance);
 
       console.log('[useUserNFTs] User owns', balanceNum, 'NFTs');
+      setTotalOwned(balanceNum);
+
+      if (balanceNum > 20) {
+        console.warn('[useUserNFTs] User owns more than 20 NFTs, will only fetch first 20');
+      }
 
       if (balanceNum === 0) {
         setNfts([]);
+        setHasLoaded(true);
         nftCache.set(userAddress.toLowerCase(), { data: [], timestamp: Date.now() });
         setLoading(false);
         return;
@@ -72,9 +81,12 @@ export function useUserNFTs() {
         );
         const tokenIdsBigInt = await Promise.race([tokensPromise, tokensTimeout]);
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
+        // Limit to 20 for safety
+        tokenIds = tokenIds.slice(0, 20);
       } catch (e) {
         console.log('[useUserNFTs] tokensOfOwner failed, falling back to tokenOfOwnerByIndex');
-        const maxToFetch = Math.min(balanceNum, 50);
+        // Reduced from 50 to 20 for safety - prevents browser freezing
+        const maxToFetch = Math.min(balanceNum, 20);
         const tokenIdPromises: Promise<bigint | null>[] = [];
 
         for (let i = 0; i < maxToFetch; i++) {
@@ -128,6 +140,7 @@ export function useUserNFTs() {
       });
 
       setNfts(nftData);
+      setHasLoaded(true);
       console.log('[useUserNFTs] Fetch complete. Total NFTs:', nftData.length);
     } catch (err: unknown) {
       const error = err as Error;
@@ -138,14 +151,35 @@ export function useUserNFTs() {
     }
   }, []);
 
+  // Track previous address to detect wallet switches
+  const prevAddressRef = useRef<string | undefined>(undefined);
+
+  // DISABLED AUTO-FETCH: Reset state on wallet change or disconnect, don't auto-fetch
+  // This prevents browser freezing when users connect wallet
   useEffect(() => {
+    // Always reset state when address changes (including wallet switch)
+    if (address !== prevAddressRef.current) {
+      setNfts([]);
+      setError(null);
+      setHasLoaded(false);
+      setTotalOwned(null);
+      setLoading(false);
+      prevAddressRef.current = address;
+    }
+    
+    // Also reset if not connected
     if (!address || !isConnected) {
       setNfts([]);
-      return;
+      setError(null);
+      setHasLoaded(false);
+      setTotalOwned(null);
     }
-
-    fetchUserNFTs(address);
-  }, [address, isConnected, fetchUserNFTs]);
+    
+    // Cleanup function
+    return () => {
+      setLoading(false);
+    };
+  }, [address, isConnected]);
 
   const refetch = useCallback(() => {
     if (address) {
@@ -154,7 +188,7 @@ export function useUserNFTs() {
     }
   }, [address, fetchUserNFTs]);
 
-  return { nfts, loading, error, refetch };
+  return { nfts, loading, error, refetch, hasLoaded, totalOwned };
 }
 
 async function fetchNFTMetadata(

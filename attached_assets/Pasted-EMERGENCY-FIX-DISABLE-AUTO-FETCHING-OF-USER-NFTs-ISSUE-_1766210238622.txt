@@ -1,0 +1,342 @@
+EMERGENCY FIX: DISABLE AUTO-FETCHING OF USER NFTs
+
+ISSUE: Wallet connection triggers automatic NFT fetching which crashes/freezes browser.
+
+CRITICAL FIX: Make NFT fetching MANUAL ONLY - require user to click "Load NFTs" button. No auto-fetching on wallet connect.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: DISABLE AUTO-FETCH IN useUserNFTs HOOK
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/hooks/useUserNFTs.ts
+
+REPLACE the entire useEffect that auto-fetches with this safer version:
+
+useEffect(() => {
+  // DO NOT auto-fetch - only manual fetch via refetch()
+  if (!address) {
+    setNfts([]);
+    setError(null);
+  }
+  // Removed: fetchUserNFTs(address) - this was causing crashes
+}, [address]);
+
+That's it - we removed the auto-fetch. Now NFTs only load when user clicks button.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: UPDATE PORTFOLIO TO SHOW MANUAL LOAD BUTTON
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Portfolio.tsx
+
+Find the "Your Guardians" section and REPLACE it with this safe version:
+
+{/* User's NFTs Section - MANUAL LOAD ONLY */}
+<div className="mb-8">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-2xl font-bold">Your Guardians</h2>
+  </div>
+
+  {/* Show Load Button if not loaded yet */}
+  {!nftsLoading && nfts.length === 0 && !nftsError && address && (
+    <div className="text-center py-12 bg-card border border-primary/20 rounded-lg">
+      <Package className="w-16 h-16 mx-auto mb-4 text-primary" />
+      <h3 className="text-xl font-semibold mb-2">Load Your NFTs</h3>
+      <p className="text-muted-foreground mb-4">
+        Click below to fetch your Based Guardians from the blockchain
+      </p>
+      <Button onClick={refetch} size="lg" className="gap-2">
+        <RefreshCw className="w-4 h-4" />
+        Load My NFTs
+      </Button>
+      <p className="text-xs text-muted-foreground mt-3">
+        This may take 10-30 seconds depending on how many NFTs you own
+      </p>
+    </div>
+  )}
+
+  {/* Loading State */}
+  {nftsLoading && (
+    <div className="flex items-center justify-center py-12 bg-card border border-primary/20 rounded-lg">
+      <Loader2 className="w-8 h-8 animate-spin text-primary mr-3" />
+      <div>
+        <p className="font-semibold">Loading your NFTs...</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {nfts.length > 0 ? `Found ${nfts.length} so far...` : 'Fetching from blockchain...'}
+        </p>
+      </div>
+    </div>
+  )}
+
+  {/* Error State */}
+  {nftsError && (
+    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
+      <p className="text-destructive font-semibold mb-2">Failed to load NFTs</p>
+      <p className="text-sm text-muted-foreground mb-4">{nftsError}</p>
+      <Button onClick={refetch} variant="outline" size="sm">
+        Try Again
+      </Button>
+    </div>
+  )}
+
+  {/* NFTs Grid - Only show after successful load */}
+  {!nftsLoading && nfts.length > 0 && (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-muted-foreground">
+          Showing {nfts.length} Guardian{nfts.length !== 1 ? 's' : ''}
+        </div>
+        <Button onClick={refetch} variant="outline" size="sm" className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {nfts.map((nft) => (
+          <motion.div
+            key={nft.tokenId}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="group bg-card border border-primary/20 rounded-lg overflow-hidden hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
+          >
+            {/* NFT Image */}
+            <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-primary/20 to-purple-500/20">
+              <img
+                src={nft.image}
+                alt={nft.name}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/400/6366f1/ffffff?text=Guardian';
+                }}
+              />
+              <div className="absolute top-2 right-2 bg-primary/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-semibold">
+                #{nft.tokenId}
+              </div>
+            </div>
+
+            {/* NFT Info */}
+            <div className="p-4">
+              <h3 className="font-bold text-lg mb-2 truncate group-hover:text-primary transition-colors">
+                {nft.name}
+              </h3>
+
+              {nft.attributes && nft.attributes.length > 0 && (
+                <div className="space-y-1 mb-3">
+                  {nft.attributes.slice(0, 3).map((attr: any, i: number) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{attr.trait_type}:</span>
+                      <span className="font-semibold">{attr.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-4">
+                <Link href={`/marketplace?tokenId=${nft.tokenId}`} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </>
+  )}
+
+  {/* Not Connected State */}
+  {!address && (
+    <div className="text-center py-12 bg-card border border-primary/20 rounded-lg">
+      <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+      <h3 className="text-xl font-semibold mb-2">Connect Your Wallet</h3>
+      <p className="text-muted-foreground">
+        Connect your wallet to view your Based Guardians NFTs
+      </p>
+    </div>
+  )}
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REDUCE FETCH LIMITS FOR SAFETY
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/hooks/useUserNFTs.ts
+
+Find this line (around line 100):
+const maxToFetch = Math.min(balanceNum, 50);
+
+CHANGE IT TO:
+const maxToFetch = Math.min(balanceNum, 20); // Reduced from 50 to 20 for safety
+
+This limits fetching to maximum 20 NFTs to prevent crashes.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD ABORT CONTROLLER FOR CLEANUP
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/hooks/useUserNFTs.ts
+
+Add cleanup to prevent memory leaks when user navigates away.
+
+Find the fetchUserNFTs function and add AbortController at the very top:
+
+async function fetchUserNFTs(userAddress: string) {
+  // Create abort controller for cleanup
+  const abortController = new AbortController();
+  
+  try {
+    setLoading(true);
+    setError(null);
+
+    // ... rest of existing code
+
+And at the very end of the useEffect, add cleanup:
+
+useEffect(() => {
+  if (!address) {
+    setNfts([]);
+    setError(null);
+  }
+  
+  // Cleanup function
+  return () => {
+    // Cancel any ongoing fetches when component unmounts
+    setLoading(false);
+  };
+}, [address]);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: VERIFY THE FIX
+═══════════════════════════════════════════════════════════════════
+
+1. Restart your dev server (if needed)
+
+2. Open the app in browser
+
+3. Connect wallet - should NOT auto-fetch NFTs (no freezing!)
+
+4. Navigate to /profile or /portfolio
+
+5. You should see a "Load My NFTs" button
+
+6. Click it - NFTs should load progressively
+
+7. Navigate away - should not freeze or crash
+
+8. Connect/disconnect wallet multiple times - should remain stable
+
+EXPECTED BEHAVIOR:
+✓ No auto-fetching on wallet connect
+✓ No freezing or crashes
+✓ Manual button to load NFTs
+✓ Progressive loading (shows as they load)
+✓ Max 20 NFTs for safety
+✓ Can navigate away safely
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: ADD WARNING FOR USERS WITH MANY NFTs
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/hooks/useUserNFTs.ts
+
+After fetching balance, add a warning:
+
+const balanceNum = Number(balance);
+console.log('[useUserNFTs] User owns', balanceNum, 'NFTs');
+
+if (balanceNum > 20) {
+  console.warn('[useUserNFTs] User owns more than 20 NFTs, will only fetch first 20');
+}
+
+if (balanceNum === 0) {
+  setNfts([]);
+  setLoading(false);
+  return;
+}
+
+2. UPDATE FILE: client/src/pages/Portfolio.tsx
+
+Add this message above the "Load My NFTs" button:
+
+{!nftsLoading && nfts.length === 0 && !nftsError && address && (
+  <div className="text-center py-12 bg-card border border-primary/20 rounded-lg">
+    <Package className="w-16 h-16 mx-auto mb-4 text-primary" />
+    <h3 className="text-xl font-semibold mb-2">Load Your NFTs</h3>
+    <p className="text-muted-foreground mb-4">
+      Click below to fetch your Based Guardians from the blockchain
+    </p>
+    
+    {/* ADD THIS WARNING */}
+    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 max-w-md mx-auto">
+      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+        ⚠️ For performance, we'll load up to 20 NFTs. If you own more, we'll show the first 20.
+      </p>
+    </div>
+    
+    <Button onClick={refetch} size="lg" className="gap-2">
+      <RefreshCw className="w-4 h-4" />
+      Load My NFTs
+    </Button>
+    <p className="text-xs text-muted-foreground mt-3">
+      This may take 10-30 seconds depending on how many NFTs you own
+    </p>
+  </div>
+)}
+
+
+═══════════════════════════════════════════════════════════════════
+ALTERNATIVE: COMPLETELY DISABLE NFT DISPLAY TEMPORARILY
+═══════════════════════════════════════════════════════════════════
+
+If still causing issues, we can completely disable it:
+
+1. UPDATE FILE: client/src/pages/Portfolio.tsx
+
+Replace the entire "Your Guardians" section with:
+
+{/* User's NFTs Section - TEMPORARILY DISABLED */}
+<div className="mb-8">
+  <h2 className="text-2xl font-bold mb-4">Your Guardians</h2>
+  
+  <div className="text-center py-12 bg-card border border-primary/20 rounded-lg">
+    <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+    <h3 className="text-xl font-semibold mb-2">NFT Display Coming Soon</h3>
+    <p className="text-muted-foreground mb-4">
+      We're working on optimizing the NFT display feature.
+      <br />
+      For now, you can view your Guardians on the marketplace.
+    </p>
+    <Link href="/marketplace">
+      <Button>Browse Marketplace</Button>
+    </Link>
+  </div>
+</div>
+
+This completely removes the functionality until we can optimize it properly.
+
+
+═══════════════════════════════════════════════════════════════════
+DONE - TEST IMMEDIATELY
+═══════════════════════════════════════════════════════════════════
+
+After implementing these changes:
+
+1. Connect wallet - does it freeze? (Should be NO)
+2. Navigate between pages - does it crash? (Should be NO)
+3. Go to Portfolio - see "Load NFTs" button? (Should be YES)
+4. Click button - loads without crash? (Should be YES)
+
+If STILL crashes, use the ALTERNATIVE to completely disable it.
+
+REPORT BACK:
+- Does wallet connection still cause freezing?
+- Does the manual load button work?
+- Any other pages causing issues?

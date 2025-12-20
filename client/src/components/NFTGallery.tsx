@@ -74,7 +74,7 @@ export function NFTGallery({
   const [useCsvData, setUseCsvData] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
-  const { nfts: userNFTsRaw, loading: isLoadingOwned, error: ownedError, refetch: refetchOwned } = useUserNFTs();
+  const { nfts: userNFTsRaw, loading: isLoadingOwned, error: ownedError, refetch: refetchOwned, hasLoaded: nftsHasLoaded, totalOwned } = useUserNFTs();
   const ownedNFTs = userNFTsRaw.map(nft => ({
     id: nft.tokenId,
     name: nft.name,
@@ -554,18 +554,44 @@ export function NFTGallery({
                       CONNECT TO VIEW
                     </Button>
                 </div>)
+              ) : filterByOwner && isConnected && !nftsHasLoaded && !isLoadingOwned ? (
+                // Manual Load Button - NFTs not yet fetched (prevents browser crash)
+                (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-primary/30 rounded-xl bg-primary/5">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                      <RefreshCw className="w-10 h-10 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-orbitron text-white mb-2">LOAD YOUR NFTs</h3>
+                    <p className="text-muted-foreground mb-4 text-center max-w-md">
+                      Click below to fetch your Based Guardians from the blockchain.
+                    </p>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-6 max-w-md">
+                      <p className="text-xs text-yellow-400 text-center">
+                        For performance, we'll load up to 20 NFTs. If you own more, we'll show the first 20.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={refetchOwned}
+                      size="lg"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider gap-2"
+                      data-testid="button-load-nfts"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                      LOAD MY NFTs
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      This may take 10-30 seconds depending on how many NFTs you own.
+                    </p>
+                </div>)
               ) : (
                 <>
                   {(filterByOwner ? isLoadingOwned : isLoading) && !displayNfts.length ? (
-                    <div className={`grid gap-6 ${
-                      gridCols === 1 ? 'grid-cols-1' : 
-                      gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
-                      gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
-                      'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-                    }`}>
-                      {Array.from({ length: 12 }).map((_, i) => (
-                          <GuardianCardSkeleton key={i} />
-                      ))}
+                    // Loading State with progress indicator
+                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-primary/30 rounded-xl bg-primary/5">
+                      <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                      <h3 className="text-lg font-orbitron text-white mb-2">LOADING YOUR NFTs...</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {displayNfts.length > 0 ? `Found ${displayNfts.length} so far...` : 'Fetching from blockchain...'}
+                      </p>
                     </div>
                   ) : displayNfts.length === 0 ? (
                      (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
@@ -598,17 +624,17 @@ export function NFTGallery({
                                Back to Based Guardians
                              </Button>
                            </>
-                         ) : filterByOwner ? (
+                         ) : filterByOwner && nftsHasLoaded ? (
                            <>
                              <p className="text-muted-foreground mb-4">You don't own any Guardians yet.</p>
                              <p className="text-xs text-muted-foreground/50 mb-6">Mint or buy NFTs to see them here.</p>
                            </>
-                         ) : (
+                         ) : !filterByOwner ? (
                            <>
                              <p className="text-muted-foreground mb-4">No Guardians found matching criteria.</p>
                              <p className="text-xs text-muted-foreground/50 mb-6">Try broadening your search or clearing filters.</p>
                            </>
-                         )}
+                         ) : null}
                          {(isBasedGuardiansSelected || !filterByOwner) && (
                            <Button onClick={() => { setSearch(""); setRarityFilter("all"); setTraitTypeFilter("all"); setTraitValueFilter("all"); }} variant="outline">
                               Clear Filters
@@ -617,6 +643,17 @@ export function NFTGallery({
                      </div>)
                   ) : (
                     <>
+                      {/* Warning when more than 20 NFTs owned but only showing first 20 */}
+                      {filterByOwner && totalOwned !== null && totalOwned > 20 && displayNfts.length > 0 && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 flex items-center gap-3">
+                          <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                          <p className="text-sm text-yellow-300">
+                            You own <span className="font-bold">{totalOwned}</span> NFTs, but we're only showing the first 20 for performance. 
+                            View your full collection on the <a href={`${BLOCK_EXPLORER}/address/${address}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">block explorer</a>.
+                          </p>
+                        </div>
+                      )}
+                      
                       {/* Unified Grid (Replaces separate Desktop Grid and Mobile Carousel) */}
                       <motion.div 
                         variants={container}
