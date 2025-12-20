@@ -9,7 +9,7 @@ import { useAccount } from "wagmi";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
-import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
+import { useUserNFTs } from "@/hooks/useUserNFTs";
 import { useOffersForOwner } from "@/hooks/useOffers";
 import { useListing } from "@/hooks/useMarketplace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,7 +74,16 @@ export function NFTGallery({
   const [useCsvData, setUseCsvData] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
-  const { nfts: ownedNFTs, isLoading: isLoadingOwned, refetch: refetchOwned, balance: ownedBalance } = useOwnedNFTs();
+  const { nfts: userNFTsRaw, loading: isLoadingOwned, error: ownedError, refetch: refetchOwned } = useUserNFTs();
+  const ownedNFTs = userNFTsRaw.map(nft => ({
+    id: nft.tokenId,
+    name: nft.name,
+    image: nft.image,
+    rarity: nft.rarity || 'Common',
+    owner: nft.owner,
+    traits: nft.attributes?.map(a => ({ type: a.trait_type, value: String(a.value) })) || [],
+  }));
+  const ownedBalance = userNFTsRaw.length;
   const { offers: allOffers } = useOffersForOwner();
   const [selectedNFT, setSelectedNFT] = useState<Guardian | null>(null);
   
