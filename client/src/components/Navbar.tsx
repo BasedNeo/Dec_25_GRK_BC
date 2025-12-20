@@ -145,6 +145,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },
     { id: 'games', label: t('nav.games', 'Games') },
+    { id: 'asteroid-mining', label: t('nav.asteroidMining', 'Asteroids') },
   ];
 
   return (
@@ -195,6 +196,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     setLocation('/guardian-solitaire');
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
+                  } else if (item.id === 'asteroid-mining') {
+                    setLocation('/asteroid-mining');
                   } else {
                     // Navigate to hash URL for tab-based navigation
                     const currentPath = window.location.pathname;
@@ -423,6 +426,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       setLocation('/games');
                     } else if (item.id === 'collections') {
                       setLocation('/collections');
+                    } else if (item.id === 'asteroid-mining') {
+                      setLocation('/asteroid-mining');
                     } else {
                       // Navigate to hash URL for tab-based navigation
                       const currentPath = window.location.pathname;
