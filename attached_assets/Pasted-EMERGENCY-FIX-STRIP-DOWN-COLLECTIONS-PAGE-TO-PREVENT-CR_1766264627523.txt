@@ -1,3 +1,17 @@
+EMERGENCY FIX - STRIP DOWN COLLECTIONS PAGE TO PREVENT CRASHES
+
+ISSUE: Collections page is crashing the entire Chrome browser.
+
+SOLUTION: Remove all complex logic, disable Guardian browsing, show ONLY collection cards with minimal code.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: CREATE A MINIMAL COLLECTIONS PAGE
+═══════════════════════════════════════════════════════════════════
+
+REPLACE THE ENTIRE FILE: client/src/pages/Collections.tsx
+
+With this MINIMAL version (copy everything below):
+
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -154,10 +168,13 @@ export default function Collections() {
   );
 }
 
+// Minimal Collection Card Component
 function CollectionCard({ collection }: { collection: Collection }) {
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
   
+  // Use image if available, otherwise show collection name
+  const hasImage = collection.thumbnailImage || collection.bannerImage;
   const imageUrl = collection.thumbnailImage || collection.bannerImage;
 
   return (
@@ -165,8 +182,9 @@ function CollectionCard({ collection }: { collection: Collection }) {
       <Card 
         className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer group overflow-hidden"
       >
+        {/* Image or Text Banner */}
         <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
-          {imageUrl && (
+          {hasImage ? (
             <img 
               src={imageUrl}
               alt={collection.name}
@@ -175,8 +193,9 @@ function CollectionCard({ collection }: { collection: Collection }) {
                 e.currentTarget.style.display = 'none';
               }}
             />
-          )}
+          ) : null}
           
+          {/* Collection Symbol Text (always visible as fallback) */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
               {collection.symbol}
@@ -190,6 +209,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
           )}
         </div>
         
+        {/* Card Content */}
         <CardHeader>
           <CardTitle className="text-xl text-white font-orbitron">
             {collection.name}
@@ -227,3 +247,46 @@ function CollectionCard({ collection }: { collection: Collection }) {
     </Link>
   );
 }
+
+
+═══════════════════════════════════════════════════════════════════
+WHAT THIS REMOVES (TO PREVENT CRASHES)
+═══════════════════════════════════════════════════════════════════
+
+❌ Removed: Framer Motion animations (can cause memory leaks)
+❌ Removed: Guardian browsing section (was loading 1000s of NFTs)
+❌ Removed: useGuardians hook (was fetching too much data)
+❌ Removed: Filter sidebar (complex state management)
+❌ Removed: Search functionality (can trigger infinite loops)
+❌ Removed: Pagination logic (can cause re-render loops)
+❌ Removed: Grid size toggles (extra state)
+❌ Removed: Project selector (simplified)
+
+✅ Kept: Simple collection cards
+✅ Kept: Minimal image loading
+✅ Kept: Basic navigation
+
+
+═══════════════════════════════════════════════════════════════════
+TEST IT
+═══════════════════════════════════════════════════════════════════
+
+1. Save the file
+2. Go to /collections page
+3. It should load WITHOUT crashing
+4. You should see:
+   - Based Guardians with an image
+   - Other collections with their symbol text
+   - No browser crash
+
+
+═══════════════════════════════════════════════════════════════════
+IF IT STILL CRASHES
+═══════════════════════════════════════════════════════════════════
+
+If the page STILL crashes with this minimal version, the issue is:
+1. The Navbar component
+2. The API endpoint /api/collections returning too much data
+3. A Chrome extension interfering
+
+Let me know if this minimal version works or still crashes.
