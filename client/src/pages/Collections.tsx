@@ -174,25 +174,27 @@ function CollectionCard({ collection }: { collection: Collection }) {
         className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer group overflow-hidden"
       >
         <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
-          {imageUrl && (
-            <img 
-              src={imageUrl}
-              alt={collection.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          )}
           
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
+          <div className="absolute inset-0 flex items-center justify-center z-0">
+            <span className="text-5xl font-orbitron font-bold text-white/10">
               {collection.symbol}
             </span>
           </div>
           
+          {imageUrl && (
+            <img 
+              src={imageUrl}
+              alt={collection.name}
+              className="absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                console.warn('⚠️ Image failed:', collection.symbol, imageUrl);
+                e.currentTarget.style.opacity = '0';
+              }}
+            />
+          )}
+          
           {collection.isFeatured && (
-            <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">
+            <Badge className="absolute top-4 right-4 z-20 bg-cyan-500 text-black font-orbitron">
               Featured
             </Badge>
           )}

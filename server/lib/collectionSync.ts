@@ -178,13 +178,15 @@ export class CollectionSync {
     }
     
     if (!imageUrl) {
-      imageUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(symbol)}`;
+      imageUrl = `https://placehold.co/400x400/6366f1/ffffff?text=${encodeURIComponent(symbol)}`;
+      console.log(`[CollectionSync] Using placeholder for ${symbol}`);
     }
 
-    // Set banner image - use NFT #345 for Based Guardians (Star Systems Officers)
-    const isBasedGuardians = address.toLowerCase() === '0xae51dc5fd1499a129f8654963560f9340773ad59';
+    // Set banner image
+    // IMPORTANT: Use the CORRECT Based Guardians contract address
+    const isBasedGuardians = address.toLowerCase() === '0xae51dc5fd1499a129f8654963560f9340773ad59'.toLowerCase();
     const bannerImage = isBasedGuardians 
-      ? 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeigklna3comgshfndjcbmdjechrj6qkl74dnn77piysmfli7jvlzfq/Star%20Systems%20Officers/Star_Systems_Officers_345.jpg'
+      ? 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/345.png'
       : imageUrl;
 
     await this.upsertCollection({
