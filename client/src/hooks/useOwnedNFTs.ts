@@ -25,21 +25,18 @@ export function useOwnedNFTs() {
     setIsLoading(true);
     setError(null);
 
-    // Clear any cached user NFT data to ensure fresh fetch
-    CacheService.invalidate(`${CACHE_KEYS.USER_NFTS}${address.toLowerCase()}`);
-    // Also invalidate RPC cache for this user's balance/tokens
-    rpcCache.invalidate(`balance-${address.toLowerCase()}`);
-    rpcCache.invalidate(`tokens-${address.toLowerCase()}`);
+    // NOTE: Do NOT invalidate cache here - let the cache TTL handle expiry
+    // Invalidating on every poll defeats the purpose of caching and causes 100+ RPC calls
 
     try {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, provider);
       
-      // Cache balance for 10 seconds
+      // Cache balance for 30 seconds (reduced RPC frequency)
       const balanceBigInt = await rpcCache.get(
         `balance-${address.toLowerCase()}`,
         () => contract.balanceOf(address),
-        10000
+        30000
       );
       const userBalance = Number(balanceBigInt);
       setBalance(userBalance);
@@ -50,11 +47,11 @@ export function useOwnedNFTs() {
 
       let tokenIds: number[] = [];
       try {
-        // Cache tokensOfOwner for 10 seconds
+        // Cache tokensOfOwner for 30 seconds (reduced RPC frequency)
         const tokenIdsBigInt = await rpcCache.get(
           `tokens-${address.toLowerCase()}`,
           () => contract.tokensOfOwner(address),
-          10000
+          30000
         );
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
       } catch (e) {
@@ -106,8 +103,8 @@ export function useOwnedNFTs() {
 
   useEffect(() => { fetchOwnedNFTs(); }, [fetchOwnedNFTs]);
 
-  // Auto-refresh every 15 seconds to catch ownership changes
-  useInterval(fetchOwnedNFTs, isConnected && address ? 15000 : null);
+  // Auto-refresh every 60 seconds to catch ownership changes (reduced from 15s to prevent RPC spam)
+  useInterval(fetchOwnedNFTs, isConnected && address ? 60000 : null);
 
   return { nfts, isLoading, error, balance, refetch: fetchOwnedNFTs };
 }
