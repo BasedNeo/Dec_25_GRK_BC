@@ -92,34 +92,88 @@ export class CollectionSync {
     let imageUrl: string | null = null;
     try {
       if (Number(totalSupply) > 0) {
-        const tokenURI = await Promise.race([
-          contract.tokenURI(1),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 5000)
-          ),
-        ]);
+        console.log(`[CollectionSync] Fetching image for ${symbol}...`);
         
-        if (tokenURI.startsWith('http')) {
-          const metadata = await fetch(tokenURI, { 
-            signal: AbortSignal.timeout(5000) 
-          }).then(r => r.json());
-          if (metadata.image) {
-            imageUrl = metadata.image;
+        const tokenIdsToTry = [0, 1, 2, 3, 4, 5];
+        
+        for (const tokenId of tokenIdsToTry) {
+          try {
+            console.log(`[CollectionSync] Trying token #${tokenId} for ${symbol}`);
+            
+            const tokenURIPromise = contract.tokenURI(tokenId);
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('TokenURI timeout')), 5000)
+            );
+            
+            const tokenURI = await Promise.race([tokenURIPromise, timeoutPromise]);
+            
+            if (tokenURI) {
+              let metadataUrl = tokenURI;
+              
+              if (tokenURI.startsWith('ipfs://')) {
+                const ipfsHash = tokenURI.replace('ipfs://', '');
+                metadataUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+              } else if (tokenURI.startsWith('data:application/json;base64,')) {
+                const base64Data = tokenURI.split(',')[1];
+                const jsonString = Buffer.from(base64Data, 'base64').toString();
+                const metadata = JSON.parse(jsonString);
+                
+                if (metadata.image) {
+                  let imgUrl = metadata.image;
+                  if (imgUrl.startsWith('ipfs://')) {
+                    const ipfsHash = imgUrl.replace('ipfs://', '');
+                    imgUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+                  }
+                  imageUrl = imgUrl;
+                  console.log(`[CollectionSync] Found base64 image for ${symbol}: token #${tokenId}`);
+                  break;
+                }
+              }
+              
+              if (metadataUrl.startsWith('http')) {
+                const metadataPromise = fetch(metadataUrl, { 
+                  signal: AbortSignal.timeout(5000),
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0',
+                  }
+                }).then(r => r.json());
+                
+                const metadataTimeoutPromise = new Promise<never>((_, reject) => 
+                  setTimeout(() => reject(new Error('Metadata timeout')), 5000)
+                );
+                
+                const metadata = await Promise.race([metadataPromise, metadataTimeoutPromise]);
+                
+                if (metadata && metadata.image) {
+                  let imgUrl = metadata.image;
+                  
+                  if (imgUrl.startsWith('ipfs://')) {
+                    const ipfsHash = imgUrl.replace('ipfs://', '');
+                    imgUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+                  }
+                  
+                  imageUrl = imgUrl;
+                  console.log(`[CollectionSync] Found image for ${symbol}: token #${tokenId}`);
+                  break;
+                }
+              }
+            }
+          } catch (tokenError) {
+            console.warn(`[CollectionSync] Token #${tokenId} failed for ${symbol}:`, tokenError instanceof Error ? tokenError.message : tokenError);
+            continue;
           }
-        } else if (tokenURI.startsWith('ipfs://')) {
-          const ipfsHash = tokenURI.replace('ipfs://', '');
-          const metadata = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`, {
-            signal: AbortSignal.timeout(5000)
-          }).then(r => r.json());
-          if (metadata.image) {
-            imageUrl = metadata.image.startsWith('ipfs://') 
-              ? `https://ipfs.io/ipfs/${metadata.image.replace('ipfs://', '')}`
-              : metadata.image;
-          }
+        }
+        
+        if (!imageUrl) {
+          console.warn(`[CollectionSync] Could not fetch image for ${symbol}, will use placeholder`);
         }
       }
     } catch (error) {
-      console.warn(`[CollectionSync] Could not fetch image for ${address}`);
+      console.error(`[CollectionSync] Error fetching image for ${address}:`, error);
+    }
+    
+    if (!imageUrl) {
+      imageUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(symbol)}`;
     }
 
     // Set banner image - use NFT #345 for Based Guardians (Star Systems Officers)

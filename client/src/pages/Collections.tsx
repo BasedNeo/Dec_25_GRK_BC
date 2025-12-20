@@ -572,11 +572,30 @@ const FALLBACK_THUMBNAIL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2
 function CollectionCard({ collection }: { collection: Collection }) {
   const [bannerLoaded, setBannerLoaded] = useState(false);
   const [bannerError, setBannerError] = useState(false);
+  const [fallbackAttempt, setFallbackAttempt] = useState(0);
   
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
 
-  const bannerSrc = collection.bannerImage || FALLBACK_BANNER;
+  const placeholderUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
+  const bannerSrc = collection.bannerImage || collection.thumbnailImage || placeholderUrl;
+
+  const handleImageError = () => {
+    if (fallbackAttempt === 0) {
+      setFallbackAttempt(1);
+      setBannerLoaded(false);
+    } else if (fallbackAttempt === 1) {
+      setFallbackAttempt(2);
+      setBannerError(true);
+      setBannerLoaded(true);
+    }
+  };
+
+  const getCurrentSrc = () => {
+    if (bannerError || fallbackAttempt === 2) return FALLBACK_BANNER;
+    if (fallbackAttempt === 1) return placeholderUrl;
+    return bannerSrc;
+  };
 
   return (
     <Link href={`/collections?collection=${collection.contractAddress}`}>
@@ -589,14 +608,11 @@ function CollectionCard({ collection }: { collection: Collection }) {
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 animate-pulse" />
           )}
           <img 
-            src={bannerError ? FALLBACK_BANNER : bannerSrc} 
+            src={getCurrentSrc()} 
             alt={collection.name}
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setBannerLoaded(true)}
-            onError={() => {
-              setBannerError(true);
-              setBannerLoaded(true);
-            }}
+            onError={handleImageError}
           />
           {collection.isFeatured && (
             <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">Featured</Badge>
