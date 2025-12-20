@@ -169,7 +169,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
   const imageUrl = collection.thumbnailImage || collection.bannerImage;
 
   return (
-    <Link href={`/?collection=${collection.contractAddress}`}>
+    <Link href="/marketplace">
       <Card 
         className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer group overflow-hidden"
       >
