@@ -1,0 +1,233 @@
+FIX COLLECTION IMAGES NOT RENDERING
+
+GOOD NEWS: Chrome stable, no crashes ✓
+ISSUE: Placeholder images not showing on collection cards
+
+DIAGNOSIS: Need to check if images are being set in the DOM
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: VERIFY IMAGE URLs ARE REACHING THE FRONTEND
+═══════════════════════════════════════════════════════════════════
+
+1. Open browser Console (F12 → Console tab)
+
+2. Navigate to /collections
+
+3. Paste this in console:
+
+console.log('Collections:', document.querySelectorAll('img').length, 'images found');
+document.querySelectorAll('img').forEach(img => {
+  console.log('Image src:', img.src);
+  console.log('Image loaded:', img.complete);
+  console.log('Image error:', img.naturalWidth === 0);
+});
+
+4. Share what you see in the console output.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: ADD DEBUGGING TO COLLECTIONS COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+In the fetchCollections function, add logging AFTER setting collections:
+
+async function fetchCollections() {
+  try {
+    setLoading(true);
+    setError(null);
+    const response = await fetch('/api/collections');
+    if (!response.ok) throw new Error('Failed to fetch');
+    const data = await response.json();
+    
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid data format');
+    }
+    
+    // ADD THIS LOGGING:
+    console.log('[Collections] Fetched count:', data.length);
+    console.log('[Collections] First collection:', data[0]);
+    console.log('[Collections] thumbnailImage:', data[0]?.thumbnailImage);
+    console.log('[Collections] bannerImage:', data[0]?.bannerImage);
+    
+    setCollections(data);
+  } catch (error) {
+    console.error('[Collections] Failed to fetch:', error);
+    setError(error instanceof Error ? error.message : 'Failed to load collections');
+  } finally {
+    setLoading(false);
+  }
+}
+
+2. Refresh /collections and check console - do you see the thumbnailImage URLs?
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: SIMPLIFIED IMAGE TAG WITH INLINE FALLBACK
+═══════════════════════════════════════════════════════════════════
+
+1. STILL IN FILE: client/src/pages/Collections.tsx
+
+Find the <img> tag in the collection card and REPLACE with this simpler version:
+
+<div className="relative aspect-square overflow-hidden bg-gradient-to-br from-primary/20 to-purple-500/20">
+  <img
+    src={collection.thumbnailImage || `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol || collection.name)}`}
+    alt={collection.name}
+    className="w-full h-full object-cover"
+    loading="eager"
+    onLoad={(e) => {
+      console.log('[Collections] Image loaded:', collection.symbol, e.currentTarget.src);
+    }}
+    onError={(e) => {
+      console.error('[Collections] Image error:', collection.symbol, e.currentTarget.src);
+      e.currentTarget.src = `https://placehold.co/400x400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol || 'NFT')}`;
+    }}
+  />
+  {collection.verified && (
+    <div className="absolute top-2 right-2 bg-primary/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-semibold">
+      ✓ Verified
+    </div>
+  )}
+</div>
+
+Key changes:
+- Changed loading="lazy" to loading="eager" (load immediately)
+- Added onLoad logging to see if images load
+- Added onError logging to see if images fail
+- Changed fallback to placehold.co (alternative to via.placeholder.com)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ALTERNATIVE - TEST WITH DIRECT DATABASE IMAGES
+═══════════════════════════════════════════════════════════════════
+
+The thumbnailImage URLs in database might have special characters breaking them.
+
+Let's update them to use a different placeholder service:
+
+Run this SQL:
+
+UPDATE collections 
+SET thumbnail_image = CONCAT('https://placehold.co/400x400/6366f1/ffffff?text=', symbol)
+WHERE thumbnail_image LIKE '%via.placeholder%';
+
+Then refresh /collections page.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: NUCLEAR OPTION - HARDCODED TEST IMAGES
+═══════════════════════════════════════════════════════════════════
+
+If nothing else works, let's test with actual image URLs to confirm rendering works:
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+In the image tag, TEMPORARILY hardcode a test image:
+
+<img
+  src="https://i.imgur.com/placeholder.jpg"
+  alt={collection.name}
+  className="w-full h-full object-cover"
+/>
+
+If THIS shows an image, we know the problem is the placeholder URLs.
+If this DOESN'T show an image, the problem is CSS or image rendering.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: CHECK CSS ISN'T HIDING IMAGES
+═══════════════════════════════════════════════════════════════════
+
+The gradient background might be covering the images.
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+Change the parent div styling:
+
+// FIND THIS:
+<div className="relative aspect-square overflow-hidden bg-gradient-to-br from-primary/20 to-purple-500/20">
+
+// REPLACE WITH:
+<div className="relative aspect-square overflow-hidden bg-gray-900">
+
+This removes the gradient so we can see if images are there but hidden.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: VERIFY DATABASE HAS CORRECT DATA
+═══════════════════════════════════════════════════════════════════
+
+Double-check the database has the correct field names:
+
+Run this SQL:
+
+SELECT 
+  name, 
+  symbol, 
+  thumbnail_image,
+  LENGTH(thumbnail_image) as url_length
+FROM collections 
+LIMIT 5;
+
+Expected output should show:
+- thumbnail_image has full URLs
+- url_length should be 80-150 characters
+
+If thumbnail_image is NULL or empty, that's the problem.
+
+
+═══════════════════════════════════════════════════════════════════
+MOST LIKELY FIX: WRONG FIELD NAME MAPPING
+═══════════════════════════════════════════════════════════════════
+
+The database uses thumbnail_image (snake_case) but the API might be returning thumbnailImage (camelCase).
+
+1. CHECK FILE: server/routes.ts
+
+Find the /api/collections endpoint. Does it transform snake_case to camelCase?
+
+If not, add this transformation:
+
+app.get('/api/collections', async (req, res) => {
+  try {
+    const collections = await getAllCollections();
+    
+    // Transform snake_case to camelCase
+    const transformed = collections.map(c => ({
+      id: c.id,
+      address: c.address,
+      name: c.name,
+      symbol: c.symbol,
+      totalSupply: c.total_supply,
+      floorPrice: c.floor_price,
+      volume24h: c.volume_24h,
+      totalVolume: c.total_volume,
+      thumbnailImage: c.thumbnail_image,  // TRANSFORM THIS
+      bannerImage: c.banner_image,        // AND THIS
+      verified: c.verified,
+    }));
+    
+    res.json(transformed);
+  } catch (error: any) {
+    console.error('[API] Failed to fetch collections:', error);
+    res.status(500).json({ error: 'Failed to fetch collections' });
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════
+QUICK TEST - DOES THIS SHOW?
+═══════════════════════════════════════════════════════════════════
+
+Replace ONE collection card image with this test:
+
+<div className="relative aspect-square overflow-hidden bg-red-500">
+  <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold">
+    TEST
+  </div>
+</div>
+
+If you see a red box with "TEST", the rendering works and it's an image URL issue.
+If you don't see it, there's a CSS/layout issue.
