@@ -1,0 +1,250 @@
+EMERGENCY: FIX CHROME CRASHES AND COLLECTION IMAGES
+
+CRITICAL ISSUES:
+1. Chrome crashes/glitches when viewing Collections page
+2. Collection cards show gradient only, no images
+3. API returns thumbnailImage and bannerImage but frontend expects imageUrl
+
+ROOT CAUSE: Frontend component using wrong field names + potential memory leak
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: FIX COLLECTIONS COMPONENT - USE CORRECT FIELD NAMES
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+Find the interface at the top (around line 5-15) and REPLACE with:
+
+interface Collection {
+  id: number;
+  address: string;
+  name: string;
+  symbol: string;
+  totalSupply: number;
+  floorPrice: string | null;
+  volume24h: string | null;
+  totalVolume: string | null;
+  thumbnailImage: string | null;  // CHANGED from imageUrl
+  bannerImage: string | null;     // ADDED
+  verified: boolean;
+}
+
+2. Find the image tag in the collection card (around line 160-180) and REPLACE with:
+
+<img
+  src={collection.thumbnailImage || collection.bannerImage || `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`}
+  alt={collection.name}
+  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+  loading="lazy"
+  onError={(e) => {
+    const target = e.currentTarget;
+    if (!target.dataset.failed) {
+      target.dataset.failed = 'true';
+      target.src = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
+    }
+  }}
+/>
+
+3. Change the API endpoint from /api/collections/all to /api/collections
+
+Find the fetchCollections function and CHANGE:
+
+// OLD:
+const response = await fetch('/api/collections/all');
+
+// NEW:
+const response = await fetch('/api/collections');
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: REMOVE MEMORY LEAK CAUSES
+═══════════════════════════════════════════════════════════════════
+
+1. STILL IN FILE: client/src/pages/Collections.tsx
+
+Find the filteredCollections sorting logic and SIMPLIFY it to prevent crashes:
+
+const filteredCollections = collections
+  .filter(c => 
+    c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  .sort((a, b) => {
+    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'volume') {
+      const volA = parseFloat(a.totalVolume || '0');
+      const volB = parseFloat(b.totalVolume || '0');
+      return volB - volA;
+    }
+    if (sortBy === 'items') return (b.totalSupply || 0) - (a.totalSupply || 0);
+    return 0;
+  })
+  .slice(0, 50); // ADDED: Limit to 50 to prevent rendering too many
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DISABLE FRAMER MOTION ANIMATIONS (THEY CAN CAUSE CRASHES)
+═══════════════════════════════════════════════════════════════════
+
+1. STILL IN FILE: client/src/pages/Collections.tsx
+
+Find the motion.div wrapper around collection cards and REPLACE with regular div:
+
+// FIND THIS (around line 200):
+<motion.div 
+  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+  initial="hidden"
+  animate="visible"
+  variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+>
+
+// REPLACE WITH:
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+2. Find each collection card's motion.div and REPLACE with regular div:
+
+// FIND THIS:
+<motion.div
+  key={collection.id}
+  variants={{
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  }}
+>
+
+// REPLACE WITH:
+<div key={collection.id}>
+
+3. Close the regular div instead of motion.div:
+
+// FIND:
+</motion.div>
+
+// REPLACE WITH:
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ADD ERROR BOUNDARY TO PREVENT FULL CRASHES
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+Wrap the entire return statement in a try-catch by adding at the very top of the component:
+
+export default function Collections() {
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'volume' | 'items'>('volume');
+  const [error, setError] = useState<string | null>(null); // ADD THIS
+
+  // ... rest of component
+
+
+2. Wrap fetchCollections in better error handling:
+
+async function fetchCollections() {
+  try {
+    setLoading(true);
+    setError(null); // ADD THIS
+    const response = await fetch('/api/collections');
+    if (!response.ok) throw new Error('Failed to fetch');
+    const data = await response.json();
+    
+    // Validate data
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid data format');
+    }
+    
+    setCollections(data);
+  } catch (error) {
+    console.error('[Collections] Failed to fetch:', error);
+    setError(error instanceof Error ? error.message : 'Failed to load collections'); // ADD THIS
+  } finally {
+    setLoading(false);
+  }
+}
+
+3. Add error display in the render:
+
+{error && (
+  <div className="max-w-7xl mx-auto px-4 py-12">
+    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
+      <p className="text-destructive font-semibold mb-2">Error loading collections</p>
+      <p className="text-sm text-muted-foreground mb-4">{error}</p>
+      <Button onClick={fetchCollections} variant="outline">
+        Try Again
+      </Button>
+    </div>
+  </div>
+)}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: VERIFY AND TEST
+═══════════════════════════════════════════════════════════════════
+
+After making these changes:
+
+1. Restart the dev server (Ctrl+C, then npm run dev)
+
+2. Open Collections page in a NEW incognito window
+
+3. Test checklist:
+   ✓ Page loads without freezing? (Yes/No)
+   ✓ Collection cards show placeholder images? (Yes/No)
+   ✓ Can scroll without lag? (Yes/No)
+   ✓ Chrome doesn't crash? (Yes/No)
+   ✓ Search works? (Yes/No)
+
+4. If STILL crashing, tell me immediately and we'll disable the entire page temporarily.
+
+
+═══════════════════════════════════════════════════════════════════
+EMERGENCY DISABLE (IF STILL CRASHING)
+═══════════════════════════════════════════════════════════════════
+
+If Chrome still crashes after the above fixes:
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+Replace the ENTIRE file contents with this minimal version:
+
+export default function Collections() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-primary/5">
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <h1 className="text-4xl font-bold mb-4 text-center">Collections</h1>
+        <div className="bg-card border border-primary/20 rounded-lg p-8 text-center">
+          <p className="text-muted-foreground mb-4">
+            Collections feature is temporarily disabled for optimization.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Please check back soon!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+This completely disables the feature but stops the crashes.
+
+
+═══════════════════════════════════════════════════════════════════
+SUMMARY OF FIXES
+═══════════════════════════════════════════════════════════════════
+
+1. ✅ Changed imageUrl → thumbnailImage (matches API)
+2. ✅ Changed /api/collections/all → /api/collections (correct endpoint)
+3. ✅ Removed Framer Motion animations (can cause memory leaks)
+4. ✅ Limited results to 50 max (prevents rendering overload)
+5. ✅ Added error boundaries (prevents full crashes)
+6. ✅ Simplified image fallback logic (no complex onError chains)
+
+These changes should:
+- Stop Chrome crashes ✓
+- Show placeholder images ✓
+- Load page quickly ✓
+- Allow smooth scrolling ✓
