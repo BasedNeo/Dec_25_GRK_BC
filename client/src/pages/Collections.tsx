@@ -570,8 +570,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
 
-  const imageSrc = collection.thumbnailImage || collection.bannerImage || 
-    `https://placehold.co/400x400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
+  const collectionImage = collection.thumbnailImage || collection.bannerImage;
 
   return (
     <Link href={`/collections?collection=${collection.contractAddress}`}>
@@ -580,22 +579,23 @@ function CollectionCard({ collection }: { collection: Collection }) {
         data-testid={`collection-card-${collection.id}`}
       >
         <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
-          <img 
-            src={imageSrc}
-            alt={collection.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="eager"
-            onError={(e) => {
-              console.log('[CollectionCard] Image failed:', collection.symbol, e.currentTarget.src);
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-          
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
-              {collection.symbol}
-            </span>
-          </div>
+          {collectionImage ? (
+            <img 
+              src={collectionImage}
+              alt={collection.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                console.log('[CollectionCard] Image failed, hiding:', collection.symbol);
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
+                {collection.symbol}
+              </span>
+            </div>
+          )}
           
           {collection.isFeatured && (
             <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">
@@ -605,7 +605,9 @@ function CollectionCard({ collection }: { collection: Collection }) {
         </div>
         
         <CardHeader>
-          <CardTitle className="text-xl text-white font-orbitron">{collection.name}</CardTitle>
+          <CardTitle className="text-xl text-white font-orbitron">
+            {collection.name}
+          </CardTitle>
           <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
         </CardHeader>
         

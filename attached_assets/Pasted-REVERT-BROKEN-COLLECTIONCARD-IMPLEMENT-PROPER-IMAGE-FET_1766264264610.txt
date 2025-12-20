@@ -1,0 +1,138 @@
+REVERT BROKEN COLLECTIONCARD & IMPLEMENT PROPER IMAGE FETCHING
+
+ISSUE: Collections page showing overlapping titles and missing Based Guardians images.
+
+SOLUTION: Implement industry-standard NFT collection image fetching.
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: REVERT THE BROKEN COLLECTIONCARD COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+1. OPEN FILE: client/src/pages/Collections.tsx
+
+2. FIND the CollectionCard function (at the bottom of the file)
+
+3. REPLACE THE ENTIRE CollectionCard FUNCTION with this SIMPLE version:
+
+function CollectionCard({ collection }: { collection: Collection }) {
+  const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
+  const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
+
+  // Use thumbnailImage or bannerImage from database
+  const collectionImage = collection.thumbnailImage || collection.bannerImage;
+
+  return (
+    <Link href={`/collections?collection=${collection.contractAddress}`}>
+      <Card 
+        className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(0,255,255,0.15)] transition-all cursor-pointer group overflow-hidden"
+        data-testid={`collection-card-${collection.id}`}
+      >
+        {/* Banner Image */}
+        <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
+          {collectionImage ? (
+            <img 
+              src={collectionImage}
+              alt={collection.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                console.log('[CollectionCard] Image failed, hiding:', collection.symbol);
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
+                {collection.symbol}
+              </span>
+            </div>
+          )}
+          
+          {collection.isFeatured && (
+            <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">
+              Featured
+            </Badge>
+          )}
+        </div>
+        
+        {/* Card Content */}
+        <CardHeader>
+          <CardTitle className="text-xl text-white font-orbitron">
+            {collection.name}
+          </CardTitle>
+          <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
+        </CardHeader>
+        
+        <CardContent>
+          {collection.description && (
+            <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+              {collection.description}
+            </p>
+          )}
+          
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-gray-500">Items</p>
+              <p className="font-bold text-white">{collection.totalSupply}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Floor</p>
+              <p className="font-bold text-cyan-400">
+                {Number(floorPrice) >= 1 ? `${floorPrice} BASED` : '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Volume</p>
+              <p className="font-bold text-purple-400">
+                {Number(volume) >= 1 ? `${volume} BASED` : '-'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: FIX BASED GUARDIANS TO USE ACTUAL NFT IMAGES
+═══════════════════════════════════════════════════════════════════
+
+The BASED_GUARDIANS_DEFAULT constant should use real NFT images from IPFS.
+
+FIND this constant near the top of Collections.tsx:
+
+const BASED_GUARDIANS_DEFAULT: Collection = {
+  ...
+};
+
+REPLACE IT WITH:
+
+const BASED_GUARDIANS_DEFAULT: Collection = {
+  id: 1,
+  contractAddress: NFT_CONTRACT.toLowerCase(),
+  name: 'Based Guardians',
+  symbol: 'GUARDIAN',
+  description: 'The official Based Guardians NFT collection - 3,732 unique cyberpunk guardians protecting the BasedAI ecosystem.',
+  bannerImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeie3c5ahzsiiparmbr6lgdbpiukorbphvclx73dwr6vrjfalfyu52y/345.png',
+  thumbnailImage: 'https://moccasin-key-flamingo-487.mypinata.cloud/ipfs/bafybeigklna3comgshfndjcbmdjechrj6qkl74dnn77piysmfli7jvlzfq/NeoStrike%20Hackers/NeoStrike_Hackers_1.jpg',
+  totalSupply: 3732,
+  floorPrice: '0',
+  volumeTraded: '0',
+  isFeatured: true
+};
+
+
+This uses the ACTUAL IPFS URLs from your Based Guardians collection.
+
+
+═══════════════════════════════════════════════════════════════════
+TEST IT
+═══════════════════════════════════════════════════════════════════
+
+1. Save the file
+2. Refresh /collections page
+3. You should see:
+   ✅ Based Guardians card with real NFT image
+   ✅ Other collections with placeholder text (no overlapping titles)
+   ✅ No crashes
