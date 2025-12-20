@@ -138,7 +138,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'mint', label: t('nav.mint', 'Mint') },
     { id: 'gallery', label: t('nav.gallery', 'Portfolio') },
     { id: 'escrow', label: t('nav.escrow', 'Market') },
-    { id: 'collections', label: t('nav.collections', 'Collections') },
+    // Temporarily hidden for v1 launch - will add multi-collection in v2
+    // { id: 'collections', label: t('nav.collections', 'Collections') },
     { id: 'universe', label: t('nav.universe', 'Universe') },
     { id: 'pool', label: t('nav.pool', 'Pool') },
     { id: 'stats', label: t('nav.stats', 'Stats') },
