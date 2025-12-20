@@ -1,0 +1,145 @@
+SET COLLECTION IMAGES - IMMEDIATE FIX
+
+ISSUE: Collections showing but imageUrl is still null in database.
+
+SOLUTION: Run this exact SQL command to set placeholder images for all collections.
+
+═══════════════════════════════════════════════════════════════════
+RUN THIS SQL COMMAND NOW
+═══════════════════════════════════════════════════════════════════
+
+Open your database terminal and run this EXACT command:
+
+UPDATE collections 
+SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=' || 
+                REPLACE(REPLACE(symbol, ' ', '%20'), '#', '%23')
+WHERE image_url IS NULL OR image_url = '';
+
+
+If that doesn't work, try this alternative syntax:
+
+UPDATE collections 
+SET image_url = CONCAT('https://via.placeholder.com/400/6366f1/ffffff?text=', 
+                       REPLACE(REPLACE(symbol, ' ', '%20'), '#', '%23'))
+WHERE image_url IS NULL OR image_url = '';
+
+
+If THAT doesn't work, run these individual UPDATE statements:
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=BASEDAI2140' 
+WHERE symbol = 'BASEDAI2140';
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=BEARS' 
+WHERE symbol = 'BEARS';
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=GIGA' 
+WHERE symbol = 'GIGA';
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=BPUNKS' 
+WHERE symbol = 'BPUNKS';
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=BEASTS' 
+WHERE symbol = 'BEASTS';
+
+UPDATE collections SET image_url = 'https://via.placeholder.com/400/6366f1/ffffff?text=GUARD' 
+WHERE symbol = 'GUARD' OR address = '0xaE51dc5fD1499A129f8654963560f9340773ad59';
+
+-- Repeat for all other collections with their symbols
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFY THE UPDATE WORKED
+═══════════════════════════════════════════════════════════════════
+
+After running the SQL, check:
+
+SELECT symbol, image_url FROM collections LIMIT 10;
+
+Every row should now have an image_url like:
+https://via.placeholder.com/400/6366f1/ffffff?text=BASEDAI2140
+
+
+═══════════════════════════════════════════════════════════════════
+REFRESH THE PAGE
+═══════════════════════════════════════════════════════════════════
+
+1. Go to your app at /collections
+2. Hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+3. Collections should now show colored placeholder images with text
+
+If STILL not showing, the issue is on the frontend.
+
+
+═══════════════════════════════════════════════════════════════════
+IF STILL NOT SHOWING - CHECK API RESPONSE
+═══════════════════════════════════════════════════════════════════
+
+1. Open browser and go to:
+   http://localhost:5000/api/collections/all
+
+2. Look at the JSON response
+
+3. Each collection object should have:
+   "imageUrl": "https://via.placeholder.com/400/..."
+
+4. If imageUrl is null in the API response, the database update didn't work.
+
+5. If imageUrl has a value but images don't show on page, it's a frontend issue.
+
+
+═══════════════════════════════════════════════════════════════════
+ALTERNATIVE: UPDATE VIA DRIZZLE ORM
+═══════════════════════════════════════════════════════════════════
+
+If SQL commands don't work, create this script:
+
+1. CREATE FILE: script/set-placeholder-images.ts
+
+import { db } from '../server/db';
+import { collections } from '../shared/schema';
+import { eq, or, isNull } from 'drizzle-orm';
+
+async function setPlaceholderImages() {
+  try {
+    // Get all collections
+    const allCollections = await db.select().from(collections).execute();
+    
+    console.log(`Found ${allCollections.length} collections`);
+    
+    for (const collection of allCollections) {
+      const placeholderUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol || collection.name)}`;
+      
+      await db
+        .update(collections)
+        .set({ imageUrl: placeholderUrl })
+        .where(eq(collections.id, collection.id))
+        .execute();
+      
+      console.log(`✓ Updated ${collection.symbol}: ${placeholderUrl}`);
+    }
+    
+    console.log('\n✅ All collections updated!');
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+setPlaceholderImages().then(() => process.exit(0));
+
+2. Run it:
+npx tsx script/set-placeholder-images.ts
+
+
+═══════════════════════════════════════════════════════════════════
+DONE
+═══════════════════════════════════════════════════════════════════
+
+After running ONE of the above methods:
+1. Database should have image_url for every collection
+2. API endpoint should return imageUrl in JSON
+3. /collections page should show placeholder images
+
+REPORT BACK:
+- Did the SQL update work? (Check: SELECT * FROM collections LIMIT 3)
+- Does the API return imageUrl? (Check: http://localhost:5000/api/collections/all)
+- Do images show on /collections page?
