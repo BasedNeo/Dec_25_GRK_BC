@@ -1,0 +1,153 @@
+FIX COLLECTIONS PAGE - SHOW ALL COLLECTIONS & FIX CLICK NAVIGATION
+
+ISSUE 1: Only 1 collection card is showing (should show all 18 collections)
+ISSUE 2: Clicking a collection card doesn't show its NFTs
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: CHECK HOW MANY COLLECTIONS ARE IN THE DATABASE
+═══════════════════════════════════════════════════════════════════
+
+Run this in the Replit Database console or Shell:
+
+SELECT COUNT(*) as total FROM collections;
+
+Also run:
+
+SELECT name, symbol FROM collections LIMIT 10;
+
+
+This will tell us if collections are actually in the database.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: ADD CONSOLE LOGGING TO SEE WHAT API RETURNS
+═══════════════════════════════════════════════════════════════════
+
+UPDATE FILE: client/src/pages/Collections.tsx
+
+FIND the fetchCollections function and REPLACE IT with this version
+that has better logging:
+
+async function fetchCollections() {
+  try {
+    console.log('[Collections] Fetching collections from API...');
+    const res = await fetch('/api/collections');
+    const data = await res.json();
+    
+    console.log('[Collections] API returned:', data.length, 'collections');
+    console.log('[Collections] First 5 collections:', data.slice(0, 5).map((c: Collection) => c.name));
+    
+    const hasBasedGuardians = data.some(
+      (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
+    );
+    
+    if (!hasBasedGuardians) {
+      console.log('[Collections] Adding Based Guardians as default');
+      setCollections([BASED_GUARDIANS_DEFAULT, ...data]);
+    } else {
+      console.log('[Collections] Based Guardians already in data');
+      setCollections(data);
+    }
+    
+    console.log('[Collections] Total collections set:', data.length + (hasBasedGuardians ? 0 : 1));
+  } catch (error) {
+    console.error('[Collections] Failed to fetch collections:', error);
+    setCollections([BASED_GUARDIANS_DEFAULT]);
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: FIX THE COLLECTION CARD CLICK TO GO TO BROWSE PAGE
+═══════════════════════════════════════════════════════════════════
+
+UPDATE FILE: client/src/pages/Collections.tsx
+
+FIND the CollectionCard function and REPLACE the Link destination:
+
+CHANGE FROM:
+<Link href={`/?collection=${collection.contractAddress}`}>
+
+TO:
+<Link href={`/browse?collection=${collection.contractAddress}`}>
+
+
+This will make clicking a collection go to the Browse page with that
+collection's NFTs filtered.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: VERIFY THE API ENDPOINT IS WORKING
+═══════════════════════════════════════════════════════════════════
+
+CHECK FILE: server/routes.ts
+
+Make sure this endpoint exists:
+
+server.get('/api/collections', async (req, res) => {
+  try {
+    const collections = await db.getAllCollections();
+    res.json(collections);
+  } catch (error) {
+    console.error('[API] Error fetching collections:', error);
+    res.status(500).json({ error: 'Failed to fetch collections' });
+  }
+});
+
+
+If this endpoint is missing, ADD IT.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: CHECK THE DATABASE QUERY
+═══════════════════════════════════════════════════════════════════
+
+CHECK FILE: server/storage.ts
+
+Make sure getAllCollections() exists and looks like this:
+
+async getAllCollections() {
+  return await db.select().from(collections).orderBy(desc(collections.isFeatured));
+}
+
+
+If it's missing, ADD IT.
+
+
+═══════════════════════════════════════════════════════════════════
+TEST IT
+═══════════════════════════════════════════════════════════════════
+
+1. Save all files
+2. Open browser console (F12 → Console tab)
+3. Go to /collections page
+4. Look for these logs:
+   [Collections] Fetching collections from API...
+   [Collections] API returned: X collections
+   [Collections] First 5 collections: [names...]
+   [Collections] Total collections set: X
+
+5. You should see multiple collection cards (not just 1)
+6. Click on a collection card
+7. It should take you to the Browse page with NFTs from that collection
+
+
+═══════════════════════════════════════════════════════════════════
+TELL ME THE RESULTS
+═══════════════════════════════════════════════════════════════════
+
+After running this, tell me:
+
+1. What does the database query return? (Step 1)
+   - How many collections total?
+   - What are their names?
+
+2. What do you see in the browser console? (Step 3)
+   - How many collections did the API return?
+   - What are the first 5 names?
+
+3. How many collection cards do you see on the page?
+
+4. When you click a card, where does it take you?

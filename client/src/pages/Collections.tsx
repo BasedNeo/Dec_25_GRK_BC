@@ -60,20 +60,28 @@ export default function Collections() {
 
   async function fetchCollections() {
     try {
+      console.log('[Collections] Fetching collections from API...');
       const res = await fetch('/api/collections');
       const data = await res.json();
+      
+      console.log('[Collections] API returned:', data.length, 'collections');
+      console.log('[Collections] First 5 collections:', data.slice(0, 5).map((c: Collection) => c.name));
       
       const hasBasedGuardians = data.some(
         (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
       );
       
       if (!hasBasedGuardians) {
+        console.log('[Collections] Adding Based Guardians as default');
         setCollections([BASED_GUARDIANS_DEFAULT, ...data]);
       } else {
+        console.log('[Collections] Based Guardians already in data');
         setCollections(data);
       }
+      
+      console.log('[Collections] Total collections set:', data.length + (hasBasedGuardians ? 0 : 1));
     } catch (error) {
-      console.error('Failed to fetch collections:', error);
+      console.error('[Collections] Failed to fetch collections:', error);
       setCollections([BASED_GUARDIANS_DEFAULT]);
     } finally {
       setLoading(false);
