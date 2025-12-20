@@ -566,37 +566,12 @@ export default function Collections() {
   );
 }
 
-const FALLBACK_BANNER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"%3E%3Cdefs%3E%3ClinearGradient id="bg" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%23001a1a"/%3E%3Cstop offset="50%25" stop-color="%23003333"/%3E%3Cstop offset="100%25" stop-color="%23001a2e"/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="400" height="200" fill="url(%23bg)"/%3E%3Ccircle cx="50" cy="40" r="2" fill="%2300ffff" opacity="0.5"/%3E%3Ccircle cx="350" cy="60" r="1.5" fill="%23bf00ff" opacity="0.4"/%3E%3Ccircle cx="200" cy="30" r="1" fill="%23ffffff" opacity="0.3"/%3E%3Ccircle cx="100" cy="150" r="1.5" fill="%2300ffff" opacity="0.3"/%3E%3Ccircle cx="300" cy="170" r="2" fill="%23bf00ff" opacity="0.4"/%3E%3C/svg%3E';
-
-const FALLBACK_THUMBNAIL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Cdefs%3E%3ClinearGradient id="thumb" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%2300ffff"/%3E%3Cstop offset="100%25" stop-color="%23bf00ff"/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx="50" cy="50" r="50" fill="url(%23thumb)"/%3E%3Ctext x="50" y="58" font-size="32" text-anchor="middle" fill="white"%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E';
-
 function CollectionCard({ collection }: { collection: Collection }) {
-  const [bannerLoaded, setBannerLoaded] = useState(false);
-  const [bannerError, setBannerError] = useState(false);
-  const [fallbackAttempt, setFallbackAttempt] = useState(0);
-  
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
 
-  const placeholderUrl = `https://via.placeholder.com/400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
-  const bannerSrc = collection.bannerImage || collection.thumbnailImage || placeholderUrl;
-
-  const handleImageError = () => {
-    if (fallbackAttempt === 0) {
-      setFallbackAttempt(1);
-      setBannerLoaded(false);
-    } else if (fallbackAttempt === 1) {
-      setFallbackAttempt(2);
-      setBannerError(true);
-      setBannerLoaded(true);
-    }
-  };
-
-  const getCurrentSrc = () => {
-    if (bannerError || fallbackAttempt === 2) return FALLBACK_BANNER;
-    if (fallbackAttempt === 1) return placeholderUrl;
-    return bannerSrc;
-  };
+  const imageSrc = collection.thumbnailImage || collection.bannerImage || 
+    `https://placehold.co/400x400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
 
   return (
     <Link href={`/collections?collection=${collection.contractAddress}`}>
@@ -604,19 +579,28 @@ function CollectionCard({ collection }: { collection: Collection }) {
         className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(0,255,255,0.15)] transition-all cursor-pointer group overflow-hidden"
         data-testid={`collection-card-${collection.id}`}
       >
-        <div className="relative h-48 overflow-hidden rounded-t-lg">
-          {!bannerLoaded && !bannerError && (
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 animate-pulse" />
-          )}
+        <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
           <img 
-            src={getCurrentSrc()} 
+            src={imageSrc}
             alt={collection.name}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setBannerLoaded(true)}
-            onError={handleImageError}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="eager"
+            onError={(e) => {
+              console.log('[CollectionCard] Image failed:', collection.symbol, e.currentTarget.src);
+              e.currentTarget.style.display = 'none';
+            }}
           />
+          
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
+              {collection.symbol}
+            </span>
+          </div>
+          
           {collection.isFeatured && (
-            <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">Featured</Badge>
+            <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">
+              Featured
+            </Badge>
           )}
         </div>
         

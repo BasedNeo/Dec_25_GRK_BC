@@ -1,0 +1,140 @@
+FIX COLLECTION CARD IMAGES - SIMPLIFY IMAGE RENDERING
+
+ISSUE: CollectionCard component has complex fallback logic preventing images from showing.
+
+SOLUTION: Simplify the image tag to just render thumbnailImage directly.
+
+═══════════════════════════════════════════════════════════════════
+UPDATE THE COLLECTIONCARD COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+1. UPDATE FILE: client/src/pages/Collections.tsx
+
+Find the CollectionCard component (at the very bottom of the file) and REPLACE THE ENTIRE COMPONENT with this simplified version:
+
+function CollectionCard({ collection }: { collection: Collection }) {
+  const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
+  const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
+
+  // Use thumbnailImage from API (already has placehold.co URL)
+  const imageSrc = collection.thumbnailImage || collection.bannerImage || 
+    `https://placehold.co/400x400/6366f1/ffffff?text=${encodeURIComponent(collection.symbol)}`;
+
+  return (
+    <Link href={`/collections?collection=${collection.contractAddress}`}>
+      <Card 
+        className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(0,255,255,0.15)] transition-all cursor-pointer group overflow-hidden"
+        data-testid={`collection-card-${collection.id}`}
+      >
+        {/* Banner Image */}
+        <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
+          <img 
+            src={imageSrc}
+            alt={collection.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="eager"
+            onError={(e) => {
+              console.log('[CollectionCard] Image failed:', collection.symbol, e.currentTarget.src);
+              // Fallback: show text on gradient background
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          
+          {/* Show collection name if image fails to load */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-4xl font-orbitron font-bold text-cyan-400/50">
+              {collection.symbol}
+            </span>
+          </div>
+          
+          {collection.isFeatured && (
+            <Badge className="absolute top-4 right-4 bg-cyan-500 text-black font-orbitron">
+              Featured
+            </Badge>
+          )}
+        </div>
+        
+        {/* Card Content */}
+        <CardHeader>
+          <CardTitle className="text-xl text-white font-orbitron">{collection.name}</CardTitle>
+          <p className="text-sm text-cyan-400/70">{collection.symbol}</p>
+        </CardHeader>
+        
+        <CardContent>
+          {collection.description && (
+            <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+              {collection.description}
+            </p>
+          )}
+          
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-gray-500">Items</p>
+              <p className="font-bold text-white">{collection.totalSupply}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Floor</p>
+              <p className="font-bold text-cyan-400">
+                {Number(floorPrice) >= 1 ? `${floorPrice} BASED` : '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Volume</p>
+              <p className="font-bold text-purple-400">
+                {Number(volume) >= 1 ? `${volume} BASED` : '-'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+WHAT THIS FIXES
+═══════════════════════════════════════════════════════════════════
+
+1. ✅ Removed complex loading state logic (was blocking render)
+2. ✅ Removed fallbackAttempt state (was causing re-render loops)
+3. ✅ Simplified to just use thumbnailImage directly
+4. ✅ Added collection symbol text underneath image (shows if image fails)
+5. ✅ Changed loading from "lazy" to "eager" (loads immediately)
+6. ✅ Better error handling with console.log
+
+
+═══════════════════════════════════════════════════════════════════
+HOW IT WORKS NOW
+═══════════════════════════════════════════════════════════════════
+
+1. Tries to load thumbnailImage (from placehold.co)
+2. If that fails, hides the img tag
+3. Shows collection symbol text instead (positioned underneath)
+4. Gradient background always visible
+5. No complex state management blocking renders
+
+
+═══════════════════════════════════════════════════════════════════
+TEST IT
+═══════════════════════════════════════════════════════════════════
+
+1. Save the file
+2. Go to /collections page
+3. You should now see:
+   - If image loads: colored placeholder with collection symbol
+   - If image fails: collection symbol text on gradient
+   
+4. Check browser console (F12) for any error logs
+
+
+═══════════════════════════════════════════════════════════════════
+ALSO: CHECK THE CONSOLE.LOG OUTPUT
+═══════════════════════════════════════════════════════════════════
+
+Open browser console on /collections page and look for:
+
+[Collections] First collection: { ..., thumbnailImage: "https://placehold.co/..." }
+
+If you see the thumbnailImage URL there, the API is working.
+If images still don't show after this fix, it's a browser/network issue.
