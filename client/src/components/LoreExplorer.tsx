@@ -97,56 +97,64 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   const prevImage = () => setCurrentIndex((i) => (i - 1 + displayIds.length) % displayIds.length);
   
   return (
-    <div ref={containerRef} className="relative w-full max-w-[240px] sm:max-w-[200px] md:max-w-none aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black mb-3 mx-auto md:mx-0">
-      {!isVisible || loading ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
-          <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-        </div>
-      ) : currentImage ? (
-        <>
-          <motion.img
-            key={currentTokenId}
-            src={currentImage}
-            alt={`${characterName} #${currentTokenId}`}
-            className="w-full h-full object-contain"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          />
-          {displayIds.length > 1 && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4 text-white" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4 text-white" />
-              </button>
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-                {displayIds.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentIndex ? 'bg-cyan-400' : 'bg-white/30'}`}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white/70">
-            #{currentTokenId}
+    <div 
+      ref={containerRef} 
+      className="relative w-full mb-4"
+      style={{ minHeight: '200px' }}
+    >
+      <div className="relative w-full aspect-square max-w-[280px] mx-auto rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-white/10">
+        {!isVisible || loading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
+            <div className="w-10 h-10 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
           </div>
-        </>
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30">
-          <ImageIcon className="w-8 h-8 mb-1" />
-          <span className="text-xs">No image</span>
-        </div>
-      )}
+        ) : currentImage ? (
+          <>
+            <img
+              key={currentTokenId}
+              src={currentImage}
+              alt={`${characterName} #${currentTokenId}`}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ display: 'block' }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+            {displayIds.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black/90 transition-colors z-10"
+                >
+                  <ChevronLeft className="w-5 h-5 text-white" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black/90 transition-colors z-10"
+                >
+                  <ChevronRight className="w-5 h-5 text-white" />
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                  {displayIds.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? 'bg-cyan-400' : 'bg-white/40'}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="absolute top-2 right-2 px-2 py-1 rounded bg-black/70 text-xs text-white/80 font-mono z-10">
+              #{currentTokenId}
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white/40">
+            <ImageIcon className="w-10 h-10 mb-2" />
+            <span className="text-sm">No image available</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
