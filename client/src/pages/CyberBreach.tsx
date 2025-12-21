@@ -320,7 +320,7 @@ export default function CyberBreach() {
       
       state.lastEscapeTime = Date.now();
       
-      if (isMobile) haptic('light');
+      if (isMobile) haptic.light();
     } else {
       state.combo = 0;
       state.lives--;
@@ -329,7 +329,7 @@ export default function CyberBreach() {
       playSound('hit');
       state.particles.push(...createParticles(centerX, centerY, COLORS.danger, 20));
       
-      if (isMobile) haptic('heavy');
+      if (isMobile) haptic.heavy();
       
       if (state.lives <= 0) {
         state.phase = 'gameover';
@@ -398,7 +398,7 @@ export default function CyberBreach() {
       playSound('hit');
       state.particles.push(...createParticles(centerX, centerY, COLORS.danger, 20));
       
-      if (isMobile) haptic('heavy');
+      if (isMobile) haptic.heavy();
       
       if (state.lives <= 0) {
         state.phase = 'gameover';
@@ -696,7 +696,7 @@ export default function CyberBreach() {
     
     trackEvent('game_started', 'cyber-breach', 'start', 0);
     
-    if (isMobile) haptic('light');
+    if (isMobile) haptic.light();
   }, [address, access.canPlay, access.reason, toast, spawnRing, syncState, gameLoop]);
   
   const pauseGame = useCallback(() => {
