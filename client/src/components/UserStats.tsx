@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -340,6 +341,7 @@ function GameStatsSection() {
 export function UserStats() {
   const { t } = useTranslation();
   const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { profile, getDisplayName, setCustomName, checkNameAvailable, walletSuffix } = useGuardianProfileContext();
   const { flags } = useFeatureFlags();
   const [nftCount, setNftCount] = useState(0);
