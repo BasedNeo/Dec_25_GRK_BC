@@ -97,7 +97,7 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   const prevImage = () => setCurrentIndex((i) => (i - 1 + displayIds.length) % displayIds.length);
   
   return (
-    <div ref={containerRef} className="relative w-full aspect-square rounded-lg overflow-hidden bg-black/50 mb-3">
+    <div ref={containerRef} className="relative w-full max-w-[180px] md:max-w-none aspect-square rounded-lg overflow-hidden bg-black/50 mb-3 mx-auto md:mx-0">
       {!isVisible || loading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
           <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
@@ -851,7 +851,7 @@ export function LoreExplorer() {
         <p className="text-xs text-white/40 mt-1 text-right">{progress.percentage}% complete</p>
       </div>
       
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <div className="flex gap-1.5 md:gap-2 mb-6 overflow-x-auto pb-2">
         {tabs.map(tab => {
           const Icon = tab.icon;
           return (
@@ -859,7 +859,7 @@ export function LoreExplorer() {
               key={tab.id}
               variant={activeTab === tab.id ? "default" : "ghost"}
               size="sm"
-              className={`flex-shrink-0 ${
+              className={`flex-shrink-0 text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 ${
                 activeTab === tab.id 
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
                   : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -867,9 +867,9 @@ export function LoreExplorer() {
               onClick={() => setActiveTab(tab.id)}
               data-testid={`tab-${tab.id}`}
             >
-              <Icon className="w-4 h-4 mr-2" />
+              <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
               {tab.label}
-              <Badge variant="secondary" className="ml-2 text-[10px] bg-white/10">
+              <Badge variant="secondary" className="ml-1.5 md:ml-2 text-[9px] md:text-[10px] bg-white/10 px-1 md:px-1.5">
                 {tab.count}/{tab.total}
               </Badge>
             </Button>
