@@ -719,3 +719,50 @@ input, textarea, select {
   }
 }
 
+/* ========================================
+   WALLETCONNECT MODAL FIXES
+   ======================================== */
+
+/* WalletConnect Modal Z-Index - "All Wallets" */
+#walletconnect-wrapper,
+#walletconnect-qrcode-modal,
+wcm-modal,
+w3m-modal {
+  z-index: 9999999 !important;
+}
+
+/* WalletConnect modal backdrop */
+wcm-modal::part(overlay),
+w3m-modal::part(overlay) {
+  z-index: 9999998 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* WalletConnect modal content */
+wcm-modal::part(container),
+w3m-modal::part(container) {
+  z-index: 9999999 !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure wallet list loads */
+wcm-modal::part(content),
+w3m-modal::part(content) {
+  min-height: 400px !important;
+}
+
+/* Mobile specific WalletConnect fixes */
+@media (max-width: 768px) {
+  wcm-modal,
+  w3m-modal {
+    --wcm-z-index: 9999999 !important;
+  }
+  
+  wcm-modal::part(container),
+  w3m-modal::part(container) {
+    width: 90vw !important;
+    max-width: 420px !important;
+  }
+}
+

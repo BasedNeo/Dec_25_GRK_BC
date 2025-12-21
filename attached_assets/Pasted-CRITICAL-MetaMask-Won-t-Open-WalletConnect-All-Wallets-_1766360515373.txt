@@ -1,0 +1,597 @@
+CRITICAL: MetaMask Won't Open + WalletConnect "All Wallets" Hangs
+
+═══════════════════════════════════════════════════════════════════
+SITUATION ANALYSIS
+═══════════════════════════════════════════════════════════════════
+
+WORKING:
+✅ Trust Wallet
+✅ Coinbase Wallet
+✅ Uniswap Wallet
+
+NOT WORKING:
+❌ MetaMask - Nothing happens when clicked, doesn't try to open
+❌ WalletConnect "All Wallets" - Opens but hangs, no wallets load
+
+DIAGNOSIS:
+Since Trust, Coinbase work = WalletConnect Project ID IS valid ✓
+Issue is SPECIFIC to MetaMask connector and WC modal rendering
+
+MetaMask is CRITICAL - this is the #1 wallet users need.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: COMPLETELY RECONFIGURE METAMASK CONNECTOR
+═══════════════════════════════════════════════════════════════════
+
+MetaMask may need explicit configuration separate from other wallets.
+
+File: client/src/lib/wagmi.ts
+
+OPTION A: If using getDefaultConfig, ensure MetaMask is prioritized:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { metaMask } from 'wagmi/connectors';
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  chains: [basedaiChain],
+  
+  // CRITICAL: Add explicit wallet configuration
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        // This ensures MetaMask is included and properly configured
+      ],
+    },
+  ],
+  
+  ssr: false,
+  autoConnect: false,
+});
+
+
+OPTION B: Manual configuration with explicit MetaMask connector:
+
+import { createConfig, http } from 'wagmi';
+import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+
+export const config = createConfig({
+  chains: [basedaiChain],
+  connectors: [
+    // MetaMask - Explicit configuration
+    injected({
+      target: 'metaMask',
+      shimDisconnect: true,
+    }),
+    
+    // Coinbase
+    coinbaseWallet({
+      appName: 'Based Guardians',
+      appLogoUrl: 'https://basedguardians.com/logo.png',
+    }),
+    
+    // WalletConnect - For mobile wallets and "All Wallets"
+    walletConnect({
+      projectId: '25a4673950aaa1276b2fa76417ef9633',
+      metadata: {
+        name: 'Based Guardians',
+        description: 'BasedAI NFT Marketplace',
+        url: typeof window !== 'undefined' ? window.location.origin : '',
+        icons: ['https://basedguardians.com/icon.png'],
+      },
+      showQrModal: true, // CRITICAL for "All Wallets"
+      qrModalOptions: {
+        themeMode: 'dark',
+        themeVariables: {
+          '--wcm-z-index': '9999999',
+          '--wcm-accent-color': '#06b6d4',
+          '--wcm-background-color': '#1a1a1a',
+        },
+      },
+    }),
+  ],
+  transports: {
+    [basedaiChain.id]: http('https://rpc.basedai.network'),
+  },
+  ssr: false,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: ADD METAMASK DETECTION & DIAGNOSTIC
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+Add comprehensive MetaMask detection:
+
+useEffect(() => {
+  console.log('═══════════════════════════════════════');
+  console.log('🦊 METAMASK DIAGNOSTIC');
+  console.log('═══════════════════════════════════════');
+  
+  // Check if MetaMask is installed
+  const ethereum = (window as any).ethereum;
+  
+  console.log('Ethereum provider:', {
+    exists: !!ethereum,
+    isMetaMask: ethereum?.isMetaMask,
+    isCoinbaseWallet: ethereum?.isCoinbaseWallet,
+    isTrust: ethereum?.isTrust,
+    providers: ethereum?.providers?.length || 0,
+  });
+  
+  // Check for multiple wallet providers
+  if (ethereum?.providers) {
+    console.log('Multiple providers detected:');
+    ethereum.providers.forEach((provider: any, i: number) => {
+      console.log(`  ${i + 1}.`, {
+        isMetaMask: provider.isMetaMask,
+        isCoinbaseWallet: provider.isCoinbaseWallet,
+        isTrust: provider.isTrust,
+      });
+    });
+  }
+  
+  // Test MetaMask availability
+  if (ethereum?.isMetaMask) {
+    console.log('✅ MetaMask detected and available');
+    
+    // Test request
+    ethereum.request({ method: 'eth_accounts' })
+      .then((accounts: string[]) => {
+        console.log('  Connected accounts:', accounts.length);
+      })
+      .catch((error: any) => {
+        console.error('  Error checking accounts:', error);
+      });
+  } else {
+    console.warn('⚠️ MetaMask NOT detected');
+    console.log('  User may need to install MetaMask extension');
+  }
+  
+  console.log('═══════════════════════════════════════');
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: FIX WALLETCONNECT MODAL Z-INDEX & RENDERING
+═══════════════════════════════════════════════════════════════════
+
+"All Wallets" modal opening but not loading = rendering issue
+
+File: client/src/index.css
+
+Add WalletConnect modal specific styles:
+
+/* WalletConnect Modal Fix - "All Wallets" */
+#walletconnect-wrapper,
+#walletconnect-qrcode-modal,
+wcm-modal,
+w3m-modal {
+  z-index: 9999999 !important;
+}
+
+/* WalletConnect modal backdrop */
+wcm-modal::part(overlay),
+w3m-modal::part(overlay) {
+  z-index: 9999998 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* WalletConnect modal content */
+wcm-modal::part(container),
+w3m-modal::part(container) {
+  z-index: 9999999 !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure wallet list loads */
+wcm-modal::part(content),
+w3m-modal::part(content) {
+  min-height: 400px !important;
+  background: white !important;
+}
+
+/* Mobile specific */
+@media (max-width: 768px) {
+  wcm-modal,
+  w3m-modal {
+    --wcm-z-index: 9999999 !important;
+  }
+  
+  wcm-modal::part(container),
+  w3m-modal::part(container) {
+    width: 90vw !important;
+    max-width: 420px !important;
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: ADD METAMASK MANUAL FALLBACK BUTTON
+═══════════════════════════════════════════════════════════════════
+
+If MetaMask button doesn't work, add direct connection method:
+
+File: client/src/components/ManualMetaMaskConnect.tsx (CREATE NEW)
+
+import { useConnect, useAccount } from 'wagmi';
+import { useState } from 'react';
+
+export function ManualMetaMaskConnect() {
+  const { connectors, connect } = useConnect();
+  const { address } = useAccount();
+  const [connecting, setConnecting] = useState(false);
+  
+  async function connectMetaMask() {
+    console.log('🦊 Manual MetaMask connection attempt...');
+    
+    // Check if MetaMask is installed
+    const ethereum = (window as any).ethereum;
+    
+    if (!ethereum?.isMetaMask) {
+      alert('MetaMask is not installed. Please install MetaMask extension.');
+      window.open('https://metamask.io/download/', '_blank');
+      return;
+    }
+    
+    setConnecting(true);
+    
+    try {
+      // Find MetaMask connector
+      const metaMaskConnector = connectors.find(
+        (c) => c.id === 'metaMask' || c.name.toLowerCase().includes('metamask') || c.id === 'injected'
+      );
+      
+      console.log('Found connector:', metaMaskConnector?.name);
+      
+      if (!metaMaskConnector) {
+        // Direct connection via window.ethereum
+        console.log('No connector found, trying direct connection...');
+        
+        const accounts = await ethereum.request({
+          method: 'eth_requestAccounts',
+        });
+        
+        console.log('✅ Direct connection successful:', accounts[0]);
+        
+        // Now try wagmi connection
+        const injectedConnector = connectors.find(c => c.id === 'injected');
+        if (injectedConnector) {
+          await connect({ connector: injectedConnector });
+        }
+      } else {
+        // Use wagmi connector
+        console.log('Connecting via wagmi...');
+        await connect({ connector: metaMaskConnector });
+        console.log('✅ Connection successful');
+      }
+      
+    } catch (error) {
+      console.error('❌ MetaMask connection failed:', error);
+      alert(`Connection failed: ${error.message}`);
+    } finally {
+      setConnecting(false);
+    }
+  }
+  
+  if (address) {
+    return null; // Already connected
+  }
+  
+  return (
+    <button
+      onClick={connectMetaMask}
+      disabled={connecting}
+      className="px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg text-white font-bold flex items-center gap-2"
+    >
+      <span>🦊</span>
+      {connecting ? 'Connecting...' : 'Connect MetaMask (Manual)'}
+    </button>
+  );
+}
+
+Add to your Navbar or wallet connection area as backup option.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: ADD CONNECTOR-SPECIFIC CLICK HANDLING
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+Add specific handling for MetaMask clicks:
+
+import { useConnect } from 'wagmi';
+
+function App() {
+  const { connect, connectors } = useConnect();
+  
+  useEffect(() => {
+    // Intercept wallet button clicks
+    function handleWalletClick(e: MouseEvent) {
+      const button = (e.target as HTMLElement).closest('button[type="button"]');
+      
+      if (button && button.closest('[data-rk]')) {
+        const buttonText = button.textContent?.toLowerCase() || '';
+        
+        console.log('🎯 Wallet button clicked:', buttonText);
+        
+        // Special handling for MetaMask
+        if (buttonText.includes('metamask')) {
+          console.log('🦊 MetaMask click intercepted');
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Find MetaMask connector
+          const metaMaskConnector = connectors.find(
+            (c) => c.id === 'metaMask' || 
+                   c.name.toLowerCase().includes('metamask') || 
+                   c.id === 'injected'
+          );
+          
+          if (metaMaskConnector) {
+            console.log('Connecting to:', metaMaskConnector.name);
+            connect({ connector: metaMaskConnector });
+          } else {
+            console.error('MetaMask connector not found!');
+          }
+        }
+        
+        // Special handling for WalletConnect "All Wallets"
+        if (buttonText.includes('walletconnect') || buttonText.includes('all wallets')) {
+          console.log('🔗 WalletConnect click intercepted');
+          
+          // Ensure modal has time to render
+          setTimeout(() => {
+            console.log('Checking for WalletConnect modal...');
+            const wcModal = document.querySelector('wcm-modal, w3m-modal');
+            console.log('WalletConnect modal found:', !!wcModal);
+          }, 500);
+        }
+      }
+    }
+    
+    document.addEventListener('click', handleWalletClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleWalletClick, true);
+    };
+  }, [connect, connectors]);
+  
+  // ... rest of App
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: ENSURE WALLETCONNECT MODAL CAN LOAD
+═══════════════════════════════════════════════════════════════════
+
+WalletConnect modal may be blocked by CSP or network issues.
+
+File: Add to client/src/App.tsx
+
+useEffect(() => {
+  // Preload WalletConnect
+  console.log('🔗 Preloading WalletConnect...');
+  
+  const preloadLink = document.createElement('link');
+  preloadLink.rel = 'preconnect';
+  preloadLink.href = 'https://explorer-api.walletconnect.com';
+  document.head.appendChild(preloadLink);
+  
+  // Check if WalletConnect can load
+  fetch('https://explorer-api.walletconnect.com/v3/wallets', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+    .then(response => {
+      console.log('✅ WalletConnect API accessible:', response.ok);
+    })
+    .catch(error => {
+      console.error('❌ WalletConnect API blocked:', error);
+      console.log('This may prevent "All Wallets" from loading');
+    });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: CHECK FOR WALLET CONFLICTS
+═══════════════════════════════════════════════════════════════════
+
+Multiple wallet extensions can conflict with each other.
+
+File: client/src/App.tsx
+
+useEffect(() => {
+  const ethereum = (window as any).ethereum;
+  
+  if (ethereum?.providers && ethereum.providers.length > 1) {
+    console.warn('⚠️ Multiple wallet providers detected!');
+    console.log('This can cause conflicts.');
+    console.log('Providers:', ethereum.providers.length);
+    
+    // Try to isolate MetaMask
+    const metaMaskProvider = ethereum.providers.find((p: any) => p.isMetaMask);
+    
+    if (metaMaskProvider) {
+      console.log('✅ MetaMask provider isolated');
+      
+      // You might need to use this specific provider
+      (window as any).metaMaskProvider = metaMaskProvider;
+    }
+  }
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: INCREASE WALLETCONNECT MODAL TIMEOUT
+═══════════════════════════════════════════════════════════════════
+
+Modal may need more time to load wallet list.
+
+File: client/src/lib/wagmi.ts
+
+In walletConnect configuration:
+
+walletConnect({
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  // ... other config
+  
+  // Increase timeouts
+  relayUrl: 'wss://relay.walletconnect.com',
+  
+  qrModalOptions: {
+    themeMode: 'dark',
+    themeVariables: {
+      '--wcm-z-index': '9999999',
+    },
+    desktopLinks: [], // Reduce initial load
+    mobileLinks: [], // Reduce initial load
+  },
+})
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 9: ADD NETWORK DIAGNOSTIC
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+useEffect(() => {
+  console.log('🌐 Network Diagnostic:');
+  
+  // Test WalletConnect API
+  Promise.all([
+    fetch('https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633')
+      .then(r => ({ walletList: r.ok }))
+      .catch(() => ({ walletList: false })),
+    
+    fetch('https://relay.walletconnect.com')
+      .then(r => ({ relay: r.ok }))
+      .catch(() => ({ relay: false })),
+  ]).then(results => {
+    console.log('API Status:', results);
+    
+    const allOk = results.every(r => Object.values(r)[0] === true);
+    if (!allOk) {
+      console.error('❌ Some WalletConnect services are blocked');
+      console.log('This will prevent "All Wallets" from working');
+    }
+  });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 10: EMERGENCY - REMOVE BROKEN CONNECTORS
+═══════════════════════════════════════════════════════════════════
+
+If MetaMask and WalletConnect still don't work after all fixes:
+
+File: client/src/lib/wagmi.ts
+
+Simplify to ONLY working connectors temporarily:
+
+import { createConfig, http } from 'wagmi';
+import { coinbaseWallet } from 'wagmi/connectors';
+
+// TEMPORARY: Only include working wallets
+export const config = createConfig({
+  chains: [basedaiChain],
+  connectors: [
+    coinbaseWallet({ appName: 'Based Guardians' }),
+    // MetaMask and WalletConnect temporarily disabled until fixed
+  ],
+  transports: {
+    [basedaiChain.id]: http('https://rpc.basedai.network'),
+  },
+});
+
+Then add back one at a time to isolate the issue.
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING PROTOCOL - CRITICAL
+═══════════════════════════════════════════════════════════════════
+
+After all fixes applied:
+
+TEST 1: MetaMask Detection
+1. Open browser console (F12)
+2. Look for "🦊 METAMASK DIAGNOSTIC"
+3. Should show:
+   ✅ "MetaMask detected and available"
+   ✅ "Connected accounts: X"
+
+If shows "⚠️ MetaMask NOT detected":
+→ MetaMask extension not installed or disabled
+→ Install from https://metamask.io
+
+TEST 2: MetaMask Connection
+1. Click "Connect Wallet"
+2. Click "MetaMask" button
+3. Check console for:
+   ✅ "🦊 MetaMask click intercepted"
+   ✅ "Connecting to: MetaMask"
+4. MetaMask popup should appear
+5. Approve connection
+6. Should connect successfully
+
+If nothing happens:
+→ Check console for errors
+→ Try "Connect MetaMask (Manual)" button
+
+TEST 3: WalletConnect "All Wallets"
+1. Click "Connect Wallet"
+2. Click "WalletConnect" or "All Wallets"
+3. Check console for:
+   ✅ "✅ WalletConnect API accessible: true"
+   ✅ "WalletConnect modal found: true"
+4. Modal should show list of wallets
+5. Select a wallet
+6. Should show QR code or deep link
+
+If modal hangs:
+→ Check console for "❌ WalletConnect API blocked"
+→ Network may be blocking WalletConnect services
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLES REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+After implementing ALL fixes above:
+
+1. CONSOLE LOGS:
+   - Copy entire browser console output
+   - Include MetaMask diagnostic
+   - Include WalletConnect API check
+   - Include any error messages
+
+2. METAMASK STATUS:
+   - Is MetaMask extension installed? YES/NO
+   - Does console show "MetaMask detected"? YES/NO
+   - Does clicking MetaMask button log "🦊 MetaMask click"? YES/NO
+   - Does MetaMask popup appear? YES/NO
+   - Can you connect? YES/NO
+
+3. WALLETCONNECT STATUS:
+   - Does "All Wallets" button open modal? YES/NO
+   - Does modal show wallet list? YES/NO (or hangs?)
+   - Console shows "WalletConnect API accessible: true"? YES/NO
+   - Any network errors? YES/NO
+
+4. WORKING WALLETS STILL WORK?
+   - Trust: YES/NO
+   - Coinbase: YES/NO
+   - Uniswap: YES/NO
+
+This is THE MOST CRITICAL FIX. MetaMask MUST work.

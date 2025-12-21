@@ -47,39 +47,6 @@ const basedL1 = {
 
 const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '25a4673950aaa1276b2fa76417ef9633';
 
-const wallets = [
-  {
-    groupName: 'Popular',
-    wallets: [
-      () => walletConnectWallet({ projectId }),
-      () => metaMaskWallet({ projectId }),
-      () => coinbaseWallet({ appName: 'Based Guardians' }),
-      () => trustWallet({ projectId }),
-      () => rainbowWallet({ projectId }),
-      () => injectedWallet(),
-    ],
-  },
-  {
-    groupName: 'More Options',
-    wallets: [
-      () => uniswapWallet({ projectId }),
-      () => rabbyWallet(),
-      () => phantomWallet(),
-      () => zerionWallet({ projectId }),
-      () => okxWallet({ projectId }),
-      () => braveWallet(),
-    ],
-  },
-  {
-    groupName: 'Advanced',
-    wallets: [
-      () => ledgerWallet({ projectId }),
-      () => safeWallet(),
-      () => argentWallet({ projectId }),
-    ],
-  },
-];
-
 export const config = getDefaultConfig({
   appName: 'Based Guardians',
   projectId: projectId,
@@ -99,10 +66,38 @@ export const config = getDefaultConfig({
     ]),
   },
   ssr: false,
-  wallets: wallets,
-  // Disable auto-connect to prevent MetaMask crash on page load
-  // @ts-ignore - RainbowKit types may not include this but it works
-  autoConnect: false,
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        metaMaskWallet,
+        walletConnectWallet,
+        coinbaseWallet,
+        trustWallet,
+        rainbowWallet,
+        injectedWallet,
+      ],
+    },
+    {
+      groupName: 'More Options',
+      wallets: [
+        uniswapWallet,
+        rabbyWallet,
+        phantomWallet,
+        zerionWallet,
+        okxWallet,
+        braveWallet,
+      ],
+    },
+    {
+      groupName: 'Advanced',
+      wallets: [
+        ledgerWallet,
+        safeWallet,
+        argentWallet,
+      ],
+    },
+  ],
 });
 
 export { basedL1 };
