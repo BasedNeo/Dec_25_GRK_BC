@@ -1,0 +1,522 @@
+CRITICAL: ACTIVITY FEED NOT TRACKING ANY ON-CHAIN TRANSACTIONS
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+Activity Feed shows:
+- 0 mints (should show 9+ based on blockchain)
+- 0 transfers (should show multiple)
+- 0 listings (should show 4-5+)
+- 0 sales (should show 3+)
+
+EXPECTED: Should read ALL on-chain events from contracts
+ACTUAL: Shows nothing, all counters at 0
+
+This is a data integrity issue - not reading blockchain correctly.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: DIAGNOSE WHAT'S FAILING
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useActivityFeed.ts
+
+ADD COMPREHENSIVE LOGGING AT THE TOP:
+
+useEffect(() => {
+  console.log('═══════════════════════════════════════');
+  console.log('🔍 ACTIVITY FEED DIAGNOSTIC START');
+  console.log('═══════════════════════════════════════');
+  
+  async function diagnose() {
+    try {
+      // 1. Check RPC connection
+      console.log('1️⃣ Testing RPC connection...');
+      const provider = new ethers.JsonRpcProvider(RPC_ENDPOINTS[0]);
+      const blockNumber = await provider.getBlockNumber();
+      console.log('✅ RPC Connected. Current block:', blockNumber);
+      
+      // 2. Check contract addresses
+      console.log('2️⃣ Contract addresses:');
+      console.log('   NFT Contract:', NFT_CONTRACT_ADDRESS);
+      console.log('   Marketplace:', MARKETPLACE_CONTRACT_ADDRESS);
+      
+      // 3. Check block range
+      const fromBlock = blockNumber - DISPLAY_BLOCKS;
+      console.log('3️⃣ Block range:');
+      console.log('   From block:', fromBlock);
+      console.log('   To block:', blockNumber);
+      console.log('   Range:', DISPLAY_BLOCKS, 'blocks');
+      
+      // 4. Try to fetch Transfer events
+      console.log('4️⃣ Fetching Transfer events...');
+      const nftContract = new ethers.Contract(
+        NFT_CONTRACT_ADDRESS,
+        ['event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'],
+        provider
+      );
+      
+      const transferFilter = nftContract.filters.Transfer();
+      const transfers = await nftContract.queryFilter(transferFilter, fromBlock, blockNumber);
+      console.log('   Transfer events found:', transfers.length);
+      
+      if (transfers.length > 0) {
+        console.log('   Sample transfer:', {
+          from: transfers[0].args?.from,
+          to: transfers[0].args?.to,
+          tokenId: transfers[0].args?.tokenId?.toString(),
+          blockNumber: transfers[0].blockNumber,
+        });
+      }
+      
+      // 5. Count mints (from zero address)
+      const mints = transfers.filter(t => 
+        t.args?.from === '0x0000000000000000000000000000000000000000'
+      );
+      console.log('   Mints (from zero address):', mints.length);
+      
+      // 6. Try to fetch ItemListed events
+      console.log('5️⃣ Fetching ItemListed events...');
+      const marketplaceContract = new ethers.Contract(
+        MARKETPLACE_CONTRACT_ADDRESS,
+        ['event ItemListed(address indexed seller, uint256 indexed tokenId, uint256 price)'],
+        provider
+      );
+      
+      const listedFilter = marketplaceContract.filters.ItemListed();
+      const listings = await marketplaceContract.queryFilter(listedFilter, fromBlock, blockNumber);
+      console.log('   ItemListed events found:', listings.length);
+      
+      if (listings.length > 0) {
+        console.log('   Sample listing:', {
+          seller: listings[0].args?.seller,
+          tokenId: listings[0].args?.tokenId?.toString(),
+          price: ethers.formatEther(listings[0].args?.price || 0),
+          blockNumber: listings[0].blockNumber,
+        });
+      }
+      
+      // 7. Try to fetch ItemSold events
+      console.log('6️⃣ Fetching ItemSold events...');
+      const soldFilter = marketplaceContract.filters.ItemSold();
+      const sales = await marketplaceContract.queryFilter(soldFilter, fromBlock, blockNumber);
+      console.log('   ItemSold events found:', sales.length);
+      
+      console.log('═══════════════════════════════════════');
+      console.log('📊 DIAGNOSTIC SUMMARY:');
+      console.log('   Total Transfers:', transfers.length);
+      console.log('   Total Mints:', mints.length);
+      console.log('   Total Listings:', listings.length);
+      console.log('   Total Sales:', sales.length);
+      console.log('═══════════════════════════════════════');
+      
+    } catch (error) {
+      console.error('❌ DIAGNOSTIC FAILED:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
+    }
+  }
+  
+  diagnose();
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: VERIFY CONTRACT ADDRESSES
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/constants.ts
+
+VERIFY these addresses match your ACTUAL deployed contracts:
+
+export const NFT_CONTRACT_ADDRESS = '0x...'; // ← CHECK THIS
+export const MARKETPLACE_CONTRACT_ADDRESS = '0x...'; // ← CHECK THIS
+
+HOW TO VERIFY:
+1. Go to https://explorer.basedai.network
+2. Search for your NFT contract
+3. Copy the EXACT address (including 0x prefix)
+4. Check it matches constants.ts
+5. Do same for Marketplace contract
+
+COMMON MISTAKE: Using testnet address instead of mainnet, or vice versa.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: VERIFY EVENT SIGNATURES MATCH CONTRACTS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useActivityFeed.ts
+
+CHECK event signatures match your actual contract events:
+
+NFT CONTRACT EVENTS (check your BasedGuardians.sol):
+event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+
+MARKETPLACE CONTRACT EVENTS (check your Marketplace.sol):
+event ItemListed(address indexed seller, uint256 indexed tokenId, uint256 price)
+event ItemSold(address indexed buyer, address indexed seller, uint256 indexed tokenId, uint256 price)
+event ItemDelisted(address indexed seller, uint256 indexed tokenId)
+
+IF YOUR EVENTS HAVE DIFFERENT NAMES/PARAMETERS:
+Update the ABI in useActivityFeed.ts to match EXACTLY.
+
+Example: If your event is "NFTListed" instead of "ItemListed":
+const listedFilter = marketplaceContract.filters.NFTListed();
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: FIX RPC ENDPOINT CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/constants.ts
+
+CHECK RPC_ENDPOINTS are working:
+
+export const RPC_ENDPOINTS = [
+  'https://rpc.basedai.network',
+  'https://rpc2.basedai.network', // If backup exists
+];
+
+TEST each endpoint manually:
+curl -X POST https://rpc.basedai.network \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+
+Should return: {"jsonrpc":"2.0","id":1,"result":"0x..."}
+
+If ANY endpoint fails, remove it from the array.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: INCREASE BLOCK RANGE (IF NEEDED)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useActivityFeed.ts
+
+Current: const DISPLAY_BLOCKS = 100000;
+
+IF transactions are older, increase:
+const DISPLAY_BLOCKS = 200000; // Look back further
+
+OR calculate from deployment date:
+const DEPLOYMENT_BLOCK = 2850000; // Your actual deployment block
+const currentBlock = await provider.getBlockNumber();
+const DISPLAY_BLOCKS = currentBlock - DEPLOYMENT_BLOCK;
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: ADD PROPER ERROR HANDLING
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useActivityFeed.ts
+
+Wrap ALL RPC calls in try-catch:
+
+async function fetchActivityData() {
+  let totalMinted = 0;
+  let transferEvents: any[] = [];
+  let listedEvents: any[] = [];
+  let soldEvents: any[] = [];
+  
+  try {
+    console.log('📡 Connecting to RPC...');
+    const provider = new ethers.JsonRpcProvider(RPC_ENDPOINTS[0]);
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = currentBlock - DISPLAY_BLOCKS;
+    
+    console.log(`📊 Scanning blocks ${fromBlock} to ${currentBlock}`);
+    
+    // Fetch NFT events
+    try {
+      const nftContract = new ethers.Contract(
+        NFT_CONTRACT_ADDRESS,
+        NFT_ABI,
+        provider
+      );
+      
+      console.log('🔍 Fetching Transfer events...');
+      const transferFilter = nftContract.filters.Transfer();
+      const transfers = await nftContract.queryFilter(
+        transferFilter, 
+        fromBlock, 
+        currentBlock
+      );
+      
+      console.log(`✅ Found ${transfers.length} transfers`);
+      
+      // Count mints (from zero address)
+      const mints = transfers.filter(t => 
+        t.args?.from === ethers.ZeroAddress
+      );
+      totalMinted = mints.length;
+      
+      console.log(`✅ Found ${totalMinted} mints`);
+      
+      // Get regular transfers (not mints)
+      transferEvents = transfers
+        .filter(t => t.args?.from !== ethers.ZeroAddress)
+        .slice(-20); // Last 20 transfers
+        
+    } catch (error) {
+      console.error('❌ Failed to fetch NFT events:', error);
+    }
+    
+    // Fetch Marketplace events
+    try {
+      const marketplaceContract = new ethers.Contract(
+        MARKETPLACE_CONTRACT_ADDRESS,
+        MARKETPLACE_ABI,
+        provider
+      );
+      
+      console.log('🔍 Fetching ItemListed events...');
+      const listedFilter = marketplaceContract.filters.ItemListed();
+      listedEvents = await marketplaceContract.queryFilter(
+        listedFilter,
+        fromBlock,
+        currentBlock
+      );
+      
+      console.log(`✅ Found ${listedEvents.length} listings`);
+      
+      console.log('🔍 Fetching ItemSold events...');
+      const soldFilter = marketplaceContract.filters.ItemSold();
+      soldEvents = await marketplaceContract.queryFilter(
+        soldFilter,
+        fromBlock,
+        currentBlock
+      );
+      
+      console.log(`✅ Found ${soldEvents.length} sales`);
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch Marketplace events:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to fetch activity data:', error);
+    throw error;
+  }
+  
+  return {
+    totalMinted,
+    transferEvents,
+    listedEvents,
+    soldEvents,
+  };
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: VERIFY ABI INCLUDES EVENTS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/contracts.ts or wherever ABIs are defined
+
+ENSURE ABIs include event definitions:
+
+export const NFT_ABI = [
+  // Functions...
+  'function mint(string uri) external payable',
+  'function transferFrom(address from, address to, uint256 tokenId) external',
+  
+  // CRITICAL: Include events
+  'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
+  'event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)',
+];
+
+export const MARKETPLACE_ABI = [
+  // Functions...
+  'function listItem(uint256 tokenId, uint256 price) external',
+  'function buyItem(uint256 tokenId) external payable',
+  'function delistItem(uint256 tokenId) external',
+  
+  // CRITICAL: Include events
+  'event ItemListed(address indexed seller, uint256 indexed tokenId, uint256 price)',
+  'event ItemSold(address indexed buyer, address indexed seller, uint256 indexed tokenId, uint256 price)',
+  'event ItemDelisted(address indexed seller, uint256 indexed tokenId)',
+];
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: FIX ACTIVITY FEED DISPLAY COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/ActivityFeed.tsx
+
+ENSURE data is passed and displayed correctly:
+
+export function ActivityFeed() {
+  const { 
+    totalMinted, 
+    transferEvents, 
+    listedEvents, 
+    soldEvents,
+    loading,
+    error 
+  } = useActivityFeed();
+  
+  console.log('🎨 ActivityFeed render:', {
+    totalMinted,
+    transferCount: transferEvents?.length || 0,
+    listingCount: listedEvents?.length || 0,
+    saleCount: soldEvents?.length || 0,
+    loading,
+    error
+  });
+  
+  if (loading) {
+    return <div>Loading activity...</div>;
+  }
+  
+  if (error) {
+    return (
+      <div className="text-red-500">
+        Failed to load activity: {error.message}
+        <button onClick={() => window.location.reload()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  // Show stats
+  return (
+    <div>
+      <div className="stats">
+        <div>Total Mints: {totalMinted}</div>
+        <div>Transfers: {transferEvents?.length || 0}</div>
+        <div>Listings: {listedEvents?.length || 0}</div>
+        <div>Sales: {soldEvents?.length || 0}</div>
+      </div>
+      
+      {/* Activity list */}
+      <div className="activity-list">
+        {/* Render events */}
+      </div>
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: MANUAL VERIFICATION ON BLOCKCHAIN
+═══════════════════════════════════════════════════════════════════
+
+Go to BasedAI Explorer:
+https://explorer.basedai.network
+
+1. Search for your NFT contract address
+2. Click "Events" tab
+3. Should see Transfer events
+4. Count them manually
+5. Note block numbers
+
+Do same for Marketplace contract:
+1. Search marketplace address
+2. Check Events tab
+3. Should see ItemListed, ItemSold events
+
+IF NO EVENTS VISIBLE IN EXPLORER:
+→ Contracts haven't been used yet OR wrong address
+
+IF EVENTS VISIBLE IN EXPLORER BUT NOT IN APP:
+→ App is not querying correctly
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: CREATE FALLBACK DATA SOURCE
+═══════════════════════════════════════════════════════════════════
+
+If RPC queries fail, add server-side caching:
+
+File: server/lib/activityCache.ts (NEW)
+
+import { ethers } from 'ethers';
+
+let cachedActivity: any = null;
+let lastFetch = 0;
+const CACHE_DURATION = 60000; // 1 minute
+
+export async function getCachedActivity() {
+  const now = Date.now();
+  
+  if (cachedActivity && now - lastFetch < CACHE_DURATION) {
+    return cachedActivity;
+  }
+  
+  // Fetch fresh data
+  const provider = new ethers.JsonRpcProvider(process.env.RPC_ENDPOINT);
+  const currentBlock = await provider.getBlockNumber();
+  const fromBlock = currentBlock - 100000;
+  
+  // ... fetch events ...
+  
+  cachedActivity = {
+    totalMinted,
+    transfers,
+    listings,
+    sales,
+    lastUpdate: now,
+  };
+  
+  lastFetch = now;
+  return cachedActivity;
+}
+
+Add API endpoint:
+app.get('/api/activity', async (req, res) => {
+  try {
+    const activity = await getCachedActivity();
+    res.json(activity);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After fixes, verify:
+□ Console shows diagnostic logs
+□ RPC connection successful
+□ Current block number shown
+□ Contract addresses logged and correct
+□ Transfer events found (count > 0)
+□ Mints counted correctly (from zero address)
+□ Listings found (count > 0)
+□ Sales found (count > 0)
+□ Activity Feed displays correct counts
+□ Activity list shows recent events
+□ Can see event details (tokenId, price, etc.)
+□ No errors in console
+□ Data refreshes every 60 seconds
+
+EXPECTED OUTPUT IN CONSOLE:
+✅ RPC Connected. Current block: 2900000
+✅ Found 9 transfers
+✅ Found 9 mints
+✅ Found 5 listings
+✅ Found 3 sales
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+Report:
+1. Diagnostic logs from console (paste full output)
+2. Actual event counts found on-chain
+3. Contract addresses verified correct
+4. Block range used for query
+5. Activity Feed now showing correct data: YES/NO
+6. Any errors encountered and how fixed
+
+CRITICAL: Activity Feed MUST accurately reflect on-chain data.
