@@ -97,7 +97,7 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
   const prevImage = () => setCurrentIndex((i) => (i - 1 + displayIds.length) % displayIds.length);
   
   return (
-    <div ref={containerRef} className="relative w-full max-w-[180px] md:max-w-none aspect-square rounded-lg overflow-hidden bg-black/50 mb-3 mx-auto md:mx-0">
+    <div ref={containerRef} className="relative w-full max-w-[240px] sm:max-w-[200px] md:max-w-none aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black mb-3 mx-auto md:mx-0">
       {!isVisible || loading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
           <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
@@ -108,7 +108,7 @@ function NFTImageGallery({ tokenIds, characterName }: { tokenIds: number[]; char
             key={currentTokenId}
             src={currentImage}
             alt={`${characterName} #${currentTokenId}`}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
