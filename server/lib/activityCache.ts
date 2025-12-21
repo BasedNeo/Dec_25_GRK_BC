@@ -201,6 +201,7 @@ async function fetchFreshActivity(): Promise<ActivityData> {
       (e as ethers.EventLog).args[0] === ethers.ZeroAddress
     ).length;
     
+    // Calculate recent volume with full precision (no rounding for financial accuracy)
     const recentVolume = soldEvents.reduce((sum, e) => {
       const log = e as ethers.EventLog;
       return sum + Number(ethers.formatEther(log.args[3]));
@@ -215,7 +216,7 @@ async function fetchFreshActivity(): Promise<ActivityData> {
         totalSales: soldEvents.length,
         totalListings: listedEvents.length,
         totalTransfers: transferEvents.length - recentMints,
-        recentVolume: Math.round(recentVolume),
+        recentVolume, // Full precision - no rounding for locked financial calculations
       },
       lastBlock: currentBlock,
       lastUpdated: now,
