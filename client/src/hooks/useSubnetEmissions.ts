@@ -17,7 +17,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useInterval } from '@/hooks/useInterval';
 import { perfMonitor } from '@/lib/performanceMonitor';
-import { BRAIN_EMISSIONS } from '@/lib/constants';
+import { BRAIN_EMISSIONS, MINT_SPLIT, ROYALTY_SPLIT } from '@/lib/constants';
 
 // ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
@@ -132,6 +132,42 @@ export interface DailyEmission {
   dayOfWeek: string;
 }
 
+export interface TreasuryBreakdown {
+  fromEmissions: number;
+  fromMintFees: number;
+  fromMarketplaceFees: number;
+  total: number;
+  daysActive: number;
+}
+
+export function calculateCommunityTreasury(
+  mintedCount: number = 0,
+  salesVolume: number = 0
+): TreasuryBreakdown {
+  const now = new Date();
+  const startDate = BRAIN_EMISSIONS.startDate;
+  const daysElapsed = Math.floor(
+    (now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)
+  );
+  
+  const emissionsFromBrain = Math.max(0, daysElapsed) * BRAIN_EMISSIONS.dailyToTreasury;
+  
+  const MINT_PRICE = 69420;
+  const mintFees = mintedCount * MINT_PRICE * (MINT_SPLIT.TREASURY_PERCENT / 100);
+  
+  const marketplaceFees = salesVolume * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+  
+  const totalTreasury = emissionsFromBrain + mintFees + marketplaceFees;
+  
+  return {
+    fromEmissions: emissionsFromBrain,
+    fromMintFees: mintFees,
+    fromMarketplaceFees: marketplaceFees,
+    total: totalTreasury,
+    daysActive: Math.max(0, daysElapsed)
+  };
+}
+
 export interface SubnetEmissionsData {
   // Core metrics
   brainBalance: number;
@@ -167,6 +203,9 @@ export interface SubnetEmissionsData {
   
   // Config
   config: typeof BRAIN_CONFIG;
+  
+  // Treasury breakdown (time-based calculation)
+  treasuryBreakdown: TreasuryBreakdown;
   
   // Actions
   refresh: () => Promise<void>;
@@ -411,6 +450,8 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     }
   }
 
+  const treasuryBreakdown = calculateCommunityTreasury();
+
   return {
     brainBalance,
     totalReceived: actualEmissions,
@@ -435,6 +476,7 @@ export function useSubnetEmissions(): SubnetEmissionsData {
     error,
     lastUpdated,
     config: BRAIN_CONFIG,
+    treasuryBreakdown,
     refresh: fetchEmissions
   };
 }
