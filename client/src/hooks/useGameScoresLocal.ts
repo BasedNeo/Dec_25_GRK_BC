@@ -127,7 +127,7 @@ export function useGameScoresLocal() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [refreshStats]);
 
-  const submitScore = useCallback((score: number, wave: number) => {
+  const submitScore = useCallback(async (score: number, wave: number) => {
     if (!address || score <= 0) return;
 
     const scores: ScoreEntry[] = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
@@ -156,6 +156,25 @@ export function useGameScoresLocal() {
     
     SecureStorage.set(statsKey, newStats);
     setMyStats(newStats);
+
+    try {
+      const response = await fetch('/api/game/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: address,
+          score: score,
+          level: Math.min(Math.max(wave, 1), 5),
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        console.error('[GameScores] Server rejected score submission:', response.status, error);
+      }
+    } catch (err) {
+      console.error('[GameScores] Failed to submit score to server:', err);
+    }
 
     return newStats;
   }, [address]);

@@ -1,0 +1,153 @@
+CRITICAL STABILITY AUDIT & FIX
+
+Priority: Fix all broken/hidden features before adding new content.
+
+═══════════════════════════════════════════════════════════════════
+1. COLLECTIONS PAGE - FIX & RE-ENABLE
+═══════════════════════════════════════════════════════════════════
+
+ISSUE: Collections page was commented out due to browser crashes.
+
+DIAGNOSIS NEEDED:
+□ Check client/src/pages/Collections.tsx for memory leaks
+□ Verify collectionSync isn't running in background
+□ Check if image loading is causing crashes
+□ Test with limited results (10-20 collections max)
+
+FIX APPROACH:
+- Add pagination (show 12 collections per page)
+- Lazy load images (only load visible cards)
+- Add memory cleanup on unmount
+- Test incremental loading
+
+VERIFICATION:
+- Can load Collections page without crash
+- Can click collection card and see NFTs
+- Can navigate back without crash
+- Images load progressively
+- No browser freeze/crash
+
+═══════════════════════════════════════════════════════════════════
+2. ACTIVITY FEED - VERIFY WORKING
+═══════════════════════════════════════════════════════════════════
+
+VERIFY:
+□ Shows recent activity (mints, listings, sales)
+□ Block range is appropriate (100k blocks)
+□ No "Failed to load" errors
+□ Data refreshes properly
+□ Console shows correct event counts
+
+LOG CHECK:
+- Open browser console
+- Navigate to Activity tab
+- Should see: "totalMinted: X", "transferEvents: Y", "soldEvents: Z"
+- Should NOT see: "Failed to load activity" or RPC errors
+
+═══════════════════════════════════════════════════════════════════
+3. GAMES - STABILITY CHECK
+═══════════════════════════════════════════════════════════════════
+
+TEST EACH GAME:
+□ Retro Defender (should work without NFT)
+□ Guardian Solitaire (requires NFT)
+□ Asteroid Mining (requires NFT)
+□ Guardian Defense (requires NFT)
+
+VERIFY:
+- Games load without crash
+- Can play multiple rounds
+- Can exit to menu
+- Daily limits work
+- Scores save correctly
+- No memory leaks after 5 games
+
+REMOVE IF BROKEN:
+- If any game causes crashes, disable in gameRegistry.ts
+- Set disabled: true
+- Add comment explaining why
+
+═══════════════════════════════════════════════════════════════════
+4. WALLET CONNECTION - STABILITY
+═══════════════════════════════════════════════════════════════════
+
+VERIFY:
+□ Can connect wallet without black screen glitch
+□ React.StrictMode is disabled (client/src/main.tsx)
+□ wagmi autoConnect is false (client/src/lib/wagmi.ts)
+□ No browser crashes on wallet connect
+□ Can disconnect and reconnect
+
+TEST FLOW:
+1. Connect wallet (MetaMask, Coinbase, WalletConnect)
+2. Navigate through all pages
+3. Disconnect wallet
+4. Connect different wallet
+5. No crashes at any step
+
+═══════════════════════════════════════════════════════════════════
+5. MEMORY LEAK SCAN
+═══════════════════════════════════════════════════════════════════
+
+CHECK FOR:
+□ Uncleaned intervals/timeouts
+□ Event listeners not removed
+□ Large arrays building up
+□ Images not garbage collected
+□ WebGL contexts not cleaned (games)
+
+FIX APPROACH:
+- Add cleanup in useEffect returns
+- Use AbortController for fetches
+- Limit array sizes
+- Dispose of Three.js/canvas resources
+
+═══════════════════════════════════════════════════════════════════
+6. BROWSER CONSOLE CHECK
+═══════════════════════════════════════════════════════════════════
+
+ACCEPTABLE ERRORS:
+- Rollup comment warnings (harmless)
+- 404 for missing optional resources
+
+UNACCEPTABLE ERRORS:
+- React errors
+- "Maximum update depth exceeded"
+- "Cannot read property of undefined"
+- RPC connection failures
+- Memory warnings
+
+FIX ALL RED ERRORS IN CONSOLE.
+
+═══════════════════════════════════════════════════════════════════
+7. MOBILE TESTING
+═══════════════════════════════════════════════════════════════════
+
+TEST ON MOBILE:
+□ App loads on iPhone
+□ Can connect wallet
+□ Can navigate pages
+□ Games work with touch
+□ No crashes
+□ Reasonable performance
+
+═══════════════════════════════════════════════════════════════════
+STABILIZATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+BEFORE ADDING NEW FEATURES:
+□ Collections page works
+□ Activity Feed shows data
+□ All 4 games stable
+□ Wallet connection stable
+□ No memory leaks
+□ No console errors
+□ Mobile works
+□ Can use app for 30 minutes without crash
+□ Can navigate all pages without freeze
+
+OUTPUT:
+- List of issues found
+- All fixes applied
+- Verification that app is stable
+- Green light to add new content
