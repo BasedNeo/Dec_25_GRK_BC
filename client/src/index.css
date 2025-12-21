@@ -788,3 +788,72 @@ input, textarea, select {
     color: black !important;
   }
 }
+
+/* ========================================
+   MOBILE WALLET CONNECT MODAL FIX
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Target RainbowKit modal container */
+  [data-rk] > div,
+  [data-rk] [role="dialog"] {
+    max-width: 90vw !important;
+    max-height: 85vh !important;
+    width: 90vw !important;
+    margin: 0 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Modal positioning fix */
+  [data-rk] [role="dialog"] {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  
+  /* Wallet option buttons - touch-friendly */
+  [data-rk] button[type="button"] {
+    padding: 12px !important;
+    font-size: 14px !important;
+    min-height: 48px !important;
+  }
+  
+  /* Modal backdrop blur */
+  [data-rk] [data-rk-backdrop] {
+    backdrop-filter: blur(8px) !important;
+  }
+  
+  /* Close button visibility */
+  [data-rk] button[aria-label*="Close"],
+  [data-rk] button[aria-label*="close"] {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    width: 32px !important;
+    height: 32px !important;
+    z-index: 999999 !important;
+    min-height: 32px !important;
+  }
+  
+  /* Wallet list scrollable */
+  [data-rk] [data-testid="rk-wallet-option"] {
+    min-height: 56px !important;
+  }
+}
+
+/* Extra small phones (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  [data-rk] > div,
+  [data-rk] [role="dialog"] {
+    max-width: 95vw !important;
+    max-height: 80vh !important;
+    width: 95vw !important;
+  }
+  
+  [data-rk] button[type="button"] {
+    font-size: 13px !important;
+    padding: 10px !important;
+  }
+}
