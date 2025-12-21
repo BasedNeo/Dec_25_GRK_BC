@@ -297,9 +297,9 @@ export class GameStorageManager {
   /**
    * Get daily data for a game (games played, points earned today)
    */
-  static getDailyData(gameType: GameType, date: string): DailyData {
+  static getDailyData(gameType: GameType, address: string, date: string): DailyData {
     try {
-      const key = this.getDailyKey(gameType, date);
+      const key = this.getDailyKey(gameType, address, date);
       const data = localStorage.getItem(key);
       
       if (!data) {
@@ -318,18 +318,19 @@ export class GameStorageManager {
    */
   static updateDailyData(
     gameType: GameType, 
+    address: string,
     date: string, 
     updates: Partial<DailyData>
   ): boolean {
     try {
-      const current = this.getDailyData(gameType, date);
+      const current = this.getDailyData(gameType, address, date);
       const updated: DailyData = {
         ...current,
         ...updates,
         date,
       };
       
-      const key = this.getDailyKey(gameType, date);
+      const key = this.getDailyKey(gameType, address, date);
       localStorage.setItem(key, JSON.stringify(updated));
       return true;
     } catch (err) {
@@ -343,11 +344,12 @@ export class GameStorageManager {
    */
   static checkDailyLimits(
     gameType: GameType,
+    address: string,
     maxGames: number = 10,
     maxPoints: number = 50000
   ): { canPlay: boolean; reason?: string; data: DailyData } {
     const today = new Date().toDateString();
-    const data = this.getDailyData(gameType, today);
+    const data = this.getDailyData(gameType, address, today);
     
     if (data.gamesPlayed >= maxGames) {
       return { canPlay: false, reason: 'Daily game limit reached (10 games)', data };
@@ -602,8 +604,8 @@ export class GameStorageManager {
     return `${STORAGE_PREFIX}-settings-${gameType}`;
   }
   
-  private static getDailyKey(gameType: GameType, date: string): string {
-    return `${STORAGE_PREFIX}-daily-${gameType}-${date}`;
+  private static getDailyKey(gameType: GameType, address: string, date: string): string {
+    return `${STORAGE_PREFIX}-daily-${gameType}-${address}-${date}`;
   }
 }
 

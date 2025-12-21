@@ -337,8 +337,9 @@ export default function CyberBreach() {
         playSound('gameover');
         
         const today = new Date().toDateString();
-        const dailyData = GameStorageManager.getDailyData('cyber-breach', today);
-        GameStorageManager.updateDailyData('cyber-breach', today, {
+        const playerAddress = address || 'anonymous';
+        const dailyData = GameStorageManager.getDailyData('cyber-breach', playerAddress, today);
+        GameStorageManager.updateDailyData('cyber-breach', playerAddress, today, {
           gamesPlayed: dailyData.gamesPlayed + 1,
           pointsEarned: dailyData.pointsEarned + state.score
         });
@@ -354,7 +355,7 @@ export default function CyberBreach() {
     }
     
     syncState();
-  }, [playSound, submitScore, recordPlay, refreshStats, syncState]);
+  }, [address, playSound, submitScore, recordPlay, refreshStats, syncState]);
   
   const gameLoop = useCallback((timestamp: number) => {
     const state = gameStateRef.current;
@@ -405,8 +406,9 @@ export default function CyberBreach() {
         playSound('gameover');
         
         const today = new Date().toDateString();
-        const dailyData = GameStorageManager.getDailyData('cyber-breach', today);
-        GameStorageManager.updateDailyData('cyber-breach', today, {
+        const playerAddress = address || 'anonymous';
+        const dailyData = GameStorageManager.getDailyData('cyber-breach', playerAddress, today);
+        GameStorageManager.updateDailyData('cyber-breach', playerAddress, today, {
           gamesPlayed: dailyData.gamesPlayed + 1,
           pointsEarned: dailyData.pointsEarned + state.score
         });
@@ -455,7 +457,7 @@ export default function CyberBreach() {
     }
     
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [playSound, spawnRing, syncState, submitScore, recordPlay, refreshStats]);
+  }, [address, playSound, spawnRing, syncState, submitScore, recordPlay, refreshStats]);
   
   const renderMenu = useCallback(() => {
     const canvas = canvasRef.current;
@@ -654,7 +656,8 @@ export default function CyberBreach() {
       return;
     }
     
-    const dailyLimits = GameStorageManager.checkDailyLimits('cyber-breach', 10, 50000);
+    const playerAddress = address || 'anonymous';
+    const dailyLimits = GameStorageManager.checkDailyLimits('cyber-breach', playerAddress, 10, 50000);
     if (!dailyLimits.canPlay) {
       toast({
         title: "Daily Limit Reached",
@@ -694,7 +697,7 @@ export default function CyberBreach() {
     trackEvent('game_started', 'cyber-breach', 'start', 0);
     
     if (isMobile) haptic('light');
-  }, [access.canPlay, access.reason, toast, spawnRing, syncState, gameLoop]);
+  }, [address, access.canPlay, access.reason, toast, spawnRing, syncState, gameLoop]);
   
   const pauseGame = useCallback(() => {
     const state = gameStateRef.current;
