@@ -375,9 +375,8 @@ replit-error-modal {
 }
 
 /* ========================================
-   RAINBOWKIT MODAL - MINIMAL Z-INDEX ONLY
-   Let RainbowKit control ALL layout including mobile.
-   Only set z-index to ensure modal appears on top.
+   RAINBOWKIT MODAL - Z-INDEX + TOUCH FIXES
+   Let RainbowKit control layout, but ensure buttons are clickable.
    ======================================== */
 
 /* Ensure wallet modal appears above all app content */
@@ -386,8 +385,26 @@ replit-error-modal {
   z-index: 2147483647 !important;
 }
 
-/* DO NOT override positioning, sizing, or touch behavior.
-   RainbowKit handles mobile layout natively. */
+/* Ensure wallet buttons receive touch events on ALL devices */
+div[data-rk] button,
+div[data-rk] button[type="button"] {
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(6, 182, 212, 0.3) !important;
+  cursor: pointer !important;
+}
+
+/* Button children should not block clicks */
+div[data-rk] button *,
+div[data-rk] button[type="button"] * {
+  pointer-events: none !important;
+}
+
+/* Ensure modal content is clickable */
+div[data-rk] [role="dialog"],
+div[data-rk] [role="dialog"] > div {
+  pointer-events: auto !important;
+}
 
 /* Force Buy Button Visibility and Styling */
 /* ========================================
