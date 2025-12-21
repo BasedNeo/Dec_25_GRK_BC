@@ -36,9 +36,10 @@ export const MARKETPLACE_V3_CONTRACT = "0x2a3f9D8b844c2dB2F42095B49817c0D6991514
 export const GOVERNANCE_CONTRACT = "0x2B107A4Ea8fCC4FAa6d55a5bEeb5E2740C849995";
 
 // === ECOSYSTEM WALLETS ===
-export const COMMUNITY_TREASURY = "0xae543104fdbe456478e19894f7f0e01f0971c9b4";  // 51% of mint, 2% of royalty
-export const ROYALTY_WALLET = "0xb1362caf09189887599ed40f056712b1a138210c";      // 4% of royalty
-export const CREATOR_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";      // 49% of mint, 4% of royalty, 1% platform fee
+export const COMMUNITY_TREASURY = "0xae543104fdbe456478e19894f7f0e01f0971c9b4";  // 51% of mint, 2.5% of royalty
+export const ROYALTY_WALLET = "0xb1362caf09189887599ed40f056712b1a138210c";      // 3.5% of royalty
+export const ECOSYSTEM_WALLET = "0xef2015bffe3e7db1474d5df99435fd8e936bac7a";    // 49% of mint, 4% of royalty, 1% platform fee
+export const CREATOR_WALLET = ECOSYSTEM_WALLET;  // Alias for backward compatibility
 export const ADMIN_WALLET = COMMUNITY_TREASURY; // Alias for backward compatibility
 
 // === SPLITTER CONTRACTS ===
@@ -48,8 +49,8 @@ export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
 // === REVENUE SPLIT CONFIGURATION ===
 // ⚠️ LOCKED: Revenue splits - Do NOT modify without explicit user request
 export const MINT_SPLIT = {
-  TREASURY_PERCENT: 70,  // LOCKED: 70% to community treasury
-  CREATOR_PERCENT: 30    // LOCKED: 30% to creator wallet
+  TREASURY_PERCENT: 51,  // LOCKED: 51% to community treasury
+  ECOSYSTEM_PERCENT: 49  // LOCKED: 49% to ecosystem development
 };
 
 // ⚠️ LOCKED: Royalty splits - Do NOT modify without explicit user request

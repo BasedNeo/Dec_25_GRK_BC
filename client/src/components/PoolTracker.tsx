@@ -116,7 +116,7 @@ export function PoolTracker() {
     // === MINT REVENUE (69,420 $BASED per NFT) ===
     const totalMintRevenue = minted * MINT_PRICE;
     const mintToTreasury = treasuryBreakdown.fromMintFees;
-    const mintToCreator = totalMintRevenue * (MINT_SPLIT.CREATOR_PERCENT / 100);
+    const mintToEcosystem = totalMintRevenue * (MINT_SPLIT.ECOSYSTEM_PERCENT / 100);
     
     // === ROYALTY REVENUE (10% of secondary sales) ===
     const totalRoyalties = sales * (ROYALTY_SPLIT.TOTAL_ROYALTY_PERCENT / 100);
@@ -129,7 +129,7 @@ export function PoolTracker() {
     
     // === WALLET TOTALS ===
     const treasuryTotal = mintToTreasury + royaltyToTreasury;
-    const creatorTotal = mintToCreator + royaltyToCreator + platformFeeToCreator;
+    const ecosystemTotal = mintToEcosystem + royaltyToCreator + platformFeeToCreator;
     const royaltyWalletTotal = royaltyToRoyaltyWallet;
     
     // Use TIME-BASED emission calculation (days since Dec 1, 2024 × 6,430)
@@ -142,7 +142,7 @@ export function PoolTracker() {
       // Mint breakdown
       totalMintRevenue,
       mintToTreasury,
-      mintToCreator,
+      mintToEcosystem,
       
       // Royalty breakdown
       totalRoyalties,
@@ -155,7 +155,7 @@ export function PoolTracker() {
       
       // Wallet totals
       treasuryTotal,
-      creatorTotal,
+      ecosystemTotal,
       royaltyWalletTotal,
       
       // Legacy names (for backward compatibility)
@@ -253,7 +253,7 @@ export function PoolTracker() {
                   </p>
                   <ul className="text-sm space-y-2 list-disc list-inside text-gray-400">
                     <li><span className="text-purple-400">Brain Emissions:</span> 10% of daily Brain emissions (6,430 $BASED/day) starting December 1st, 2024</li>
-                    <li><span className="text-cyan-400">Mint Fees:</span> 70% of all NFT mint revenue</li>
+                    <li><span className="text-cyan-400">Mint Fees:</span> 51% of all NFT mint revenue</li>
                     <li><span className="text-cyan-400">Marketplace Sales:</span> 2.5% of all secondary sales volume</li>
                   </ul>
                   <p className="text-xs text-gray-500 mt-2">
@@ -438,8 +438,8 @@ export function PoolTracker() {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 pl-2 mt-1 space-y-0.5">
-                          <div data-testid="text-mint-treasury-split">→ Treasury: {displayValue(treasuryData.mintToTreasury, 0)} ({MINT_SPLIT.TREASURY_PERCENT}%)</div>
-                          <div data-testid="text-mint-creator-split">→ Creator: {displayValue(treasuryData.mintToCreator, 0)} ({MINT_SPLIT.CREATOR_PERCENT}%)</div>
+                          <div data-testid="text-mint-treasury-split">→ Community Treasury: {displayValue(treasuryData.mintToTreasury, 0)} ({MINT_SPLIT.TREASURY_PERCENT}%)</div>
+                          <div data-testid="text-mint-ecosystem-split">→ Ecosystem Development: {displayValue(treasuryData.mintToEcosystem, 0)} ({MINT_SPLIT.ECOSYSTEM_PERCENT}%)</div>
                         </div>
                       </div>
 
@@ -467,7 +467,7 @@ export function PoolTracker() {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 pl-2 mt-1">
-                          → Creator Wallet
+                          → Ecosystem Development
                         </div>
                       </div>
                     </div>
@@ -481,8 +481,8 @@ export function PoolTracker() {
                           <span className="text-cyan-400 font-semibold" data-testid="text-wallet-treasury-total">{displayValue(treasuryData.treasuryTotal, 0)} $BASED</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Creator:</span>
-                          <span className="text-purple-400 font-semibold" data-testid="text-wallet-creator-total">{displayValue(treasuryData.creatorTotal, 0)} $BASED</span>
+                          <span className="text-gray-400">Ecosystem:</span>
+                          <span className="text-purple-400 font-semibold" data-testid="text-wallet-ecosystem-total">{displayValue(treasuryData.ecosystemTotal, 0)} $BASED</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Royalty Wallet:</span>

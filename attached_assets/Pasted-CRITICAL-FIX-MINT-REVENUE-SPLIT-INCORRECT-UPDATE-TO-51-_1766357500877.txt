@@ -1,0 +1,300 @@
+CRITICAL FIX: MINT REVENUE SPLIT INCORRECT - UPDATE TO 51% / 49%
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+App currently shows WRONG revenue split:
+❌ 70% to Treasury
+❌ 30% to Creator (implied)
+
+CORRECT revenue split should be:
+✅ 51% to Community Treasury
+✅ 49% to Ecosystem Development
+
+Also need to change terminology:
+- "Creator" → "Ecosystem Development"
+- This 49% is for ecosystem growth, not just creator
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: UPDATE CONSTANTS FILE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/constants.ts
+
+FIND and UPDATE these constants:
+
+// OLD (WRONG):
+export const MINT_REVENUE_SPLIT = {
+  treasury: 70, // ❌ WRONG
+  creator: 30,  // ❌ WRONG
+};
+
+// NEW (CORRECT):
+export const MINT_REVENUE_SPLIT = {
+  treasury: 51, // ✅ 51% to Community Treasury
+  ecosystemDevelopment: 49, // ✅ 49% to Ecosystem Development
+};
+
+// Also update any related constants:
+export const TREASURY_ALLOCATION = {
+  fromMints: 51, // 51% of mint price
+  fromSales: 2.5, // 2.5% of secondary sales
+  fromBrainEmissions: 10, // 10% of Brain emissions (6,430 $BASED/day)
+};
+
+export const REVENUE_LABELS = {
+  treasury: 'Community Treasury',
+  ecosystemDevelopment: 'Ecosystem Development',
+};
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: UPDATE TREASURY PAGE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/pages/Treasury.tsx (or wherever treasury page is)
+
+FIND any references to "70%" and update to "51%"
+
+FIND text like:
+- "70% Treasury" → "51% Community Treasury"
+- "30% Creator" → "49% Ecosystem Development"
+
+Example fixes:
+
+// Before:
+<div>70% to Treasury</div>
+<div>30% to Creator</div>
+
+// After:
+<div>51% to Community Treasury</div>
+<div>49% to Ecosystem Development</div>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: UPDATE POOL TRACKER COMPONENT
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/PoolTracker.tsx
+
+FIND the "Ecosystem Revenue" section and UPDATE:
+
+CHANGE FROM:
+<div className="revenue-breakdown">
+  <div>70% Treasury</div>
+  <div>30% Creator</div>
+</div>
+
+CHANGE TO:
+<div className="revenue-breakdown">
+  <div className="flex justify-between">
+    <span>Community Treasury</span>
+    <span className="font-bold text-cyan-400">51%</span>
+  </div>
+  <div className="flex justify-between">
+    <span>Ecosystem Development</span>
+    <span className="font-bold text-purple-400">49%</span>
+  </div>
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: UPDATE REVENUE CALCULATION FUNCTIONS
+═══════════════════════════════════════════════════════════════════
+
+FIND any functions that calculate treasury revenue from mints:
+
+File: Search all files for "* 0.7" or "* 70" or "* 0.30"
+
+UPDATE calculations:
+
+// OLD (WRONG):
+const treasuryAmount = mintPrice * 0.70; // ❌
+const creatorAmount = mintPrice * 0.30;  // ❌
+
+// NEW (CORRECT):
+const treasuryAmount = mintPrice * 0.51; // ✅
+const ecosystemAmount = mintPrice * 0.49; // ✅
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: UPDATE MINT PAGE DISPLAY
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/pages/Mint.tsx or wherever mint page shows revenue split
+
+FIND and UPDATE any revenue breakdown display:
+
+<div className="revenue-info">
+  <h3>Mint Revenue Distribution</h3>
+  <div className="split-display">
+    <div className="treasury-split">
+      <span className="percentage">51%</span>
+      <span className="label">Community Treasury</span>
+      <span className="description">
+        Funds governance proposals and ecosystem growth
+      </span>
+    </div>
+    
+    <div className="ecosystem-split">
+      <span className="percentage">49%</span>
+      <span className="label">Ecosystem Development</span>
+      <span className="description">
+        Supports ongoing development and ecosystem expansion
+      </span>
+    </div>
+  </div>
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: UPDATE DOCUMENTATION / INFO TOOLTIPS
+═══════════════════════════════════════════════════════════════════
+
+FIND any tooltips, help text, or info boxes that mention the split:
+
+// OLD text:
+"70% of mint proceeds go to the Community Treasury"
+"30% goes to the creator for development"
+
+// NEW text:
+"51% of mint proceeds go to the Community Treasury"
+"49% goes to Ecosystem Development to support growth and innovation"
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: SEARCH AND REPLACE ACROSS ENTIRE CODEBASE
+═══════════════════════════════════════════════════════════════════
+
+Search for these patterns and verify each needs updating:
+
+SEARCH FOR:
+- "70%" (in context of treasury/mints)
+- "0.70" or "0.7" (in calculations)
+- "30%" (in context of creator)
+- "0.30" or "0.3" (in calculations)
+- "creator" (change to "ecosystem development" where appropriate)
+
+FILES TO CHECK:
+□ client/src/lib/constants.ts
+□ client/src/pages/Treasury.tsx
+□ client/src/pages/Mint.tsx
+□ client/src/components/PoolTracker.tsx
+□ client/src/hooks/useSubnetEmissions.ts
+□ Any component showing revenue breakdown
+□ Any documentation files (README, etc.)
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: UPDATE TREASURY BALANCE CALCULATIONS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useSubnetEmissions.ts (or wherever treasury is calculated)
+
+Ensure treasury calculations from mints use 51%:
+
+function calculateTreasuryFromMints() {
+  // Query all mints from contract
+  const totalMints = 9; // Example
+  const mintPrice = 69420; // $BASED per mint
+  
+  // CORRECT: 51% goes to treasury
+  const treasuryFromMints = totalMints * mintPrice * 0.51;
+  
+  return treasuryFromMints;
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 9: UPDATE VISUAL BREAKDOWN CHARTS (IF ANY)
+═══════════════════════════════════════════════════════════════════
+
+If there are any pie charts or visual representations of revenue split:
+
+UPDATE to show:
+- 51% slice for Community Treasury (cyan color)
+- 49% slice for Ecosystem Development (purple color)
+
+Example:
+<div className="revenue-chart">
+  <div 
+    className="treasury-slice" 
+    style={{ width: '51%', background: '#06b6d4' }}
+  >
+    51%
+  </div>
+  <div 
+    className="ecosystem-slice" 
+    style={{ width: '49%', background: '#a855f7' }}
+  >
+    49%
+  </div>
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 10: UPDATE ADMIN DASHBOARD (IF SHOWS REVENUE)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/AdminDashboard.tsx
+
+If admin dashboard shows revenue breakdown, update there too:
+
+<div className="revenue-metrics">
+  <div className="metric">
+    <label>Treasury Allocation</label>
+    <value>51%</value>
+    <description>From mint proceeds</description>
+  </div>
+  
+  <div className="metric">
+    <label>Ecosystem Development</label>
+    <value>49%</value>
+    <description>Supports growth initiatives</description>
+  </div>
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After all fixes applied, verify:
+
+□ Constants file shows 51% treasury / 49% ecosystem
+□ Treasury page shows "51% Community Treasury"
+□ Treasury page shows "49% Ecosystem Development"
+□ Pool Tracker shows correct percentages
+□ Mint page shows correct split
+□ No mention of "70%" in treasury context
+□ No mention of "30% creator"
+□ All calculations use 0.51 for treasury
+□ All calculations use 0.49 for ecosystem
+□ Terminology changed from "Creator" to "Ecosystem Development"
+□ Tooltips and help text updated
+□ Admin dashboard updated (if applicable)
+□ All visual charts/graphs updated
+
+TEST CALCULATION:
+If mint price = 69,420 $BASED
+- Treasury should get: 69,420 × 0.51 = 35,404.2 $BASED
+- Ecosystem should get: 69,420 × 0.49 = 34,015.8 $BASED
+- Total: 69,420 $BASED ✓
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+Provide:
+1. List of all files modified
+2. Confirmation all instances updated:
+   - Treasury: 51% ✓
+   - Ecosystem Development: 49% ✓
+3. Verification that calculations are correct
+4. Screenshot of Treasury page showing correct split
+5. Confirmation no "70%" or "30% creator" remains
+
+This ensures accurate revenue split display throughout the app.
