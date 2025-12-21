@@ -125,7 +125,7 @@ export const CUMULATIVE_SALES_BASELINE = {
 // === BRAIN EMISSIONS CONFIGURATION ===
 // ⚠️ LOCKED - Brain emissions configuration for treasury calculations
 export const BRAIN_EMISSIONS = {
-  startDate: new Date('2024-12-01T00:00:00Z'),
+  startDate: new Date('2025-12-01T00:00:00Z'),
   dailyTotal: 64300, // Total daily Brain emissions
   treasuryPercentage: 10, // 10% goes to Community Treasury
   dailyToTreasury: 6430 // 10% of 64,300

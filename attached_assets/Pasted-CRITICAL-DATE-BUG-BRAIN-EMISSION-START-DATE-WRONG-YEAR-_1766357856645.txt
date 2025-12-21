@@ -1,0 +1,104 @@
+CRITICAL DATE BUG: BRAIN EMISSION START DATE WRONG YEAR
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+App shows emissions starting December 1, 2024 ❌
+CORRECT start date: December 1, 2025 ✅
+
+Current date: December 21, 2025
+Days elapsed: 20 days (Dec 1-20) or 21 days (Dec 1-21 inclusive)
+
+This is a YEAR off - using 2024 instead of 2025.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX: UPDATE START DATE TO 2025
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/constants.ts
+
+FIND:
+export const BRAIN_EMISSIONS = {
+  startDate: new Date('2024-12-01T00:00:00Z'), // ❌ WRONG YEAR
+  // ...
+};
+
+CHANGE TO:
+export const BRAIN_EMISSIONS = {
+  startDate: new Date('2025-12-01T00:00:00Z'), // ✅ CORRECT YEAR
+  dailyTotal: 64300,
+  treasuryPercentage: 10,
+  dailyToTreasury: 6430,
+};
+
+Or if it's written differently:
+
+FIND:
+const EMISSION_START_DATE = new Date('2024-12-01T00:00:00Z'); // ❌
+
+CHANGE TO:
+const EMISSION_START_DATE = new Date('2025-12-01T00:00:00Z'); // ✅
+
+
+═══════════════════════════════════════════════════════════════════
+SEARCH ALL FILES FOR 2024-12-01
+═══════════════════════════════════════════════════════════════════
+
+Search entire codebase for: '2024-12-01'
+
+UPDATE every instance to: '2025-12-01'
+
+CHECK THESE FILES:
+□ client/src/lib/constants.ts
+□ client/src/hooks/useSubnetEmissions.ts
+□ client/src/components/PoolTracker.tsx
+□ Any file with emission calculations
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFY CORRECT CALCULATION
+═══════════════════════════════════════════════════════════════════
+
+After fix:
+
+Start Date: December 1, 2025
+Current Date: December 21, 2025
+Days Elapsed: 20 days
+
+Calculation:
+20 days × 6,430 $BASED/day = 128,600 $BASED
+
+Treasury Balance: 128,600 $BASED (from emissions)
+Plus: Any initial deposit (35,000 if applicable)
+Total: ~163,600 $BASED
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+After fix, app should show:
+□ Start date: December 1, 2025 ✓
+□ Days active: 20 days ✓
+□ Daily rate: 6,430 $BASED/day ✓
+□ Total emissions: 128,600 $BASED ✓
+□ Text: "since Dec 1 (20 days)" ✓
+
+NOT:
+❌ "since Dec 1 (385 days)"
+❌ Any reference to 2024
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+Confirm:
+1. All instances of '2024-12-01' changed to '2025-12-01'
+2. Treasury shows correct 20-day calculation
+3. App displays correct start year (2025)
+4. Console logs show correct date
+
+This is a simple year typo fix.
