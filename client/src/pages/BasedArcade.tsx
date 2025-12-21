@@ -217,7 +217,7 @@ function GameCard({ game, isLocked, isConnected, playsToday, personalBest, onPla
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md border border-green-500/50 rounded-lg text-xs font-bold text-green-400 shadow-lg">
                 <Unlock className="w-3 h-3" />
-                FREE TO PLAY
+                ANYONE
               </span>
             )}
           </div>
