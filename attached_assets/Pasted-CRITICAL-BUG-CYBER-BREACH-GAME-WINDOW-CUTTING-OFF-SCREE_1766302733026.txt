@@ -1,0 +1,373 @@
+CRITICAL BUG: CYBER BREACH GAME WINDOW CUTTING OFF SCREEN
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+Cyber Breach game canvas/window is larger than viewport.
+Game elements are cut off and not visible.
+User cannot see full game area.
+
+CAUSES:
+- Fixed canvas size (e.g., 800x600) too large for viewport
+- No responsive sizing
+- Container overflow hidden
+- Missing viewport constraints
+- Not accounting for navbar/UI chrome
+
+
+═══════════════════════════════════════════════════════════════════
+IMMEDIATE FIX - RESPONSIVE GAME CANVAS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/pages/CyberBreach.tsx
+
+FIND THE CANVAS SIZING CODE:
+
+Look for lines like:
+const canvas = document.createElement('canvas');
+canvas.width = 800;  // ❌ FIXED SIZE - WRONG
+canvas.height = 600; // ❌ FIXED SIZE - WRONG
+
+REPLACE WITH RESPONSIVE SIZING:
+
+function getGameDimensions() {
+  // Get available viewport space
+  const navbarHeight = 80; // Adjust based on your navbar
+  const padding = 40; // Safe padding
+  
+  const maxWidth = window.innerWidth - padding;
+  const maxHeight = window.innerHeight - navbarHeight - padding;
+  
+  // Maintain 4:3 or 16:9 aspect ratio
+  const aspectRatio = 4 / 3; // or 16 / 9
+  
+  let width = maxWidth;
+  let height = width / aspectRatio;
+  
+  // If height too large, constrain by height instead
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * aspectRatio;
+  }
+  
+  // Ensure minimum size for playability
+  const minWidth = 320;
+  const minHeight = minWidth / aspectRatio;
+  
+  width = Math.max(width, minWidth);
+  height = Math.max(height, minHeight);
+  
+  return {
+    width: Math.floor(width),
+    height: Math.floor(height)
+  };
+}
+
+// Apply to canvas
+const { width, height } = getGameDimensions();
+canvas.width = width;
+canvas.height = height;
+canvas.style.width = width + 'px';
+canvas.style.height = height + 'px';
+
+
+═══════════════════════════════════════════════════════════════════
+FIX CONTAINER STYLING
+═══════════════════════════════════════════════════════════════════
+
+Wrap game in proper container:
+
+<div className="min-h-screen bg-black flex items-center justify-center p-4">
+  <div className="w-full max-w-7xl flex flex-col items-center gap-4">
+    
+    {/* Game Canvas Container */}
+    <div 
+      className="relative bg-gray-900 rounded-lg overflow-hidden"
+      style={{
+        maxWidth: '100%',
+        maxHeight: 'calc(100vh - 120px)', // Account for navbar + padding
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        className="block"
+        style={{
+          width: '100%',
+          height: '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
+        }}
+      />
+      
+      {/* Game UI Overlay */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between">
+        <div className="text-white">Score: {score}</div>
+        <div className="text-white">Level: {level}</div>
+      </div>
+    </div>
+    
+    {/* Controls/Instructions below canvas */}
+    <div className="text-center text-cyan-400">
+      <p>Tap or Click to escape through ring gaps</p>
+    </div>
+  </div>
+</div>
+
+
+═══════════════════════════════════════════════════════════════════
+ADD WINDOW RESIZE HANDLER
+═══════════════════════════════════════════════════════════════════
+
+Handle viewport changes:
+
+useEffect(() => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+  
+  function handleResize() {
+    const { width, height } = getGameDimensions();
+    
+    // Update canvas dimensions
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    
+    // Recalculate game scale/positions based on new size
+    updateGameScale(width, height);
+  }
+  
+  // Initial size
+  handleResize();
+  
+  // Listen for resize
+  window.addEventListener('resize', handleResize);
+  
+  // Listen for orientation change (mobile)
+  window.addEventListener('orientationchange', () => {
+    setTimeout(handleResize, 100); // Delay for orientation transition
+  });
+  
+  return () => {
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleResize);
+  };
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+SCALE GAME ELEMENTS TO CANVAS SIZE
+═══════════════════════════════════════════════════════════════════
+
+Make all game elements relative to canvas size:
+
+// Instead of fixed values:
+const ringRadius = 200; // ❌ WRONG
+
+// Use percentage of canvas:
+const ringRadius = canvas.width * 0.4; // ✓ CORRECT (40% of canvas width)
+
+// Scale all elements:
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: canvas.width * 0.02, // 2% of canvas width
+};
+
+const rings = rings.map(ring => ({
+  ...ring,
+  radius: canvas.width * 0.4,
+  thickness: canvas.width * 0.05,
+  gapSize: Math.PI / 4, // Angle stays constant
+}));
+
+// Font sizes scale too:
+ctx.font = `${canvas.width * 0.04}px Orbitron`; // 4% of canvas width
+
+
+═══════════════════════════════════════════════════════════════════
+MOBILE-SPECIFIC ADJUSTMENTS
+═══════════════════════════════════════════════════════════════════
+
+Add mobile optimizations:
+
+const isMobile = window.innerWidth < 768;
+
+if (isMobile) {
+  // Simpler graphics for performance
+  canvas.style.touchAction = 'none'; // Prevent scroll while playing
+  
+  // Larger touch targets
+  const minTouchSize = 44; // Apple guideline
+  
+  // Adjust game difficulty for touch
+  gapSize *= 1.2; // 20% larger gaps on mobile
+}
+
+// Prevent pull-to-refresh and scroll bounce
+document.body.style.overflow = 'hidden';
+document.body.style.position = 'fixed';
+document.body.style.width = '100%';
+
+// Cleanup on unmount
+return () => {
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
+};
+
+
+═══════════════════════════════════════════════════════════════════
+FULLSCREEN MODE OPTION (OPTIONAL)
+═══════════════════════════════════════════════════════════════════
+
+Add fullscreen button:
+
+function toggleFullscreen() {
+  const gameContainer = document.getElementById('game-container');
+  
+  if (!document.fullscreenElement) {
+    gameContainer.requestFullscreen().then(() => {
+      // Resize canvas to fullscreen
+      const { width, height } = getGameDimensions();
+      canvas.width = width;
+      canvas.height = height;
+    });
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// Add button in UI:
+<button 
+  onClick={toggleFullscreen}
+  className="absolute top-4 right-4 bg-gray-800 p-2 rounded"
+>
+  ⛶ Fullscreen
+</button>
+
+
+═══════════════════════════════════════════════════════════════════
+COMPLETE RESPONSIVE TEMPLATE
+═══════════════════════════════════════════════════════════════════
+
+Full component structure:
+
+export default function CyberBreach() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Calculate responsive dimensions
+    function getGameDimensions() {
+      const navbarHeight = 80;
+      const padding = 40;
+      const maxWidth = window.innerWidth - padding;
+      const maxHeight = window.innerHeight - navbarHeight - padding;
+      const aspectRatio = 4 / 3;
+      
+      let width = maxWidth;
+      let height = width / aspectRatio;
+      
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * aspectRatio;
+      }
+      
+      return {
+        width: Math.max(Math.floor(width), 320),
+        height: Math.max(Math.floor(height), 240)
+      };
+    }
+    
+    function resizeCanvas() {
+      const dims = getGameDimensions();
+      canvas.width = dims.width;
+      canvas.height = dims.height;
+      setDimensions(dims);
+    }
+    
+    resizeCanvas();
+    
+    // Game loop with scaled dimensions
+    function gameLoop() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Scale everything to canvas size
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const ringRadius = canvas.width * 0.35;
+      
+      // Draw game elements scaled to canvas
+      // ... game logic here using canvas.width and canvas.height
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    gameLoop();
+    
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, []);
+  
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-7xl">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-auto block rounded-lg border border-cyan-500/20"
+          style={{
+            maxHeight: 'calc(100vh - 120px)',
+            objectFit: 'contain',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After fix, verify:
+□ Game canvas fits within viewport (desktop)
+□ No horizontal scroll
+□ No vertical scroll (or minimal)
+□ Can see full game area
+□ All UI elements visible (score, pause, etc.)
+□ Game scales to different window sizes
+□ Works on mobile (portrait and landscape)
+□ Works on tablet
+□ Fullscreen mode works (if added)
+□ Game is playable at all sizes
+□ Text is readable at all sizes
+□ Touch targets are large enough (mobile)
+
+Test on:
+- Desktop (1920x1080, 1366x768)
+- Laptop (1440x900)
+- Tablet (768x1024)
+- Mobile (375x667, 390x844)
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+Confirm:
+1. Canvas is now responsive
+2. Game fits on screen at all sizes
+3. No elements cut off
+4. Game is playable on desktop and mobile
+5. Provide screenshot showing full game visible

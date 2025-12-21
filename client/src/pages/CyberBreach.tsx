@@ -733,9 +733,30 @@ export default function CyberBreach() {
     const container = containerRef.current;
     if (!canvas || !container) return;
     
-    const resizeCanvas = () => {
+    const getGameDimensions = () => {
+      // Account for navbar (80px) + stats bar (~60px) + padding + instructions
+      const navbarHeight = 80;
+      const uiChrome = 120; // Stats bar, instructions, padding
+      const padding = 32;
+      
       const containerWidth = container.clientWidth;
-      const size = Math.min(containerWidth - 16, 500);
+      const maxWidth = containerWidth - padding;
+      const maxHeight = window.innerHeight - navbarHeight - uiChrome - padding;
+      
+      // Square aspect ratio for this game (1:1)
+      let size = Math.min(maxWidth, maxHeight);
+      
+      // Clamp to reasonable bounds
+      const minSize = 280;
+      const maxSize = 600; // Max size for very large screens
+      
+      size = Math.max(minSize, Math.min(size, maxSize));
+      
+      return Math.floor(size);
+    };
+    
+    const resizeCanvas = () => {
+      const size = getGameDimensions();
       canvasSizeRef.current = size;
       
       const dpr = window.devicePixelRatio || 1;
@@ -753,11 +774,13 @@ export default function CyberBreach() {
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
     
     animationFrameRef.current = requestAnimationFrame(gameLoop);
     
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('orientationchange', resizeCanvas);
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, [gameLoop]);
@@ -819,10 +842,10 @@ export default function CyberBreach() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 overflow-hidden">
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       
-      <div className="container mx-auto px-4 py-4 md:py-6">
+      <div className="container mx-auto px-4 py-2 md:py-4" style={{ maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
         <div className="flex items-center justify-between mb-4">
           <Button
             variant="ghost"
