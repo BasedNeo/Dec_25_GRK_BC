@@ -416,8 +416,11 @@ export default function CyberBreach() {
     
     const speedMultiplier = state.activePowerUp?.type === 'slowmo' ? 0.5 : 1;
     
+    // Smooth ring rotation using deltaTime for consistent speed regardless of frame rate
     for (const ring of state.rings) {
-      ring.gapPosition += ring.speed * ring.direction * speedMultiplier;
+      // Multiply speed by 60 to normalize for 60fps, then scale by actual deltaTime
+      const frameSpeed = ring.speed * 60 * deltaTime * speedMultiplier;
+      ring.gapPosition += frameSpeed * ring.direction;
       ring.gapPosition = ((ring.gapPosition % 360) + 360) % 360;
     }
     
@@ -462,7 +465,10 @@ export default function CyberBreach() {
     if (!ctx) return;
     
     const state = gameStateRef.current;
-    const { width, height } = canvas;
+    // Use CSS size for calculations (accounts for devicePixelRatio scaling)
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
     const centerX = width / 2;
     const centerY = height / 2;
     
@@ -557,6 +563,13 @@ export default function CyberBreach() {
     ctx.arc(centerX, centerY, coreRadius * 0.6, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
+    
+    // Draw level number in center
+    ctx.font = 'bold 20px Orbitron, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(String(state.level), centerX, centerY);
     
     if (state.floatingPowerUp) {
       const pu = state.floatingPowerUp;
@@ -702,9 +715,17 @@ export default function CyberBreach() {
     const resizeCanvas = () => {
       const container = canvas.parentElement;
       if (container) {
-        const size = Math.min(container.clientWidth - 32, 600);
-        canvas.width = size;
-        canvas.height = size;
+        // Max ring radius at level 8: 60 + 7*35 = 305, plus padding = ~350 from center
+        // Need canvas size of at least 700 to fit all rings without cutoff
+        const containerWidth = container.clientWidth - 32;
+        const size = Math.min(containerWidth, 700);
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = size * dpr;
+        canvas.height = size * dpr;
+        canvas.style.width = `${size}px`;
+        canvas.style.height = `${size}px`;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.scale(dpr, dpr);
         render();
       }
     };
@@ -756,7 +777,7 @@ export default function CyberBreach() {
   if (!isHolder && GAME_CONFIG.nftRequired) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
-        <Navbar activeTab="arcade" />
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-lg mx-auto bg-black/40 border border-cyan-500/20 p-8 text-center">
             <Shield className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
@@ -779,7 +800,7 @@ export default function CyberBreach() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
-      <Navbar activeTab="arcade" />
+      <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       
       <div className="container mx-auto px-4 py-4 md:py-8">
         <div className="flex items-center justify-between mb-4">
