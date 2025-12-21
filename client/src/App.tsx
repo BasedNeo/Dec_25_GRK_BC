@@ -224,13 +224,11 @@ export function Router() {
             <TransactionHistory />
           </ErrorBoundary>
         </Route>
-        {/* Temporarily hidden for v1 launch - will add multi-collection in v2
         <Route path="/collections">
           <ErrorBoundary feature="Collections">
             <Collections />
           </ErrorBoundary>
         </Route>
-        */}
         <Route path="/marketplace">
           <ErrorBoundary feature="Marketplace">
             <Marketplace />

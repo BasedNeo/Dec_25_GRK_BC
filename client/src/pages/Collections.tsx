@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
@@ -37,6 +38,8 @@ const BASED_GUARDIANS_DEFAULT: Collection = {
   isFeatured: true
 };
 
+const ITEMS_PER_PAGE = 12;
+
 export default function Collections() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -44,6 +47,8 @@ export default function Collections() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('collections');
+  const [currentPage, setCurrentPage] = useState(1);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -54,39 +59,51 @@ export default function Collections() {
     else if (tab === 'collections') setLocation('/collections');
   };
 
-  useEffect(() => {
-    fetchCollections();
-  }, []);
-
-  async function fetchCollections() {
+  const fetchCollections = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     try {
       console.log('[Collections] Fetching collections from API...');
-      const res = await fetch('/api/collections');
+      const res = await fetch('/api/collections', {
+        signal: abortControllerRef.current.signal
+      });
       const data = await res.json();
       
       console.log('[Collections] API returned:', data.length, 'collections');
-      console.log('[Collections] First 5 collections:', data.slice(0, 5).map((c: Collection) => c.name));
       
       const hasBasedGuardians = data.some(
         (c: Collection) => c.contractAddress.toLowerCase() === NFT_CONTRACT.toLowerCase()
       );
       
       if (!hasBasedGuardians) {
-        console.log('[Collections] Adding Based Guardians as default');
         setCollections([BASED_GUARDIANS_DEFAULT, ...data]);
       } else {
-        console.log('[Collections] Based Guardians already in data');
         setCollections(data);
       }
-      
-      console.log('[Collections] Total collections set:', data.length + (hasBasedGuardians ? 0 : 1));
     } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        console.log('[Collections] Fetch aborted');
+        return;
+      }
       console.error('[Collections] Failed to fetch collections:', error);
       setCollections([BASED_GUARDIANS_DEFAULT]);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchCollections();
+    
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchCollections]);
 
   if (loading) {
     return (
@@ -105,6 +122,12 @@ export default function Collections() {
 
   const featured = collections.filter(c => c.isFeatured);
   const other = collections.filter(c => !c.isFeatured);
+  
+  const totalPages = Math.ceil(other.length / ITEMS_PER_PAGE);
+  const paginatedOther = other.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <>
@@ -116,7 +139,6 @@ export default function Collections() {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
         <div className="container mx-auto px-4 py-8 pt-24">
           
-          {/* Page Header */}
           <div className="text-center mb-12">
             <h1 className="text-5xl font-orbitron font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
               {t('collections.title', 'NFT Collections')}
@@ -126,7 +148,6 @@ export default function Collections() {
             </p>
           </div>
 
-          {/* Featured Collections */}
           {featured.length > 0 && (
             <div className="mb-12">
               <h2 className="text-2xl font-orbitron font-bold mb-6 flex items-center gap-2 text-white">
@@ -141,18 +162,47 @@ export default function Collections() {
             </div>
           )}
 
-          {/* All Collections */}
           {other.length > 0 && (
             <div className="mb-12">
               <h2 className="text-2xl font-orbitron font-bold mb-6 flex items-center gap-2 text-white">
                 <Users className="w-6 h-6 text-cyan-400" />
-                {t('collections.all', 'All Collections')}
+                {t('collections.all', 'All Collections')} ({other.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {other.map(collection => (
+                {paginatedOther.map(collection => (
                   <CollectionCard key={collection.id} collection={collection} />
                 ))}
               </div>
+              
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-8">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                    data-testid="button-prev-page"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-gray-400 font-mono text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                    data-testid="button-next-page"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -163,6 +213,9 @@ export default function Collections() {
 }
 
 function CollectionCard({ collection }: { collection: Collection }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
   const floorPrice = (Number(collection.floorPrice) / 1e18).toFixed(2);
   const volume = (Number(collection.volumeTraded) / 1e18).toFixed(2);
   
@@ -172,6 +225,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
     <Link href="/marketplace">
       <Card 
         className="bg-black/40 border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer group overflow-hidden"
+        data-testid={`card-collection-${collection.id}`}
       >
         <div className="relative h-48 overflow-hidden rounded-t-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
           
@@ -181,16 +235,26 @@ function CollectionCard({ collection }: { collection: Collection }) {
             </span>
           </div>
           
-          {imageUrl && (
-            <img 
-              src={imageUrl}
-              alt={collection.name}
-              className="absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                console.warn('⚠️ Image failed:', collection.symbol, imageUrl);
-                e.currentTarget.style.opacity = '0';
-              }}
-            />
+          {imageUrl && !imageError && (
+            <>
+              {!imageLoaded && (
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 animate-pulse z-5" />
+              )}
+              <img 
+                src={imageUrl}
+                alt={collection.name}
+                className={`absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-105 transition-transform duration-300 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  console.warn('⚠️ Image failed:', collection.symbol);
+                  setImageError(true);
+                }}
+                loading="lazy"
+                decoding="async"
+              />
+            </>
           )}
           
           {collection.isFeatured && (
