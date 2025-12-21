@@ -145,8 +145,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'stats', label: t('nav.stats', 'Stats') },
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },
-    { id: 'games', label: t('nav.games', 'Games') },
-    { id: 'asteroid-mining', label: t('nav.asteroidMining', 'Asteroids') },
+    { id: 'arcade', label: t('nav.arcade', 'Arcade') },
   ];
 
   return (
@@ -187,18 +186,16 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                 key={item.id}
                 id={item.id === 'voting' ? 'nav-vote' : undefined}
                 onMouseEnter={() => {
-                  if (item.id === 'games' && prefetchHandlers.BasedArcade) prefetchHandlers.BasedArcade();
+                  if (item.id === 'arcade' && prefetchHandlers.BasedArcade) prefetchHandlers.BasedArcade();
                   if (item.id === 'collections' && prefetchHandlers.Collections) prefetchHandlers.Collections();
                 }}
                 onClick={() => {
-                  if (item.id === 'games') {
-                    setLocation('/games');
+                  if (item.id === 'arcade') {
+                    setLocation('/arcade');
                   } else if (item.id === 'game') {
                     setLocation('/guardian-solitaire');
                   } else if (item.id === 'collections') {
                     setLocation('/collections');
-                  } else if (item.id === 'asteroid-mining') {
-                    setLocation('/asteroid-mining');
                   } else {
                     // Navigate to hash URL for tab-based navigation
                     const currentPath = window.location.pathname;
@@ -423,12 +420,10 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       setLocation('/game');
                     } else if (item.id === 'solitaire') {
                       setLocation('/guardian-solitaire');
-                    } else if (item.id === 'games') {
-                      setLocation('/games');
+                    } else if (item.id === 'arcade') {
+                      setLocation('/arcade');
                     } else if (item.id === 'collections') {
                       setLocation('/collections');
-                    } else if (item.id === 'asteroid-mining') {
-                      setLocation('/asteroid-mining');
                     } else {
                       // Navigate to hash URL for tab-based navigation
                       const currentPath = window.location.pathname;
