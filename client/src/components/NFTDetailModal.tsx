@@ -261,7 +261,7 @@ function OfferModalInline({ isOpen, onClose, item }: { isOpen: boolean; onClose:
           <Button 
             className="w-full h-14 bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 font-orbitron font-bold text-lg"
             onClick={handleSubmit}
-            disabled={!isConnected || isSubmitting || offerLoading}
+            disabled={isSubmitting || offerLoading}
           >
             {isSubmitting || offerLoading ? (
               <span className="animate-pulse">SIGNING...</span>
