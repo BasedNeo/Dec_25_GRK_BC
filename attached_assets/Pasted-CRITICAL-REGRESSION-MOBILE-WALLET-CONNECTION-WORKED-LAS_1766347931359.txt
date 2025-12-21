@@ -1,0 +1,758 @@
+CRITICAL REGRESSION: MOBILE WALLET CONNECTION WORKED LAST WEEK, BROKEN NOW
+
+═══════════════════════════════════════════════════════════════════
+SITUATION ANALYSIS
+═══════════════════════════════════════════════════════════════════
+
+STATUS: CRITICAL PRODUCTION BUG
+- Mobile wallet connection WORKED 7 days ago ✓
+- Mobile wallet connection BROKEN now ❌
+- Desktop wallet connection working ✓
+- This is a REGRESSION - something broke it
+- Multiple fix attempts have FAILED
+- Mobile users COMPLETELY BLOCKED from app
+
+ROOT CAUSE: Unknown - must identify what changed
+
+PRIORITY: HIGHEST - Blocks all mobile users
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 1: IDENTIFY WHAT BROKE (FORENSIC ANALYSIS)
+═══════════════════════════════════════════════════════════════════
+
+STEP 1A: Check Git History
+
+Run these commands and report findings:
+
+# Show all commits in last 7 days
+git log --since="7 days ago" --oneline --all
+
+# Check changes to wallet-related files
+git log --since="7 days ago" --oneline -- client/src/lib/wagmi.ts
+git log --since="7 days ago" --oneline -- client/src/main.tsx
+git log --since="7 days ago" --oneline -- client/src/App.tsx
+git log --since="7 days ago" --oneline -- client/src/index.css
+git log --since="7 days ago" --oneline -- client/src/components/Navbar.tsx
+
+# Show actual changes to critical files
+git diff HEAD~20 HEAD -- client/src/lib/wagmi.ts
+git diff HEAD~20 HEAD -- client/src/main.tsx
+git diff HEAD~20 HEAD -- client/src/index.css
+
+REPORT: List ALL files changed in last 7 days that could affect wallet modal.
+
+
+STEP 1B: Check Package Changes
+
+Check if dependencies were updated:
+
+git log --since="7 days ago" --oneline -- package.json
+git diff HEAD~20 HEAD -- package.json
+
+LOOK FOR:
+- @rainbow-me/rainbowkit version changes
+- wagmi version changes
+- viem version changes
+- Any wallet-related package updates
+
+REPORT: Any dependency version changes in last 7 days.
+
+
+STEP 1C: Check for React.StrictMode Re-Enabled
+
+File: client/src/main.tsx
+
+CHECK CURRENT STATE:
+
+If you see this:
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+This is THE PROBLEM. StrictMode breaks wallet connection.
+
+FIX: Remove <React.StrictMode> completely:
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <App />
+);
+
+
+STEP 1D: Check wagmi autoConnect
+
+File: client/src/lib/wagmi.ts
+
+CHECK CURRENT STATE:
+
+Look for autoConnect setting. If missing or set to true, THIS IS THE PROBLEM.
+
+MUST BE:
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: 'YOUR_PROJECT_ID',
+  chains: [basedaiChain],
+  autoConnect: false, // ← MUST BE FALSE
+  ssr: false,
+});
+
+
+STEP 1E: Check CSS Changes
+
+File: client/src/index.css or any global CSS
+
+SEARCH FOR any new CSS added in last week affecting:
+- z-index
+- position: fixed
+- overflow: hidden
+- pointer-events
+- viewport units (vw, vh)
+- @media (max-width: 768px)
+
+REPORT: Any CSS changes that could block modal or prevent interaction.
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2: EMERGENCY ROLLBACK TO WORKING STATE
+═══════════════════════════════════════════════════════════════════
+
+STEP 2A: Identify Last Working Commit
+
+Find commit from ~7 days ago when it was working:
+
+git log --since="8 days ago" --until="6 days ago" --oneline
+
+Example output:
+abc1234 "Added collections feature"
+def5678 "Fixed emissions calculation"
+ghi9012 "Updated navbar styling"
+
+IDENTIFY: Which commit was likely last working state.
+
+
+STEP 2B: Selective File Rollback
+
+DO NOT rollback entire codebase. Only rollback wallet-related files:
+
+# Rollback wallet config (example, adjust commit hash)
+git checkout abc1234 -- client/src/lib/wagmi.ts
+
+# Rollback main entry (if React.StrictMode was re-added)
+git checkout abc1234 -- client/src/main.tsx
+
+# Rollback CSS (if modal styles were broken)
+git checkout abc1234 -- client/src/index.css
+
+# Rollback RainbowKit wrapper (if changed)
+git checkout abc1234 -- client/src/App.tsx
+
+TEST: After each rollback, test if mobile wallet works.
+
+REPORT: Which file rollback fixed the issue (if any).
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 3: REBUILD MOBILE WALLET FROM SCRATCH (IF ROLLBACK FAILS)
+═══════════════════════════════════════════════════════════════════
+
+If rollback doesn't work, rebuild wallet connection completely:
+
+STEP 3A: Verify Dependencies Are Correct Versions
+
+package.json should have:
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.0.0",
+    "wagmi": "^2.5.0",
+    "viem": "^2.7.0"
+  }
+}
+
+If versions are much higher or lower, reinstall:
+
+npm uninstall @rainbow-me/rainbowkit wagmi viem
+npm install @rainbow-me/rainbowkit@^2.0.0 wagmi@^2.5.0 viem@^2.7.0
+
+
+STEP 3B: Clean Rebuild Wagmi Config
+
+File: client/src/lib/wagmi.ts
+
+COMPLETELY REPLACE with this known working configuration:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+
+// BasedAI L1 Chain Configuration
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    name: 'BASED',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.basedai.network'],
+    },
+    public: {
+      http: ['https://rpc.basedai.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'BasedAI Explorer',
+      url: 'https://explorer.basedai.network',
+    },
+  },
+  testnet: false,
+});
+
+// Wagmi Configuration
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID', // Get from https://cloud.walletconnect.com
+  chains: [basedaiChain],
+  ssr: false,
+  autoConnect: false, // CRITICAL: Must be false
+});
+
+
+STEP 3C: Clean Rebuild Main Entry
+
+File: client/src/main.tsx
+
+COMPLETELY REPLACE with this known working setup:
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { config } from './lib/wagmi';
+
+const queryClient = new QueryClient();
+
+// CRITICAL: No React.StrictMode - it breaks wallet connection
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <WagmiProvider config={config}>
+    <QueryClientProvider client={queryClient}>
+      <RainbowKitProvider
+        modalSize="compact"
+        theme={darkTheme({
+          accentColor: '#06b6d4',
+          accentColorForeground: 'white',
+          borderRadius: 'large',
+        })}
+      >
+        <App />
+      </RainbowKitProvider>
+    </QueryClientProvider>
+  </WagmiProvider>
+);
+
+
+STEP 3D: Force Mobile Modal Styles
+
+File: client/src/index.css
+
+ADD AT THE VERY BOTTOM (after all other styles):
+
+/* ========================================
+   MOBILE WALLET FIX - DO NOT MODIFY
+   ======================================== */
+
+/* Desktop default - use RainbowKit defaults */
+@media (min-width: 769px) {
+  /* No overrides needed on desktop */
+}
+
+/* Mobile - force proper sizing */
+@media (max-width: 768px) {
+  /* Modal container */
+  div[data-rk] {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+  }
+  
+  /* Backdrop */
+  div[data-rk] > div[data-backdrop] {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    z-index: 9999998 !important;
+  }
+  
+  /* Modal dialog */
+  div[data-rk] div[role="dialog"] {
+    position: relative !important;
+    z-index: 9999999 !important;
+    width: 90vw !important;
+    max-width: 400px !important;
+    max-height: 85vh !important;
+    background: white !important;
+    border-radius: 20px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+    padding: 0 !important;
+  }
+  
+  /* Modal content padding */
+  div[data-rk] div[role="dialog"] > div {
+    padding: 24px 20px !important;
+  }
+  
+  /* Wallet option buttons */
+  div[data-rk] button[type="button"] {
+    width: 100% !important;
+    padding: 16px 14px !important;
+    margin: 8px 0 !important;
+    min-height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 16px !important;
+    background: #f8f9fa !important;
+    border: 2px solid #e9ecef !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+  }
+  
+  div[data-rk] button[type="button"]:active {
+    background: #e9ecef !important;
+    transform: scale(0.98) !important;
+  }
+  
+  /* Wallet icons */
+  div[data-rk] button[type="button"] img {
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* Close button */
+  div[data-rk] button[aria-label*="lose"],
+  div[data-rk] button[aria-label*="ack"] {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-radius: 50% !important;
+    z-index: 10 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Modal heading */
+  div[data-rk] div[role="dialog"] h1,
+  div[data-rk] div[role="dialog"] h2 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    margin-bottom: 20px !important;
+    padding-right: 40px !important;
+  }
+  
+  /* Ensure all content is visible */
+  div[data-rk] * {
+    box-sizing: border-box !important;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 375px) {
+  div[data-rk] div[role="dialog"] {
+    width: 95vw !important;
+    padding: 20px 16px !important;
+  }
+  
+  div[data-rk] button[type="button"] {
+    padding: 14px 12px !important;
+    min-height: 56px !important;
+    font-size: 15px !important;
+  }
+}
+
+
+STEP 3E: Prevent Body Scroll When Modal Open
+
+File: client/src/App.tsx
+
+Add this useEffect at the top level:
+
+import { useEffect } from 'react';
+
+function App() {
+  // Prevent background scroll when wallet modal is open
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const modal = document.querySelector('div[data-rk][role="dialog"]');
+      
+      if (modal) {
+        // Modal is open - prevent scroll
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.top = '0';
+        console.log('🔒 Modal open - scroll locked');
+      } else {
+        // Modal is closed - restore scroll
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        console.log('🔓 Modal closed - scroll unlocked');
+      }
+    });
+    
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true 
+    });
+    
+    return () => {
+      observer.disconnect();
+      // Cleanup on unmount
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+    };
+  }, []);
+  
+  // ... rest of App component
+}
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 4: COMPREHENSIVE MOBILE TESTING & DEBUGGING
+═══════════════════════════════════════════════════════════════════
+
+STEP 4A: Add Diagnostic Logging
+
+File: client/src/App.tsx
+
+Add comprehensive mobile wallet logging:
+
+useEffect(() => {
+  console.log('═══════════════════════════════════════');
+  console.log('📱 MOBILE WALLET DIAGNOSTIC');
+  console.log('═══════════════════════════════════════');
+  console.log('Device Info:', {
+    isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+    width: window.innerWidth,
+    height: window.innerHeight,
+    userAgent: navigator.userAgent,
+    touchSupport: 'ontouchstart' in window,
+  });
+  
+  // Watch for wallet modal
+  const observer = new MutationObserver(() => {
+    const modal = document.querySelector('div[data-rk][role="dialog"]');
+    
+    if (modal) {
+      const rect = modal.getBoundingClientRect();
+      const styles = window.getComputedStyle(modal);
+      
+      console.log('🔵 Wallet modal detected:');
+      console.log('  Position:', styles.position);
+      console.log('  Z-index:', styles.zIndex);
+      console.log('  Width:', rect.width + 'px');
+      console.log('  Height:', rect.height + 'px');
+      console.log('  Top:', rect.top + 'px');
+      console.log('  Left:', rect.left + 'px');
+      console.log('  Visible:', rect.width > 0 && rect.height > 0);
+      console.log('  Overflow-Y:', styles.overflowY);
+      
+      // Count wallet buttons
+      const buttons = modal.querySelectorAll('button[type="button"]');
+      console.log('  Wallet buttons:', buttons.length);
+      
+      buttons.forEach((btn, i) => {
+        const btnRect = btn.getBoundingClientRect();
+        console.log(`  Button ${i + 1}:`, {
+          text: btn.textContent?.trim().substring(0, 20),
+          visible: btnRect.width > 0 && btnRect.height > 0,
+          width: btnRect.width,
+          height: btnRect.height,
+          inViewport: (
+            btnRect.top >= 0 &&
+            btnRect.left >= 0 &&
+            btnRect.bottom <= window.innerHeight &&
+            btnRect.right <= window.innerWidth
+          ),
+        });
+      });
+      
+      // Check for close button
+      const closeBtn = modal.querySelector('button[aria-label*="lose"], button[aria-label*="ack"]');
+      if (closeBtn) {
+        const closeBtnRect = closeBtn.getBoundingClientRect();
+        console.log('  Close button:', {
+          found: true,
+          visible: closeBtnRect.width > 0,
+          width: closeBtnRect.width,
+          height: closeBtnRect.height,
+        });
+      } else {
+        console.warn('  ⚠️ Close button NOT FOUND');
+      }
+      
+      console.log('═══════════════════════════════════════');
+    }
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  return () => observer.disconnect();
+}, []);
+
+
+STEP 4B: Test Mobile Wallet Connection Flow
+
+After implementing all fixes, MUST test on REAL MOBILE DEVICE:
+
+TEST PROCEDURE (Execute on actual iPhone/Android):
+1. Open app in mobile browser (Safari on iPhone, Chrome on Android)
+2. Open browser console (if possible) or connect to desktop debugger
+3. Click "Connect Wallet" button
+4. OBSERVE and report:
+   □ Does blur overlay appear? YES/NO
+   □ Does white modal box appear? YES/NO
+   □ Can you see wallet option buttons? YES/NO
+   □ How many wallet buttons visible? COUNT
+   □ Can you see close button (X)? YES/NO
+   □ Can you tap a wallet button? YES/NO
+   □ Does tapping work? YES/NO
+   □ Can you close modal? YES/NO
+   
+5. If modal appears but buttons not visible:
+   - Try scrolling inside modal
+   - Check if content is there but off-screen
+   - Take screenshot and measure modal size
+
+6. Copy ALL console logs starting with 📱 or 🔵
+
+
+═══════════════════════════════════════════════════════════════════
+PHASE 5: NUCLEAR OPTION - CUSTOM MOBILE WALLET MODAL
+═══════════════════════════════════════════════════════════════════
+
+If RainbowKit modal still doesn't work on mobile after all fixes, replace with custom modal:
+
+File: client/src/components/CustomWalletModal.tsx (CREATE NEW)
+
+import { useConnect, useAccount, useDisconnect } from 'wagmi';
+import { useState } from 'react';
+
+export function CustomWalletModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { connectors, connect } = useConnect();
+  const { address } = useAccount();
+  const { disconnect } = useDisconnect();
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-5 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {address ? 'Connected' : 'Connect Wallet'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition"
+          >
+            <span className="text-2xl text-gray-600">×</span>
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-5">
+          {address ? (
+            // Connected state
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800 font-medium mb-2">Connected</p>
+                <p className="text-xs text-green-700 font-mono break-all">{address}</p>
+              </div>
+              
+              <button
+                onClick={() => {
+                  disconnect();
+                  onClose();
+                }}
+                className="w-full p-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            // Connection options
+            <div className="space-y-3">
+              {connectors.map((connector) => (
+                <button
+                  key={connector.id}
+                  onClick={() => {
+                    connect({ connector });
+                    onClose();
+                  }}
+                  disabled={!connector.ready}
+                  className={`
+                    w-full flex items-center gap-4 p-4 rounded-xl border-2 transition
+                    ${connector.ready
+                      ? 'bg-gray-50 hover:bg-gray-100 border-gray-200 cursor-pointer active:scale-98'
+                      : 'bg-gray-100 border-gray-300 opacity-50 cursor-not-allowed'
+                    }
+                  `}
+                  style={{ minHeight: '64px' }}
+                >
+                  <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold text-lg text-gray-900">{connector.name}</p>
+                    {!connector.ready && (
+                      <p className="text-xs text-gray-500">Not available</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+File: client/src/components/Navbar.tsx or wherever connect button is
+
+Replace RainbowKit ConnectButton with custom modal (for mobile only):
+
+import { CustomWalletModal } from './CustomWalletModal';
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+
+function WalletButton() {
+  const [isMobile, setIsMobile] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const { address } = useAccount();
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  if (isMobile) {
+    return (
+      <>
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-4 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg text-white font-bold"
+        >
+          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
+        </button>
+        
+        <CustomWalletModal 
+          isOpen={showModal} 
+          onClose={() => setShowModal(false)} 
+        />
+      </>
+    );
+  }
+  
+  // Desktop: use RainbowKit
+  return <ConnectButton />;
+}
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION & SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+MUST ACHIEVE ALL OF THESE ON REAL MOBILE DEVICE:
+
+□ Can open app on mobile browser
+□ "Connect Wallet" button visible and tappable
+□ Tapping button opens wallet modal
+□ Modal appears centered on screen
+□ Modal size fits viewport (not cut off)
+□ Can see modal title/heading
+□ Can see ALL wallet options (MetaMask, Coinbase, WalletConnect, etc.)
+□ Each wallet option shows icon + name clearly
+□ Each button is touch-friendly (min 56px tall)
+□ Can scroll modal content if needed
+□ Close button (X) visible in top-right
+□ Can tap close button to dismiss modal
+□ Can tap outside modal to dismiss
+□ Can tap wallet option (e.g., MetaMask)
+□ Wallet app opens or browser wallet activates
+□ Can approve connection in wallet
+□ Modal closes after connection
+□ Connected wallet address displays
+□ Can navigate app with wallet connected
+□ Can disconnect wallet
+□ Can reconnect wallet
+
+IF ANY FAILS: Report exact failure point with screenshot and console logs.
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLES REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+Must provide:
+
+1. GIT ANALYSIS RESULTS:
+   - What files changed in last 7 days?
+   - What caused the regression?
+   - Which commit was last working?
+
+2. FIXES APPLIED:
+   - React.StrictMode status: Enabled/Disabled
+   - autoConnect setting: true/false
+   - CSS fixes applied: YES/NO
+   - Custom modal implemented: YES/NO
+   - Files rolled back: List them
+
+3. TEST RESULTS ON REAL MOBILE:
+   - Device tested: (iPhone X, Android Samsung, etc.)
+   - Browser: (Safari, Chrome, etc.)
+   - Modal visible: YES/NO
+   - Wallet options visible: YES/NO (count)
+   - Can connect: YES/NO
+   - Screenshots attached: YES/NO
+   - Console logs attached: YES/NO
+
+4. FINAL STATUS:
+   □ Mobile wallet connection WORKING
+   □ Tested on iPhone: PASS/FAIL
+   □ Tested on Android: PASS/FAIL
+   □ Root cause identified: [describe]
+   □ Solution implemented: [describe]
+   □ Regression prevented: [how]
+
+THIS IS CRITICAL - Mobile users are blocked. Must work.

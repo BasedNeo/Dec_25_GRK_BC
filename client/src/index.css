@@ -375,62 +375,19 @@ replit-error-modal {
 }
 
 /* ========================================
-   RAINBOWKIT MODAL - MINIMAL OVERRIDES
-   Only z-index and pointer-events fixes.
-   Let RainbowKit control modal layout (especially on mobile).
+   RAINBOWKIT MODAL - MINIMAL Z-INDEX ONLY
+   Let RainbowKit control ALL layout including mobile.
+   Only set z-index to ensure modal appears on top.
    ======================================== */
 
 /* Ensure wallet modal appears above all app content */
 [data-rk],
-[data-rk] [data-radix-popper-content-wrapper],
-[data-rk] [role="dialog"],
-[data-rk-modal-root],
-div[data-rk] {
+[data-rk-modal-root] {
   z-index: 2147483647 !important;
 }
 
-/* Ensure all RainbowKit elements are clickable */
-[data-rk] * {
-  pointer-events: auto !important;
-}
-
-/* DESKTOP ONLY: Center the modal on larger screens */
-@media (min-width: 769px) {
-  [data-rk] [role="dialog"] {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    max-width: 420px !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-    border-radius: 16px !important;
-  }
-}
-
-/* MOBILE: Let RainbowKit use its native bottom-sheet layout */
-@media (max-width: 768px) {
-  /* Reset any transforms that might interfere with RainbowKit's mobile layout */
-  [data-rk] [role="dialog"] {
-    transform: none !important;
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    position: fixed !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
-    border-radius: 20px 20px 0 0 !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  
-  /* Ensure touch targets are adequate on mobile */
-  [data-rk] button {
-    min-height: 48px !important;
-  }
-}
+/* DO NOT override positioning, sizing, or touch behavior.
+   RainbowKit handles mobile layout natively. */
 
 /* Force Buy Button Visibility and Styling */
 /* ========================================
@@ -745,6 +702,3 @@ input, textarea, select {
   }
 }
 
-/* Mobile wallet modal styles are now consolidated above in the 
-   "RAINBOWKIT MODAL - MINIMAL OVERRIDES" section (lines ~380-436).
-   The fix uses bottom-sheet positioning on mobile instead of centering. */
