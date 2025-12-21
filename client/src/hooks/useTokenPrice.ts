@@ -42,8 +42,7 @@ export function useTokenPrice() {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), getTimeout());
-        const directUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
-        const res = await fetch(directUrl, { signal: controller.signal });
+        const res = await fetch('/api/price/basedai', { signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (res.ok) {
@@ -65,37 +64,7 @@ export function useTokenPrice() {
           }
         }
       } catch (e) {
-        console.warn("Direct CoinGecko fetch failed, trying proxy...");
-      }
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), getTimeout());
-        const targetUrl = `${COINGECKO_API}?ids=${TOKEN_ID}&vs_currencies=usd&include_24hr_change=true`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-        
-        const res = await fetch(proxyUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          const data = await res.json();
-          const tokenData = data[TOKEN_ID];
-          
-          if (tokenData && tokenData.usd) {
-            const usdPrice = tokenData.usd;
-            const priceData: PriceData = {
-              usdPrice,
-              basedL1Price: usdPrice / 1000,
-              change24h: tokenData.usd_24h_change || 0,
-              lastUpdated: Date.now()
-            };
-            
-            setCache(CACHE_KEYS.PRICE_DATA, priceData);
-            lastKnownPrice = priceData;
-            return priceData;
-          }
-        }
-      } catch (e) {
-        console.warn("Proxy fetch also failed");
+        // Server proxy failed, will use fallback
       }
 
       if (lastKnownPrice) return lastKnownPrice;

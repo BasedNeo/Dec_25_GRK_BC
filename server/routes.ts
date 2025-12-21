@@ -1012,6 +1012,30 @@ export async function registerRoutes(
     }
   });
 
+  // Price Proxy Endpoint (avoids CORS issues with CoinGecko)
+  app.get("/api/price/basedai", async (req, res) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const response = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=basedai&vs_currencies=usd&include_24hr_change=true",
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        return res.status(502).json({ error: "Failed to fetch price from CoinGecko" });
+      }
+      
+      const data = await response.json();
+      return res.json(data);
+    } catch (error) {
+      console.error("[Price] Error fetching price:", error);
+      return res.status(500).json({ error: "Failed to fetch price" });
+    }
+  });
+
   // Feature Flags Endpoints
   app.get("/api/feature-flags", async (req, res) => {
     try {
