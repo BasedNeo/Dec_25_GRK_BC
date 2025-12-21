@@ -76,42 +76,47 @@ const RING_COLORS = ['#00ffff', '#bf00ff', '#00ff88', '#ff6b6b', '#ffd93d', '#48
 
 function createRing(level: number, index: number, canvasSize: number): Ring {
   const baseRadius = canvasSize * 0.45;
-  const baseShrinkSpeed = 30 + level * 5;
-  const baseGapSize = Math.max(50 - level * 3, 20);
-  const baseRotationSpeed = (0.3 + level * 0.08) * (index % 2 === 0 ? 1 : -1);
+  // Smoother difficulty curve - starts slower, scales more gradually
+  const baseShrinkSpeed = 25 + level * 4;
+  // Larger gaps for better playability, more gradual reduction
+  const baseGapSize = Math.max(60 - level * 2, 28);
+  // Slower rotation for more precise timing
+  const baseRotationSpeed = (0.25 + level * 0.06) * (index % 2 === 0 ? 1 : -1);
   
   return {
-    radius: baseRadius + (index * 50),
-    shrinkSpeed: baseShrinkSpeed + Math.random() * 10,
+    radius: baseRadius + (index * 55),
+    shrinkSpeed: baseShrinkSpeed + Math.random() * 8,
     gapAngle: Math.random() * Math.PI * 2,
-    gapSize: baseGapSize + Math.random() * 15,
-    rotationSpeed: baseRotationSpeed * (0.8 + Math.random() * 0.4),
+    gapSize: baseGapSize + Math.random() * 12,
+    rotationSpeed: baseRotationSpeed * (0.85 + Math.random() * 0.3),
     color: RING_COLORS[index % RING_COLORS.length],
     opacity: 1,
   };
 }
 
-function createParticles(x: number, y: number, color: string, count: number): Particle[] {
+function createParticles(x: number, y: number, color: string, count: number, intensity: number = 1): Particle[] {
   const particles: Particle[] = [];
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
-    const speed = 2 + Math.random() * 4;
+    const speed = (2 + Math.random() * 4) * intensity;
     particles.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       color,
-      size: 2 + Math.random() * 4,
+      size: (2 + Math.random() * 4) * intensity,
       life: 1,
     });
   }
   return particles;
 }
 
-function isInGap(ring: Ring, targetAngle: number): boolean {
-  const gapStart = ring.gapAngle - (ring.gapSize * Math.PI / 180) / 2;
-  const gapEnd = ring.gapAngle + (ring.gapSize * Math.PI / 180) / 2;
+function isInGap(ring: Ring, targetAngle: number, tolerance: number = 0): boolean {
+  // Add tolerance for more forgiving gap detection
+  const effectiveGapSize = ring.gapSize + tolerance;
+  const gapStart = ring.gapAngle - (effectiveGapSize * Math.PI / 180) / 2;
+  const gapEnd = ring.gapAngle + (effectiveGapSize * Math.PI / 180) / 2;
   
   let normalizedTarget = targetAngle;
   while (normalizedTarget < 0) normalizedTarget += Math.PI * 2;
@@ -276,7 +281,7 @@ export default function CyberBreach() {
     let perfectEscape = true;
     
     for (const ring of dangerRings) {
-      if (!isInGap(ring, targetAngle)) {
+      if (!isInGap(ring, targetAngle, 5)) {
         allClear = false;
         break;
       }
@@ -299,10 +304,10 @@ export default function CyberBreach() {
         points = 250;
         state.perfectEscapes++;
         playSound('perfect');
-        state.particles.push(...createParticles(centerX, centerY, COLORS.success, 25));
+        state.particles.push(...createParticles(centerX, centerY, COLORS.success, 30, 1.5));
       } else {
         playSound('escape');
-        state.particles.push(...createParticles(centerX, centerY, COLORS.primary, 15));
+        state.particles.push(...createParticles(centerX, centerY, COLORS.primary, 18, 1.2));
       }
       
       const comboMultiplier = Math.min(1 + state.combo * 0.1, 3);
@@ -327,7 +332,7 @@ export default function CyberBreach() {
       state.screenShake = 15;
       
       playSound('hit');
-      state.particles.push(...createParticles(centerX, centerY, COLORS.danger, 20));
+      state.particles.push(...createParticles(centerX, centerY, COLORS.danger, 25, 1.3));
       
       if (isMobile) haptic.heavy();
       

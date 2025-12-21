@@ -116,7 +116,7 @@ export function createGame(w: number, h: number, extraLife: boolean): GameState 
       powerUp: 'none',
       powerUpTime: 0,
       shootCooldown: 0,
-      invincible: 120,
+      invincible: 150,
       capturedShip: false,
     },
     bullets: [],
@@ -238,7 +238,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
         state.phase = 'respawning';
         state.player.pos = { x: w / 2 - 32, y: h - 80 };
         state.player.active = true;
-        state.player.invincible = 180;
+        state.player.invincible = 200;
       } else {
         state.phase = 'gameOver';
         if (state.score > state.highScore) {
@@ -263,8 +263,8 @@ export function updateGame(state: GameState, w: number, h: number): void {
   p.pos.x = Math.max(0, Math.min(w - p.size.x, p.pos.x));
   p.pos.y = Math.max(h * (1 - PLAYER_MOVE_ZONE), Math.min(h - p.size.y, p.pos.y));
   
-  p.vel.x *= 0.85;
-  p.vel.y *= 0.85;
+  p.vel.x *= 0.92;
+  p.vel.y *= 0.92;
   
   if (p.shootCooldown > 0) p.shootCooldown--;
   if (p.invincible > 0) p.invincible--;
@@ -430,7 +430,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     
     if (collides(pu, p)) {
       p.powerUp = pu.type as 'double' | 'shield' | 'speed';
-      p.powerUpTime = 600;
+      p.powerUpTime = 720;
       state.score += 100;
       return false;
     }
@@ -522,7 +522,7 @@ export function applyInput(
         active: true,
         type: 'normal',
       });
-      p.shootCooldown = 15;
+      p.shootCooldown = 12;
     }
   }
 }
