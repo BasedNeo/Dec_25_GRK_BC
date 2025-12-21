@@ -53,17 +53,24 @@
   </head>
   <body style="margin: 0; background: #000;">
     <div id="root">
-      <div id="app-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(to bottom, #000, #0a0a0a, #000); font-family: system-ui, -apple-system, sans-serif; padding: 2rem; text-align: center;">
+      <div id="app-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; font-family: system-ui, -apple-system, sans-serif; padding: 2rem; text-align: center;">
         <style>
-          @keyframes pulse-glow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
           @keyframes spin { to { transform: rotate(360deg); } }
-          .loader-ring { width: 60px; height: 60px; border: 3px solid rgba(0,255,255,0.1); border-top-color: #00ffff; border-radius: 50%; animation: spin 1s linear infinite; }
-          .loader-text { color: #00ffff; font-size: 12px; letter-spacing: 0.3em; animation: pulse-glow 2s ease-in-out infinite; margin-top: 1.5rem; }
-          .loader-subtext { color: #666; font-size: 10px; margin-top: 0.5rem; }
+          @keyframes spin-reverse { to { transform: rotate(-360deg); } }
+          .loader-container { position: relative; width: 80px; height: 80px; margin-bottom: 24px; }
+          .loader-ring-outer { position: absolute; inset: 0; border: 4px solid rgba(0,255,255,0.3); border-radius: 50%; }
+          .loader-ring-cyan { position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #00ffff; border-radius: 50%; animation: spin 1s linear infinite; }
+          .loader-ring-purple { position: absolute; inset: 8px; border: 4px solid transparent; border-top-color: #a855f7; border-radius: 50%; animation: spin-reverse 1.5s linear infinite; }
+          .loader-text { color: white; font-size: 20px; font-weight: 600; margin-bottom: 8px; font-family: 'Orbitron', system-ui, sans-serif; }
+          .loader-subtext { color: rgba(0,255,255,0.7); font-size: 14px; }
         </style>
-        <div class="loader-ring"></div>
-        <div class="loader-text">INITIALIZING</div>
-        <div class="loader-subtext">Based Guardians Command Center</div>
+        <div class="loader-container">
+          <div class="loader-ring-outer"></div>
+          <div class="loader-ring-cyan"></div>
+          <div class="loader-ring-purple"></div>
+        </div>
+        <div class="loader-text">Loading...</div>
+        <div class="loader-subtext">Connecting to the Giga Brain Galaxy</div>
       </div>
       <noscript>
         <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: white; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 2rem;">
