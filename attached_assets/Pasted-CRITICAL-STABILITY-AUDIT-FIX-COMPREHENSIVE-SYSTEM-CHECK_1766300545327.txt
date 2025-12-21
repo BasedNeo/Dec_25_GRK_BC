@@ -1,0 +1,390 @@
+CRITICAL STABILITY AUDIT & FIX - COMPREHENSIVE SYSTEM CHECK
+
+Priority: Fix all broken/hidden features. No new features until stable.
+
+═══════════════════════════════════════════════════════════════════
+OBJECTIVE
+═══════════════════════════════════════════════════════════════════
+
+Diagnose and fix all stability issues causing:
+- Browser crashes
+- Collections page disabled
+- Memory leaks
+- Performance degradation
+
+OUTPUT REQUIRED:
+1. Detailed diagnosis of each issue found
+2. All fixes applied with explanations
+3. Verification tests passed
+4. Final stability report
+
+
+═══════════════════════════════════════════════════════════════════
+1. COLLECTIONS PAGE - FIX & RE-ENABLE
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATE:
+- Route commented out in client/src/App.tsx
+- Navigation link commented out in client/src/components/Navbar.tsx
+- Caused browser crashes when enabled
+
+ROOT CAUSE ANALYSIS:
+□ Check client/src/pages/Collections.tsx for infinite loops
+□ Check if useEffect has missing dependencies causing re-renders
+□ Check if image loading lacks error boundaries
+□ Check if collectionSync background service is running
+□ Check server/lib/collectionSync.ts for memory leaks
+
+FIX STRATEGY:
+1. Add strict pagination (12 collections per page max)
+2. Implement virtual scrolling for large lists
+3. Lazy load images (IntersectionObserver)
+4. Add proper cleanup in useEffect
+5. Disable collectionSync auto-start
+6. Add error boundaries around collection cards
+7. Limit initial API response to 50 collections
+
+CODE FIXES NEEDED:
+
+A) In client/src/pages/Collections.tsx:
+   - Add pagination state (12 per page)
+   - Limit rendered items
+   - Add IntersectionObserver for images
+   - Add cleanup on unmount
+   - Wrap each collection card in error boundary
+
+B) In server/lib/collectionSync.ts:
+   - Comment out auto-start interval
+   - Make it manual trigger only via API
+   - Add memory limits
+
+C) In client/src/App.tsx:
+   - Uncomment Collections route AFTER fixes applied:
+     <Route path="/collections">
+       <ErrorBoundary feature="Collections">
+         <Collections />
+       </ErrorBoundary>
+     </Route>
+
+D) In client/src/components/Navbar.tsx:
+   - Uncomment Collections nav link AFTER fixes applied
+
+VERIFICATION STEPS:
+1. Load /collections page
+2. Should show first 12 collections
+3. Scroll to load more (pagination)
+4. Click collection card → should navigate to browse page with filter
+5. Use app for 10 minutes with Collections page open
+6. No browser freeze or crash
+7. Check browser memory usage (should be stable <200MB)
+
+
+═══════════════════════════════════════════════════════════════════
+2. ACTIVITY FEED - VERIFY DATA DISPLAY
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATE:
+- Should show recent mints, transfers, listings, sales
+- Block range set to 100,000 blocks
+
+DIAGNOSIS:
+□ Open browser console
+□ Navigate to Activity tab
+□ Check console logs for:
+   - "📊 Activity Feed Data:"
+   - "totalMinted: X"
+   - "transferEvents: Y"
+   - "listedEvents: Z"
+   - "soldEvents: W"
+
+EXPECTED BEHAVIOR:
+- Should show at least 9 minted NFTs
+- Should show recent transfer events
+- Should show listings
+- Should show 3+ sales
+
+IF NO DATA SHOWING:
+□ Check RPC endpoint health
+□ Verify block range is appropriate
+□ Check contract addresses are correct
+□ Verify events are being parsed correctly
+
+FIX IF NEEDED:
+- Ensure DISPLAY_BLOCKS = 100000 (client/src/hooks/useActivityFeed.ts)
+- Add better error messages
+- Add retry logic for failed RPC calls
+- Show partial data even if some queries fail
+- Add loading skeleton
+
+VERIFICATION:
+- Activity tab shows recent mints, transfers, listings, sales
+- Data refreshes every 30 seconds
+- No "Failed to load" errors
+- Console shows event counts
+- Shows NFT contract address and Marketplace contract address for debugging
+
+
+═══════════════════════════════════════════════════════════════════
+3. GAMES STABILITY CHECK
+═══════════════════════════════════════════════════════════════════
+
+TEST EACH GAME:
+
+A) RETRO DEFENDER (no NFT required):
+   □ Loads without crash
+   □ Can play 5 rounds
+   □ Can exit to menu
+   □ Scores save
+   □ Daily limit works
+   □ No memory leak
+
+B) GUARDIAN SOLITAIRE (NFT required):
+   □ NFT gate works
+   □ Game loads
+   □ Can complete game
+   □ No memory leak after 3 games
+   □ Can exit cleanly
+   □ Cards render properly
+
+C) ASTEROID MINING (NFT required):
+   □ NFT gate works
+   □ Game loads
+   □ Canvas renders properly
+   □ Can play multiple rounds
+   □ No WebGL errors
+   □ Cleanup on exit
+
+D) GUARDIAN DEFENSE (NFT required):
+   □ NFT gate works
+   □ Game loads
+   □ Missile Command mechanics work
+   □ Can play multiple rounds
+   □ No canvas memory leak
+   □ Sound effects work
+
+IF ANY GAME IS BROKEN:
+- Set disabled: true in client/src/lib/gameRegistry.ts
+- Add comment explaining issue
+- Log error details
+- Focus on fixing stable games first
+
+MEMORY LEAK CHECK FOR GAMES:
+Each game should:
+- Cancel animation frames on unmount
+- Clear intervals/timeouts
+- Remove event listeners
+- Dispose of canvas/WebGL contexts
+- Clean up audio elements
+
+
+═══════════════════════════════════════════════════════════════════
+4. WALLET CONNECTION STABILITY
+═══════════════════════════════════════════════════════════════════
+
+VERIFY CURRENT FIXES:
+□ React.StrictMode disabled in client/src/main.tsx
+□ wagmi autoConnect: false in client/src/lib/wagmi.ts
+
+TEST WALLET CONNECTION:
+1. Connect MetaMask → should work without black screen glitch
+2. Navigate to all pages → no crashes
+3. Disconnect wallet → clean disconnect
+4. Connect Coinbase Wallet → should work
+5. Switch networks → should prompt correctly
+6. Refresh page → wallet stays disconnected (autoConnect: false)
+
+IF CRASHES OCCUR:
+- Check for wallet provider event listeners not cleaned up
+- Check for duplicate wallet connection attempts
+- Add AbortController to wallet read operations
+- Add error boundaries around wallet-dependent components
+
+
+═══════════════════════════════════════════════════════════════════
+5. MEMORY LEAK COMPREHENSIVE SCAN
+═══════════════════════════════════════════════════════════════════
+
+CHECK THESE FILES FOR LEAKS:
+
+A) client/src/hooks/useActivityFeed.ts:
+   □ useEffect cleanup returns interval clearance
+   □ AbortController cancels pending fetches
+   
+B) client/src/hooks/useUserNFTs.ts:
+   □ Cleanup on unmount
+   □ AbortController present
+   □ Limits NFT fetching to 20 max
+
+C) All game files:
+   □ Canvas contexts disposed
+   □ Animation frames cancelled (cancelAnimationFrame)
+   □ Audio elements cleaned up
+   □ Event listeners removed
+   □ Intervals/timeouts cleared
+
+D) client/src/pages/Collections.tsx:
+   □ Image loading cleaned up
+   □ API calls cancelled on unmount
+   □ No infinite loops
+
+FIX PATTERN FOR ALL HOOKS:
+useEffect(() => {
+  const abortController = new AbortController();
+  
+  async function fetchData() {
+    try {
+      const response = await fetch(url, { 
+        signal: abortController.signal 
+      });
+      // ... handle response
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      console.error(error);
+    }
+  }
+  
+  fetchData();
+  
+  return () => {
+    abortController.abort();
+  };
+}, [deps]);
+
+
+═══════════════════════════════════════════════════════════════════
+6. BROWSER CONSOLE ERROR AUDIT
+═══════════════════════════════════════════════════════════════════
+
+OPEN BROWSER CONSOLE AND CHECK FOR:
+
+ACCEPTABLE (can ignore):
+- Rollup comment warnings about /*#__PURE__*/
+- 404s for optional resources (fonts, etc)
+
+MUST FIX:
+- Any React error (red text)
+- "Cannot read property of undefined"
+- "Maximum update depth exceeded"
+- Network errors (except occasional RPC timeouts)
+- Type errors
+- Unhandled promise rejections
+- CORS errors
+
+FIX ALL RED ERRORS IN CONSOLE.
+
+
+═══════════════════════════════════════════════════════════════════
+7. PERFORMANCE OPTIMIZATION
+═══════════════════════════════════════════════════════════════════
+
+CHECK:
+□ Images are lazy loaded
+□ Heavy components use React.memo where appropriate
+□ Lists use pagination if >50 items
+□ API calls are debounced/throttled
+□ Unnecessary re-renders prevented
+
+OPTIMIZE:
+- Memoize expensive computations with useMemo
+- Use useCallback for event handlers passed to children
+- Implement code splitting for games (lazy load)
+- Add loading states to prevent layout shift
+- Compress/optimize images
+
+
+═══════════════════════════════════════════════════════════════════
+8. MOBILE RESPONSIVENESS
+═══════════════════════════════════════════════════════════════════
+
+TEST ON MOBILE VIEWPORT (375px width):
+□ App loads
+□ Can connect wallet
+□ Navigation works (hamburger menu)
+□ All pages render correctly
+□ Games work with touch
+□ No horizontal scroll
+□ Text readable
+□ Buttons touchable
+□ Performance acceptable
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+30-MINUTE STABILITY TEST:
+□ Load app
+□ Connect wallet
+□ Visit every page:
+  - Home
+  - Browse
+  - Portfolio  
+  - Governance
+  - Pool Tracker
+  - Activity Feed
+  - Arcade
+  - Collections (newly re-enabled)
+  - Admin (if admin wallet)
+□ Play each game twice
+□ List an NFT for sale
+□ Browse collections
+□ Check activity feed
+□ Disconnect/reconnect wallet
+□ Do all this for 30 minutes continuous use
+□ NO CRASHES, NO FREEZES, NO MEMORY WARNINGS
+
+CONSOLE CHECK:
+□ No red errors
+□ Memory usage stable (<200MB)
+□ No infinite loops
+□ No failed critical requests
+□ RPC endpoints healthy
+
+MOBILE CHECK:
+□ Loads on mobile viewport
+□ Wallet connection works
+□ Basic navigation works
+□ Games playable with touch
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLES REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+PROVIDE DETAILED REPORT:
+
+1. ISSUES FOUND:
+   - List each issue with severity (Critical/High/Medium/Low)
+   - File paths affected
+   
+2. FIXES APPLIED:
+   - Exact changes made
+   - Files modified
+   - Why each fix was needed
+
+3. VERIFICATION RESULTS:
+   - Collections page: ✅/❌
+   - Activity Feed: ✅/❌
+   - Games (4 total): ✅/❌ each
+   - Wallet stability: ✅/❌
+   - Memory leaks: ✅/❌
+   - Console errors: ✅/❌
+   - Mobile: ✅/❌
+
+4. REMAINING KNOWN ISSUES (if any):
+   - What still needs work
+   - Why it wasn't fixed now
+   
+5. FINAL STATUS:
+   ✅ STABLE - Ready for new feature development
+   OR
+   ⚠️ NEEDS MORE WORK - List what's blocking stability
+
+After completion, the app should be:
+- Stable for 30+ minutes of continuous use
+- No browser crashes
+- Collections page working and accessible
+- All 4 games functional
+- Memory usage stable
+- Console clean of critical errors
+- Ready for Cyber Breach game addition

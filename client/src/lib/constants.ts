@@ -133,7 +133,7 @@ export const BRAIN_EMISSIONS = {
 // === CURRENT DATE OVERRIDE ===
 // Set this to the actual current date if system date is incorrect
 // Update this daily or set to null to use system date
-export const CURRENT_DATE_OVERRIDE: Date | null = new Date('2024-12-20T12:00:00Z');
+export const CURRENT_DATE_OVERRIDE: Date | null = new Date('2025-12-21T12:00:00Z');
 
 // Helper function to get the correct current date
 export function getCurrentDate(): Date {

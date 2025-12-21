@@ -198,13 +198,13 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       
       // Helper to fetch events in chunks to avoid RPC timeout
       const CHUNK_SIZE = 20000; // 20k blocks per chunk (~11 hours)
-      async function fetchEventsInChunks(
+      const fetchEventsInChunks = async (
         contractAddress: string,
         abi: string[],
         eventName: string,
         startBlock: number,
         endBlock: number
-      ): Promise<ethers.EventLog[]> {
+      ): Promise<ethers.EventLog[]> => {
         const allEvents: ethers.EventLog[] = [];
         let currentStart = startBlock;
         
