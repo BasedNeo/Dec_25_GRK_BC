@@ -898,9 +898,9 @@ export default function CyberBreach() {
                 </div>
               </div>
               
-              <Card 
+              <div 
                 ref={containerRef}
-                className="bg-black/40 border border-cyan-500/20 p-3 cursor-pointer touch-none select-none"
+                className="bg-black/40 border border-cyan-500/20 rounded-xl p-3 cursor-pointer touch-none select-none"
                 onClick={handleEscape}
                 onTouchEnd={(e) => {
                   e.preventDefault();
@@ -908,15 +908,18 @@ export default function CyberBreach() {
                 }}
                 data-testid="game-canvas-container"
               >
-                <canvas
-                  ref={canvasRef}
-                  className="mx-auto rounded-lg block"
-                  data-testid="game-canvas"
-                />
+                <div className="flex justify-center items-center">
+                  <canvas
+                    ref={canvasRef}
+                    className="rounded-lg block"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                    data-testid="game-canvas"
+                  />
+                </div>
                 <p className="text-center text-gray-500 text-xs mt-2">
                   Tap when gaps align at bottom
                 </p>
-              </Card>
+              </div>
             </div>
           ) : gamePhase === 'paused' ? (
             <Card className="bg-black/40 border border-cyan-500/20 p-8 text-center">
@@ -975,11 +978,12 @@ export default function CyberBreach() {
             />
           ) : (
             <div ref={containerRef}>
-              <Card className="bg-black/40 border border-cyan-500/20 overflow-hidden">
-                <div className="relative flex items-center justify-center p-4">
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl">
+                <div className="flex items-center justify-center p-4">
                   <canvas
                     ref={canvasRef}
                     className="rounded-lg"
+                    style={{ maxWidth: '100%', height: 'auto' }}
                     data-testid="menu-canvas"
                   />
                 </div>
@@ -1026,7 +1030,7 @@ export default function CyberBreach() {
                     Press SPACE or tap screen to escape through gaps
                   </p>
                 </div>
-              </Card>
+              </div>
             </div>
           )}
         </div>
