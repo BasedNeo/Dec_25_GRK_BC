@@ -10,8 +10,7 @@
     "pool": "Treasury",
     "stats": "Stats",
     "activity": "Activity",
-    "game": "Game",
-    "games": "Games"
+    "arcade": "Arcade"
   },
   "collections": {
     "title": "NFT Collections",
