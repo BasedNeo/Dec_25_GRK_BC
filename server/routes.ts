@@ -29,6 +29,7 @@ import { SignatureVerifier } from './lib/signatureVerifier';
 import { NonceManager } from './lib/nonceManager';
 import { OriginValidator } from './lib/originValidator';
 import { CSRFProtection } from './lib/csrfProtection';
+import { getActivityData, getCacheStatus } from './lib/activityCache';
 // STRIPPED FOR LAUNCH: Enterprise security features
 // import { EncryptionService } from './lib/encryption';
 // import { EncryptedStorageService } from './lib/encryptedStorage';
@@ -207,6 +208,28 @@ export async function registerRoutes(
     } catch (error: any) {
       res.status(500).json({ healthy: false, error: error.message });
     }
+  });
+
+  // Activity Feed API - Server-side cached blockchain activity
+  app.get("/api/activity", async (_req, res) => {
+    try {
+      const activity = await getActivityData();
+      res.json(activity);
+    } catch (error: any) {
+      console.error('[API] Activity fetch error:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to fetch activity',
+        activities: [],
+        stats: { totalMinted: 0, recentMints: 0, totalSales: 0, totalListings: 0, totalTransfers: 0, recentVolume: 0 },
+        lastBlock: 0,
+        lastUpdated: Date.now()
+      });
+    }
+  });
+
+  // Activity cache status (for debugging)
+  app.get("/api/activity/status", (_req, res) => {
+    res.json(getCacheStatus());
   });
 
   // Apply IP ban guard to all API routes (except health checks)

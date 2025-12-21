@@ -1,0 +1,458 @@
+PERFORMANCE ISSUE: ACTIVITY FEED LOADING TOO SLOWLY
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+Activity Feed takes too long to load.
+Page feels frozen while loading.
+User doesn't see any feedback during loading.
+
+GOAL: Load activity data in < 2 seconds with visual feedback.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: ADD LOADING SKELETON (IMMEDIATE UX IMPROVEMENT)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/ActivityFeed.tsx
+
+Show skeleton while loading so user knows something is happening:
+
+export function ActivityFeed() {
+  const { totalMinted, transferEvents, listedEvents, soldEvents, loading, error } = useActivityFeed();
+  
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {/* Loading skeleton */}
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-700 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="h-16 w-16 bg-gray-700 rounded"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-center text-cyan-400 text-sm mt-4">
+          Loading blockchain data...
+        </p>
+      </div>
+    );
+  }
+  
+  // ... rest of component
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: REDUCE BLOCK RANGE (FASTER QUERIES)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/hooks/useActivityFeed.ts
+
+Change from 100,000 blocks to 50,000 blocks:
+
+// Before:
+const DISPLAY_BLOCKS = 100000; // ❌ Too many blocks to scan
+
+// After:
+const DISPLAY_BLOCKS = 50000; // ✅ Faster, still shows ~7 days of activity
+
+This cuts query time in HALF.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: ADD SERVER-SIDE CACHING (HUGE PERFORMANCE WIN)
+═══════════════════════════════════════════════════════════════════
+
+Instead of client querying blockchain every time, cache on server:
+
+File: server/lib/activityCache.ts (CREATE NEW)
+
+import { ethers } from 'ethers';
+
+let cachedActivity: any = null;
+let lastFetch = 0;
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+export async function getActivity() {
+  const now = Date.now();
+  
+  // Return cached if fresh
+  if (cachedActivity && (now - lastFetch) < CACHE_DURATION) {
+    console.log('✅ Returning cached activity');
+    return cachedActivity;
+  }
+  
+  console.log('🔄 Fetching fresh activity data...');
+  
+  try {
+    const provider = new ethers.JsonRpcProvider(process.env.RPC_ENDPOINT || 'https://rpc.basedai.network');
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = currentBlock - 50000; // Last 50k blocks
+    
+    const NFT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS;
+    const MARKETPLACE_ADDRESS = process.env.MARKETPLACE_CONTRACT_ADDRESS;
+    
+    // Query NFT events
+    const nftContract = new ethers.Contract(
+      NFT_ADDRESS,
+      ['event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'],
+      provider
+    );
+    
+    const transfers = await nftContract.queryFilter(
+      nftContract.filters.Transfer(),
+      fromBlock,
+      currentBlock
+    );
+    
+    const mints = transfers.filter(t => t.args.from === ethers.ZeroAddress);
+    
+    // Query Marketplace events
+    const marketplaceContract = new ethers.Contract(
+      MARKETPLACE_ADDRESS,
+      [
+        'event ItemListed(address indexed seller, uint256 indexed tokenId, uint256 price)',
+        'event ItemSold(address indexed buyer, address indexed seller, uint256 indexed tokenId, uint256 price)'
+      ],
+      provider
+    );
+    
+    const listings = await marketplaceContract.queryFilter(
+      marketplaceContract.filters.ItemListed(),
+      fromBlock,
+      currentBlock
+    );
+    
+    const sales = await marketplaceContract.queryFilter(
+      marketplaceContract.filters.ItemSold(),
+      fromBlock,
+      currentBlock
+    );
+    
+    // Cache the result
+    cachedActivity = {
+      totalMinted: mints.length,
+      transfers: transfers.slice(-20).map(e => ({
+        from: e.args.from,
+        to: e.args.to,
+        tokenId: e.args.tokenId.toString(),
+        blockNumber: e.blockNumber,
+        transactionHash: e.transactionHash,
+      })),
+      listings: listings.slice(-20).map(e => ({
+        seller: e.args.seller,
+        tokenId: e.args.tokenId.toString(),
+        price: ethers.formatEther(e.args.price),
+        blockNumber: e.blockNumber,
+        transactionHash: e.transactionHash,
+      })),
+      sales: sales.slice(-20).map(e => ({
+        buyer: e.args.buyer,
+        seller: e.args.seller,
+        tokenId: e.args.tokenId.toString(),
+        price: ethers.formatEther(e.args.price),
+        blockNumber: e.blockNumber,
+        transactionHash: e.transactionHash,
+      })),
+      lastUpdate: now,
+      cacheExpiresAt: now + CACHE_DURATION,
+    };
+    
+    lastFetch = now;
+    console.log('✅ Activity cached');
+    
+    return cachedActivity;
+    
+  } catch (error) {
+    console.error('❌ Failed to fetch activity:', error);
+    throw error;
+  }
+}
+
+
+File: server/routes.ts
+
+Add new endpoint:
+
+import { getActivity } from './lib/activityCache';
+
+app.get('/api/activity', async (req, res) => {
+  try {
+    const activity = await getActivity();
+    res.json(activity);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+File: client/src/hooks/useActivityFeed.ts
+
+UPDATE to use API instead of direct blockchain query:
+
+export function useActivityFeed() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    let mounted = true;
+    
+    async function fetchActivity() {
+      try {
+        setLoading(true);
+        
+        // Fetch from server (cached)
+        const response = await fetch('/api/activity');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch activity');
+        }
+        
+        const activity = await response.json();
+        
+        if (mounted) {
+          setData(activity);
+          setLoading(false);
+        }
+        
+      } catch (err) {
+        if (mounted) {
+          setError(err);
+          setLoading(false);
+        }
+      }
+    }
+    
+    fetchActivity();
+    
+    // Refresh every 2 minutes
+    const interval = setInterval(fetchActivity, 2 * 60 * 1000);
+    
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+  
+  return {
+    totalMinted: data?.totalMinted || 0,
+    transferEvents: data?.transfers || [],
+    listedEvents: data?.listings || [],
+    soldEvents: data?.sales || [],
+    loading,
+    error,
+  };
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: LAZY LOAD ACTIVITY DATA (DON'T BLOCK PAGE RENDER)
+═══════════════════════════════════════════════════════════════════
+
+Only load activity data when user visits Activity page:
+
+File: client/src/pages/Activity.tsx (or wherever Activity is)
+
+import { lazy, Suspense } from 'react';
+
+const ActivityFeed = lazy(() => import('@/components/ActivityFeed'));
+
+export default function ActivityPage() {
+  return (
+    <div>
+      <h1>Activity</h1>
+      
+      <Suspense fallback={<LoadingSkeleton />}>
+        <ActivityFeed />
+      </Suspense>
+    </div>
+  );
+}
+
+This prevents activity data from loading on every page.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: ADD BACKGROUND SYNC (OPTIONAL)
+═══════════════════════════════════════════════════════════════════
+
+Keep cache always fresh with background job:
+
+File: server/index.ts
+
+import { getActivity } from './lib/activityCache';
+
+// Refresh cache every 2 minutes in background
+setInterval(async () => {
+  try {
+    console.log('🔄 Background: Refreshing activity cache...');
+    await getActivity();
+  } catch (error) {
+    console.error('❌ Background sync failed:', error);
+  }
+}, 2 * 60 * 1000);
+
+This ensures cache is always warm when users visit.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: SHOW STALE DATA IMMEDIATELY
+═══════════════════════════════════════════════════════════════════
+
+Show old data instantly while fetching new data:
+
+File: client/src/hooks/useActivityFeed.ts
+
+export function useActivityFeed() {
+  const [data, setData] = useState(() => {
+    // Load from localStorage immediately
+    const cached = localStorage.getItem('activityCache');
+    return cached ? JSON.parse(cached) : null;
+  });
+  
+  const [loading, setLoading] = useState(!data); // Not loading if we have cached data
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    let mounted = true;
+    
+    async function fetchActivity() {
+      try {
+        const response = await fetch('/api/activity');
+        const activity = await response.json();
+        
+        if (mounted) {
+          setData(activity);
+          setLoading(false);
+          
+          // Cache for next visit
+          localStorage.setItem('activityCache', JSON.stringify(activity));
+        }
+        
+      } catch (err) {
+        if (mounted) {
+          setError(err);
+          setLoading(false);
+        }
+      }
+    }
+    
+    fetchActivity();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  
+  return { data, loading, error };
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: OPTIMIZE OVERALL PAGE LOADING
+═══════════════════════════════════════════════════════════════════
+
+If ALL pages are slow, optimize globally:
+
+File: client/src/App.tsx
+
+Add route-based code splitting:
+
+import { lazy, Suspense } from 'react';
+
+// Lazy load heavy pages
+const Browse = lazy(() => import('./pages/Browse'));
+const Portfolio = lazy(() => import('./pages/Portfolio'));
+const Activity = lazy(() => import('./pages/Activity'));
+const Governance = lazy(() => import('./pages/Governance'));
+
+// Loading fallback
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-cyan-400 text-xl font-orbitron animate-pulse">
+        Loading...
+      </div>
+    </div>
+  );
+}
+
+// Wrap routes
+<Suspense fallback={<PageLoader />}>
+  <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/browse" element={<Browse />} />
+    <Route path="/portfolio" element={<Portfolio />} />
+    <Route path="/activity" element={<Activity />} />
+    <Route path="/governance" element={<Governance />} />
+  </Routes>
+</Suspense>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: REDUCE RPC CALLS EVERYWHERE
+═══════════════════════════════════════════════════════════════════
+
+Audit all hooks making RPC calls:
+
+Files to check:
+- client/src/hooks/useActivityFeed.ts
+- client/src/hooks/useSubnetEmissions.ts
+- client/src/hooks/useUserNFTs.ts
+- client/src/hooks/useTotalSupply.ts
+
+FOR EACH:
+1. Add caching (don't refetch if data < 30s old)
+2. Use AbortController for cleanup
+3. Reduce polling frequency
+4. Only fetch when needed (not on every page)
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION - PERFORMANCE TARGETS
+═══════════════════════════════════════════════════════════════════
+
+After optimization:
+□ Activity page loads in < 2 seconds
+□ Shows loading skeleton immediately
+□ Can navigate away while loading
+□ Subsequent visits instant (cached)
+□ No frozen UI
+□ Background updates don't block UI
+□ Console shows "Returning cached activity"
+□ Page feels responsive
+
+
+═══════════════════════════════════════════════════════════════════
+QUICK WIN SUMMARY
+═══════════════════════════════════════════════════════════════════
+
+FASTEST FIXES (Do these first):
+1. Add loading skeleton ✓ (1 min)
+2. Reduce block range 100k → 50k ✓ (1 min)
+3. Add server-side caching ✓ (10 min)
+4. Show stale data immediately ✓ (5 min)
+
+RESULT: 80% faster loading
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+After fixes:
+1. Activity page load time: [before] → [after]
+2. User sees feedback immediately: YES
+3. Cached responses working: YES
+4. Page feels responsive: YES
+5. Background sync running: YES

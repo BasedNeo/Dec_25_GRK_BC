@@ -120,6 +120,15 @@ app.use(decryptSensitiveRequest);
   const { BackupScheduler } = await import('./lib/backupScheduler');
   BackupScheduler.initialize();
 
+  // Initialize activity cache with background refresh every 2 minutes
+  const { refreshActivityCache } = await import('./lib/activityCache');
+  // Pre-warm the cache on startup
+  refreshActivityCache().catch(err => console.error('[ActivityCache] Initial fetch failed:', err));
+  // Background refresh every 2 minutes
+  setInterval(() => {
+    refreshActivityCache().catch(err => console.error('[ActivityCache] Background refresh failed:', err));
+  }, 2 * 60 * 1000);
+
   // Initialize collection sync on startup if needed (with safeguards)
   (async () => {
     try {
