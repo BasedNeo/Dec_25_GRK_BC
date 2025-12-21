@@ -730,25 +730,26 @@ export default function CyberBreach() {
   
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
     
     const getGameDimensions = () => {
-      // Account for navbar (80px) + stats bar (~60px) + padding + instructions
+      // Calculate based on viewport, accounting for all UI chrome
       const navbarHeight = 80;
-      const uiChrome = 120; // Stats bar, instructions, padding
-      const padding = 32;
+      const statsBarHeight = 50;
+      const headerBarHeight = 50;
+      const instructionHeight = 40;
+      const padding = 48;
       
-      const containerWidth = container.clientWidth;
-      const maxWidth = containerWidth - padding;
-      const maxHeight = window.innerHeight - navbarHeight - uiChrome - padding;
+      // Available space in viewport
+      const availableWidth = window.innerWidth - padding;
+      const availableHeight = window.innerHeight - navbarHeight - statsBarHeight - headerBarHeight - instructionHeight - padding;
       
-      // Square aspect ratio for this game (1:1)
-      let size = Math.min(maxWidth, maxHeight);
+      // Square aspect ratio - use smaller dimension
+      let size = Math.min(availableWidth, availableHeight);
       
       // Clamp to reasonable bounds
-      const minSize = 280;
-      const maxSize = 600; // Max size for very large screens
+      const minSize = 250;
+      const maxSize = 500; // Cap at 500px for good gameplay
       
       size = Math.max(minSize, Math.min(size, maxSize));
       
@@ -842,11 +843,11 @@ export default function CyberBreach() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 overflow-hidden">
+    <div className="min-h-screen max-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 overflow-hidden flex flex-col">
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       
-      <div className="container mx-auto px-4 py-2 md:py-4" style={{ maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex-1 container mx-auto px-4 py-2 flex flex-col" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+        <div className="flex items-center justify-between mb-2 flex-shrink-0">
           <Button
             variant="ghost"
             onClick={exitToArcade}
@@ -880,10 +881,10 @@ export default function CyberBreach() {
           </div>
         </div>
         
-        <div className="max-w-xl mx-auto">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full">
           {gamePhase === 'playing' ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between bg-black/40 rounded-lg px-4 py-2 border border-cyan-500/20">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between bg-black/40 rounded-lg px-4 py-2 border border-cyan-500/20 flex-shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1">
                     <Trophy className="w-4 h-4 text-yellow-400" />
@@ -923,7 +924,7 @@ export default function CyberBreach() {
               
               <div 
                 ref={containerRef}
-                className="bg-black/40 border border-cyan-500/20 rounded-xl p-3 cursor-pointer touch-none select-none"
+                className="bg-black/40 border border-cyan-500/20 rounded-xl p-2 cursor-pointer touch-none select-none flex flex-col items-center justify-center"
                 onClick={handleEscape}
                 onTouchEnd={(e) => {
                   e.preventDefault();
@@ -931,15 +932,12 @@ export default function CyberBreach() {
                 }}
                 data-testid="game-canvas-container"
               >
-                <div className="flex justify-center items-center">
-                  <canvas
-                    ref={canvasRef}
-                    className="rounded-lg block"
-                    style={{ maxWidth: '100%', height: 'auto' }}
-                    data-testid="game-canvas"
-                  />
-                </div>
-                <p className="text-center text-gray-500 text-xs mt-2">
+                <canvas
+                  ref={canvasRef}
+                  className="rounded-lg block"
+                  data-testid="game-canvas"
+                />
+                <p className="text-center text-gray-500 text-xs mt-1">
                   Tap when gaps align at bottom
                 </p>
               </div>
