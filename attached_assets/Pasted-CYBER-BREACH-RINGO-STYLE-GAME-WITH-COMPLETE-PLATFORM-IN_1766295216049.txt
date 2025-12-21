@@ -1,0 +1,275 @@
+CYBER BREACH - RINGO-STYLE GAME WITH COMPLETE PLATFORM INTEGRATION
+
+Replace any existing Cyber Breach game with this correct RingO-based version.
+Fully integrate with ALL existing app systems.
+
+[Copy entire RingO prompt from above, PLUS add these sections:]
+
+
+═══════════════════════════════════════════════════════════════════
+INTEGRATION REQUIREMENTS (CRITICAL)
+═══════════════════════════════════════════════════════════════════
+
+1. REPLACE EXISTING GAME (if exists):
+   - DELETE: client/src/pages/CyberBreach.tsx (old version)
+   - CREATE: client/src/pages/CyberBreach.tsx (this RingO version)
+
+2. GAME REGISTRY ENTRY:
+   UPDATE: client/src/lib/gameRegistry.ts
+   
+   Add or update this entry:
+   {
+     id: 'cyber-breach',
+     title: 'Cyber Breach',
+     description: 'Escape closing FUD security rings. Tap to phase through gaps.',
+     route: '/games/cyber-breach',
+     thumbnail: 'gradient-placeholder', // Will use gradient
+     difficulty: 'Hard',
+     category: 'Arcade',
+     maxPlaysPerDay: 10,
+     maxPointsPerDay: 50000,
+     pointsPerPlay: 500, // Average points per game
+     requiresNFT: true,
+     premium: true,
+     tags: ['timing', 'survival', 'endless', 'one-tap'],
+     controls: 'Tap to escape through ring gaps',
+     objective: 'Survive as long as possible',
+     featured: true,
+     disabled: false
+   }
+
+3. APP ROUTING:
+   UPDATE: client/src/App.tsx
+   
+   Ensure this route exists (add if missing):
+   <Route path="/games/cyber-breach">
+     <ErrorBoundary feature="Cyber Breach">
+       <CyberBreach />
+     </ErrorBoundary>
+   </Route>
+
+4. ARCADE CARD:
+   The game will automatically appear in /arcade grid via gameRegistry
+
+
+═══════════════════════════════════════════════════════════════════
+USER DATA INTEGRATION
+═══════════════════════════════════════════════════════════════════
+
+SAVE TO GameStorage:
+// On game over, save:
+GameStorage.saveGame('cyber-breach', {
+  currentScore: 0, // Always 0 after game over
+  highScore: Math.max(previousHighScore, finalScore),
+  lastPlayed: Date.now()
+});
+
+GameStorage.updateStats('cyber-breach', {
+  gamesPlayed: stats.gamesPlayed + 1,
+  totalScore: stats.totalScore + finalScore,
+  totalEscapes: stats.totalEscapes + escapeCount,
+  perfectEscapes: stats.perfectEscapes + perfectCount,
+  longestSurvival: Math.max(stats.longestSurvival, survivalTime),
+  bestCombo: Math.max(stats.bestCombo, maxCombo)
+});TRACK DAILY LIMITS:
+// Before game starts:
+const today = new Date().toDateString();
+const dailyData = GameStorage.getDailyData('cyber-breach', today);
+
+if (dailyData.gamesPlayed >= 10) {
+  // Show "Daily limit reached" message
+  return;
+}
+
+if (dailyData.pointsEarned >= 50000) {
+  // Show "Daily points cap reached" message
+  return;
+}
+
+// After game ends:
+GameStorage.updateDailyData('cyber-breach', today, {
+  gamesPlayed: dailyData.gamesPlayed + 1,
+  pointsEarned: dailyData.pointsEarned + finalScore
+});═══════════════════════════════════════════════════════════════════
+LEADERBOARD INTEGRATION
+═══════════════════════════════════════════════════════════════════
+
+SUBMIT SCORE TO SERVER:
+// On game over:
+async function submitScore(score: number, stats: GameStats) {
+  try {
+    const response = await fetch('/api/games/cyber-breach/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress: userAddress,
+        score: score,
+        stats: {
+          escapes: stats.totalEscapes,
+          perfectEscapes: stats.perfectEscapes,
+          maxCombo: stats.bestCombo,
+          survivalTime: stats.survivalTime
+        },
+        gameId: generateUniqueGameId(),
+        timestamp: Date.now()
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.newHighScore) {
+      showNewHighScoreAnimation();
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to submit score:', error);
+  }
+}DISPLAY LEADERBOARD:
+// Add "View Leaderboard" button in pause menu
+// Fetches from: GET /api/games/cyber-breach/leaderboard?type=daily
+// Shows: Daily ranks, All-time ranks, Personal stats═══════════════════════════════════════════════════════════════════
+NFT GATING (ENFORCED)
+═══════════════════════════════════════════════════════════════════
+
+WRAP ENTIRE GAME:
+export default function CyberBreach() {
+  return (
+    <NFTGate
+      requiredCount={1}
+      collectionName="Based Guardians"
+      gameTitle="Cyber Breach"
+      gameDescription="Escape the FUD security rings"
+    >
+      <CyberBreachGame />
+    </NFTGate>
+  );
+}WALLET CHECK:
+- Game only accessible with connected wallet
+- Must own at least 1 Based Guardian NFT
+- Show lock screen if no NFT
+- Check on mount, not per-game
+
+
+═══════════════════════════════════════════════════════════════════
+ANALYTICS TRACKING
+═══════════════════════════════════════════════════════════════════
+
+TRACK EVENTS:
+import { analytics } from '@/lib/analytics';
+
+// Game start
+analytics.track('game_started', {
+  gameId: 'cyber-breach',
+  walletAddress: userAddress
+});
+
+// Game end
+analytics.track('game_completed', {
+  gameId: 'cyber-breach',
+  score: finalScore,
+  survivalTime: survivalTime,
+  escapes: escapeCount,
+  level: currentLevel
+});
+
+// Daily limit reached
+analytics.track('daily_limit_reached', {
+  gameId: 'cyber-breach',
+  limitType: 'games' | 'points'
+});═══════════════════════════════════════════════════════════════════
+USER PROFILE INTEGRATION
+═══════════════════════════════════════════════════════════════════
+
+DISPLAY IN USER PROFILE:
+- Total games played
+- High score
+- Best survival time
+- Total escapes
+- Perfect escape rate
+- Rank on leaderboard
+- Total points earned
+
+ACHIEVEMENTS (if implemented):
+- "First Escape" - Complete first game
+- "Survivor" - Survive 60 seconds
+- "Perfect Timing" - 10 perfect escapes in one game
+- "Combo King" - Achieve 20x combo
+- "Top 10" - Reach top 10 on daily leaderboard
+
+
+═══════════════════════════════════════════════════════════════════
+SOCIAL FEATURES
+═══════════════════════════════════════════════════════════════════
+
+SHARE SCORE:
+function shareScore(score: number) {
+  const text = `I just scored ${score.toLocaleString()} in Cyber Breach on Based Guardians! Can you beat it? 🎮`;
+  const url = 'https://basedguardians.trade/games/cyber-breach';
+  
+  // Twitter share
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`);
+}═══════════════════════════════════════════════════════════════════
+ADMIN CONTROLS
+═══════════════════════════════════════════════════════════════════
+
+ADMIN CAN:
+- View all player scores
+- Reset daily limits (emergency)
+- Disable game temporarily
+- Adjust points cap
+- View analytics dashboard
+- Export leaderboard data
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL INTEGRATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+BEFORE LAUNCH:
+□ Old broken game removed
+□ New RingO version created
+□ Added to gameRegistry
+□ Route exists in App.tsx
+□ NFTGate wraps game
+□ GameStorage saves/loads correctly
+□ Daily limits enforce
+□ Points cap enforces
+□ Leaderboard API works
+□ Score submission works
+□ Can view leaderboard
+□ Analytics tracking works
+□ Appears in arcade grid
+□ Game card looks good
+□ Can launch from arcade
+□ Can pause/resume
+□ Can quit to menu
+□ High score persists
+□ Mobile controls work
+□ No memory leaks
+□ No crashes
+
+GAMEPLAY:
+□ Rings contract smoothly
+□ Gaps are visible
+□ Tap detection accurate
+□ Collision fair
+□ Scoring correct
+□ Combo system works
+□ 60 FPS performance
+□ Audio plays
+□ Visual feedback clear
+□ Fun and addictive
+
+
+═══════════════════════════════════════════════════════════════════
+BUILD AND INTEGRATE NOW
+═══════════════════════════════════════════════════════════════════
+
+1. Delete any existing broken Cyber Breach game
+2. Create this new RingO-based version
+3. Integrate with ALL platform systems
+4. Test all integrations
+5. Deploy to arcade
+
+Make this the flagship game of Based Guardians Arcade.
