@@ -183,19 +183,46 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
       const currentBlock = await rpcManager.executeWithFailover(p => p.getBlockNumber());
       
       // ⚠️ LOCKED: Block range for activity feed
-      // Reduced to 20k blocks to prevent RPC timeout (10s limit on BasedAI RPC)
-      // 20,000 blocks = ~11 hours of activity (2 sec block time)
-      // Then get cumulative stats from contract state functions
-      // All sales volume comes from on-chain Sold events (never hardcoded)
-      const DISPLAY_BLOCKS = 20000; // ~11 hours of detailed activity (prevents RPC timeout)
+      // Extended to 172,800 blocks (~4 days) to capture recent transactions
+      // BasedAI block time: ~2 seconds
+      // 4 days = 345,600 seconds / 2 = 172,800 blocks
+      // Fetched in chunks to prevent RPC timeout
+      const DISPLAY_BLOCKS = 172800; // ~4 days of activity
       const fromBlock = Math.max(0, currentBlock - DISPLAY_BLOCKS);
       
       // ⚠️ LOCKED: Event fetching - this is the source of truth for all activity
-      // PARALLEL: Fetch all data at once from NFT and Marketplace contracts with RPC failover
+      // CHUNKED PARALLEL: Fetch events in chunks to prevent RPC timeout
       // - Transfer events: detect mints (from 0x0) and transfers
       // - Listed events: detect new marketplace listings
       // - Sold events: detect sales (used for royalty volume calculation)
       
+      // Helper to fetch events in chunks to avoid RPC timeout
+      const CHUNK_SIZE = 20000; // 20k blocks per chunk (~11 hours)
+      async function fetchEventsInChunks(
+        contractAddress: string,
+        abi: string[],
+        eventName: string,
+        startBlock: number,
+        endBlock: number
+      ): Promise<ethers.EventLog[]> {
+        const allEvents: ethers.EventLog[] = [];
+        let currentStart = startBlock;
+        
+        while (currentStart < endBlock) {
+          const chunkEnd = Math.min(currentStart + CHUNK_SIZE, endBlock);
+          try {
+            const events = await rpcManager.executeWithFailover(p => {
+              const contract = new ethers.Contract(contractAddress, abi, p);
+              return contract.queryFilter(contract.filters[eventName](), currentStart, chunkEnd);
+            });
+            allEvents.push(...(events as ethers.EventLog[]));
+          } catch (err) {
+            console.warn(`[ActivityFeed] Chunk ${currentStart}-${chunkEnd} failed for ${eventName}:`, err);
+          }
+          currentStart = chunkEnd + 1;
+        }
+        return allEvents;
+      }
       
       const [
         totalMinted,
@@ -206,18 +233,12 @@ export function useActivityFeed(options: UseActivityFeedOptions = {}) {
         rpcManager.executeWithFailover(p => 
           new ethers.Contract(NFT_CONTRACT, NFT_ABI, p).totalMinted()
         ).catch((err) => { console.error('[ActivityFeed] Failed to fetch totalMinted:', err); return 0; }),
-        rpcManager.executeWithFailover(p => {
-          const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, p);
-          return contract.queryFilter(contract.filters.Transfer(), fromBlock, currentBlock);
-        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Transfer events:', err); return []; }),
-        rpcManager.executeWithFailover(p => {
-          const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, p);
-          return contract.queryFilter(contract.filters.Listed(), fromBlock, currentBlock);
-        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Listed events:', err); return []; }),
-        rpcManager.executeWithFailover(p => {
-          const contract = new ethers.Contract(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, p);
-          return contract.queryFilter(contract.filters.Sold(), fromBlock, currentBlock);
-        }).catch((err) => { console.error('[ActivityFeed] Failed to fetch Sold events:', err); return []; })
+        fetchEventsInChunks(NFT_CONTRACT, NFT_ABI, 'Transfer', fromBlock, currentBlock)
+          .catch((err) => { console.error('[ActivityFeed] Failed to fetch Transfer events:', err); return []; }),
+        fetchEventsInChunks(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, 'Listed', fromBlock, currentBlock)
+          .catch((err) => { console.error('[ActivityFeed] Failed to fetch Listed events:', err); return []; }),
+        fetchEventsInChunks(MARKETPLACE_CONTRACT, MARKETPLACE_ABI, 'Sold', fromBlock, currentBlock)
+          .catch((err) => { console.error('[ActivityFeed] Failed to fetch Sold events:', err); return []; })
       ]);
       
       
