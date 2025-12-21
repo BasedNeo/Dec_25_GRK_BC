@@ -24,7 +24,7 @@ const BRAIN_CONFIG = {
   wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
   token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2',
   communityShare: 0.10,
-  emissionsStart: new Date('2025-12-01T00:00:00Z').getTime(),
+  emissionsStart: new Date('2024-12-01T00:00:00Z').getTime(),
   initialDeposit: 35000,
   
   // Known emission rates (pre-halving)

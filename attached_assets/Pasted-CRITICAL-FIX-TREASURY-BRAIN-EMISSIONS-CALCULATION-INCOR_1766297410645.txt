@@ -1,0 +1,183 @@
+CRITICAL FIX: TREASURY & BRAIN EMISSIONS CALCULATION INCORRECT
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+Community Treasury and Brain emissions showing 73 MILLION $BASED.
+CORRECT amount should be ~128,600 $BASED.
+
+ROOT CAUSE:
+- Calculating from genesis block instead of Dec 1st start date
+- Using wrong baseline or daily rate
+
+
+═══════════════════════════════════════════════════════════════════
+CORRECT PARAMETERS
+═══════════════════════════════════════════════════════════════════
+
+BRAIN EMISSIONS TO COMMUNITY TREASURY:
+- Start Date: December 1, 2024 00:00:00 UTC
+- Daily Emission Rate: 6,430 $BASED per day
+- Allocation: 10% of total Brain emissions → Community Treasury
+- Total Brain Daily: ~64,300 $BASED (100%)
+- To Treasury: ~6,430 $BASED (10%)
+
+CALCULATION FORMULA:
+const EMISSION_START_DATE = new Date('2024-12-01T00:00:00Z');
+const DAILY_EMISSION_TO_TREASURY = 6430; // $BASED per day
+
+function calculateTreasuryEmissions() {
+  const now = new Date();
+  const startDate = EMISSION_START_DATE;
+  
+  // Calculate days elapsed since Dec 1
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysElapsed = Math.floor((now.getTime() - startDate.getTime()) / msPerDay);
+  
+  // Don't allow negative days
+  const validDays = Math.max(0, daysElapsed);
+  
+  // Calculate emissions
+  const totalEmissions = validDays * DAILY_EMISSION_TO_TREASURY;
+  
+  return {
+    daysElapsed: validDays,
+    totalEmissions: totalEmissions,
+    dailyRate: DAILY_EMISSION_TO_TREASURY
+  };
+}═══════════════════════════════════════════════════════════════════
+FILES TO UPDATE
+═══════════════════════════════════════════════════════════════════
+
+1. client/src/lib/constants.ts
+   ADD THESE CONSTANTS:
+   
+   // Brain emissions configuration
+   export const BRAIN_EMISSIONS = {
+     startDate: new Date('2024-12-01T00:00:00Z'),
+     dailyTotal: 64300, // Total daily Brain emissions
+     treasuryPercentage: 10, // 10% goes to Community Treasury
+     dailyToTreasury: 6430 // 10% of 64,300
+   };
+   2. client/src/hooks/useSubnetEmissions.ts
+   UPDATE CALCULATION:
+   
+   - Remove any hardcoded baseline that assumes emissions from genesis
+   - Calculate days since Dec 1, 2024
+   - Multiply by 6,430 per day
+   - Add mint fees, marketplace fees, listing fees
+   
+   EXAMPLE FIX:
+   const calculateCommunityTreasury = () => {
+     const now = new Date();
+     const startDate = new Date('2024-12-01T00:00:00Z');
+     const daysElapsed = Math.floor(
+       (now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)
+     );
+     
+     const emissionsFromBrain = Math.max(0, daysElapsed) * 6430;
+     
+     // Add fees from mint/marketplace (fetch from contracts or API)
+     const mintFees = 0; // TODO: Calculate from contract events
+     const marketplaceFees = 0; // TODO: Calculate from contract events
+     
+     const totalTreasury = emissionsFromBrain + mintFees + marketplaceFees;
+     
+     return {
+       fromEmissions: emissionsFromBrain,
+       fromMintFees: mintFees,
+       fromMarketplaceFees: marketplaceFees,
+       total: totalTreasury,
+       daysActive: Math.max(0, daysElapsed)
+     };
+   };
+   3. client/src/components/PoolTracker.tsx
+   UPDATE DISPLAY:
+   
+   - Show breakdown:
+     * Days active: 20
+     * Daily rate: 6,430 $BASED
+     * From emissions: 128,600 $BASED
+     * From mint fees: [calculate]
+     * From marketplace: [calculate]
+     * Total Treasury: [sum]
+   
+   - Add tooltip explaining:
+     "Community Treasury receives 10% of Brain emissions (6,430 $BASED/day) 
+     starting December 1st, 2024, plus 70% of mint fees and 2.5% of marketplace sales."
+
+4. MINT PAGE (wherever treasury balance shows):
+   - Use same calculation
+   - Show accurate balance
+   - Add "Updated: [timestamp]" to show freshness
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════════════
+
+AFTER FIX:
+□ Community Treasury shows ~128,600 $BASED (not 73M)
+□ Days active shows: 20 days
+□ Daily rate shows: 6,430 $BASED/day
+□ Calculation: 20 × 6,430 = 128,600 ✓
+□ Mint page shows same accurate number
+□ Pool Tracker shows same accurate number
+□ Console logs show correct calculation
+
+VERIFY FORMULA:
+As of Dec 20, 2024:
+- Days since Dec 1: 20 days (including Dec 1)
+- Emissions: 20 × 6,430 = 128,600 $BASED
+- Plus fees from mints/marketplace
+
+Tomorrow (Dec 21):
+- Days: 21
+- Emissions: 21 × 6,430 = 135,030 $BASED
+
+
+═══════════════════════════════════════════════════════════════════
+ADDITIONAL FEES TO ADD (if possible)
+═══════════════════════════════════════════════════════════════════
+
+MINT FEES (70% to Treasury):
+- Query MintContract for all mints since Dec 1
+- Calculate: total_mints × mint_price × 0.70
+
+MARKETPLACE FEES (2.5% to Treasury):
+- Query MarketplaceContract for all sales since Dec 1
+- Calculate: total_sales_volume × 0.025
+
+LISTING FEES (if any):
+- Add to total
+
+TOTAL = emissions + mint_fees + marketplace_fees + listing_fees
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL OUTPUT
+═══════════════════════════════════════════════════════════════════
+
+SHOW ON MINT PAGE & POOL TRACKER:
+
+Community Treasury Balance:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+From Brain Emissions: 128,600 $BASED
+  (20 days × 6,430/day)
+  
+From Mint Fees (70%): [calculate] $BASED
+From Marketplace (2.5%): [calculate] $BASED
+
+Total Treasury: ~128,600+ $BASED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Updated: Dec 20, 2024
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL: FIX THIS IMMEDIATELY
+═══════════════════════════════════════════════════════════════════
+
+This is a critical display error showing 570x the actual amount.
+Fix calculation to use Dec 1 start date and 6,430/day rate.
