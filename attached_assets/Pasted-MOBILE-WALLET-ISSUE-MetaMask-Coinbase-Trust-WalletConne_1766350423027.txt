@@ -1,0 +1,532 @@
+MOBILE WALLET ISSUE: MetaMask, Coinbase, Trust, WalletConnect NOT WORKING
+
+═══════════════════════════════════════════════════════════════════
+SITUATION
+═══════════════════════════════════════════════════════════════════
+
+WORKING:
+✅ Uniswap wallet connects successfully
+
+NOT WORKING (buttons don't respond to tap):
+❌ MetaMask
+❌ Coinbase Wallet
+❌ Trust Wallet
+❌ WalletConnect
+
+ROOT CAUSE: These connectors likely not "ready" on mobile or need mobile deep links.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: CHECK AND ENABLE CONNECTOR READINESS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+Ensure all connectors are properly configured for mobile:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: { name: 'BASED', symbol: 'BASED', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://rpc.basedai.network'] },
+    public: { http: ['https://rpc.basedai.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'BasedAI Explorer', url: 'https://explorer.basedai.network' },
+  },
+  testnet: false,
+});
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID', // ← CRITICAL: Must be real project ID from https://cloud.walletconnect.com
+  chains: [basedaiChain],
+  ssr: false,
+  autoConnect: false,
+  
+  // CRITICAL: Enable mobile wallets explicitly
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        // This ensures MetaMask, Coinbase, Trust, WalletConnect are included
+      ],
+    },
+  ],
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: VERIFY WALLETCONNECT PROJECT ID
+═══════════════════════════════════════════════════════════════════
+
+CRITICAL: MetaMask, Coinbase, Trust, WalletConnect all use WalletConnect protocol on mobile.
+
+If projectId is missing or invalid, they WON'T WORK.
+
+STEPS TO GET VALID PROJECT ID:
+1. Go to https://cloud.walletconnect.com
+2. Sign in / Create account (free)
+3. Create new project
+4. Copy the Project ID
+5. Add to .env file:
+
+File: .env (or .env.local)
+
+VITE_WALLETCONNECT_PROJECT_ID=your_actual_project_id_here
+
+
+File: client/src/lib/wagmi.ts
+
+Use the project ID:
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+  // ... rest of config
+});
+
+WITHOUT valid project ID, mobile wallets won't connect.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: FORCE MOBILE DEEP LINKING FOR SPECIFIC WALLETS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/MobileWalletHandler.tsx (CREATE NEW)
+
+import { useConnect, Connector } from 'wagmi';
+import { useEffect } from 'react';
+
+// Mobile deep link URLs for specific wallets
+const MOBILE_DEEP_LINKS = {
+  'MetaMask': {
+    ios: 'metamask://',
+    android: 'metamask://',
+    universal: 'https://metamask.app.link',
+  },
+  'Coinbase Wallet': {
+    ios: 'cbwallet://',
+    android: 'cbwallet://',
+    universal: 'https://go.cb-w.com',
+  },
+  'Trust Wallet': {
+    ios: 'trust://',
+    android: 'trust://',
+    universal: 'https://link.trustwallet.com',
+  },
+  'WalletConnect': {
+    ios: 'wc://',
+    android: 'wc://',
+    universal: 'https://walletconnect.com',
+  },
+};
+
+export function useMobileWalletConnect() {
+  const { connectors, connect } = useConnect();
+  
+  const connectMobileWallet = async (connector: Connector) => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (!isMobile) {
+      // Desktop: normal connection
+      connect({ connector });
+      return;
+    }
+    
+    // Mobile: check if wallet needs deep link
+    const walletName = connector.name;
+    const deepLink = MOBILE_DEEP_LINKS[walletName as keyof typeof MOBILE_DEEP_LINKS];
+    
+    console.log('📱 Mobile wallet connection:', {
+      wallet: walletName,
+      hasDeepLink: !!deepLink,
+      ready: connector.ready,
+    });
+    
+    if (!connector.ready && deepLink) {
+      console.log('⚠️ Connector not ready, attempting deep link...');
+      
+      // Try to open wallet app via deep link
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const link = isIOS ? deepLink.ios : deepLink.android;
+      
+      console.log('🔗 Opening deep link:', link);
+      
+      // Attempt to open wallet app
+      window.location.href = link;
+      
+      // Wait a moment for app to open
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // Attempt connection
+    try {
+      console.log('🔄 Connecting to:', walletName);
+      await connect({ connector });
+      console.log('✅ Connection successful');
+    } catch (error) {
+      console.error('❌ Connection failed:', error);
+      
+      // If wallet app not installed, redirect to install page
+      if (deepLink && error.message?.includes('not installed')) {
+        const installUrl = getInstallUrl(walletName);
+        if (confirm(`${walletName} is not installed. Would you like to install it?`)) {
+          window.open(installUrl, '_blank');
+        }
+      }
+    }
+  };
+  
+  return { connectMobileWallet };
+}
+
+function getInstallUrl(walletName: string): string {
+  const urls: Record<string, string> = {
+    'MetaMask': 'https://metamask.io/download/',
+    'Coinbase Wallet': 'https://www.coinbase.com/wallet/downloads',
+    'Trust Wallet': 'https://trustwallet.com/download',
+    'WalletConnect': 'https://walletconnect.com/registry',
+  };
+  
+  return urls[walletName] || 'https://ethereum.org/wallets/';
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: UPDATE MOBILE WALLET BUTTON TO USE CUSTOM HANDLER
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/MobileWalletButton.tsx
+
+Update to use the custom mobile handler:
+
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useConnect } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useMobileWalletConnect } from './MobileWalletHandler';
+
+export function MobileWalletButton() {
+  const [isMobile, setIsMobile] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const { connectors } = useConnect();
+  const { connectMobileWallet } = useMobileWalletConnect();
+  
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
+  
+  if (!isMobile) {
+    return <ConnectButton />;
+  }
+  
+  // Mobile: Custom implementation
+  return (
+    <>
+      <ConnectButton.Custom>
+        {({ account, openConnectModal }) => (
+          <button
+            onClick={() => {
+              if (!account) {
+                setShowModal(true);
+              }
+            }}
+            className="px-4 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg text-white font-bold"
+          >
+            {account ? `${account.displayName}` : 'Connect Wallet'}
+          </button>
+        )}
+      </ConnectButton.Custom>
+      
+      {showModal && (
+        <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-5 bg-black/70">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b p-5 flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Connect Wallet</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Wallet Options */}
+            <div className="p-5 space-y-3">
+              {connectors.map((connector) => {
+                const isWorking = connector.name === 'Uniswap Wallet';
+                const needsFix = ['MetaMask', 'Coinbase Wallet', 'Trust Wallet', 'WalletConnect'].includes(connector.name);
+                
+                return (
+                  <button
+                    key={connector.id}
+                    onClick={async () => {
+                      console.log('🎯 Wallet button tapped:', connector.name);
+                      
+                      if (needsFix) {
+                        // Use custom mobile handler
+                        await connectMobileWallet(connector);
+                      } else {
+                        // Use default
+                        await connect({ connector });
+                      }
+                      
+                      setShowModal(false);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border-2 border-gray-200 active:scale-98 transition"
+                    style={{ 
+                      minHeight: '64px',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-lg">{connector.name}</p>
+                      {!connector.ready && (
+                        <p className="text-xs text-gray-500">Tap to install</p>
+                      )}
+                      {needsFix && (
+                        <p className="text-xs text-orange-500">Mobile optimized</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: ADD CONSOLE LOGGING FOR DEBUGGING
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+Add logging to see connector state:
+
+useEffect(() => {
+  // Log all connectors and their ready state
+  import('./lib/wagmi').then(({ config }) => {
+    console.log('🔌 Available Connectors:');
+    
+    // Access connectors from wagmi config
+    const connectors = config.connectors;
+    
+    connectors.forEach((connector, i) => {
+      console.log(`${i + 1}. ${connector.name}`, {
+        id: connector.id,
+        ready: connector.ready,
+        type: connector.type,
+      });
+    });
+  });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: ENSURE CONNECTORS ARE NOT FILTERED OUT
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+Make sure connectors aren't being filtered by ready state:
+
+// DON'T filter by connector.ready on mobile
+// Show all connectors, even if not "ready"
+
+// In your wallet list/modal, change this:
+// {connectors.filter(c => c.ready).map(...)}  ❌ WRONG
+
+// To this:
+// {connectors.map(...)}  ✅ CORRECT
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: ADD WAGMI MOBILE WALLET CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+If using wagmi v2+, ensure mobile wallets are explicitly enabled:
+
+File: client/src/lib/wagmi.ts
+
+import { createConfig, http } from 'wagmi';
+import { metaMask, coinbaseWallet, walletConnect, trust } from 'wagmi/connectors';
+
+// Alternative: Manual connector configuration
+export const config = createConfig({
+  chains: [basedaiChain],
+  connectors: [
+    metaMask({
+      dappMetadata: {
+        name: 'Based Guardians',
+        url: typeof window !== 'undefined' ? window.location.origin : '',
+      },
+    }),
+    coinbaseWallet({
+      appName: 'Based Guardians',
+      appLogoUrl: typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '',
+    }),
+    walletConnect({
+      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+      metadata: {
+        name: 'Based Guardians',
+        description: 'BasedAI NFT Marketplace',
+        url: typeof window !== 'undefined' ? window.location.origin : '',
+        icons: ['https://basedguardians.com/icon.png'],
+      },
+      showQrModal: true, // Show QR modal for WalletConnect
+    }),
+    trust({
+      shimDisconnect: true,
+    }),
+  ],
+  transports: {
+    [basedaiChain.id]: http(),
+  },
+  ssr: false,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: CHECK IF WALLET APPS ARE INSTALLED
+═══════════════════════════════════════════════════════════════════
+
+Add detection for installed wallet apps:
+
+function isWalletInstalled(walletName: string): boolean {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (!isMobile) return true; // Desktop handles differently
+  
+  // Check if wallet provider is injected
+  const providers: Record<string, boolean> = {
+    'MetaMask': !!(window as any).ethereum?.isMetaMask,
+    'Coinbase Wallet': !!(window as any).ethereum?.isCoinbaseWallet,
+    'Trust Wallet': !!(window as any).ethereum?.isTrust,
+  };
+  
+  return providers[walletName] ?? false;
+}
+
+// Use in button:
+{connectors.map(connector => {
+  const installed = isWalletInstalled(connector.name);
+  
+  return (
+    <button onClick={() => handleConnect(connector)}>
+      {connector.name}
+      {!installed && ' (Not Installed)'}
+    </button>
+  );
+})}
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 9: FALLBACK TO WALLETCONNECT QR CODE
+═══════════════════════════════════════════════════════════════════
+
+If direct connection fails, show WalletConnect QR as fallback:
+
+File: client/src/lib/wagmi.ts
+
+For WalletConnect connector:
+
+walletConnect({
+  projectId: 'YOUR_PROJECT_ID',
+  showQrModal: true, // ← Shows QR code if app not installed
+  qrModalOptions: {
+    themeMode: 'dark',
+    themeVariables: {
+      '--w3m-accent': '#06b6d4',
+    },
+  },
+})
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING PROCEDURE - SPECIFIC WALLETS
+═══════════════════════════════════════════════════════════════════
+
+On your iPhone, test each wallet:
+
+TEST 1: MetaMask
+□ Have MetaMask app installed on phone
+□ Tap MetaMask button in wallet modal
+□ Check console: Should log "Wallet button tapped: MetaMask"
+□ Should open MetaMask app
+□ Should show connection request in MetaMask
+□ Approve in MetaMask
+□ Should return to browser connected
+
+TEST 2: Coinbase Wallet
+□ Have Coinbase Wallet app installed
+□ Tap Coinbase Wallet button
+□ Should open Coinbase Wallet app
+□ Approve connection
+□ Should connect successfully
+
+TEST 3: Trust Wallet
+□ Have Trust Wallet app installed
+□ Tap Trust Wallet button
+□ Should open Trust Wallet app
+□ Approve connection
+□ Should connect successfully
+
+TEST 4: WalletConnect
+□ Tap WalletConnect button
+□ Should show QR code modal OR list of wallets
+□ Select wallet from list or scan QR
+□ Should connect
+
+
+IF WALLET APP NOT INSTALLED:
+- Should show message "Would you like to install [Wallet]?"
+- Should offer link to app store
+- User installs wallet
+- Returns to browser
+- Tries connection again
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+□ WalletConnect Project ID is valid and set
+□ All connectors show in console log with ready state
+□ MetaMask button tapable and triggers handler
+□ Coinbase button tapable and triggers handler
+□ Trust button tapable and triggers handler
+□ WalletConnect button tapable and triggers handler
+□ Console shows "Wallet button tapped: [Name]" when tapped
+□ Deep links attempted for non-ready connectors
+□ Wallet apps open when tapped (if installed)
+□ Connection succeeds
+□ Modal closes after connection
+□ Wallet address displays
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+After fixes:
+1. WalletConnect Project ID verified: YES/NO
+2. MetaMask connector ready: YES/NO
+3. MetaMask button clickable: YES/NO
+4. MetaMask connection works: YES/NO
+5. Coinbase Wallet works: YES/NO
+6. Trust Wallet works: YES/NO
+7. WalletConnect works: YES/NO
+8. Console logs attached: YES/NO
+
+CRITICAL: Get valid WalletConnect Project ID - this is likely the main blocker.
