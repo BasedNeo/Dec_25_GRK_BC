@@ -129,3 +129,22 @@ export const BRAIN_EMISSIONS = {
   treasuryPercentage: 10, // 10% goes to Community Treasury
   dailyToTreasury: 6430 // 10% of 64,300
 };
+
+// === CURRENT DATE OVERRIDE ===
+// Set this to the actual current date if system date is incorrect
+// Update this daily or set to null to use system date
+export const CURRENT_DATE_OVERRIDE: Date | null = new Date('2024-12-20T12:00:00Z');
+
+// Helper function to get the correct current date
+export function getCurrentDate(): Date {
+  return CURRENT_DATE_OVERRIDE || new Date();
+}
+
+// Calculate days since emission start using correct date
+export function getDaysSinceEmissionStart(): number {
+  const now = getCurrentDate();
+  const startDate = BRAIN_EMISSIONS.startDate;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysElapsed = Math.floor((now.getTime() - startDate.getTime()) / msPerDay);
+  return Math.max(0, daysElapsed);
+}

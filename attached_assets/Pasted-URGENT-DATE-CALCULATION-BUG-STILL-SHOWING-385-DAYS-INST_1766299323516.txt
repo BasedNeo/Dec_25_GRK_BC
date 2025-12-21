@@ -1,0 +1,184 @@
+URGENT: DATE CALCULATION BUG - STILL SHOWING 385 DAYS INSTEAD OF 20 DAYS
+
+═══════════════════════════════════════════════════════════════════
+SPECIFIC BUG IDENTIFIED
+═══════════════════════════════════════════════════════════════════
+
+SCREEN SHOWS: "since Dec 1 (385 days)"
+CORRECT SHOULD BE: "since Dec 1 (20 days)"
+
+CURRENT WRONG CALCULATION:
+385 days × 6,430 = 2,475,550 $BASED ❌
+
+CORRECT CALCULATION:
+20 days × 6,430 = 128,600 $BASED ✓
+
+THE ISSUE: Date calculation returning 385 when it should return 20.
+
+
+═══════════════════════════════════════════════════════════════════
+ROOT CAUSE: WRONG START DATE BEING USED
+═══════════════════════════════════════════════════════════════════
+
+DIAGNOSIS:
+If showing 385 days, the system thinks Dec 1, 2024 was 385 days ago.
+385 days before Dec 20, 2024 = November 30, 2023
+
+THE SYSTEM IS USING THE WRONG DECEMBER 1st DATE!
+It's using: December 1, 2023 (or earlier)
+Should use: December 1, 2024
+
+
+═══════════════════════════════════════════════════════════════════
+EXACT FIX REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+FIND THIS CODE (or similar):
+File: client/src/lib/constants.ts or client/src/hooks/useSubnetEmissions.ts
+
+SEARCH FOR:
+- Any date string with '2023' instead of '2024'
+- new Date('2024-12-01') vs new Date('2023-12-01')
+- Any date calculation using old deployment date
+- START_DATE or EMISSION_START_DATE variable
+
+LIKELY CULPRIT:
+export const BRAIN_EMISSIONS_CONFIG = {
+  START_DATE: new Date('2023-12-01T00:00:00Z'), // ❌ WRONG YEAR!
+  // Should be:
+  // START_DATE: new Date('2024-12-01T00:00:00Z'), // ✓ CORRECT
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP-BY-STEP FIX
+═══════════════════════════════════════════════════════════════════
+
+1. SEARCH entire codebase for: '2023-12-01'
+   - Replace with: '2024-12-01'
+
+2. SEARCH for any calculation like:
+   const daysSince = (now - someOldDate) / msPerDay;
+   
+   VERIFY someOldDate is December 1, 2024, NOT earlier
+
+3. ADD EXPLICIT DATE CHECK:
+   
+   const EMISSION_START = new Date('2024-12-01T00:00:00Z');
+   
+   // Debug log
+   console.log('Emission Start Date:', EMISSION_START.toISOString());
+   console.log('Expected: 2024-12-01T00:00:00.000Z');
+   
+   // Calculate days
+   const now = new Date();
+   const msPerDay = 24 * 60 * 60 * 1000;
+   const daysSinceEmissionStart = Math.floor(
+     (now.getTime() - EMISSION_START.getTime()) / msPerDay
+   );
+   
+   console.log('Current Date:', now.toISOString());
+   console.log('Days Since Emission Start:', daysSinceEmissionStart);
+   console.log('Expected Days (Dec 20):', 20); // Verify this matches
+
+4. FORCE THE CORRECT VALUE:
+   
+   If calculation is complex, temporarily hardcode for verification:
+   
+   // TODO: Remove hardcode after date calculation fixed
+   const OVERRIDE_FOR_DEBUG = true;
+   
+   const daysSinceEmissionStart = OVERRIDE_FOR_DEBUG 
+     ? 20 // Hardcoded correct value for Dec 20, 2024
+     : calculateDaysSinceEmissionStart();
+   
+   const totalEmissions = daysSinceEmissionStart * 6430;
+   
+   console.log('Days:', daysSinceEmissionStart); // Should log: 20
+   console.log('Emissions:', totalEmissions); // Should log: 128600
+
+
+═══════════════════════════════════════════════════════════════════
+FILES TO CHECK IMMEDIATELY
+═══════════════════════════════════════════════════════════════════
+
+1. client/src/lib/constants.ts
+   - Look for START_DATE or EMISSION_START_DATE
+   - Verify it's 2024-12-01, NOT 2023-12-01
+
+2. client/src/hooks/useSubnetEmissions.ts
+   - Find where days are calculated
+   - Add console.logs to debug
+
+3. Search ALL files for:
+   - '2023-12-01' (wrong year)
+   - '2023-12' (wrong year)
+   - Any Date() constructor using 2023
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION TEST
+═══════════════════════════════════════════════════════════════════
+
+AFTER FIX, OPEN BROWSER CONSOLE:
+
+Should see logs like:
+✓ Emission Start Date: 2024-12-01T00:00:00.000Z
+✓ Current Date: 2024-12-20T[current time]
+✓ Days Since Emission Start: 20
+✓ Total Emissions: 128600
+
+SCREEN SHOULD SHOW:
+✓ Community Treasury: 128,600 $BASED (or 163,600 with deposit)
+✓ Passive Emissions: 128,600 $BASED
+✓ Text: "since Dec 1 (20 days)" NOT (385 days)
+✓ Treasury Balance: 128,600 $BASED
+
+
+═══════════════════════════════════════════════════════════════════
+SIMPLE MATH CHECK
+═══════════════════════════════════════════════════════════════════
+
+CURRENT (WRONG):
+385 days × 6,430 = 2,475,550 ❌
+
+TARGET (CORRECT):
+20 days × 6,430 = 128,600 ✓
+
+The daily rate (6,430) is CORRECT ✓
+The number of days (385) is WRONG ❌
+
+Fix: Change 385 → 20 by using correct start date (2024-12-01, not 2023-12-01)
+
+
+═══════════════════════════════════════════════════════════════════
+EMERGENCY OVERRIDE IF STUCK
+═══════════════════════════════════════════════════════════════════
+
+If you cannot find the bug, add this temporary override:
+
+In client/src/hooks/useSubnetEmissions.ts:
+
+// TEMPORARY OVERRIDE - Remove after finding root cause
+function getDaysSinceEmissionStart() {
+  const today = new Date('2024-12-20'); // Update daily
+  const start = new Date('2024-12-01');
+  return Math.floor((today - start) / (24 * 60 * 60 * 1000));
+}
+
+// This will return 20 days correctly
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+CONFIRM:
+1. Found the date calculation bug
+2. Changed start date from 2023 to 2024 (or fixed calculation)
+3. Screen now shows: 128,600 $BASED
+4. Text shows: "since Dec 1 (20 days)"
+5. Console logs show correct values
+6. Math: 20 × 6,430 = 128,600 ✓
+
+Provide screenshot showing corrected values.

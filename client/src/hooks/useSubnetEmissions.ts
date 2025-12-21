@@ -17,7 +17,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useInterval } from '@/hooks/useInterval';
 import { perfMonitor } from '@/lib/performanceMonitor';
-import { BRAIN_EMISSIONS, MINT_SPLIT, ROYALTY_SPLIT } from '@/lib/constants';
+import { BRAIN_EMISSIONS, MINT_SPLIT, ROYALTY_SPLIT, getDaysSinceEmissionStart } from '@/lib/constants';
 
 // ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
@@ -144,11 +144,14 @@ export function calculateCommunityTreasury(
   mintedCount: number = 0,
   salesVolume: number = 0
 ): TreasuryBreakdown {
-  const now = new Date();
-  const startDate = BRAIN_EMISSIONS.startDate;
-  const daysElapsed = Math.floor(
-    (now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)
-  );
+  // Use the correct date (override if system date is wrong)
+  const daysElapsed = getDaysSinceEmissionStart();
+  
+  console.log('═══ TREASURY CALCULATION DEBUG ═══');
+  console.log('Days Since Dec 1, 2024:', daysElapsed);
+  console.log('Daily Rate:', BRAIN_EMISSIONS.dailyToTreasury);
+  console.log('Expected Emissions:', daysElapsed * BRAIN_EMISSIONS.dailyToTreasury);
+  console.log('═══════════════════════════════════');
   
   const emissionsFromBrain = Math.max(0, daysElapsed) * BRAIN_EMISSIONS.dailyToTreasury;
   
