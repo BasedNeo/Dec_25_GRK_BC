@@ -1,0 +1,373 @@
+CREATE CYBER BREACH - PREMIUM HACKING GAME (RING-O INSPIRED)
+
+Game Concept: A cyberpunk timing game where Guardians hack through layers of
+FUD (Fear, Uncertainty, Doubt) security systems by perfectly timing their
+breach attempts. Inspired by Apple Watch Ring-O but with a hacker aesthetic.
+
+═══════════════════════════════════════════════════════════════════
+GAME MECHANICS
+═══════════════════════════════════════════════════════════════════
+
+CORE GAMEPLAY:
+- Multiple security rings/layers rotate around a central target
+- Player taps/clicks to "breach" each ring when the gap aligns
+- Miss the gap = hit the firewall = take damage
+- Clear all rings = successful breach = earn points
+- Progressive difficulty: more rings, faster rotation, smaller gaps
+
+CONTROLS:
+- Single tap/click = attempt breach
+- No other controls needed (simple and addictive)
+
+DIFFICULTY PROGRESSION:
+- Level 1: 2 rings, slow rotation, large gaps
+- Level 5: 4 rings, medium speed, medium gaps
+- Level 10: 6 rings, fast rotation, small gaps
+- Level 15+: 8 rings, very fast, tiny gaps, reverse rotation
+
+POWER-UPS (Random spawns):
+- SLOW-MO: Slows ring rotation for 3 seconds
+- SHIELD: One free miss
+- GHOST: Pass through one ring without timing
+- MULTI-BREACH: Clear 2 rings at once
+
+LIVES SYSTEM:
+- Start with 3 shield charges
+- Each miss = lose 1 shield
+- Game over when shields depleted
+- Can earn shields every 5 successful breaches
+
+
+═══════════════════════════════════════════════════════════════════
+VISUAL DESIGN (CYBERPUNK HACKER THEME)
+═══════════════════════════════════════════════════════════════════
+
+COLOR PALETTE:
+- Primary: Neon cyan (#00ffff)
+- Secondary: Electric purple (#bf00ff)
+- Danger: Red (#ff0040)
+- Success: Matrix green (#00ff41)
+- Background: Deep space black with blue/purple gradient
+
+RING DESIGN:
+- Each ring is a rotating "security layer"
+- Rings glow with cyan/purple neon effect
+- Gaps in rings are "vulnerabilities"
+- Hit areas pulse red (firewall active zones)
+- Successful breach = green flash + particle explosion
+
+CENTER TARGET:
+- Circular "mainframe core" in the center
+- Shows hacker avatar (Guardian silhouette)
+- Pulsing glow effect
+- Success animation: sends out shockwave
+
+BACKGROUND:
+- Animated matrix-style code rain (subtle)
+- Floating digital particles
+- Parallax layers for depth
+- Glitch effects on successful breaches
+
+HUD ELEMENTS:
+- Top: Current level, shields remaining, power-up status
+- Center: Score with glowing outline
+- Bottom: Next ring indicator
+- Side: Combo counter (successful breaches in a row)
+
+
+═══════════════════════════════════════════════════════════════════
+AUDIO (CYBERPUNK HACKER SOUNDS)
+═══════════════════════════════════════════════════════════════════
+
+USE WEB AUDIO API TO GENERATE:
+
+GAMEPLAY SOUNDS:
+- Breach Success: High-pitched "ping" + digital whoosh
+- Breach Fail: Harsh "bzzt" + electric shock sound
+- Ring Rotation: Subtle low hum (continuous)
+- Perfect Timing: Rewarding chime + reverb
+- Game Over: Glitch sound + descending tone
+
+POWER-UP SOUNDS:
+- Slow-Mo: Time warp effect (pitch down)
+- Shield: Energy barrier activation
+- Ghost: Phase shift sound
+- Multi-Breach: Double impact
+
+BACKGROUND MUSIC:
+- Optional ambient cyberpunk track (low volume)
+- Tempo increases with level
+
+
+═══════════════════════════════════════════════════════════════════
+SCORING & PROGRESSION
+═══════════════════════════════════════════════════════════════════
+
+POINTS:
+- Base breach: 100 points
+- Perfect timing (center of gap): 200 points + "PERFECT" badge
+- Combo multiplier: 1.5x per consecutive breach (max 5x)
+- Level completion bonus: Level number × 500
+- No damage bonus: 1000 points per level
+
+DAILY LIMITS (ANTI-BOT):
+- Maximum 10 games per day
+- Maximum 50,000 points per day
+- Resets at midnight UTC
+
+NFT GATING:
+- Must hold 1 Based Guardian NFT to play
+- Show lock screen if no NFT
+- Verify on wallet connect (not per game)
+
+LEADERBOARD:
+- Daily top scores
+- All-time high scores
+- Average score per player
+- Total breaches completed
+
+
+═══════════════════════════════════════════════════════════════════
+CREATE NEW FILE: client/src/pages/CyberBreach.tsx
+═══════════════════════════════════════════════════════════════════
+
+STRUCTURE:
+- Game canvas using HTML5 Canvas API
+- React hooks for game state
+- RequestAnimationFrame for smooth 60fps
+- Responsive design (works on mobile + desktop)
+
+INTEGRATION WITH EXISTING SYSTEMS:
+- Use GameStorage for save/stats persistence
+- Use GameHUD component for score display
+- Use VictoryScreen component for game over
+- Use NFTGate component for access control
+- Use gameRegistry for game metadata
+
+GAME STATES:
+1. MENU: Start screen with instructions
+2. PLAYING: Active gameplay
+3. PAUSED: Pause menu
+4. GAME_OVER: End screen with score/stats
+5. VICTORY: Level complete celebration
+
+
+═══════════════════════════════════════════════════════════════════
+IMPLEMENTATION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+PERFORMANCE:
+- Target 60 FPS on all devices
+- Use canvas for rendering (not DOM elements)
+- Efficient collision detection
+- Debounced input handling
+- Memory leak prevention (cleanup on unmount)
+
+ACCESSIBILITY:
+- Keyboard controls (Space = breach)
+- Touch controls for mobile
+- Mouse click for desktop
+- Visual feedback for all actions
+- Pause button always visible
+
+MOBILE OPTIMIZATION:
+- Touch-optimized hit areas
+- Prevent scroll during gameplay
+- Landscape orientation recommended
+- Haptic feedback on breach (if supported)
+
+ANTI-CHEAT:
+- Verify scores server-side (if time permits)
+- Rate limit game submissions
+- Detect impossible scores
+- Log suspicious activity
+
+
+═══════════════════════════════════════════════════════════════════
+STEP-BY-STEP IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════
+
+PHASE 1: Core Game Loop
+1. Create canvas and rendering system
+2. Implement ring rotation logic
+3. Add breach detection (click + gap alignment)
+4. Basic collision detection
+5. Score tracking
+
+PHASE 2: Visual Polish
+1. Add neon glow effects
+2. Implement particle systems
+3. Create background animations
+4. Add ring styling (gradients, pulses)
+5. HUD design and layout
+
+PHASE 3: Audio & Feel
+1. Generate sound effects with Web Audio
+2. Add background music (optional)
+3. Implement combo system
+4. Add perfect timing detection
+5. Screen shake on failures
+
+PHASE 4: Integration
+1. Connect to NFTGate
+2. Integrate GameStorage
+3. Add to game registry
+4. Create arcade card
+5. Test full flow
+
+PHASE 5: Polish & Testing
+1. Balance difficulty curve
+2. Test on mobile devices
+3. Add loading states
+4. Error handling
+5. Performance optimization
+
+
+═══════════════════════════════════════════════════════════════════
+GAME METADATA FOR REGISTRY
+═══════════════════════════════════════════════════════════════════
+
+Add to client/src/lib/gameRegistry.ts:
+
+{
+  id: 'cyber-breach',
+  title: 'Cyber Breach',
+  description: 'Hack through layers of FUD security systems with perfect timing. How deep can you penetrate?',
+  thumbnail: '/assets/games/cyber-breach-thumb.jpg',
+  difficulty: 'Medium',
+  category: 'Arcade',
+  maxPlaysPerDay: 10,
+  maxPointsPerDay: 50000,
+  pointsPerPlay: 500,
+  requiresNFT: true,
+  premium: true,
+  route: '/games/cyber-breach',
+  tags: ['hacking', 'timing', 'arcade', 'cyberpunk'],
+  controls: 'Click/Tap to breach security rings when gaps align',
+  objective: 'Clear all security layers without hitting firewalls',
+  featured: true
+}
+
+
+═══════════════════════════════════════════════════════════════════
+ADDITIONAL FEATURES (STRETCH GOALS)
+═══════════════════════════════════════════════════════════════════
+
+ADVANCED:
+- Boss levels (special patterns every 5 levels)
+- Different ring shapes (hexagons, squares)
+- Dynamic difficulty adjustment
+- Ghost replay of best run
+- Social sharing of high scores
+
+SEASONAL:
+- Special ring themes for events
+- Limited-time power-ups
+- Competitive tournaments
+- Team challenges
+
+INTEGRATION:
+- Earn bonus points with multiple NFTs
+- Special abilities for rare Guardians
+- Cross-game achievements
+- Play-to-earn token rewards (future)
+
+
+═══════════════════════════════════════════════════════════════════
+BRANDING & STORY
+═══════════════════════════════════════════════════════════════════
+
+INTRO TEXT:
+"The FUD Mainframe spreads misinformation across the galaxy.
+As a Based Guardian, breach its security layers to expose the truth.
+Perfect timing is your weapon. One wrong move and you're detected.
+How deep can you hack?"
+
+GAME OVER TEXT:
+"SYSTEM BREACH DETECTED
+Security protocols engaged.
+Connection terminated.
+
+You breached [X] layers
+Score: [XXXX]
+Best: [YYYY]
+
+The FUD spreads once more..."
+
+VICTORY TEXT (Level Complete):
+"LAYER BREACHED
+Truth revealed. FUD dispersed.
+
+Accessing deeper systems..."
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLES
+═══════════════════════════════════════════════════════════════════
+
+CREATE THESE FILES:
+1. client/src/pages/CyberBreach.tsx (main game)
+2. Update client/src/lib/gameRegistry.ts (add game entry)
+3. Update client/src/App.tsx (add route)
+4. Create game assets if needed
+
+ENSURE:
+✅ Matches Based Guardians visual style
+✅ Works on mobile and desktop
+✅ Integrates with existing game infrastructure
+✅ NFT gating properly enforced
+✅ Daily limits working
+✅ No memory leaks
+✅ Smooth 60 FPS gameplay
+✅ Professional polish throughout
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+FUNCTIONALITY:
+□ Game starts without errors
+□ Rings rotate smoothly
+□ Click detection works accurately
+□ Collision detection is fair
+□ Score updates correctly
+□ Lives system works
+□ Power-ups spawn and function
+□ Game over triggers properly
+□ Victory screen shows correct stats
+□ Daily limits enforce correctly
+□ NFT gating works
+
+PERFORMANCE:
+□ Maintains 60 FPS on desktop
+□ Maintains 30+ FPS on mobile
+□ No memory leaks after 10 games
+□ Canvas renders efficiently
+□ Sound doesn't lag gameplay
+
+USER EXPERIENCE:
+□ Controls feel responsive
+□ Difficulty curve is fair
+□ Visual feedback is clear
+□ Audio enhances experience
+□ Tutorial is understandable
+□ Game is addictive and fun
+
+
+═══════════════════════════════════════════════════════════════════
+BUILD THIS GAME NOW
+═══════════════════════════════════════════════════════════════════
+
+Implement Cyber Breach following all specifications above.
+Make it feel premium, polished, and perfectly on-brand.
+This should be the most addictive game in the arcade.
+
+Focus on:
+- Smooth gameplay at 60 FPS
+- Satisfying breach mechanics
+- Beautiful cyberpunk visuals
+- Professional UI/UX
+- Proper integration with existing systems
+
+Make it so good that players want to come back every day!

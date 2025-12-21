@@ -20,6 +20,7 @@ const GuardianDefender = lazyWithRetry(routeImports.GuardianDefender);
 const GuardianDefense = lazyWithRetry(routeImports.GuardianDefense);
 const GuardianSolitaire = lazyWithRetry(routeImports.GuardianSolitaire);
 const AsteroidMining = lazyWithRetry(routeImports.AsteroidMining);
+const CyberBreach = lazyWithRetry(routeImports.CyberBreach);
 const BasedArcade = lazyWithRetry(routeImports.BasedArcade);
 const TransactionHistory = lazyWithRetry(routeImports.TransactionHistory);
 const Collections = lazyWithRetry(routeImports.Collections);
@@ -191,6 +192,11 @@ export function Router() {
         <Route path="/games/asteroid-mining">
           <ErrorBoundary feature="Asteroid Mining">
             <AsteroidMining />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games/cyber-breach">
+          <ErrorBoundary feature="Cyber Breach">
+            <CyberBreach />
           </ErrorBoundary>
         </Route>
         <Route path="/arcade">

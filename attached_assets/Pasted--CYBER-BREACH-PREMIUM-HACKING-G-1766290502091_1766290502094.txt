@@ -1,0 +1,774 @@
+═══════════════════════════════════════════════════════════════════
+CYBER BREACH - PREMIUM HACKING GAME
+Based Guardians Platform Integration
+═══════════════════════════════════════════════════════════════════
+
+GAME CONCEPT:
+A cyberpunk timing game where players hack through rotating security rings
+by tapping at the perfect moment. Inspired by Ring-O but themed as a
+Guardian hacking through FUD (Fear, Uncertainty, Doubt) mainframes.
+
+
+═══════════════════════════════════════════════════════════════════
+PART 1: PLATFORM INTEGRATION (CRITICAL)
+═══════════════════════════════════════════════════════════════════
+
+EXISTING SYSTEMS TO USE:
+
+1. GAME STORAGE MANAGER (client/src/lib/gameStorage.ts)
+   - Use GameStorage.saveGame() for auto-save
+   - Use GameStorage.loadGame() to resume
+   - Use GameStorage.getStats() for all-time stats
+   - Use GameStorage.updateStats() after each game
+   
+   Save data structure:
+   {
+     currentLevel: number,
+     totalScore: number,
+     highScore: number,
+     gamesPlayed: number,
+     totalBreaches: number,
+     perfectBreaches: number,
+     shieldsRemaining: number,
+     currentCombo: number,
+     powerUpsCollected: { [key: string]: number }
+   }
+
+2. GAME REGISTRY (client/src/lib/gameRegistry.ts)
+   - Add Cyber Breach to registry
+   - Set maxPlaysPerDay: 10
+   - Set maxPointsPerDay: 50000
+   - Set requiresNFT: true
+   - Set premium: true
+   
+   Registry entry:
+   {
+     id: 'cyber-breach',
+     title: 'Cyber Breach',
+     description: 'Hack through rotating security rings with perfect timing',
+     route: '/games/cyber-breach',
+     thumbnail: 'Use gradient placeholder',
+     difficulty: 'Medium',
+     maxPlaysPerDay: 10,
+     maxPointsPerDay: 50000,
+     requiresNFT: true,
+     premium: true,
+     tags: ['timing', 'arcade', 'hacking']
+   }
+
+3. GAME HUD COMPONENT (client/src/components/game/GameHUD.tsx)
+   - Use for in-game UI overlay
+   - Shows: Score, Level, Lives, Combo, Power-ups
+   - Auto-formats numbers with commas
+   - Consistent styling across all games
+   
+   Usage:
+   <GameHUD
+     score={score}
+     level={currentLevel}
+     lives={shieldsRemaining}
+     combo={comboMultiplier}
+     maxCombo={5}
+     additionalInfo={{
+       'Next Ring': nextRingSpeed,
+       'Perfect Hits': perfectCount
+     }}
+   />
+
+4. VICTORY SCREEN COMPONENT (client/src/components/game/VictoryScreen.tsx)
+   - Use for game over / level complete
+   - Shows final stats
+   - Handles replay / menu buttons
+   - Includes social sharing
+   
+   Usage:
+   <VictoryScreen
+     score={finalScore}
+     highScore={highScore}
+     stats={{
+       'Levels Completed': levelsCompleted,
+       'Total Breaches': totalBreaches,
+       'Perfect Hits': perfectCount,
+       'Max Combo': maxCombo
+     }}
+     onReplay={() => resetGame()}
+     onMenu={() => navigate('/arcade')}
+     gameTitle="Cyber Breach"
+   />
+
+5. NFT GATE COMPONENT (client/src/components/NFTGate.tsx)
+   - Wrap entire game in NFTGate
+   - Auto-checks Guardian ownership
+   - Shows lock screen if no NFT
+   - Handles wallet connection
+   
+   Usage:
+   <NFTGate
+     requiredCount={1}
+     collectionName="Based Guardians"
+     gameTitle="Cyber Breach"
+     gameDescription="Hack through FUD security systems"
+   >
+     {/* Game content here */}
+   </NFTGate>
+
+6. NAVBAR INTEGRATION
+   - Game accessible from /games/cyber-breach
+   - Add to arcade cards grid
+   - Use existing navbar component
+   - Keep consistent header
+
+
+═══════════════════════════════════════════════════════════════════
+PART 2: POINTS ECONOMY (EXACT SPECIFICATIONS)
+═══════════════════════════════════════════════════════════════════
+
+POINT VALUES (ALIGNED WITH OTHER GAMES):
+
+Base Scoring:
+- Ring Breach (Normal): 100 points
+- Ring Breach (Perfect): 250 points
+- Ring Breach (Near-Perfect): 150 points
+- Level Complete: Level × 500 points
+- Flawless Level (no damage): +1000 bonus
+
+Combo Multipliers:
+- 2x consecutive: 1.2x multiplier
+- 3x consecutive: 1.5x multiplier
+- 5x consecutive: 2.0x multiplier
+- 10x consecutive: 3.0x multiplier (MAX)
+
+Power-Up Bonuses:
+- Shield Used: -50 points (encourages skillful play)
+- Slow-Mo Used: -100 points
+- Perfect Game (no power-ups): +2000 bonus
+
+Daily Limits (MUST ENFORCE):
+- Max 10 games per day per wallet
+- Max 50,000 points per day per wallet
+- Reset at midnight UTC
+- Show warning at 8/10 games
+- Show "Daily limit reached" at 10/10
+
+Point Persistence:
+- Save to GameStorage after EVERY game
+- Update leaderboard after EVERY game
+- Log points to analytics
+- Show daily progress bar in arcade
+
+Formula Example:
+Level 5, 8 breaches, 3 perfect, 5x combo, no damage:
+= (5 × 100) + (3 × 250) + (500 × 5) + 1000 + (total × 2.0 combo)
+= 500 + 750 + 2500 + 1000 = 4750 × 2.0 = 9,500 points
+
+
+═══════════════════════════════════════════════════════════════════
+PART 3: LEADERBOARD SYSTEM (COMPREHENSIVE)
+═══════════════════════════════════════════════════════════════════
+
+LEADERBOARD TYPES:
+
+1. Daily Leaderboard
+   - Resets every 24 hours (midnight UTC)
+   - Shows top 100 players
+   - Displays: Rank, Wallet (truncated), Score, Games Played
+   - Highlight current player's position
+   - Show "You're ranked #X of Y players"
+
+2. All-Time Leaderboard
+   - Never resets
+   - Shows top 100 players
+   - Same display format
+   - Separate from daily
+
+3. Personal Stats Dashboard
+   - Total games played
+   - Average score
+   - Best score
+   - Total breaches
+   - Perfect breaches
+   - Win rate (flawless levels / total levels)
+   - Longest combo
+   - Favorite power-up
+
+LEADERBOARD API INTEGRATION:
+
+Endpoint: POST /api/games/cyber-breach/score
+Body: {
+  walletAddress: string,
+  score: number,
+  level: number,
+  stats: {
+    breaches: number,
+    perfectBreaches: number,
+    maxCombo: number,
+    powerUpsUsed: number,
+    flawlessLevels: number
+  },
+  gameId: string (unique per game session)
+}
+
+Response: {
+  success: boolean,
+  rank: number,
+  dailyRank: number,
+  newHighScore: boolean
+}
+
+Endpoint: GET /api/games/cyber-breach/leaderboard?type=daily|alltime&limit=100
+
+Response: {
+  leaderboard: Array<{
+    rank: number,
+    walletAddress: string,
+    score: number,
+    gamesPlayed: number,
+    timestamp: string
+  }>,
+  currentPlayer: {
+    rank: number,
+    score: number
+  }
+}
+
+LEADERBOARD UI (IN-GAME):
+- Button in pause menu: "View Leaderboard"
+- Modal overlay with tabs: [Daily | All-Time | My Stats]
+- Real-time updates (refresh every 30 seconds)
+- Show player's rank prominently
+- Animate rank changes
+- Show badges for top 3 (🥇🥈🥉)
+
+ANTI-CHEAT (LEADERBOARD PROTECTION):
+- Server-side validation of scores
+- Check max possible score per level
+- Flag impossible completion times
+- Rate limit score submissions (1 per 30 seconds)
+- Ban repeated suspicious scores
+- Log all submissions with timestamps
+
+
+═══════════════════════════════════════════════════════════════════
+PART 4: VISUAL DESIGN (MATCH PLATFORM STYLE)
+═══════════════════════════════════════════════════════════════════
+
+COLOR PALETTE (USE EXISTING THEME):
+- Primary Cyan: #00ffff (from platform)
+- Primary Purple: #bf00ff (from platform)
+- Success Green: #6cff61 (from platform)
+- Danger Red: #ff0040
+- Background: bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900
+- Text: text-white, text-gray-400 (muted)
+- Borders: border-cyan-500/20 (subtle glow)
+
+FONT USAGE (MATCH PLATFORM):
+- Titles: font-orbitron (existing)
+- Body: font-sans (existing)
+- Scores: font-mono (existing)
+- HUD: font-orbitron for labels, font-mono for numbers
+
+COMPONENT STYLING (USE EXISTING):
+- Cards: bg-black/40 border border-cyan-500/20 rounded-xl
+- Buttons: bg-gradient-to-r from-cyan-500 to-purple-500
+- Badges: bg-cyan-500/20 text-cyan-400
+- Shadows: shadow-[0_0_30px_rgba(0,255,255,0.3)]
+- Glow effects: box-shadow with cyan/purple
+
+ANIMATIONS (CONSISTENT WITH PLATFORM):
+- Use Framer Motion for page transitions
+- Pulse animations for active elements
+- Smooth scale transforms on hover
+- Particle effects on success (like other games)
+- Screen shake on damage (like Guardian Defense)
+
+RESPONSIVE DESIGN:
+- Desktop: Full-width game canvas (max 800px)
+- Mobile: 100vw canvas, portrait or landscape
+- Touch controls optimized for thumbs
+- HUD scales based on screen size
+- Pause button always accessible
+
+
+═══════════════════════════════════════════════════════════════════
+PART 5: GAME MECHANICS (DETAILED)
+═══════════════════════════════════════════════════════════════════
+
+RING SYSTEM:
+
+Ring Properties:
+- Each ring has: radius, rotationSpeed, gapSize, gapPosition
+- Rings rotate independently (some clockwise, some counter)
+- Gap size decreases with level (30° → 15° → 5°)
+- Rotation speed increases with level (1°/frame → 5°/frame)
+
+Ring Progression:
+- Level 1: 2 rings, slow, large gaps
+- Level 3: 3 rings, medium speed
+- Level 5: 4 rings, mixed speeds, smaller gaps
+- Level 7: 5 rings, fast, some reverse rotation
+- Level 10: 6 rings, very fast, tiny gaps
+- Level 15+: 7-8 rings, extreme difficulty
+
+Ring Visual Design:
+- Stroke width: 8px on desktop, 12px on mobile
+- Gradient stroke: cyan to purple
+- Pulsing glow effect (animated)
+- Gap highlighted when aligned (green glow)
+- Hit zone shows red when misaligned
+
+BREACH MECHANICS:
+
+Click/Tap Detection:
+- Detect if ALL ring gaps are aligned
+- Alignment tolerance: 5° (tight but fair)
+- Perfect: ±1° alignment = 250 points + "PERFECT" text
+- Near-Perfect: ±3° alignment = 150 points
+- Normal: ±5° alignment = 100 points
+- Miss: Hit firewall = lose shield + screen shake
+
+Timing Windows:
+- Perfect window: 16ms (~1 frame at 60fps)
+- Near-perfect window: 50ms (~3 frames)
+- Normal window: 100ms (~6 frames)
+- Visual feedback for timing quality
+
+SHIELD/LIVES SYSTEM:
+
+Shield Management:
+- Start with 3 shields
+- Lose 1 shield per missed breach
+- Earn 1 shield every 5 successful breaches
+- Max shields: 5
+- Game over when shields = 0
+
+Shield Display:
+- Heart icons in HUD (❤️ = active, 🖤 = lost)
+- Pulse animation when earning new shield
+- Flash red when losing shield
+- Warning at 1 shield remaining
+
+POWER-UP SYSTEM:
+
+Power-Up Types:
+1. SLOW-MO (⏰)
+   - Slows ring rotation by 50% for 5 seconds
+   - Spawn chance: 20%
+   - Cooldown: 30 seconds
+
+2. SHIELD (🛡️)
+   - Grants 1 free shield
+   - Spawn chance: 15%
+   - Cooldown: 45 seconds
+
+3. GHOST (👻)
+   - Next breach ignores alignment (auto-success)
+   - Spawn chance: 10%
+   - Cooldown: 60 seconds
+
+4. MULTI-BREACH (⚡)
+   - Clears 2 rings at once
+   - Spawn chance: 5%
+   - Cooldown: 90 seconds
+
+Power-Up Spawning:
+- Spawn between levels
+- Float in from top of screen
+- 5 second collection window
+- Miss = power-up expires
+- Visual: glowing icon with particle trail
+
+COMBO SYSTEM:
+
+Combo Tracking:
+- Increments on each successful breach
+- Resets on miss
+- Displays as "5x COMBO" in HUD
+- Max multiplier: 3.0x at 10 combo
+
+Combo Visual Feedback:
+- Text size increases with combo
+- Color shifts: white → cyan → purple → gold
+- Particle effects at milestones (5x, 10x)
+- Screen border glow intensifies
+
+LEVEL PROGRESSION:
+
+Level Structure:
+- Each level = 10 breaches to complete
+- Difficulty increases every 2 levels
+- Boss levels every 5 levels (special patterns)
+- Endless mode after level 20
+
+Level Transitions:
+- Show "LEVEL X COMPLETE" overlay
+- Display earned points
+- Brief rest period (3 seconds)
+- Next level preview (ring count + speed)
+- Option to continue or quit
+
+
+═══════════════════════════════════════════════════════════════════
+PART 6: AUDIO SYSTEM (WEB AUDIO API)
+═══════════════════════════════════════════════════════════════════
+
+SOUND EFFECTS (GENERATE WITH WEB AUDIO):
+
+Breach Sounds:
+- Success: 440Hz sine wave, 0.1s, fade out
+- Perfect: 880Hz sine wave + reverb, 0.15s
+- Near-Perfect: 660Hz sine wave, 0.12s
+- Miss: 110Hz square wave + noise burst, 0.2s
+
+UI Sounds:
+- Power-up collect: Ascending arpeggio (C-E-G)
+- Shield lost: Descending tone (G-E-C)
+- Level complete: Major chord (C-E-G-C)
+- Game over: Minor chord (A-C-E) + reverb
+
+Ambient Sounds:
+- Ring rotation: Subtle 60Hz hum (continuous)
+- Combo milestone: Chime at 5x, 10x
+- Shield warning: Beeping at 1 shield
+
+Audio Settings:
+- Master volume control in pause menu
+- SFX volume separate from music
+- Mute button in HUD
+- Audio enabled by default
+- Respect user's mute preference
+
+Background Music:
+- Optional ambient cyberpunk track
+- Low volume (20% of max)
+- Tempo increases with level
+- Fade out on pause/game over
+
+
+═══════════════════════════════════════════════════════════════════
+PART 7: IMPLEMENTATION (STEP-BY-STEP)
+═══════════════════════════════════════════════════════════════════
+
+FILE STRUCTURE:
+
+CREATE: client/src/pages/CyberBreach.tsx
+- Main game component
+- Canvas rendering
+- Game loop
+- State management
+- NFTGate wrapper
+
+USE: client/src/lib/gameStorage.ts
+- Save/load game state
+- Store high scores
+- Track statistics
+
+USE: client/src/components/game/GameHUD.tsx
+- In-game overlay
+- Score display
+- Lives/shields
+- Combo counter
+
+USE: client/src/components/game/VictoryScreen.tsx
+- Game over screen
+- Stats display
+- Replay/menu buttons
+
+UPDATE: client/src/lib/gameRegistry.ts
+- Add game entry
+- Set limits and requirements
+
+UPDATE: client/src/App.tsx
+- Add route: /games/cyber-breach
+- Import CyberBreach component
+
+GAME LOOP STRUCTURE:
+
+function gameLoop(deltaTime: number) {
+  // 1. Update ring rotations
+  updateRings(deltaTime);
+  
+  // 2. Check for power-up spawns
+  updatePowerUps(deltaTime);
+  
+  // 3. Handle input
+  if (clickDetected) {
+    checkBreachAlignment();
+  }
+  
+  // 4. Update particles
+  updateParticles(deltaTime);
+  
+  // 5. Render everything
+  render();
+  
+  // 6. Check win/lose conditions
+  if (shieldsRemaining === 0) {
+    gameOver();
+  }
+  if (breachesCompleted === 10) {
+    levelComplete();
+  }
+  
+  // 7. Request next frame
+  requestAnimationFrame(gameLoop);
+}STATE MANAGEMENT:
+
+interface GameState {
+  // Game status
+  status: 'menu' | 'playing' | 'paused' | 'gameover' | 'levelComplete';
+  
+  // Level info
+  currentLevel: number;
+  breachesCompleted: number;
+  breachesRequired: number;
+  
+  // Player stats
+  score: number;
+  highScore: number;
+  shieldsRemaining: number;
+  currentCombo: number;
+  maxCombo: number;
+  
+  // Ring data
+  rings: Array<{
+    radius: number;
+    speed: number;
+    gapSize: number;
+    gapPosition: number; // degrees
+    direction: 1 | -1; // clockwise or counter
+  }>;
+  
+  // Power-ups
+  activePowerUp: null | {
+    type: 'slowmo' | 'shield' | 'ghost' | 'multi';
+    duration: number;
+  };
+  
+  // Timing
+  lastFrameTime: number;
+  deltaTime: number;
+}CANVAS RENDERING:
+
+function render(ctx: CanvasRenderingContext2D, state: GameState) {
+  // 1. Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // 2. Draw background gradient
+  drawBackground(ctx);
+  
+  // 3. Draw matrix rain effect (subtle)
+  drawMatrixRain(ctx);
+  
+  // 4. Draw rings
+  state.rings.forEach(ring => drawRing(ctx, ring));
+  
+  // 5. Draw center core (player)
+  drawCore(ctx);
+  
+  // 6. Draw power-ups
+  if (state.activePowerUp) {
+    drawPowerUp(ctx, state.activePowerUp);
+  }
+  
+  // 7. Draw particles
+  particles.forEach(p => drawParticle(ctx, p));
+  
+  // 8. Draw HUD (React component overlay)
+  // HUD rendered separately as React component
+}═══════════════════════════════════════════════════════════════════
+PART 8: PERFORMANCE OPTIMIZATION
+═══════════════════════════════════════════════════════════════════
+
+TARGET: 60 FPS on all devices
+
+OPTIMIZATIONS:
+
+1. Canvas Rendering:
+   - Use single canvas (not layers)
+   - Minimize fillRect/strokeRect calls
+   - Batch similar draw operations
+   - Use requestAnimationFrame correctly
+
+2. Collision Detection:
+   - Pre-calculate alignment once per frame
+   - Use simple angle math (no complex hit boxes)
+   - Skip checks when not needed
+
+3. Particle System:
+   - Object pooling for particles
+   - Max 100 particles at once
+   - Remove off-screen particles immediately
+
+4. Audio:
+   - Reuse AudioContext
+   - Pool audio nodes
+   - Limit concurrent sounds (max 5)
+
+5. Memory Management:
+   - Clear intervals on unmount
+   - Remove event listeners
+   - Dispose canvas context
+   - Clear game state
+
+6. React Optimization:
+   - Use memo for HUD components
+   - Avoid re-renders during game loop
+   - Keep game state in refs (not state)
+
+
+═══════════════════════════════════════════════════════════════════
+PART 9: MOBILE OPTIMIZATION
+═══════════════════════════════════════════════════════════════════
+
+TOUCH CONTROLS:
+- Tap anywhere on screen = breach attempt
+- Prevent default touch behaviors (scroll, zoom)
+- Show touch feedback (ripple effect)
+- Larger hit areas (50px minimum)
+
+RESPONSIVE CANVAS:
+- Scale canvas to fit screen
+- Maintain aspect ratio
+- Landscape mode recommended (show hint)
+- Portrait mode supported but cramped
+
+MOBILE PERFORMANCE:
+- Target 30 FPS minimum on mobile
+- Reduce particle count on slow devices
+- Disable background effects if needed
+- Show performance warning if FPS drops
+
+HAPTIC FEEDBACK (if supported):
+- Vibrate on successful breach (10ms)
+- Stronger vibrate on perfect (20ms)
+- Pattern vibrate on level complete
+
+
+═══════════════════════════════════════════════════════════════════
+PART 10: TESTING & VALIDATION
+═══════════════════════════════════════════════════════════════════
+
+PRE-LAUNCH CHECKLIST:
+
+Functionality:
+□ Game starts without errors
+□ Rings rotate smoothly at 60 FPS
+□ Click detection works accurately
+□ Collision detection is fair (±5° tolerance)
+□ Score updates correctly
+□ Combo system works
+□ Power-ups spawn and function
+□ Shields/lives work correctly
+□ Level progression works
+□ Game over triggers properly
+□ Victory screen shows correct stats
+□ Daily limits enforce (10 games)
+□ Points cap enforces (50k/day)
+□ NFT gating works
+□ Leaderboard updates
+□ Audio plays correctly
+□ Can pause/resume
+□ Can quit to menu
+
+Performance:
+□ Maintains 60 FPS on desktop
+□ Maintains 30+ FPS on mobile
+□ No memory leaks after 10 games
+□ No lag spikes
+□ Canvas renders efficiently
+□ Audio doesn't cause lag
+
+Integration:
+□ Appears in arcade grid
+□ Route works (/games/cyber-breach)
+□ GameStorage saves/loads
+□ GameHUD displays correctly
+□ VictoryScreen works
+□ NFTGate checks wallet
+□ Navbar shows correct active tab
+□ Back button returns to arcade
+
+User Experience:
+□ Controls feel responsive
+□ Difficulty curve is fair
+□ Visual feedback is clear
+□ Audio enhances experience
+□ Tutorial is understandable
+□ Game is fun and addictive
+□ Loading is fast
+□ No confusing UI
+
+
+═══════════════════════════════════════════════════════════════════
+PART 11: LAUNCH CONTENT
+═══════════════════════════════════════════════════════════════════
+
+GAME DESCRIPTION (for arcade card):
+"Hack through rotating security layers with perfect timing. Each breach brings
+you deeper into the FUD mainframe. Miss the gap, hit the firewall. How deep
+can you penetrate before detection?"
+
+TUTORIAL TEXT (first play):
+"TAP when all ring gaps align to breach the security layer.
+
+PERFECT timing earns bonus points.
+MISS the gap and you'll hit the firewall.
+
+Collect POWER-UPS to help your hack.
+Chain COMBOS for score multipliers.
+
+Breach all layers to advance deeper into the system.
+
+Ready to hack?"
+
+LOADING SCREEN TEXT:
+- "Initializing hack protocols..."
+- "Scanning for vulnerabilities..."
+- "Establishing secure connection..."
+- "Loading breach algorithms..."
+- "Ready to penetrate mainframe..."
+
+GAME OVER MESSAGES (randomized):
+- "SYSTEM BREACH DETECTED • Security protocols engaged"
+- "CONNECTION TERMINATED • FUD mainframe protected"
+- "INTRUSION ALERT • Guardian identified and blocked"
+- "HACK FAILED • Better timing required, Guardian"
+- "FIREWALL ACTIVE • Your breach attempt was logged"
+
+VICTORY MESSAGES (level complete):
+- "LAYER BREACHED • Accessing deeper systems..."
+- "SECURITY BYPASSED • Truth revealed, FUD dispersed"
+- "PERFECT HACK • You're a master Guardian"
+- "SYSTEM COMPROMISED • The FUD weakens..."
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL DELIVERABLES
+═══════════════════════════════════════════════════════════════════
+
+BUILD THIS GAME WITH:
+✅ Perfect platform integration
+✅ Consistent visual style
+✅ Proper points economy
+✅ Full leaderboard system
+✅ NFT gating
+✅ Daily limits
+✅ Mobile support
+✅ Professional polish
+✅ No memory leaks
+✅ 60 FPS performance
+✅ Addictive gameplay
+
+CREATE:
+- client/src/pages/CyberBreach.tsx (main game)
+- Update client/src/lib/gameRegistry.ts
+- Update client/src/App.tsx (add route)
+
+ENSURE:
+- Uses all existing game infrastructure
+- Matches Based Guardians visual identity
+- Integrates with leaderboard API
+- Enforces daily limits correctly
+- Works flawlessly on mobile and desktop
+
+THIS IS YOUR FLAGSHIP ARCADE GAME. MAKE IT PERFECT.

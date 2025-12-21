@@ -109,6 +109,7 @@ export const routeImports = {
   GuardianDefense: () => import('@/pages/GuardianDefense'),
   GuardianSolitaire: () => import('@/pages/GuardianSolitaire'),
   AsteroidMining: () => import('@/pages/AsteroidMining'),
+  CyberBreach: () => import('@/pages/CyberBreach'),
   BasedArcade: () => import('@/pages/BasedArcade'),
   TransactionHistory: () => import('@/pages/TransactionHistory'),
   Collections: () => import('@/pages/Collections'),

@@ -1,10 +1,10 @@
 import { LucideIcon } from 'lucide-react';
-import { Target, Spade, Shield, Rocket } from 'lucide-react';
+import { Target, Spade, Shield, Rocket, Zap } from 'lucide-react';
 
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining';
+export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach';
 
 /**
  * Game difficulty levels
@@ -194,6 +194,34 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: true,
     minPlayDuration: 90,
+  },
+  
+  'cyber-breach': {
+    id: 'cyber-breach',
+    name: 'Cyber Breach',
+    description: 'Hack through rotating security layers with perfect timing. Each breach brings you deeper into the FUD mainframe. Miss the gap, hit the firewall. How deep can you penetrate before detection?',
+    path: '/games/cyber-breach',
+    icon: Zap,
+    iconColor: 'text-cyan-400',
+    thumbnailGradient: 'from-cyan-500 to-green-500',
+    category: 'action',
+    difficulty: 'medium',
+    averagePlayTime: 180,
+    maxPlaysPerDay: 10,
+    enabled: true,
+    scoring: {
+      maxScore: 50000,
+      goodScore: 8000,
+      greatScore: 20000,
+      legendaryScore: 40000,
+    },
+    features: {
+      hasTimer: false,
+      hasLives: true,
+      hasCombo: true,
+    },
+    nftRequired: true,
+    minPlayDuration: 60,
   },
 };
 
