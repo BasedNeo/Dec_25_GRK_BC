@@ -1,0 +1,395 @@
+CRITICAL EMERGENCY: WALLET CONNECTION MODAL BLOCKING SCREEN - NOT WORKING
+
+═══════════════════════════════════════════════════════════════════
+ISSUE
+═══════════════════════════════════════════════════════════════════
+
+Wallet connection modal pops up and blocks everything.
+User cannot:
+- Select a wallet
+- Close the modal
+- Click anything
+- Connect wallet
+
+This was working 2 days ago. Something broke it.
+
+PRIORITY: HIGHEST - Blocks all user access
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: VERIFY CRITICAL SETTINGS (MOST LIKELY CAUSE)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/main.tsx
+
+CHECK IF React.StrictMode WAS RE-ENABLED:
+
+❌ WRONG (causes wallet crashes):
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+✅ CORRECT (must be disabled):
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <App />
+);
+
+FIX: Remove <React.StrictMode> wrapper completely.
+
+
+File: client/src/lib/wagmi.ts
+
+CHECK IF autoConnect WAS RE-ENABLED:
+
+❌ WRONG (causes issues):
+export const config = getDefaultConfig({
+  autoConnect: true, // or missing (defaults to true)
+  // ...
+});
+
+✅ CORRECT:
+export const config = getDefaultConfig({
+  autoConnect: false, // MUST BE FALSE
+  // ...
+});
+
+FIX: Explicitly set autoConnect: false
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: FIX MODAL Z-INDEX AND OVERLAY
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css or client/src/App.css
+
+ADD THESE CRITICAL STYLES:
+
+/* Emergency Wallet Modal Fix */
+[data-rk] {
+  z-index: 999999 !important;
+}
+
+/* Modal overlay should be clickable to close */
+[data-rk] [data-rk-backdrop] {
+  z-index: 999998 !important;
+  cursor: pointer !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Modal dialog */
+[data-rk] [role="dialog"] {
+  z-index: 999999 !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  max-width: 420px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  background: white !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+}
+
+/* Close button must be visible and clickable */
+[data-rk] button[aria-label*="Close"],
+[data-rk] button[aria-label*="close"] {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  z-index: 9999999 !important;
+  cursor: pointer !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px !important;
+}
+
+/* Wallet buttons must be clickable */
+[data-rk] button[type="button"] {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REMOVE ANY BLOCKING OVERLAYS
+═══════════════════════════════════════════════════════════════════
+
+Search entire codebase for:
+
+position: fixed
+z-index: 9999
+pointer-events: none
+
+CHECK these files:
+- client/src/App.tsx
+- client/src/components/Navbar.tsx
+- client/src/index.css
+- Any loading screens
+- Any modal components
+
+FIX: Ensure nothing has z-index > 999999 except wallet modal
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: VERIFY RAINBOWKIT CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx or main.tsx
+
+CHECK RainbowKitProvider setup:
+
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { WagmiConfig } from 'wagmi';
+import { config } from './lib/wagmi';
+
+// MUST wrap in correct order:
+<WagmiConfig config={config}>
+  <RainbowKitProvider
+    modalSize="compact"
+    coolMode
+  >
+    <App />
+  </RainbowKitProvider>
+</WagmiConfig>
+
+ENSURE:
+- RainbowKit styles imported
+- Correct provider nesting
+- Config passed to WagmiConfig
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: RESET WALLET CONFIGURATION TO WORKING STATE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+COMPLETE WORKING CONFIGURATION:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { mainnet } from 'wagmi/chains';
+
+// BasedAI L1 Chain
+export const basedaiChain = {
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'BASED',
+    symbol: 'BASED',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.basedai.network'] },
+    public: { http: ['https://rpc.basedai.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'BasedAI Explorer', url: 'https://explorer.basedai.network' },
+  },
+} as const;
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID', // Get from https://cloud.walletconnect.com
+  chains: [basedaiChain, mainnet],
+  ssr: false,
+  autoConnect: false, // CRITICAL: Must be false
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: ADD EMERGENCY ESCAPE HATCH
+═══════════════════════════════════════════════════════════════════
+
+Add ability to close modal with ESC key or click outside:
+
+File: client/src/App.tsx
+
+Add this useEffect:
+
+useEffect(() => {
+  // Emergency: Close wallet modal on ESC
+  function handleEscape(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      // Force close any modal
+      const backdrop = document.querySelector('[data-rk-backdrop]');
+      if (backdrop) {
+        (backdrop as HTMLElement).click();
+      }
+    }
+  }
+  
+  // Close on click outside
+  function handleClickOutside(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.hasAttribute('data-rk-backdrop')) {
+      // Clicked on backdrop, close modal
+      return; // RainbowKit handles this
+    }
+  }
+  
+  document.addEventListener('keydown', handleEscape);
+  document.addEventListener('click', handleClickOutside);
+  
+  return () => {
+    document.removeEventListener('keydown', handleEscape);
+    document.removeEventListener('click', handleClickOutside);
+  };
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: CLEAR BROWSER CACHE AND STATE
+═══════════════════════════════════════════════════════════════════
+
+Add cache-busting code:
+
+File: client/src/App.tsx or main.tsx
+
+useEffect(() => {
+  // Clear old wallet connection state
+  localStorage.removeItem('wagmi.store');
+  localStorage.removeItem('wagmi.cache');
+  localStorage.removeItem('wagmi.wallet');
+  
+  // Clear on mount once
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: ROLLBACK RECENT CHANGES (IF NEEDED)
+═══════════════════════════════════════════════════════════════════
+
+If wallet was working 2 days ago, check git history:
+
+git log --since="2 days ago" --oneline
+
+Identify any changes to:
+- client/src/lib/wagmi.ts
+- client/src/main.tsx
+- client/src/App.tsx
+- client/src/index.css
+- Any wallet-related files
+
+REVERT suspicious changes:
+git diff HEAD~5 client/src/lib/wagmi.ts
+
+If you see breaking changes, revert to working version.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: SIMPLE WALLET BUTTON TEST
+═══════════════════════════════════════════════════════════════════
+
+Create simple test to isolate issue:
+
+File: Create client/src/components/SimpleWalletTest.tsx
+
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+
+export function SimpleWalletTest() {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      zIndex: 999999,
+      background: 'white',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+    }}>
+      <ConnectButton />
+    </div>
+  );
+}
+
+Add to App.tsx temporarily:
+import { SimpleWalletTest } from './components/SimpleWalletTest';
+
+// In render:
+<SimpleWalletTest />
+
+TEST: If this works, issue is with your custom wallet button styling.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: CONSOLE DEBUGGING
+═══════════════════════════════════════════════════════════════════
+
+Add console logs to diagnose:
+
+console.log('🔍 Wallet Debug:');
+console.log('- RainbowKit loaded:', !!window.RainbowKit);
+console.log('- Wagmi config:', config);
+console.log('- React.StrictMode:', document.querySelector('[data-reactroot]'));
+console.log('- Modal visible:', !!document.querySelector('[data-rk]'));
+
+Check console for:
+- Any React errors
+- Wallet provider errors
+- Z-index conflicts
+- Event listener issues
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After fixes applied:
+□ React.StrictMode is disabled
+□ autoConnect is false
+□ Wallet modal has correct z-index
+□ Close button is visible
+□ Can click wallet options
+□ Can close modal with X button
+□ Can close modal by clicking outside
+□ Can close modal with ESC key
+□ Can select MetaMask
+□ Can connect successfully
+□ Modal disappears after connection
+□ Can disconnect and reconnect
+□ Works on desktop
+□ Works on mobile
+
+Test flow:
+1. Click "Connect Wallet"
+2. Modal appears centered
+3. Can see all wallet options
+4. Click MetaMask
+5. MetaMask extension opens
+6. Approve connection
+7. Modal closes
+8. Wallet shows connected
+
+
+═══════════════════════════════════════════════════════════════════
+NUCLEAR OPTION: COMPLETE RESET
+═══════════════════════════════════════════════════════════════════
+
+If nothing works, completely reinstall wallet packages:
+
+npm uninstall @rainbow-me/rainbowkit wagmi viem
+npm install @rainbow-me/rainbowkit@latest wagmi@latest viem@latest
+
+Then reconfigure from scratch using working configuration above.
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+Report:
+1. Root cause identified: [what was broken]
+2. Fixes applied: [list changes made]
+3. Verification: Can connect wallet successfully ✅
+4. Tested on: Desktop ✅ Mobile ✅
+5. Can disconnect and reconnect ✅
+
+CRITICAL: This must work before any other development.

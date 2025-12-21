@@ -375,14 +375,28 @@ replit-error-modal {
 }
 
 /* ========================================
-   RAINBOWKIT MODAL Z-INDEX FIX
+   RAINBOWKIT MODAL Z-INDEX FIX - EMERGENCY
    Ensure wallet modals appear above ALL app modals
    ======================================== */
+[data-rk],
 [data-rk] [data-radix-popper-content-wrapper],
 [data-rk] [role="dialog"],
 [data-rk-modal-root],
 div[data-rk] {
-  z-index: 99999 !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
+/* Force modal to be visible and centered */
+[data-rk] [role="dialog"] {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  max-width: 420px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  border-radius: 16px !important;
 }
 
 /* RainbowKit overlay must be clickable and above other overlays */
