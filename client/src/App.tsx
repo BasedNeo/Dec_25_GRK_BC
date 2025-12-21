@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import '@/lib/i18n';
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Rocket } from "lucide-react";
 import { connectionManager } from "@/lib/connectionManager";
@@ -238,37 +238,7 @@ export function Router() {
   );
 }
 
-function LoadingTimeoutFallback() {
-  return (
-    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.08)_0%,transparent_50%)]" />
-      <div className="text-center p-8 relative z-10 max-w-lg">
-        <div className="mb-6">
-          <Rocket className="w-16 h-16 text-cyan-400 mx-auto animate-pulse" />
-        </div>
-        <h2 className="text-2xl font-orbitron font-bold text-white mb-4">
-          Taking longer than expected...
-        </h2>
-        <p className="text-gray-400 mb-6 text-sm">
-          The connection to the galaxy seems slow. Try refreshing to reconnect.
-        </p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-purple-500 text-black rounded-xl font-orbitron font-bold hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all transform hover:scale-105 flex items-center gap-3 mx-auto"
-          data-testid="button-loading-refresh"
-        >
-          <Rocket className="w-5 h-5" />
-          Refresh App
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function App() {
-  const [walletReady, setWalletReady] = useState(false);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-
   useEffect(() => {
     connectionManager.startAutoCheck(30000);
     console.log('[App] Connection manager initialized');
@@ -278,43 +248,15 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    // Force wallet ready after short delay - don't wait for idle callback
-    const timer = setTimeout(() => setWalletReady(true), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Only set timeout if wallet isn't ready yet
-    if (walletReady) return;
-    
-    const timeoutTimer = setTimeout(() => {
-      if (!walletReady) {
-        setLoadingTimeout(true);
-        console.warn('[App] Loading timeout reached - showing fallback UI');
-      }
-    }, 5000);
-    
-    return () => clearTimeout(timeoutTimer);
-  }, [walletReady]);
-
-  if (loadingTimeout && !walletReady) {
-    return <LoadingTimeoutFallback />;
-  }
-
   return (
     <ErrorBoundary fallback={<GlobalErrorFallback />}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          {walletReady ? (
-            <Suspense fallback={<AppLoadingFallback />}>
-              <WalletProviders>
-                <AppContent />
-              </WalletProviders>
-            </Suspense>
-          ) : (
-            <AppLoadingFallback />
-          )}
+          <Suspense fallback={<AppLoadingFallback />}>
+            <WalletProviders>
+              <AppContent />
+            </WalletProviders>
+          </Suspense>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

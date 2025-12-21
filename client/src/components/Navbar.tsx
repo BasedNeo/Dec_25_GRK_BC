@@ -112,12 +112,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     if (wagmiConnected) {
       const hasConnectedBefore = localStorage.getItem('has_connected_before');
       if (!hasConnectedBefore) {
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.2 },
-          colors: ['#00ffff', '#bf00ff', '#ffffff']
-        });
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (!isMobile) {
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.2 },
+            colors: ['#00ffff', '#bf00ff', '#ffffff']
+          });
+        }
         localStorage.setItem('has_connected_before', 'true');
         trackEvent('wallet_connected_first_time', 'Engagement', 'Navbar');
       }
