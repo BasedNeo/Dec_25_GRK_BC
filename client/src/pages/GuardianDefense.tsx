@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
+import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
@@ -1172,21 +1173,26 @@ export default function GuardianDefense() {
 
   if (nftLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-950 via-purple-950 to-black">
-        <Card className="p-8 bg-black/60 border-cyan-500/30 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-            <p className="text-cyan-400">Awakening the Creatures...</p>
-          </div>
-        </Card>
-      </div>
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-950 via-purple-950 to-black pt-20">
+          <Card className="p-8 bg-black/60 border-cyan-500/30 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+              <p className="text-cyan-400">Awakening the Creatures...</p>
+            </div>
+          </Card>
+        </div>
+      </>
     );
   }
 
   if (showVictory) {
     const state = gameStateRef.current;
     return (
-      <VictoryScreen
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <VictoryScreen
         gameType="guardian-defense"
         score={state.score}
         time={Math.floor(state.gameTime / 1000)}
@@ -1203,12 +1209,15 @@ export default function GuardianDefense() {
         onPlayAgain={restartGame}
         onExit={() => setLocation('/')}
       />
+      </>
     );
   }
 
   if (!gameStarted) {
     return (
-      <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden">
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden pt-16">
         <div className="fixed inset-0 pointer-events-none">
           {[...Array(80)].map((_, i) => (
             <motion.div
@@ -1427,6 +1436,7 @@ export default function GuardianDefense() {
           </motion.div>
         </div>
       </section>
+      </>
     );
   }
 
@@ -1435,7 +1445,9 @@ export default function GuardianDefense() {
   const totalMissiles = state.batteries.reduce((sum, b) => sum + b.missiles, 0);
   
   return (
-    <section className="py-4 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden" ref={containerRef}>
+    <>
+      <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+      <section className="py-4 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden pt-16" ref={containerRef}>
       <div className="max-w-4xl mx-auto px-4">
         
         <GameHUD
@@ -1483,5 +1495,6 @@ export default function GuardianDefense() {
         </div>
       </div>
     </section>
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLocation, Link } from 'wouter';
 import { NFT_CONTRACT } from '@/lib/constants';
+import { Navbar } from '@/components/Navbar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -1138,7 +1139,9 @@ export default function GuardianSolitaire() {
   // NFT gating check - must be after all hooks
   if (address && !hasNFT && !accessLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4 pt-20">
         <div className="max-w-md bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 text-center border border-purple-500/30">
           <div className="text-6xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold text-white mb-2">NFT Required</h2>
@@ -1148,17 +1151,20 @@ export default function GuardianSolitaire() {
           <Link to="/mint" className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:scale-105 transition">
             Mint a Guardian
           </Link>
-          <Link to="/games" className="block mt-4 text-purple-400 hover:text-purple-300">
-            ← Back to Games
+          <Link to="/arcade" className="block mt-4 text-purple-400 hover:text-purple-300">
+            ← Back to Arcade
           </Link>
         </div>
       </div>
+      </>
     );
   }
 
   if (accessLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-black">
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-black pt-20">
         <Card className="p-8 bg-white/5 border-cyan-500/30 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
@@ -1166,12 +1172,15 @@ export default function GuardianSolitaire() {
           </div>
         </Card>
       </div>
+      </>
     );
   }
 
   if (!gameStarted) {
     return (
-      <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-hidden">
+      <>
+        <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+        <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-hidden pt-16">
         <div className="absolute top-4 left-4 z-20">
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
             <Shield className="w-4 h-4 text-cyan-400" />
@@ -1580,11 +1589,14 @@ export default function GuardianSolitaire() {
           </motion.div>
         </div>
       </section>
+      </>
     );
   }
 
   return (
-    <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden">
+    <>
+      <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+      <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden pt-16">
       <div className="fixed inset-0 pointer-events-none opacity-30">
         {[...Array(50)].map((_, i) => (
           <motion.div
@@ -1830,5 +1842,6 @@ export default function GuardianSolitaire() {
         elapsedTime={elapsedTime}
       />
     </section>
+    </>
   );
 }
