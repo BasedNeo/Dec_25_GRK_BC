@@ -17,21 +17,22 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useInterval } from '@/hooks/useInterval';
 import { perfMonitor } from '@/lib/performanceMonitor';
+import { BRAIN_EMISSIONS } from '@/lib/constants';
 
 // ⚠️ LOCKED: BasedAI Brain Configuration
 const BRAIN_CONFIG = {
   name: 'Based Guardians Brain',
   wallet: '0xB0974F12C7BA2f1dC31f2C2545B71Ef1998815a4',
   token: '0x758db5be97ddf623a501f607ff822792a8f2d8f2',
-  communityShare: 0.10,
-  emissionsStart: new Date('2024-12-01T00:00:00Z').getTime(),
+  communityShare: BRAIN_EMISSIONS.treasuryPercentage / 100, // 10%
+  emissionsStart: BRAIN_EMISSIONS.startDate.getTime(),
   initialDeposit: 35000,
   
-  // Known emission rates (pre-halving)
-  brainAnnualOutput: 23500000,
-  brainDailyRate: 64384, // 23.5M / 365
-  communityDailyRate: 6438, // 10% of daily
-  communityAnnualRate: 2350000,
+  // Known emission rates (pre-halving) - from centralized config
+  brainAnnualOutput: BRAIN_EMISSIONS.dailyTotal * 365, // ~23.5M/year
+  brainDailyRate: BRAIN_EMISSIONS.dailyTotal, // 64,300/day
+  communityDailyRate: BRAIN_EMISSIONS.dailyToTreasury, // 6,430/day (10%)
+  communityAnnualRate: BRAIN_EMISSIONS.dailyToTreasury * 365, // ~2.35M/year
   
   // BasedAI L1 network config
   basedaiRpc: 'https://mainnet.basedaibridge.com/rpc/',
