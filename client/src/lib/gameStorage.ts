@@ -9,6 +9,15 @@ const MAX_STORAGE_SIZE_KB = 100;
 const STORAGE_VERSION = '1.0';
 
 /**
+ * Daily data structure for tracking daily limits
+ */
+export interface DailyData {
+  date: string;
+  gamesPlayed: number;
+  pointsEarned: number;
+}
+
+/**
  * Saved game state structure
  * Generic to support any game type
  */
@@ -282,6 +291,76 @@ export class GameStorageManager {
   }
   
   // ═══════════════════════════════════════════════════════════
+  // DAILY LIMITS TRACKING
+  // ═══════════════════════════════════════════════════════════
+  
+  /**
+   * Get daily data for a game (games played, points earned today)
+   */
+  static getDailyData(gameType: GameType, date: string): DailyData {
+    try {
+      const key = this.getDailyKey(gameType, date);
+      const data = localStorage.getItem(key);
+      
+      if (!data) {
+        return { date, gamesPlayed: 0, pointsEarned: 0 };
+      }
+      
+      return JSON.parse(data);
+    } catch (err) {
+      console.error(`[GameStorage] Failed to load daily data for ${gameType}:`, err);
+      return { date, gamesPlayed: 0, pointsEarned: 0 };
+    }
+  }
+  
+  /**
+   * Update daily data for a game
+   */
+  static updateDailyData(
+    gameType: GameType, 
+    date: string, 
+    updates: Partial<DailyData>
+  ): boolean {
+    try {
+      const current = this.getDailyData(gameType, date);
+      const updated: DailyData = {
+        ...current,
+        ...updates,
+        date,
+      };
+      
+      const key = this.getDailyKey(gameType, date);
+      localStorage.setItem(key, JSON.stringify(updated));
+      return true;
+    } catch (err) {
+      console.error(`[GameStorage] Failed to update daily data for ${gameType}:`, err);
+      return false;
+    }
+  }
+  
+  /**
+   * Check if daily limits are reached
+   */
+  static checkDailyLimits(
+    gameType: GameType,
+    maxGames: number = 10,
+    maxPoints: number = 50000
+  ): { canPlay: boolean; reason?: string; data: DailyData } {
+    const today = new Date().toDateString();
+    const data = this.getDailyData(gameType, today);
+    
+    if (data.gamesPlayed >= maxGames) {
+      return { canPlay: false, reason: 'Daily game limit reached (10 games)', data };
+    }
+    
+    if (data.pointsEarned >= maxPoints) {
+      return { canPlay: false, reason: 'Daily points cap reached (50,000 pts)', data };
+    }
+    
+    return { canPlay: true, data };
+  }
+  
+  // ═══════════════════════════════════════════════════════════
   // SETTINGS
   // ═══════════════════════════════════════════════════════════
   
@@ -521,6 +600,10 @@ export class GameStorageManager {
   
   private static getSettingsKey(gameType: GameType): string {
     return `${STORAGE_PREFIX}-settings-${gameType}`;
+  }
+  
+  private static getDailyKey(gameType: GameType, date: string): string {
+    return `${STORAGE_PREFIX}-daily-${gameType}-${date}`;
   }
 }
 

@@ -10,6 +10,7 @@ import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { trackEvent } from '@/lib/analytics';
 import { getGameConfig } from '@/lib/gameRegistry';
+import { GameStorageManager } from '@/lib/gameStorage';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 import {
@@ -335,6 +336,13 @@ export default function CyberBreach() {
         setGamePhase('gameover');
         playSound('gameover');
         
+        const today = new Date().toDateString();
+        const dailyData = GameStorageManager.getDailyData('cyber-breach', today);
+        GameStorageManager.updateDailyData('cyber-breach', today, {
+          gamesPlayed: dailyData.gamesPlayed + 1,
+          pointsEarned: dailyData.pointsEarned + state.score
+        });
+        
         if (state.score > 0) {
           submitScore(state.score, state.level);
           recordPlay();
@@ -395,6 +403,13 @@ export default function CyberBreach() {
         state.phase = 'gameover';
         setGamePhase('gameover');
         playSound('gameover');
+        
+        const today = new Date().toDateString();
+        const dailyData = GameStorageManager.getDailyData('cyber-breach', today);
+        GameStorageManager.updateDailyData('cyber-breach', today, {
+          gamesPlayed: dailyData.gamesPlayed + 1,
+          pointsEarned: dailyData.pointsEarned + state.score
+        });
         
         if (state.score > 0) {
           submitScore(state.score, state.level);
@@ -634,6 +649,16 @@ export default function CyberBreach() {
       toast({
         title: "Daily Limit Reached",
         description: access.reason || "Come back tomorrow!",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const dailyLimits = GameStorageManager.checkDailyLimits('cyber-breach', 10, 50000);
+    if (!dailyLimits.canPlay) {
+      toast({
+        title: "Daily Limit Reached",
+        description: dailyLimits.reason || "Come back tomorrow!",
         variant: "destructive",
       });
       return;
