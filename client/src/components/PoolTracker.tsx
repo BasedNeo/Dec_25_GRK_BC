@@ -13,8 +13,9 @@
  */
 
 import { calculateBackedValue } from "@/lib/mockData";
-import { useSubnetEmissions } from "@/hooks/useSubnetEmissions";
+import { useSubnetEmissions, calculateCommunityTreasury } from "@/hooks/useSubnetEmissions";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
+import { BRAIN_EMISSIONS } from "@/lib/constants";
 import React, { Suspense, lazy } from "react";
 import { motion } from "framer-motion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -108,14 +109,18 @@ export function PoolTracker() {
     const minted = mintedCount ?? 0;
     const sales = salesVolume ?? 0;
     
+    // === TIME-BASED TREASURY CALCULATION ===
+    // Uses Dec 1, 2024 start date and 6,430 $BASED/day
+    const treasuryBreakdown = calculateCommunityTreasury(minted, sales);
+    
     // === MINT REVENUE (69,420 $BASED per NFT) ===
     const totalMintRevenue = minted * MINT_PRICE;
-    const mintToTreasury = totalMintRevenue * (MINT_SPLIT.TREASURY_PERCENT / 100);
+    const mintToTreasury = treasuryBreakdown.fromMintFees;
     const mintToCreator = totalMintRevenue * (MINT_SPLIT.CREATOR_PERCENT / 100);
     
     // === ROYALTY REVENUE (10% of secondary sales) ===
     const totalRoyalties = sales * (ROYALTY_SPLIT.TOTAL_ROYALTY_PERCENT / 100);
-    const royaltyToTreasury = sales * (ROYALTY_SPLIT.TREASURY_PERCENT / 100);
+    const royaltyToTreasury = treasuryBreakdown.fromMarketplaceFees;
     const royaltyToRoyaltyWallet = sales * (ROYALTY_SPLIT.ROYALTY_WALLET_PERCENT / 100);
     const royaltyToCreator = sales * (ROYALTY_SPLIT.CREATOR_PERCENT / 100);
     
@@ -127,10 +132,10 @@ export function PoolTracker() {
     const creatorTotal = mintToCreator + royaltyToCreator + platformFeeToCreator;
     const royaltyWalletTotal = royaltyToRoyaltyWallet;
     
-    // Use REAL emission data from blockchain
-    const passiveEmissions = subnetEmissions.communityShare; // 10% of brain emissions
+    // Use TIME-BASED emission calculation (days since Dec 1, 2024 × 6,430)
+    const passiveEmissions = treasuryBreakdown.fromEmissions;
     
-    const totalTreasuryWithEmissions = treasuryTotal + passiveEmissions;
+    const totalTreasuryWithEmissions = treasuryBreakdown.total;
     const backedValuePerNFT = calculateBackedValue();
     
     return {
@@ -157,15 +162,21 @@ export function PoolTracker() {
       mintRevenue: mintToTreasury,
       royaltyRevenue: royaltyToTreasury,
       
-      // Treasury with emissions
+      // Treasury with emissions (TIME-BASED)
       passiveEmissions,
       totalTreasury: totalTreasuryWithEmissions,
       backedValuePerNFT,
-      currentDailyRate: subnetEmissions.dailyRate,
+      currentDailyRate: BRAIN_EMISSIONS.dailyToTreasury,
       nextHalvingIn: null,
       nextHalvingRate: null,
       minted,
       salesVolume: sales,
+      
+      // Time-based breakdown
+      daysActive: treasuryBreakdown.daysActive,
+      fromEmissions: treasuryBreakdown.fromEmissions,
+      fromMintFees: treasuryBreakdown.fromMintFees,
+      fromMarketplaceFees: treasuryBreakdown.fromMarketplaceFees,
       
       // Real emission data
       brainBalance: subnetEmissions.brainBalance,
@@ -236,9 +247,17 @@ export function PoolTracker() {
                   </DialogTitle>
                   <DialogDescription className="sr-only">Details about treasury calculation methodology</DialogDescription>
                 </DialogHeader>
-                <div className="text-gray-300 mt-4">
+                <div className="text-gray-300 mt-4 space-y-3">
                   <p className="text-base leading-relaxed">
-                    This calculation is an estimate based on certain factors that will be refined over time.
+                    Community Treasury receives funds from three sources:
+                  </p>
+                  <ul className="text-sm space-y-2 list-disc list-inside text-gray-400">
+                    <li><span className="text-purple-400">Brain Emissions:</span> 10% of daily Brain emissions (6,430 $BASED/day) starting December 1st, 2024</li>
+                    <li><span className="text-cyan-400">Mint Fees:</span> 70% of all NFT mint revenue</li>
+                    <li><span className="text-cyan-400">Marketplace Sales:</span> 2.5% of all secondary sales volume</li>
+                  </ul>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Updated: {lastUpdated ? lastUpdated.toLocaleString() : 'Loading...'}
                   </p>
                 </div>
                 <div className="mt-6">
@@ -351,24 +370,36 @@ export function PoolTracker() {
 
                       {/* From Royalties */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
-                        <span className="text-gray-400">From Royalties (2%)</span>
+                        <span className="text-gray-400">From Marketplace ({ROYALTY_SPLIT.TREASURY_PERCENT}%)</span>
                         <span className="text-cyan-400 font-semibold" data-testid="text-royalty-to-treasury">
                           {displayValue(treasuryData.royaltyToTreasury, 0)} $BASED
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 pl-2 -mt-2">
-                        {isDataReady ? `${formatNumber(treasuryData.salesVolume)} sales × 2%` : '-'}
+                        {isDataReady ? `${formatNumber(treasuryData.salesVolume)} volume × ${ROYALTY_SPLIT.TREASURY_PERCENT}%` : '-'}
                       </div>
 
-                      {/* From Emissions */}
+                      {/* From Emissions - TIME-BASED CALCULATION */}
                       <div className="flex justify-between items-center p-2 bg-black/30 rounded">
-                        <span className="text-gray-400">From $BRAIN Emissions (10%)</span>
+                        <span className="text-gray-400">From Brain Emissions (10%)</span>
                         <span className="text-purple-400 font-semibold" data-testid="text-emissions-to-treasury">
-                          {displayEmissionValue(treasuryData.passiveEmissions, 0)} $BASED
+                          {formatNumber(treasuryData.fromEmissions, 0)} $BASED
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 pl-2 -mt-2">
-                        Community share: {displayEmissionValue(treasuryData.currentDailyRate, 0)}/day
+                        {treasuryData.daysActive} days × {formatNumber(BRAIN_EMISSIONS.dailyToTreasury)}/day
+                      </div>
+                      
+                      {/* Days Active & Daily Rate */}
+                      <div className="mt-2 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs">
+                        <div className="flex justify-between text-gray-400">
+                          <span>Days Active:</span>
+                          <span className="text-purple-300">{treasuryData.daysActive} days (since Dec 1, 2024)</span>
+                        </div>
+                        <div className="flex justify-between text-gray-400 mt-1">
+                          <span>Daily Rate:</span>
+                          <span className="text-purple-300">{formatNumber(BRAIN_EMISSIONS.dailyToTreasury)} $BASED/day</span>
+                        </div>
                       </div>
                     </div>
 

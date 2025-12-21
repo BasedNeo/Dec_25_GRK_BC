@@ -48,15 +48,15 @@ export const ROYALTY_SPLITTER = "0xc87C7A5BA2A58bb7BB16799804582BA6C2E43279";
 // === REVENUE SPLIT CONFIGURATION ===
 // ⚠️ LOCKED: Revenue splits - Do NOT modify without explicit user request
 export const MINT_SPLIT = {
-  TREASURY_PERCENT: 51,  // LOCKED: 51% to community treasury
-  CREATOR_PERCENT: 49    // LOCKED: 49% to creator wallet
+  TREASURY_PERCENT: 70,  // LOCKED: 70% to community treasury
+  CREATOR_PERCENT: 30    // LOCKED: 30% to creator wallet
 };
 
 // ⚠️ LOCKED: Royalty splits - Do NOT modify without explicit user request
 export const ROYALTY_SPLIT = {
   TOTAL_ROYALTY_PERCENT: 10,  // LOCKED: 10% total royalty on sales
-  TREASURY_PERCENT: 2,         // LOCKED: 2% to community treasury
-  ROYALTY_WALLET_PERCENT: 4,   // LOCKED: 4% to royalty wallet
+  TREASURY_PERCENT: 2.5,       // LOCKED: 2.5% to community treasury
+  ROYALTY_WALLET_PERCENT: 3.5, // LOCKED: 3.5% to royalty wallet
   CREATOR_PERCENT: 4           // LOCKED: 4% to creator
 };
 
