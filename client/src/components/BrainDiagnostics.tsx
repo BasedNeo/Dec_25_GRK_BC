@@ -250,9 +250,9 @@ export function BrainDiagnostics() {
               </motion.div>
               
               <div className="flex flex-col items-center p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg min-w-[100px]">
-                <span className="text-[10px] text-muted-foreground mb-1">Brain Wallet</span>
+                <span className="text-[10px] text-muted-foreground mb-1">Community Treasury</span>
                 <span className="text-sm font-mono font-bold text-cyan-400">
-                  {formatNumber(emissions.brainBalance, 0)}
+                  {formatNumber(emissions.treasuryBreakdown?.total ?? 0, 0)}
                 </span>
                 <span className="text-[10px] text-cyan-400">$BASED</span>
               </div>
@@ -311,9 +311,9 @@ export function BrainDiagnostics() {
             >
               <span className="text-[10px] text-muted-foreground font-mono uppercase">Passive Emissions</span>
               <div className="text-xl font-mono font-bold text-amber-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.totalReceived, 0)}
+                {emissions.loading ? '...' : formatNumber(emissions.treasuryBreakdown?.fromEmissions ?? 0, 0)}
               </div>
-              <span className="text-[10px] text-amber-500/70">since Dec 1 ({emissions.daysActive} days)</span>
+              <span className="text-[10px] text-amber-500/70">since Dec 1 ({emissions.treasuryBreakdown?.daysActive ?? 0} days)</span>
             </motion.div>
 
             <motion.div
@@ -322,11 +322,11 @@ export function BrainDiagnostics() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">Wallet Balance</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">Treasury Balance</span>
               <div className="text-xl font-mono font-bold text-cyan-400 mt-1">
-                {emissions.loading ? '...' : formatNumber(emissions.brainBalance, 0)}
+                {emissions.loading ? '...' : formatNumber(emissions.treasuryBreakdown?.total ?? 0, 0)}
               </div>
-              <span className="text-[10px] text-cyan-500/70">incl. {formatNumber(emissions.initialDeposit, 0)} deposit</span>
+              <span className="text-[10px] text-cyan-500/70">emissions + mint fees + royalties</span>
             </motion.div>
 
             <motion.div

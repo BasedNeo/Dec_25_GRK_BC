@@ -1,0 +1,329 @@
+CRITICAL EMERGENCY FIX: BRAIN WALLET & EMISSIONS CALCULATIONS FUNDAMENTALLY BROKEN
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL ISSUE - IMMEDIATE FIX REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+Brain Wallet showing 73,583,603 $BASED when correct amount is ~128,600 $BASED
+Text shows "since Dec 1 (385 days)" when Dec 1 → Dec 20 = 20 days only
+System is calculating from wrong start date (385 days ago instead of Dec 1, 2024)
+
+THIS IS A 570X INFLATION ERROR IN DISPLAYED AMOUNTS.
+
+
+═══════════════════════════════════════════════════════════════════
+CORRECT PARAMETERS (LOCKED - DO NOT CHANGE)
+═══════════════════════════════════════════════════════════════════
+
+EMISSION START DATE: December 1, 2024 00:00:00 UTC
+DAILY EMISSION RATE: 6,430 $BASED/day (10% of Brain total)
+CURRENT DATE: December 20, 2024
+DAYS ELAPSED: 20 days
+
+CORRECT CALCULATION:
+Brain Wallet = 20 days × 6,430 $BASED/day = 128,600 $BASED
+(Plus any initial deposit if applicable)
+
+WRONG CALCULATION (CURRENT):
+System is using 385 days × some rate = 73,583,603 $BASED ❌
+
+
+═══════════════════════════════════════════════════════════════════
+ROOT CAUSE ANALYSIS
+═══════════════════════════════════════════════════════════════════
+
+FIND AND FIX:
+1. Where is "385 days" coming from?
+   - Search for date calculations that subtract from genesis/deployment
+   - Should subtract from Dec 1, 2024 only
+
+2. Where is 73,583,603 calculated?
+   - Likely multiplying 385 days by wrong daily rate
+   - OR using cumulative emissions from contract deployment
+
+3. Files to check:
+   - client/src/hooks/useSubnetEmissions.ts
+   - client/src/components/PoolTracker.tsx
+   - client/src/lib/constants.ts
+   - Any file calculating Brain wallet balance
+
+
+═══════════════════════════════════════════════════════════════════
+IMPLEMENTATION FIX
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: ADD LOCKED CONSTANTS
+File: client/src/lib/constants.ts
+
+Add these constants and DO NOT allow them to be changed:
+
+// LOCKED CONSTANTS - DO NOT MODIFY
+export const BRAIN_EMISSIONS_CONFIG = Object.freeze({
+  // Emission start date - when Brain started sending to treasury
+  START_DATE: new Date('2024-12-01T00:00:00Z'),
+  
+  // Daily emission rates
+  TOTAL_BRAIN_DAILY: 64300, // Total Brain emissions per day
+  TREASURY_PERCENTAGE: 10, // 10% goes to Community Treasury
+  DAILY_TO_TREASURY: 6430, // 10% of 64,300 = 6,430 per day
+  
+  // Halving event
+  NEXT_HALVING_DATE: new Date('2026-01-17T00:00:00Z'),
+  NEXT_HALVING_BLOCK: 2917111,
+  
+  // Initial deposit (if any)
+  INITIAL_DEPOSIT: 35000, // $BASED deposited at start
+});
+
+// Helper function to calculate days since emission start
+export function getDaysSinceEmissionStart(): number {
+  const now = new Date();
+  const startDate = BRAIN_EMISSIONS_CONFIG.START_DATE;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / msPerDay);
+  
+  // Safety check: never return negative days
+  return Math.max(0, daysSinceStart);
+}
+
+// Calculate current Brain wallet balance
+export function calculateBrainWalletBalance(): {
+  daysActive: number;
+  emissionsAccumulated: number;
+  initialDeposit: number;
+  totalBalance: number;
+} {
+  const daysActive = getDaysSinceEmissionStart();
+  const emissionsAccumulated = daysActive * BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY;
+  const initialDeposit = BRAIN_EMISSIONS_CONFIG.INITIAL_DEPOSIT;
+  const totalBalance = emissionsAccumulated + initialDeposit;
+  
+  return {
+    daysActive,
+    emissionsAccumulated,
+    initialDeposit,
+    totalBalance
+  };
+}
+
+
+STEP 2: UPDATE useSubnetEmissions HOOK
+File: client/src/hooks/useSubnetEmissions.ts
+
+FIND all calculations related to:
+- Brain wallet balance
+- Community treasury
+- Passive emissions
+- Days since start
+
+REPLACE with:
+
+import { 
+  BRAIN_EMISSIONS_CONFIG, 
+  getDaysSinceEmissionStart,
+  calculateBrainWalletBalance 
+} from '@/lib/constants';
+
+// In the hook's return data:
+const brainWalletData = calculateBrainWalletBalance();
+
+return {
+  // ... other data
+  
+  brainWallet: brainWalletData.totalBalance,
+  brainWalletBreakdown: {
+    daysActive: brainWalletData.daysActive,
+    dailyRate: BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY,
+    accumulated: brainWalletData.emissionsAccumulated,
+    initialDeposit: brainWalletData.initialDeposit,
+    total: brainWalletData.totalBalance
+  },
+  
+  communityTreasury: brainWalletData.totalBalance, // Same as brain wallet
+  
+  passiveEmissions: {
+    total: brainWalletData.emissionsAccumulated,
+    daysSinceStart: brainWalletData.daysActive,
+    startDate: BRAIN_EMISSIONS_CONFIG.START_DATE,
+    dailyRate: BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY
+  },
+  
+  nextHalving: {
+    date: BRAIN_EMISSIONS_CONFIG.NEXT_HALVING_DATE,
+    block: BRAIN_EMISSIONS_CONFIG.NEXT_HALVING_BLOCK,
+    daysUntil: Math.floor(
+      (BRAIN_EMISSIONS_CONFIG.NEXT_HALVING_DATE.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    )
+  }
+};
+
+
+STEP 3: UPDATE DISPLAY COMPONENTS
+File: client/src/components/PoolTracker.tsx (or wherever Emission Flow is displayed)
+
+UPDATE to show:
+
+EMISSION FLOW:
+┌─────────────────────────────────────────────────────────────┐
+│ Brain Wallet: 128,600 $BASED                                │
+│ (20 days × 6,430/day since Dec 1)                          │
+└─────────────────────────────────────────────────────────────┘
+
+PASSIVE EMISSIONS:
+┌─────────────────────────────────────────────────────────────┐
+│ 128,600 $BASED                                              │
+│ since Dec 1 (20 days) ← FIX THIS TEXT                      │
+└─────────────────────────────────────────────────────────────┘
+
+WALLET BALANCE:
+┌─────────────────────────────────────────────────────────────┐
+│ 163,600 $BASED                                              │
+│ incl. 35,000 deposit + 128,600 emissions                    │
+└─────────────────────────────────────────────────────────────┘
+
+
+STEP 4: REMOVE WRONG CALCULATIONS
+Search entire codebase for:
+- "385" or "385 days"
+- Any date older than Dec 1, 2024 being used for emission calculations
+- Any calculation resulting in 73,583,603 or 73,548,603
+- Genesis block dates being used for treasury calculations
+
+DELETE or REPLACE these calculations with the correct ones from constants.ts
+
+
+STEP 5: ADD HALVING LOGIC (FUTURE-PROOF)
+File: client/src/lib/constants.ts
+
+Add function to handle halving:
+
+export function getCurrentDailyEmissionRate(): number {
+  const now = new Date();
+  const halvingDate = BRAIN_EMISSIONS_CONFIG.NEXT_HALVING_DATE;
+  
+  if (now < halvingDate) {
+    // Before halving: 6,430 per day
+    return BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY;
+  } else {
+    // After halving: 3,215 per day (half of 6,430)
+    return BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY / 2;
+  }
+}
+
+export function calculateBrainWalletBalanceWithHalving(): {
+  daysActive: number;
+  emissionsAccumulated: number;
+  initialDeposit: number;
+  totalBalance: number;
+} {
+  const now = new Date();
+  const startDate = BRAIN_EMISSIONS_CONFIG.START_DATE;
+  const halvingDate = BRAIN_EMISSIONS_CONFIG.NEXT_HALVING_DATE;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  
+  const totalDays = Math.floor((now.getTime() - startDate.getTime()) / msPerDay);
+  const daysActive = Math.max(0, totalDays);
+  
+  let emissionsAccumulated = 0;
+  
+  if (now < halvingDate) {
+    // All days at full rate
+    emissionsAccumulated = daysActive * BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY;
+  } else {
+    // Days before halving at full rate
+    const daysBeforeHalving = Math.floor(
+      (halvingDate.getTime() - startDate.getTime()) / msPerDay
+    );
+    const emissionsBeforeHalving = daysBeforeHalving * BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY;
+    
+    // Days after halving at half rate
+    const daysAfterHalving = daysActive - daysBeforeHalving;
+    const emissionsAfterHalving = daysAfterHalving * (BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY / 2);
+    
+    emissionsAccumulated = emissionsBeforeHalving + emissionsAfterHalving;
+  }
+  
+  const totalBalance = emissionsAccumulated + BRAIN_EMISSIONS_CONFIG.INITIAL_DEPOSIT;
+  
+  return {
+    daysActive,
+    emissionsAccumulated,
+    initialDeposit: BRAIN_EMISSIONS_CONFIG.INITIAL_DEPOSIT,
+    totalBalance
+  };
+}
+
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+AFTER FIX, VERIFY:
+□ Brain Wallet shows: 128,600 $BASED (not 73M)
+□ Text shows: "since Dec 1 (20 days)" (not 385 days)
+□ Passive Emissions shows: 128,600 $BASED
+□ Community Daily shows: ~6,430/day ✓ (already correct)
+□ Wallet Balance shows: 163,600 $BASED (128,600 + 35,000 deposit)
+□ Next Halving shows: Jan 17, 2026 (27 days remaining)
+
+CALCULATION CHECK:
+As of Dec 20, 2024:
+- Days since Dec 1: 20 days
+- Daily rate: 6,430 $BASED
+- Emissions: 20 × 6,430 = 128,600 $BASED ✓
+- Plus deposit: 128,600 + 35,000 = 163,600 $BASED ✓
+
+Tomorrow (Dec 21):
+- Days: 21
+- Emissions: 21 × 6,430 = 135,030 $BASED
+- Plus deposit: 135,030 + 35,000 = 170,030 $BASED
+
+After halving (Jan 17, 2026):
+- Days before: 48 days × 6,430 = 308,640 $BASED
+- Days after: use 3,215/day rate
+
+
+═══════════════════════════════════════════════════════════════════
+CONSOLE LOGGING FOR DEBUGGING
+═══════════════════════════════════════════════════════════════════
+
+ADD these console logs to verify:
+
+console.log('═══ BRAIN EMISSIONS DEBUG ═══');
+console.log('Start Date:', BRAIN_EMISSIONS_CONFIG.START_DATE.toISOString());
+console.log('Current Date:', new Date().toISOString());
+console.log('Days Elapsed:', getDaysSinceEmissionStart());
+console.log('Daily Rate:', BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY);
+console.log('Expected Balance:', getDaysSinceEmissionStart() * BRAIN_EMISSIONS_CONFIG.DAILY_TO_TREASURY);
+console.log('Actual Displayed Balance:', /* current value */);
+console.log('═══════════════════════════');
+
+
+═══════════════════════════════════════════════════════════════════
+LOCK DOWN CALCULATIONS
+═══════════════════════════════════════════════════════════════════
+
+TO PREVENT FUTURE CHANGES:
+1. Use Object.freeze() on BRAIN_EMISSIONS_CONFIG
+2. Add TypeScript readonly modifiers
+3. Add comments: // DO NOT MODIFY - Locked emission parameters
+4. Create single source of truth in constants.ts
+5. All other files import from constants.ts only
+6. No inline date calculations anywhere
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+CONFIRM:
+1. Brain Wallet: 128,600 $BASED ✓
+2. Days text: "since Dec 1 (20 days)" ✓
+3. Passive Emissions: 128,600 $BASED ✓
+4. All calculations use Dec 1, 2024 start date ✓
+5. Halving logic ready for Jan 17, 2026 ✓
+6. Calculations locked and cannot be accidentally changed ✓
+7. Console shows correct debug values ✓
+
+SCREENSHOT after fix showing corrected values.
