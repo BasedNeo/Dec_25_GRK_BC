@@ -713,20 +713,24 @@ export function UserStats() {
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <motion.div 
-              className="relative mb-8"
+              className="relative mb-8 cursor-pointer group"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 100 }}
+              onClick={openConnectModal}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              data-testid="button-stats-connect-wallet"
             >
-              <div className="w-40 h-40 rounded-full border-2 border-cyan-500/30 flex items-center justify-center bg-gradient-to-br from-black to-gray-900">
-                <Lock className="w-20 h-20 text-cyan-400/50" />
+              <div className="w-40 h-40 rounded-full border-2 border-cyan-500/30 group-hover:border-cyan-400/60 flex items-center justify-center bg-gradient-to-br from-black to-gray-900 group-hover:shadow-[0_0_30px_rgba(0,255,255,0.3)] transition-all duration-300">
+                <Lock className="w-20 h-20 text-cyan-400/50 group-hover:text-cyan-400 transition-colors duration-300" />
               </div>
               <div className="absolute inset-0 border-t-2 border-cyan-400 rounded-full animate-spin" style={{ animationDuration: '3s' }} />
               <div className="absolute inset-2 border-b-2 border-purple-400 rounded-full animate-spin" style={{ animationDuration: '4s', animationDirection: 'reverse' }} />
             </motion.div>
             <h2 className="text-3xl font-orbitron font-bold text-white mb-4 text-center">Connect to View Your Stats</h2>
             <p className="text-gray-400 text-center max-w-md mb-6">
-              Link your wallet to unlock your Guardian journey and track your progress through the Giga Brain Galaxy.
+              Tap the icon above or link your wallet to unlock your Guardian journey and track your progress through the Giga Brain Galaxy.
             </p>
             <div className="flex gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-2"><Rocket className="w-4 h-4 text-cyan-500" /> 8 Levels</div>

@@ -359,12 +359,26 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                         }
 
                         return (
-                          <div style={{ display: 'flex', gap: 12 }}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <Button 
                               onClick={openAccountModal} 
                               className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:border-cyan-400/60 hover:shadow-[0_0_20px_rgba(0,255,255,0.2)] font-orbitron text-xs tracking-[0.1em] px-5 py-2.5 rounded-xl transition-all duration-300"
+                              title="Click to view wallet options"
                             >
                               {account.displayName}
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                disconnect();
+                                showToast("Wallet disconnected", "info");
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="p-2 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                              title="Disconnect wallet"
+                              data-testid="button-desktop-disconnect"
+                            >
+                              <LogOut size={16} />
                             </Button>
                           </div>
                         );
