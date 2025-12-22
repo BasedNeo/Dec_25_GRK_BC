@@ -1,22 +1,5 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { 
-  metaMaskWallet, 
-  rabbyWallet, 
-  coinbaseWallet, 
-  walletConnectWallet,
-  injectedWallet,
-  trustWallet, 
-  okxWallet,
-  braveWallet,
-  rainbowWallet,
-  phantomWallet,
-  zerionWallet,
-  safeWallet,
-  argentWallet,
-  ledgerWallet,
-  uniswapWallet,
-} from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
 
@@ -45,7 +28,7 @@ const basedL1 = {
   testnet: false,
 } as const satisfies Chain;
 
-const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '25a4673950aaa1276b2fa76417ef9633';
+const projectId = '25a4673950aaa1276b2fa76417ef9633';
 
 export const config = getDefaultConfig({
   appName: 'Based Guardians',
@@ -66,38 +49,6 @@ export const config = getDefaultConfig({
     ]),
   },
   ssr: false,
-  wallets: [
-    {
-      groupName: 'Popular',
-      wallets: [
-        () => metaMaskWallet({ projectId }),
-        () => coinbaseWallet({ appName: 'Based Guardians' }),
-        () => trustWallet({ projectId }),
-        () => walletConnectWallet({ projectId }),
-        () => rainbowWallet({ projectId }),
-        injectedWallet,
-      ],
-    },
-    {
-      groupName: 'More Options',
-      wallets: [
-        () => uniswapWallet({ projectId }),
-        rabbyWallet,
-        () => phantomWallet(),
-        () => zerionWallet({ projectId }),
-        () => okxWallet({ projectId }),
-        braveWallet,
-      ],
-    },
-    {
-      groupName: 'Advanced',
-      wallets: [
-        () => ledgerWallet({ projectId }),
-        safeWallet,
-        () => argentWallet({ projectId }),
-      ],
-    },
-  ],
 });
 
 export { basedL1 };
