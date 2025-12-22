@@ -12,6 +12,7 @@ export interface FilterState {
   rarities: string[];
   sortBy: 'price_asc' | 'price_desc' | 'recent' | 'oldest';
   traits: Record<string, string[]>;
+  collection: string;
 }
 
 const RARITY_OPTIONS = [

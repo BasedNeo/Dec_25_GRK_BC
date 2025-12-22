@@ -1,0 +1,71 @@
+FIX CRITICAL BUG: Collection cards link to marketplace without passing collection address
+
+PROBLEM: When users click a collection card on /collections page, they go to /marketplace but the collection context is lost. The marketplace shows default NFTs instead of that specific collection's NFTs.
+
+TWO FILES NEED CHANGES:
+
+═══════════════════════════════════════════════════════════════════
+FILE 1: client/src/pages/Collections.tsx
+═══════════════════════════════════════════════════════════════════
+
+FIND the CollectionCard function (around line 215-225) and locate this line:
+
+<Link href="/marketplace">
+
+CHANGE IT TO:
+
+<Link href={`/marketplace?collection=${collection.contractAddress}`}>
+
+This passes the collection's contract address as a URL parameter.
+
+═══════════════════════════════════════════════════════════════════
+FILE 2: client/src/pages/Marketplace.tsx
+═══════════════════════════════════════════════════════════════════
+
+STEP A: Find the FilterState interface (around line 9-16) and ADD a collection field:
+
+interface FilterState {
+  minPrice: string;
+  maxPrice: string;
+  rarities: string[];
+  sortBy: 'price_asc' | 'price_desc' | 'recent' | 'oldest';
+  traits: Record<string, string[]>;
+  collection: string;  // ADD THIS LINE
+}
+
+STEP B: Find DEFAULT_FILTERS constant (around line 25-31) and ADD collection:
+
+const DEFAULT_FILTERS: FilterState = {
+  minPrice: '',
+  maxPrice: '',
+  rarities: [],
+  sortBy: 'recent',
+  traits: {},
+  collection: ''  // ADD THIS LINE
+};
+
+STEP C: Find the parseFiltersFromURL function (around line 33-42) and ADD collection parsing:
+
+function parseFiltersFromURL(params: URLSearchParams): FilterState {
+  const rarityParam = params.get('rarity');
+  return {
+    minPrice: params.get('minPrice') || '',
+    maxPrice: params.get('maxPrice') || '',
+    rarities: rarityParam ? rarityParam.split(',').filter(r => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'].includes(r)) : [],
+    sortBy: (params.get('sortBy') as FilterState['sortBy']) || 'recent',
+    traits: {},
+    collection: params.get('collection') || ''  // ADD THIS LINE
+  };
+}
+
+═══════════════════════════════════════════════════════════════════
+VERIFICATION:
+═══════════════════════════════════════════════════════════════════
+
+After making changes:
+1. Go to /collections page
+2. Click any collection card
+3. URL should now show /marketplace?collection=0x...
+4. Check browser console - should see collection param logged
+
+DO NOT change any other files. DO NOT refactor. Just these minimal targeted changes.

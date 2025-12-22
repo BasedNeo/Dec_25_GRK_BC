@@ -1,0 +1,122 @@
+EMERGENCY FIX: App is stuck on loading screen and won't start
+
+The live app at https://based-command-d-app-sonnet--ryanbonelli.replit.app shows the loading spinner forever. React app is not mounting.
+
+DIAGNOSE AND FIX THE STARTUP CRASH:
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: CHECK SERVER LOGS FOR ERRORS
+═══════════════════════════════════════════════════════════════════
+
+Look at the Replit console/logs for any of these:
+- "Error" or "error" messages
+- "Failed to compile" messages
+- "Module not found" errors
+- Stack traces
+- Repeated log messages (indicating infinite loops)
+
+REPORT what you find in the logs.
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CHECK FOR BLOCKING CODE IN STARTUP FILES
+═══════════════════════════════════════════════════════════════════
+
+CHECK FILE: client/src/main.tsx
+
+Look for any code BEFORE the createRoot().render() call that might be blocking:
+- await statements without try/catch
+- fetch() calls that could timeout
+- localStorage operations that could fail
+
+CHECK FILE: client/src/App.tsx
+
+Look in the App() component's useEffect for:
+- connectionManager.startAutoCheck() - this runs on every page load
+- Any other initialization that could hang
+
+CHECK FILE: client/src/lib/connectionManager.ts
+
+Look for:
+- Infinite loops (while(true), setInterval without cleanup)
+- Blocking network calls
+- Promises that never resolve
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: ADD EMERGENCY SAFETY WRAPPER
+═══════════════════════════════════════════════════════════════════
+
+In client/src/App.tsx, find this useEffect:
+
+useEffect(() => {
+  connectionManager.startAutoCheck(30000);
+  console.log('[App] Connection manager initialized');
+  
+  return () => {
+    connectionManager.stopAutoCheck();
+  };
+}, []);
+
+WRAP IT with try/catch to prevent crashes:
+
+useEffect(() => {
+  try {
+    connectionManager.startAutoCheck(30000);
+    console.log('[App] Connection manager initialized');
+  } catch (error) {
+    console.error('[App] Connection manager failed to initialize:', error);
+  }
+  
+  return () => {
+    try {
+      connectionManager.stopAutoCheck();
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+  };
+}, []);
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: CHECK LAZY IMPORTS
+═══════════════════════════════════════════════════════════════════
+
+CHECK FILE: client/src/lib/lazyWithRetry.ts
+
+The routeImports object imports all pages. If ANY of these imports fail, the app crashes.
+
+Look for any import that might be broken:
+- Missing files
+- Circular dependencies
+- Syntax errors in the imported pages
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: TEMPORARILY DISABLE BACKGROUND PROCESSES
+═══════════════════════════════════════════════════════════════════
+
+In server/index.ts, find the collection sync code (around line 132-155) and the activity cache refresh (around line 124-130).
+
+ADD early exit conditions:
+
+// For activity cache refresh (line 126):
+refreshActivityCache().catch(err => {
+  console.error('[ActivityCache] Initial fetch failed:', err);
+  // Don't crash the server - continue with empty cache
+});
+
+// For collection sync (line 133-155):
+// Add this at the start of the async block:
+if (process.env.SKIP_COLLECTION_SYNC === 'true') {
+  console.log('[Server] Skipping collection sync (disabled)');
+  return;
+}
+
+═══════════════════════════════════════════════════════════════════
+AFTER MAKING CHANGES:
+═══════════════════════════════════════════════════════════════════
+
+1. Save all files
+2. Restart the Replit (Stop and Start)
+3. Open browser dev console (F12 → Console tab)
+4. Try to load the app
+5. REPORT any error messages in the browser console
+
+The goal is to get the app to at least render the home page, even if some features are broken.

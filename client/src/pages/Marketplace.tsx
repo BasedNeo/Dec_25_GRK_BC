@@ -27,7 +27,8 @@ const DEFAULT_FILTERS: FilterState = {
   maxPrice: '',
   rarities: [],
   sortBy: 'recent',
-  traits: {}
+  traits: {},
+  collection: ''
 };
 
 function parseFiltersFromURL(params: URLSearchParams): FilterState {
@@ -37,7 +38,8 @@ function parseFiltersFromURL(params: URLSearchParams): FilterState {
     maxPrice: params.get('maxPrice') || '',
     rarities: rarityParam ? rarityParam.split(',').filter(r => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'].includes(r)) : [],
     sortBy: (params.get('sortBy') as FilterState['sortBy']) || 'recent',
-    traits: {}
+    traits: {},
+    collection: params.get('collection') || ''
   };
 }
 
