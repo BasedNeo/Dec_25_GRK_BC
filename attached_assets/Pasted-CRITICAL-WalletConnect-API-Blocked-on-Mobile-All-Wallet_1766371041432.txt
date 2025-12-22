@@ -1,0 +1,472 @@
+CRITICAL: WalletConnect API Blocked on Mobile - All Wallets Blank
+
+═══════════════════════════════════════════════════════════════════
+ISSUE CONFIRMED
+═══════════════════════════════════════════════════════════════════
+
+1. MetaMask button does nothing on mobile
+2. "All Wallets" opens but shows blank/spinning screen
+3. Trust/Coinbase/Uniswap work fine
+4. Tested on Safari AND Chrome on mobile - same issue
+
+ROOT CAUSE: Mobile browser cannot reach WalletConnect API to load wallet list
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: VERIFY PROJECT ID IS IN BUILD
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+VERIFY this file contains the Project ID:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    name: 'BASED',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.basedai.network'],
+    },
+    public: {
+      http: ['https://rpc.basedai.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'BasedAI Explorer',
+      url: 'https://explorer.basedai.network',
+    },
+  },
+  testnet: false,
+});
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: '25a4673950aaa1276b2fa76417ef9633', // CRITICAL: Must be here
+  chains: [basedaiChain],
+  ssr: false,
+  autoConnect: false,
+});
+
+// DIAGNOSTIC: Log config to verify Project ID
+console.log('🔧 Wagmi Config Loaded:', {
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  chains: config.chains.map(c => c.name),
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: ADD API ACCESSIBILITY TEST ON APP LOAD
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this useEffect at the TOP of your App component (after imports):
+
+useEffect(() => {
+  // CRITICAL: Test if WalletConnect API is reachable
+  const projectId = '25a4673950aaa1276b2fa76417ef9633';
+  const apiUrl = `https://explorer-api.walletconnect.com/v3/wallets?projectId=${projectId}`;
+  
+  console.log('═══════════════════════════════════════════════');
+  console.log('🔍 TESTING WALLETCONNECT API ACCESS');
+  console.log('═══════════════════════════════════════════════');
+  console.log('API URL:', apiUrl);
+  console.log('Device:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'MOBILE' : 'DESKTOP');
+  console.log('Browser:', navigator.userAgent);
+  console.log('');
+  
+  fetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+    },
+  })
+    .then(response => {
+      console.log('✅ API Response Status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      }
+      
+      return response.json();
+    })
+    .then(data => {
+      const walletCount = Object.keys(data.listings || {}).length;
+      console.log('✅ WalletConnect API IS ACCESSIBLE!');
+      console.log('✅ Total wallets available:', walletCount);
+      
+      // Check for MetaMask
+      const wallets = Object.values(data.listings || {}) as any[];
+      const metaMask = wallets.find(w => 
+        w.name?.toLowerCase().includes('metamask')
+      );
+      
+      if (metaMask) {
+        console.log('✅ MetaMask found in registry');
+      } else {
+        console.warn('⚠️ MetaMask NOT in registry');
+      }
+      
+      console.log('');
+      console.log('🎯 DIAGNOSIS: API works - issue is elsewhere');
+      console.log('═══════════════════════════════════════════════');
+    })
+    .catch(error => {
+      console.error('❌ WALLETCONNECT API ERROR:', error.message);
+      console.error('');
+      console.error('🚨 THIS IS WHY "ALL WALLETS" SHOWS BLANK!');
+      console.error('');
+      console.error('Possible causes:');
+      console.error('  1. CORS blocking walletconnect.com from your domain');
+      console.error('  2. CSP headers blocking the request');
+      console.error('  3. Network/firewall blocking walletconnect.com');
+      console.error('  4. Invalid Project ID');
+      console.error('');
+      console.error('Try opening this URL in a new tab:');
+      console.error(apiUrl);
+      console.error('');
+      console.log('═══════════════════════════════════════════════');
+    });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: UPDATE SERVER CORS TO ALLOW WALLETCONNECT
+═══════════════════════════════════════════════════════════════════
+
+File: server/index.ts
+
+FIND where CORS is configured and UPDATE:
+
+import cors from 'cors';
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5000',
+      /\.replit\.app$/,
+      /\.repl\.co$/,
+      /\.walletconnect\.com$/,
+      /\.walletconnect\.org$/,
+    ];
+    
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return origin === allowed;
+      }
+      return allowed.test(origin);
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(null, true); // Allow anyway for now
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  maxAge: 86400,
+}));
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: REMOVE OR FIX CSP HEADERS
+═══════════════════════════════════════════════════════════════════
+
+File: server/index.ts
+
+FIND any Content-Security-Policy headers and REPLACE with this:
+
+app.use((req, res, next) => {
+  // CRITICAL: Allow WalletConnect domains
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "connect-src 'self' https://*.basedai.network https://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.com https://explorer-api.walletconnect.com https://relay.walletconnect.com https://*.coingecko.com https://*.coinpaprika.com *; " +
+    "img-src 'self' data: https: blob: *; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "font-src 'self' data: https:; " +
+    "frame-src 'self' https:; " +
+    "worker-src 'self' blob:;"
+  );
+  
+  // CRITICAL: Allow cross-origin requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  
+  next();
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: ADD PRECONNECT FOR WALLETCONNECT DOMAINS
+═══════════════════════════════════════════════════════════════════
+
+File: client/index.html
+
+FIND the <head> section and ADD:
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Based Guardians</title>
+  
+  <!-- CRITICAL: Preconnect to WalletConnect -->
+  <link rel="preconnect" href="https://explorer-api.walletconnect.com" crossorigin />
+  <link rel="preconnect" href="https://relay.walletconnect.com" crossorigin />
+  <link rel="dns-prefetch" href="https://explorer-api.walletconnect.com" />
+  <link rel="dns-prefetch" href="https://relay.walletconnect.com" />
+  
+</head>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: ADD WALLETCONNECT MODAL EVENT LOGGER
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this useEffect to log WalletConnect modal events:
+
+useEffect(() => {
+  const observer = new MutationObserver(() => {
+    // Check for WalletConnect modal
+    const wcModal = document.querySelector('[data-rk]');
+    
+    if (wcModal) {
+      console.log('═══════════════════════════════════════════════');
+      console.log('📱 WALLETCONNECT MODAL OPENED');
+      console.log('═══════════════════════════════════════════════');
+      
+      // Check for loading state
+      setTimeout(() => {
+        const loadingSpinner = wcModal.querySelector('[class*="loading"], [class*="spinner"]');
+        const walletButtons = wcModal.querySelectorAll('button[type="button"]');
+        
+        console.log('Wallet buttons found:', walletButtons.length);
+        
+        if (loadingSpinner) {
+          console.warn('⚠️ LOADING SPINNER DETECTED - Wallets not loading!');
+        }
+        
+        if (walletButtons.length === 0) {
+          console.error('❌ NO WALLET BUTTONS - This is the blank screen issue!');
+          console.error('');
+          console.error('Check these things:');
+          console.error('  1. Did the API test above show "✅ WalletConnect API IS ACCESSIBLE"?');
+          console.error('  2. If yes, the issue is in RainbowKit rendering');
+          console.error('  3. If no, the API is blocked - check CORS/CSP/Network');
+        } else {
+          console.log('✅ Wallet buttons loaded successfully');
+          walletButtons.forEach((btn, i) => {
+            console.log(`  ${i + 1}. ${btn.textContent?.trim()}`);
+          });
+        }
+        
+        console.log('═══════════════════════════════════════════════');
+      }, 2000);
+    }
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  return () => observer.disconnect();
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: UPDATE RAINBOWKIT VERSION (IF NEEDED)
+═══════════════════════════════════════════════════════════════════
+
+File: package.json
+
+VERIFY you have recent versions:
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.1.0",
+    "wagmi": "^2.5.0",
+    "viem": "^2.7.0"
+  }
+}
+
+If your versions are older (like 1.x.x), UPDATE by running in Replit Shell:
+
+npm install @rainbow-me/rainbowkit@latest wagmi@latest viem@latest
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: ADD MANUAL WALLETCONNECT TEST BUTTON (TEMPORARY)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this temporary test button to see API response directly:
+
+function App() {
+  const [testResult, setTestResult] = useState<string>('');
+  
+  const testWalletConnectAPI = async () => {
+    try {
+      const response = await fetch(
+        'https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633'
+      );
+      
+      const data = await response.json();
+      const walletCount = Object.keys(data.listings || {}).length;
+      
+      setTestResult(`✅ API works! Found ${walletCount} wallets`);
+      console.log('API response:', data);
+    } catch (error: any) {
+      setTestResult(`❌ API failed: ${error.message}`);
+      console.error('API error:', error);
+    }
+  };
+  
+  return (
+    <div>
+      {/* TEMPORARY TEST BUTTON - REMOVE AFTER DEBUGGING */}
+      <button
+        onClick={testWalletConnectAPI}
+        style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 9999999,
+          padding: '12px',
+          background: '#06b6d4',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+        }}
+      >
+        Test WC API
+      </button>
+      {testResult && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '60px',
+            right: '10px',
+            zIndex: 9999999,
+            padding: '12px',
+            background: testResult.includes('✅') ? '#10b981' : '#ef4444',
+            color: 'white',
+            borderRadius: '8px',
+            maxWidth: '300px',
+          }}
+        >
+          {testResult}
+        </div>
+      )}
+      
+      {/* REST OF YOUR APP */}
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING PROTOCOL - CRITICAL
+═══════════════════════════════════════════════════════════════════
+
+After implementing ALL fixes:
+
+1. Rebuild:
+   npm run build
+
+2. Republish
+
+3. On mobile device (Safari or Chrome):
+   - Clear browser cache
+   - Open app
+   
+4. IMMEDIATELY check console (if possible):
+   - Look for "🔍 TESTING WALLETCONNECT API ACCESS"
+   - Does it say "✅ WalletConnect API IS ACCESSIBLE" or "❌ WALLETCONNECT API ERROR"?
+   
+5. Click the "Test WC API" button (top right):
+   - Does it show "✅ API works!" or "❌ API failed"?
+   
+6. Click "Connect Wallet"
+
+7. Click "All Wallets"
+   - Does it show loading spinner forever?
+   - Check console for "📱 WALLETCONNECT MODAL OPENED"
+   - Check console for "Wallet buttons found: X"
+   
+8. If wallet buttons found = 0:
+   - The API is blocked
+   - Console will tell you why
+
+
+═══════════════════════════════════════════════════════════════════
+WHAT TO REPORT BACK
+═══════════════════════════════════════════════════════════════════
+
+1. Click the "Test WC API" button on mobile:
+   - Does it show ✅ or ❌?
+
+2. Check browser console (if accessible):
+   - Copy and paste the "TESTING WALLETCONNECT API ACCESS" section
+   - Does it say API is accessible or blocked?
+
+3. When you click "All Wallets":
+   - Does the modal open? YES/NO
+   - Does it show loading spinner? YES/NO
+   - Does it eventually show wallets? YES/NO
+   - Copy the "WALLETCONNECT MODAL OPENED" console logs
+
+4. Try opening this URL directly in mobile Safari:
+   https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633
+   
+   - Does it load JSON data? YES/NO
+   - Or does it show an error? What error?
+
+
+═══════════════════════════════════════════════════════════════════
+EXPECTED RESULTS
+═══════════════════════════════════════════════════════════════════
+
+If API is accessible:
+- "Test WC API" button shows: "✅ API works! Found 400+ wallets"
+- Console shows: "✅ WalletConnect API IS ACCESSIBLE!"
+- "All Wallets" should load wallet list
+
+If API is blocked:
+- "Test WC API" button shows: "❌ API failed: [error]"
+- Console shows: "❌ WALLETCONNECT API ERROR"
+- "All Wallets" stays blank/spinning
+- This means CORS/CSP/Network is blocking walletconnect.com
+
+
+═══════════════════════════════════════════════════════════════════
+IF API TEST FAILS
+═══════════════════════════════════════════════════════════════════
+
+The console will tell you the EXACT error:
+- "Failed to fetch" = Network/CORS blocking
+- "403 Forbidden" = CSP blocking
+- "Invalid Project ID" = Wrong Project ID in config
+
+Report the EXACT error message and we'll fix it.
