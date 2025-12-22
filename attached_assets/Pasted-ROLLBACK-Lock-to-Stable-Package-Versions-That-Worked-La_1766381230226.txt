@@ -1,0 +1,119 @@
+ROLLBACK: Lock to Stable Package Versions That Worked Last Sunday
+
+Current (Broken): RainbowKit 2.2.10, Wagmi 2.19.5, Viem 2.41.2
+Target (Working): RainbowKit 2.1.0, Wagmi 2.5.7, Viem 2.7.13
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: LOCK PACKAGE VERSIONS TO STABLE
+═══════════════════════════════════════════════════════════════════
+
+File: package.json
+
+FIND the dependencies section and UPDATE to these EXACT versions:
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "2.1.0",
+    "wagmi": "2.5.7",
+    "viem": "2.7.13",
+    "@tanstack/react-query": "5.28.0"
+  }
+}
+
+CRITICAL: Remove the ^ symbol - we want EXACT versions, no auto-updates.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: DELETE NODE MODULES AND REINSTALL
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+rm -rf node_modules
+rm package-lock.json
+npm install
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: VERIFY VERSIONS INSTALLED
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+npm list @rainbow-me/rainbowkit wagmi viem
+
+Should show:
+├── @rainbow-me/rainbowkit@2.1.0
+├── wagmi@2.5.7
+└── viem@2.7.13
+
+If not, something went wrong.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: CLEAN BUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+rm -rf dist
+rm -rf node_modules/.vite
+npm run build
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: REPUBLISH
+═══════════════════════════════════════════════════════════════════
+
+Click Republish in Replit.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: CLEAR MOBILE CACHE
+═══════════════════════════════════════════════════════════════════
+
+On your iPhone:
+- Settings → Safari → Clear History and Website Data
+
+On wife's phone:
+- Chrome → Settings → Privacy → Clear browsing data
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: TEST ON MOBILE
+═══════════════════════════════════════════════════════════════════
+
+1. Open app on mobile
+2. Click "Connect Wallet"
+3. Does "All Wallets" show wallet list? YES/NO
+
+This should fix the "[Reown Config] Failed to fetch" error.
+
+
+═══════════════════════════════════════════════════════════════════
+BONUS: PREVENT AUTO-UPDATES IN FUTURE
+═══════════════════════════════════════════════════════════════════
+
+File: .npmrc (CREATE THIS FILE if it doesn't exist)
+
+Add this line:
+
+save-exact=true
+
+This prevents npm from adding ^ to package versions, locking everything.
+
+
+═══════════════════════════════════════════════════════════════════
+IF THIS FIXES IT
+═══════════════════════════════════════════════════════════════════
+
+You'll know it worked if:
+1. Console no longer shows "[Reown Config] Failed to fetch"
+2. "All Wallets" button shows full wallet list
+3. MetaMask appears in the list
+4. Clicking MetaMask opens the app or shows QR code
+
+After confirming it works, commit this state:
+
+git add package.json package-lock.json
+git commit -m "LOCKED wallet packages to stable versions - DO NOT UPDATE"
