@@ -28,26 +28,29 @@ export function MobileWalletGuide() {
       data-testid="mobile-wallet-guide"
       style={{
         position: 'fixed',
-        bottom: 20,
-        left: 16,
-        right: 16,
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 'calc(100% - 32px)',
+        maxWidth: '400px',
         background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
         color: 'white',
         padding: '16px 20px',
         borderRadius: '16px',
         fontSize: '14px',
-        zIndex: 1000,
+        zIndex: 9999,
         boxShadow: '0 8px 32px rgba(6, 182, 212, 0.3)',
         display: 'flex',
         alignItems: 'flex-start',
         gap: '12px',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <strong style={{ display: 'block', marginBottom: '4px' }}>
           Mobile Tip
         </strong>
-        <span style={{ opacity: 0.95, lineHeight: 1.4 }}>
+        <span style={{ opacity: 0.95, lineHeight: 1.4, display: 'block' }}>
           For the best experience, open this page in your wallet's built-in browser (MetaMask, Trust Wallet, etc.)
         </span>
       </div>
@@ -60,6 +63,7 @@ export function MobileWalletGuide() {
           borderRadius: '50%',
           width: '28px',
           height: '28px',
+          minWidth: '28px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

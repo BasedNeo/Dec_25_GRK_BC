@@ -204,9 +204,8 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 `} />
                 
                 <div className={`relative flex items-center justify-between py-3 px-4 rounded-xl 
-                  bg-gradient-to-br from-white/[0.03] to-transparent
-                  border border-white/[0.06] backdrop-blur-xl
-                  ${!isDisabled ? 'group-hover:border-white/20 group-hover:from-white/[0.06] group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
+                  bg-black/60 border border-white/[0.1]
+                  ${!isDisabled ? 'group-hover:border-white/20 group-hover:bg-black/70 group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
                   transition-all duration-400 flex-nowrap`}>
                   
                   <div className="flex items-center gap-4 flex-shrink min-w-0">
