@@ -170,8 +170,12 @@ export function GuardianDefender() {
   useEffect(() => {
     if (phase !== 'playing') return;
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { alpha: false });
     if (!canvas || !ctx) return;
+    
+    // Premium rendering settings
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     let animId: number;
     const { width, height } = canvasSize;

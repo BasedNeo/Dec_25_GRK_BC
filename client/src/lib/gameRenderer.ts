@@ -10,6 +10,10 @@ let robotChickenLoaded = false;
 let landerBgElement: HTMLImageElement | null = null;
 let landerBgLoaded = false;
 
+// Animated background state
+let bgOffset = 0;
+const GRID_SIZE = 40;
+
 if (typeof window !== 'undefined') {
   fudImageElement = new Image();
   fudImageElement.src = fudImage;
@@ -52,12 +56,49 @@ export function render(
   isHolder: boolean,
   shipImage?: HTMLImageElement
 ): void {
-  ctx.fillStyle = '#000011';
+  // Premium gradient background
+  const bgGradient = ctx.createLinearGradient(0, 0, 0, h);
+  bgGradient.addColorStop(0, '#000816');
+  bgGradient.addColorStop(0.5, '#001122');
+  bgGradient.addColorStop(1, '#000816');
+  ctx.fillStyle = bgGradient;
   ctx.fillRect(0, 0, w, h);
   
+  // Animated moving grid
+  bgOffset = (bgOffset + 0.3) % GRID_SIZE;
+  const pulseIntensity = 0.15 + 0.05 * Math.sin(state.time * 0.02);
+  ctx.strokeStyle = `rgba(0, 255, 255, ${pulseIntensity})`;
+  ctx.lineWidth = 0.5;
+  
+  // Vertical grid lines
+  for (let x = -GRID_SIZE + bgOffset; x < w + GRID_SIZE; x += GRID_SIZE) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  
+  // Horizontal grid lines
+  for (let y = -GRID_SIZE + bgOffset; y < h + GRID_SIZE; y += GRID_SIZE) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  
+  // Enhanced twinkling stars with glow
   state.stars.forEach(star => {
-    ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * (0.5 + 0.5 * Math.sin(state.time * 0.05 + star.x))})`;
-    ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.speed > 0.5 ? 2 : 1, 1);
+    const twinkle = 0.5 + 0.5 * Math.sin(state.time * 0.05 + star.x * 0.1);
+    const alpha = star.brightness * twinkle;
+    
+    // Star glow
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = star.speed > 0.5 ? 4 : 2;
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(Math.floor(star.x), Math.floor(star.y), star.speed > 0.5 ? 1.5 : 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   });
   
   state.powerUps.forEach(pu => drawPowerUp(ctx, pu, state.time));
@@ -249,15 +290,27 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
 
 function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
   if (bullet.isEnemy) {
+    // Enemy bullet with red glow
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur = 8;
     ctx.fillStyle = COLORS.bulletEnemy;
     ctx.beginPath();
     ctx.arc(bullet.pos.x + 3, bullet.pos.y + 6, 4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   } else {
+    // Player bullet with cyan glow trail
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 12;
     ctx.fillStyle = COLORS.bulletYellow;
     ctx.fillRect(bullet.pos.x, bullet.pos.y, bullet.size.x, bullet.size.y);
-    ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
-    ctx.fillRect(bullet.pos.x - 1, bullet.pos.y, bullet.size.x + 2, bullet.size.y);
+    ctx.shadowBlur = 0;
+    
+    // Glow trail effect
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+    ctx.fillRect(bullet.pos.x - 1, bullet.pos.y + 4, bullet.size.x + 2, bullet.size.y);
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+    ctx.fillRect(bullet.pos.x - 2, bullet.pos.y + 8, bullet.size.x + 4, bullet.size.y);
   }
 }
 
@@ -266,29 +319,54 @@ function drawExplosion(ctx: CanvasRenderingContext2D, exp: Explosion): void {
   const radius = exp.size * (0.3 + progress * 0.7);
   const alpha = 1 - progress;
   
+  // Outer glow ring
+  ctx.shadowColor = '#ff8800';
+  ctx.shadowBlur = 20;
   ctx.strokeStyle = `rgba(255, 136, 0, ${alpha})`;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(exp.pos.x, exp.pos.y, radius, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.shadowBlur = 0;
   
-  ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.5})`;
+  // Middle glow ring
+  ctx.strokeStyle = `rgba(255, 200, 0, ${alpha * 0.7})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(exp.pos.x, exp.pos.y, radius * 0.75, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Core glow
+  const coreGradient = ctx.createRadialGradient(
+    exp.pos.x, exp.pos.y, 0,
+    exp.pos.x, exp.pos.y, radius * 0.6
+  );
+  coreGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
+  coreGradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha * 0.5})`);
+  coreGradient.addColorStop(1, `rgba(255, 136, 0, 0)`);
+  ctx.fillStyle = coreGradient;
   ctx.beginPath();
   ctx.arc(exp.pos.x, exp.pos.y, radius * 0.6, 0, Math.PI * 2);
   ctx.fill();
   
-  for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2 + progress * 2;
-    const dist = radius * (0.5 + progress * 0.5);
-    ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`;
+  // Particle sparks with trails
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + progress * 3;
+    const dist = radius * (0.5 + progress * 0.6);
+    const sparkAlpha = alpha * (1 - (i % 2) * 0.3);
+    
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = `rgba(255, 220, 0, ${sparkAlpha})`;
     ctx.beginPath();
     ctx.arc(
       exp.pos.x + Math.cos(angle) * dist,
       exp.pos.y + Math.sin(angle) * dist,
-      3 * (1 - progress),
+      3.5 * (1 - progress),
       0, Math.PI * 2
     );
     ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
