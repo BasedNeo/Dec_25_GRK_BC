@@ -817,5 +817,40 @@ div[data-rk] ul[role="listbox"] {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
+  
+  /* CRITICAL: Force proper vertical stacking - prevent button overlap */
+  div[data-rk] div[role="dialog"] > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  /* Force each wallet button to be a separate block */
+  div[data-rk] button[type="button"] {
+    position: relative !important;
+    z-index: auto !important;
+    margin: 4px 0 !important;
+    clear: both !important;
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Wallet button list container */
+  div[data-rk] [role="list"],
+  div[data-rk] ul,
+  div[data-rk] [class*="wallet"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  /* Each wallet option row */
+  div[data-rk] [role="listitem"],
+  div[data-rk] li {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
 }
 
