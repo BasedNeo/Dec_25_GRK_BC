@@ -1,0 +1,182 @@
+EMERGENCY ROLLBACK: Fix Broken Visual Layout
+
+Issue: App visually broken after wallet fixes - gray boxes, missing text, broken layout
+Cause: Conflicting CSS + MobileWalletGuide component interference
+Fix: Remove problematic code, restore clean state
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: REMOVE MOBILE WALLET GUIDE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+FIND this import:
+import { MobileWalletGuide } from './components/MobileWalletGuide';
+
+DELETE that line.
+
+FIND this in your JSX:
+<MobileWalletGuide />
+
+DELETE that line.
+
+FIND any useEffect that injects emergency styles (search for "emergency-modal-fix")
+
+DELETE the entire useEffect block.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CLEAN UP INDEX.CSS - SIMPLIFY MOBILE WALLET SECTION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+FIND the section that says "MOBILE WALLET" or any @media (max-width: 768px) rules for div[data-rk]
+
+DELETE the ENTIRE mobile wallet section.
+
+REPLACE with this MINIMAL, WORKING version:
+
+/* ========================================
+   MOBILE WALLET - MINIMAL WORKING CONFIG
+   ======================================== */
+
+@media (max-width: 768px) {
+  div[data-rk] {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+  }
+  
+  div[data-rk] [role="dialog"] {
+    width: 90vw !important;
+    max-width: 400px !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+  
+  div[data-rk] button {
+    width: 100% !important;
+    min-height: 60px !important;
+    padding: 14px !important;
+    margin: 8px 0 !important;
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DELETE MOBILE WALLET GUIDE FILE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/MobileWalletGuide.tsx
+
+DELETE this entire file if it exists.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: VERIFY NO OTHER CONFLICTING STYLES
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+Search for ANY of these and DELETE if found:
+- "emergency"
+- "modal-fix"
+- Multiple @media (max-width: 768px) sections
+- Any div[data-rk] rules outside the one you just added
+
+There should be ONLY ONE mobile wallet CSS section.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: CHECK FOR BROKEN IMPORTS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+Verify your imports look clean (no missing files):
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// ... other imports
+
+If you see any red squiggly lines or import errors, fix them.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: CLEAN BUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+rm -rf dist
+rm -rf node_modules/.vite
+rm -rf .cache
+npm run build
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: REPUBLISH
+═══════════════════════════════════════════════════════════════════
+
+Click Republish in Replit.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: CLEAR MOBILE CACHE
+═══════════════════════════════════════════════════════════════════
+
+On iPhone:
+Settings → Safari → Clear History and Website Data
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: TEST
+═══════════════════════════════════════════════════════════════════
+
+1. Open app on mobile
+2. Does the home page look normal? (no gray boxes)
+3. Can you see navigation cards with text?
+4. Does "COMMAND CENTER" text appear?
+
+If YES to all → App is fixed!
+
+
+═══════════════════════════════════════════════════════════════════
+IF STILL BROKEN
+═══════════════════════════════════════════════════════════════════
+
+If the app STILL shows gray boxes after this:
+
+Option A: Revert to last working checkpoint
+- In Replit, go to Version Control
+- Find a checkpoint from before wallet fixes
+- Restore that version
+
+Option B: Check console for errors
+- Open Chrome DevTools on mobile
+- Check Console tab for red errors
+- Copy and send errors to me
+
+Option C: Verify files weren't corrupted
+Run in Shell:
+npm run dev
+
+Look for any build errors.
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL WORKING STATE
+═══════════════════════════════════════════════════════════════════
+
+After this fix:
+
+Desktop wallet: ✅ Works perfectly
+Mobile wallet in MetaMask browser: ✅ Works
+Mobile wallet in Safari: ⚠️ User needs to use wallet browser (this is normal)
+App visual layout: ✅ Should be restored
+Navigation cards: ✅ Should show text
+No popup interference: ✅ Clean UI

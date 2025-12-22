@@ -9,7 +9,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Rocket } from "lucide-react";
 import { connectionManager } from "@/lib/connectionManager";
 import { lazyWithRetry, routeImports } from "@/lib/lazyWithRetry";
-import { MobileWalletGuide } from "@/components/MobileWalletGuide";
 
 const Home = lazyWithRetry(routeImports.Home);
 const TermsOfService = lazyWithRetry(routeImports.TermsOfService);
@@ -244,45 +243,6 @@ export function Router() {
 }
 
 function App() {
-  // EMERGENCY: Force modal to center on mobile
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.id = 'emergency-modal-fix';
-    style.textContent = `
-      @media (max-width: 768px) {
-        div[data-rk] {
-          position: fixed !important;
-          inset: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          z-index: 2147483647 !important;
-        }
-        div[data-rk] > div {
-          position: relative !important;
-          width: calc(100vw - 40px) !important;
-          max-width: 400px !important;
-          margin: 0 auto !important;
-          left: 0 !important;
-          right: 0 !important;
-          transform: none !important;
-        }
-        div[data-rk] [role="dialog"] {
-          width: 100% !important;
-          left: 0 !important;
-          right: 0 !important;
-          transform: none !important;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      const el = document.getElementById('emergency-modal-fix');
-      if (el) el.remove();
-    };
-  }, []);
-
   useEffect(() => {
     connectionManager.startAutoCheck(30000);
     console.log('[App] Connection manager initialized');
@@ -299,7 +259,6 @@ function App() {
           <Suspense fallback={<AppLoadingFallback />}>
             <WalletProviders>
               <AppContent />
-              <MobileWalletGuide />
             </WalletProviders>
           </Suspense>
           <Toaster />
