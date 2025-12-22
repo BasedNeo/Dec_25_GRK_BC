@@ -198,26 +198,35 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 disabled={isDisabled}
                 style={{ background: 'transparent', border: 'none' }}
               >
+                {/* Subtle backglow effect */}
+                {!isDisabled && (
+                  <div 
+                    className={`absolute inset-1 rounded-xl bg-gradient-to-r ${item.color} opacity-20 
+                    group-hover:opacity-30 blur-xl transition-opacity duration-300 pointer-events-none`}
+                  />
+                )}
+                
                 <div 
                   className={`relative flex items-center justify-between py-3 px-4 rounded-xl 
-                  border border-white/10
-                  ${!isDisabled ? 'group-hover:border-white/20 group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
-                  transition-all duration-400 flex-nowrap`}
-                  style={{ backgroundColor: '#0a0e1a' }}>
+                  border border-cyan-500/20 backdrop-blur-sm
+                  bg-gradient-to-br from-gray-900/95 to-gray-800/90
+                  ${!isDisabled ? 'group-hover:border-cyan-400/40 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
+                  transition-all duration-400 flex-nowrap`}>
                   
                   <div className="flex items-center gap-4 flex-shrink min-w-0">
                     <div className={`
                       p-2.5 rounded-xl bg-gradient-to-br ${item.color}
-                      shadow-lg ${!isDisabled ? 'group-hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] group-hover:scale-110' : 'grayscale'} transition-all duration-300 flex-shrink-0
+                      shadow-lg ${!isDisabled ? 'group-hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] group-hover:scale-110' : 'grayscale'} transition-all duration-300 flex-shrink-0
                     `}>
                       <Icon className={`w-5 h-5 ${isDisabled ? 'text-white/50' : 'text-white'} drop-shadow-lg`} />
                     </div>
                     
                     <div className="text-left min-w-0">
-                      <h3 className={`font-bold tracking-[0.12em] text-sm truncate ${isDisabled ? 'text-white/40' : 'text-white/90 group-hover:text-white'} transition-colors duration-300`}>
+                      <h3 className={`font-bold tracking-[0.12em] text-sm truncate ${isDisabled ? 'text-white/40' : 'text-white group-hover:text-cyan-100'} transition-colors duration-300`}
+                        style={{ textShadow: !isDisabled ? '0 0 10px rgba(34,211,238,0.3)' : 'none' }}>
                         {item.label}
                       </h3>
-                      <p className={`text-[10px] font-mono tracking-wide truncate ${isDisabled ? 'text-white/20' : 'text-white/30 group-hover:text-white/50'} transition-colors duration-300`}>
+                      <p className={`text-[10px] font-mono tracking-wide truncate ${isDisabled ? 'text-white/20' : 'text-cyan-300/60 group-hover:text-cyan-300/80'} transition-colors duration-300`}>
                         {item.description}
                       </p>
                     </div>
@@ -228,8 +237,8 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                       SOON
                     </span>
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0 ml-2
-                      group-hover:text-white/60 group-hover:translate-x-1 
+                    <ChevronRight className="w-4 h-4 text-cyan-400/40 flex-shrink-0 ml-2
+                      group-hover:text-cyan-400 group-hover:translate-x-1 
                       transition-all duration-300" />
                   )}
                 </div>
