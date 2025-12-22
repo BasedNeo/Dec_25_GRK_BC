@@ -1,0 +1,382 @@
+MOBILE ONLY: WalletConnect Modal Wallet Icons Not Opening Apps
+
+═══════════════════════════════════════════════════════════════════
+SITUATION
+═══════════════════════════════════════════════════════════════════
+
+Platform: MOBILE (iPhone/Android)
+Works on: Desktop ✅
+
+Issue: WalletConnect modal opens and shows wallet icons, but:
+✅ Trust Wallet icon works (opens Trust app)
+✅ Coinbase Wallet icon works (opens Coinbase app)
+✅ Uniswap Wallet icon works (opens Uniswap app)
+❌ MetaMask icon doesn't work (doesn't open MetaMask app)
+❌ Possibly other wallet icons also broken
+
+Root Cause: WalletConnect modal deep links not configured correctly for all wallets.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 1: UPDATE WALLETCONNECT CONFIGURATION FOR MOBILE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+FIND the walletConnect configuration and UPDATE:
+
+import { walletConnect } from 'wagmi/connectors';
+
+// In your connectors array or config:
+walletConnect({
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  
+  metadata: {
+    name: 'Based Guardians',
+    description: 'BasedAI NFT Marketplace & Community',
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://basedguardians.com',
+    icons: ['https://basedguardians.com/logo.png'],
+  },
+  
+  // CRITICAL: Enable QR modal
+  showQrModal: true,
+  
+  // CRITICAL: Mobile-specific options
+  qrModalOptions: {
+    themeMode: 'dark',
+    themeVariables: {
+      '--wcm-z-index': '9999999',
+      '--wcm-accent-color': '#06b6d4',
+    },
+    
+    // CRITICAL: Explicitly include wallets
+    explorerRecommendedWalletIds: [
+      'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
+      'fd20dc426fb37566d803205b19bbc1d4096b248ac04548e3cfb6b3a38bd033aa', // Coinbase
+      '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0', // Trust
+    ],
+    
+    // CRITICAL: Mobile wallet links
+    mobileWallets: [
+      {
+        id: 'metamask',
+        name: 'MetaMask',
+        links: {
+          native: 'metamask://',
+          universal: 'https://metamask.app.link',
+        },
+      },
+      {
+        id: 'trust',
+        name: 'Trust Wallet',
+        links: {
+          native: 'trust://',
+          universal: 'https://link.trustwallet.com',
+        },
+      },
+      {
+        id: 'coinbase',
+        name: 'Coinbase Wallet',
+        links: {
+          native: 'cbwallet://',
+          universal: 'https://go.cb-w.com',
+        },
+      },
+    ],
+  },
+  
+  // CRITICAL: Relay configuration
+  relayUrl: 'wss://relay.walletconnect.com',
+})
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 2: ADD METAMASK MOBILE SPECIFIC CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+MetaMask mobile may need explicit wallet configuration.
+
+File: client/src/lib/wagmi.ts
+
+Ensure you're using the latest WalletConnect v2 configuration:
+
+import { createConfig, http } from 'wagmi';
+import { walletConnect, coinbaseWallet, injected } from 'wagmi/connectors';
+
+export const config = createConfig({
+  chains: [basedaiChain],
+  connectors: [
+    // Injected (for desktop MetaMask, Trust, etc)
+    injected({
+      shimDisconnect: true,
+    }),
+    
+    // Coinbase
+    coinbaseWallet({
+      appName: 'Based Guardians',
+      appLogoUrl: 'https://basedguardians.com/logo.png',
+      preference: 'all', // Shows both extension and mobile options
+    }),
+    
+    // WalletConnect - This handles mobile deep links
+    walletConnect({
+      projectId: '25a4673950aaa1276b2fa76417ef9633',
+      metadata: {
+        name: 'Based Guardians',
+        description: 'BasedAI NFT Marketplace',
+        url: 'https://basedguardians.com',
+        icons: ['https://basedguardians.com/logo.png'],
+      },
+      showQrModal: true,
+      qrModalOptions: {
+        themeMode: 'dark',
+        themeVariables: {
+          '--wcm-z-index': '9999999',
+        },
+        // Include MetaMask explicitly
+        explorerRecommendedWalletIds: [
+          'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
+        ],
+      },
+    }),
+  ],
+  transports: {
+    [basedaiChain.id]: http('https://rpc.basedai.network'),
+  },
+  ssr: false,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 3: ENSURE WALLETCONNECT CAN ACCESS WALLET REGISTRY
+═══════════════════════════════════════════════════════════════════
+
+WalletConnect modal loads wallet list from their API.
+
+File: client/src/index.html
+
+Add preconnect to WalletConnect services:
+
+<head>
+  <!-- Existing meta tags -->
+  
+  <!-- WalletConnect Preconnect -->
+  <link rel="preconnect" href="https://explorer-api.walletconnect.com" />
+  <link rel="preconnect" href="https://relay.walletconnect.com" />
+  <link rel="dns-prefetch" href="https://explorer-api.walletconnect.com" />
+  
+</head>
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 4: CHECK METAMASK MOBILE IS IN SUPPORTED LIST
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+Add diagnostic to check if MetaMask is in the WalletConnect registry:
+
+useEffect(() => {
+  // Check WalletConnect wallet list
+  fetch(`https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633`)
+    .then(r => r.json())
+    .then(data => {
+      console.log('🔗 WalletConnect Wallet Registry:');
+      console.log('  Total wallets:', Object.keys(data.listings || {}).length);
+      
+      // Check if MetaMask is listed
+      const metaMask = Object.values(data.listings || {}).find((w: any) => 
+        w.name.toLowerCase().includes('metamask')
+      );
+      
+      if (metaMask) {
+        console.log('  ✅ MetaMask found:', {
+          name: metaMask.name,
+          mobile: metaMask.mobile,
+          desktop: metaMask.desktop,
+        });
+      } else {
+        console.warn('  ⚠️ MetaMask NOT in registry');
+      }
+    })
+    .catch(err => {
+      console.error('❌ Failed to fetch wallet list:', err);
+    });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 5: UPDATE WALLETCONNECT DEPENDENCIES
+═══════════════════════════════════════════════════════════════════
+
+Ensure you're using compatible versions:
+
+File: package.json
+
+Check these versions:
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.0.0",
+    "wagmi": "^2.5.0",
+    "viem": "^2.7.0",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+
+If versions are very different, update:
+
+npm install @rainbow-me/rainbowkit@latest wagmi@latest viem@latest
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 6: FORCE METAMASK MOBILE LINK IN WALLETCONNECT
+═══════════════════════════════════════════════════════════════════
+
+If MetaMask still doesn't work, manually add it:
+
+File: client/src/lib/wagmi.ts
+
+walletConnect({
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  // ... other config
+  
+  qrModalOptions: {
+    themeMode: 'dark',
+    
+    // FORCE MetaMask to appear with correct deep link
+    explorerRecommendedWalletIds: [
+      'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask official ID
+    ],
+    
+    // Fallback: manually specify MetaMask
+    mobileWallets: [
+      {
+        id: 'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
+        name: 'MetaMask',
+        links: {
+          native: 'metamask://',
+          universal: 'https://metamask.app.link/dapp/' + encodeURIComponent(window.location.origin),
+        },
+      },
+    ],
+  },
+})
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 7: CHECK IF METAMASK MOBILE APP IS INSTALLED
+═══════════════════════════════════════════════════════════════════
+
+On the mobile device you're testing:
+
+1. Is MetaMask app installed? YES/NO
+   - If NO: Install from App Store/Play Store
+   
+2. Open MetaMask app
+3. Go to Settings → Networks
+4. Add BasedAI L1 network if not present:
+   - Network Name: BasedAI L1
+   - RPC URL: https://rpc.basedai.network
+   - Chain ID: 8453082024
+   - Currency: BASED
+   - Explorer: https://explorer.basedai.network
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 8: TEST WITH DIFFERENT MOBILE BROWSERS
+═══════════════════════════════════════════════════════════════════
+
+Mobile browsers handle deep links differently:
+
+iPhone:
+✅ Try Safari (best for deep links)
+⚠️ Try Chrome
+⚠️ Try Firefox
+
+Android:
+✅ Try Chrome (best for deep links)
+⚠️ Try Firefox
+⚠️ Try Samsung Internet
+
+Some browsers block deep links for security.
+
+
+═══════════════════════════════════════════════════════════════════
+FIX 9: ADD FALLBACK QR CODE FOR METAMASK
+═══════════════════════════════════════════════════════════════════
+
+If deep link fails, WalletConnect should show QR code:
+
+File: client/src/lib/wagmi.ts
+
+walletConnect({
+  // ... config
+  showQrModal: true, // MUST be true
+  
+  qrModalOptions: {
+    // If app doesn't open, user can scan QR with MetaMask app
+    desktopWallets: [],
+    mobileWallets: [],
+    // This forces QR code to always be available
+  },
+})
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING PROTOCOL - MOBILE SPECIFIC
+═══════════════════════════════════════════════════════════════════
+
+On your iPhone/Android:
+
+1. Open app in Safari (iOS) or Chrome (Android)
+2. Open browser console if possible (connect to desktop)
+3. Click "Connect Wallet"
+4. Click "WalletConnect" or "All Wallets"
+5. WalletConnect modal should open
+6. Look for MetaMask icon in the list
+7. Tap MetaMask icon
+8. Check what happens:
+
+   EXPECTED:
+   ✅ MetaMask app opens
+   ✅ Shows "Connect to Based Guardians?"
+   ✅ Can approve connection
+   
+   IF NOTHING HAPPENS:
+   - Long press MetaMask icon (hold for 2 seconds)
+   - Look for QR code option
+   - Scan QR code with MetaMask app camera
+   
+   IF NO METAMASK ICON:
+   - MetaMask not in WalletConnect registry
+   - Use different wallet or scan QR manually
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+After implementing fixes:
+
+1. On mobile device, test WalletConnect modal:
+   - Does MetaMask icon appear? YES/NO
+   - When tapped, does MetaMask app open? YES/NO
+   - Can you connect? YES/NO
+
+2. Console logs (if accessible):
+   - "✅ MetaMask found" in wallet registry
+   - Any errors when tapping MetaMask
+
+3. Alternative test:
+   - Does QR code appear as option?
+   - Can you scan QR with MetaMask app camera?
+   - Does that work?
+
+4. Which mobile browser are you using?
+   - Safari, Chrome, Firefox, other?
+
+5. Is MetaMask app installed on your phone?
+   - YES/NO
+
+MetaMask mobile via WalletConnect MUST work.

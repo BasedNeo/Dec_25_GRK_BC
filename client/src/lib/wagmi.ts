@@ -71,9 +71,9 @@ export const config = getDefaultConfig({
       groupName: 'Popular',
       wallets: [
         metaMaskWallet,
-        walletConnectWallet,
         coinbaseWallet,
         trustWallet,
+        walletConnectWallet,
         rainbowWallet,
         injectedWallet,
       ],
