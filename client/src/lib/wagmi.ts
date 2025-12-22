@@ -1,6 +1,6 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, getDefaultWallets } from "@rainbow-me/rainbowkit";
-import { rabbyWallet, trustWallet, okxWallet } from "@rainbow-me/rainbowkit/wallets";
+import { rabbyWallet, trustWallet, okxWallet, metaMaskWallet, coinbaseWallet, walletConnectWallet } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 import { http, fallback } from 'wagmi';
 
@@ -30,7 +30,14 @@ const basedL1 = {
   fees: undefined,
 } as const satisfies Chain;
 
-const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '3a8170812b534d0ff9d794f19a901d64';
+const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '25a4673950aaa1276b2fa76417ef9633';
+
+console.log('[WalletConnect] Config loaded:', {
+  projectId: projectId.slice(0, 8) + '...',
+  chain: basedL1.name,
+  chainId: basedL1.id,
+  isMobile: typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+});
 
 export const config = getDefaultConfig({
   appName: 'Based Guardians',
@@ -47,7 +54,10 @@ export const config = getDefaultConfig({
   },
   ssr: false,
   wallets: [
-    ...getDefaultWallets().wallets,
+    {
+      groupName: 'Recommended',
+      wallets: [metaMaskWallet, coinbaseWallet, walletConnectWallet],
+    },
     {
       groupName: 'Popular',
       wallets: [rabbyWallet, trustWallet, okxWallet],
