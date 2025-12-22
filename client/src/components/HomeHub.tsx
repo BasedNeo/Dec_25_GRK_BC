@@ -196,13 +196,14 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 whileTap={isDisabled ? {} : { scale: 0.99 }}
                 data-testid={`hub-nav-${item.id}`}
                 disabled={isDisabled}
+                style={{ background: 'transparent', border: 'none' }}
               >
                 <div 
                   className={`relative flex items-center justify-between py-3 px-4 rounded-xl 
                   border border-white/10
                   ${!isDisabled ? 'group-hover:border-white/20 group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' : ''}
                   transition-all duration-400 flex-nowrap`}
-                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+                  style={{ backgroundColor: '#0a0e1a' }}>
                   
                   <div className="flex items-center gap-4 flex-shrink min-w-0">
                     <div className={`

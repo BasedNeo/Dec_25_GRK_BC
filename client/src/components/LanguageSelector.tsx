@@ -27,7 +27,7 @@ export function LanguageSelector() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-40" data-testid="language-selector">
+    <div className="fixed bottom-4 right-4 z-40 hidden md:block" data-testid="language-selector">
       <AnimatePresence>
         {isOpen && (
           <motion.div

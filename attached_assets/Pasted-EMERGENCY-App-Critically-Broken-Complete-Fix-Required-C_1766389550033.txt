@@ -1,0 +1,372 @@
+EMERGENCY: App Critically Broken - Complete Fix Required
+
+CRITICAL ISSUES:
+1. White boxes/placeholders throughout app
+2. Mint page frozen - cannot scroll
+3. NFT section showing white boxes instead of images
+4. Floating globe icon misplaced
+5. Overall app broken and unusable
+
+COMPREHENSIVE FIX NEEDED - All issues addressed below.
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 1: RESTORE TO LAST WORKING STATE
+═══════════════════════════════════════════════════════════════════
+
+OPTION A - Revert to last working checkpoint:
+
+1. In Replit sidebar, click "Version Control" or "History"
+2. Find a checkpoint from BEFORE wallet fixes were attempted
+3. Look for a commit message like "working state" or from December 15-16
+4. Click "Restore this version"
+5. Rebuild: npm run build
+6. Republish
+
+This is the FASTEST way to get app working again.
+
+
+OPTION B - If no checkpoints available, continue with fixes below:
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 2: FIX MINT PAGE SCROLL FREEZE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/pages/Mint.tsx
+
+FIND any of these that might be causing freeze:
+
+1. overflow: hidden on body or container
+2. position: fixed without height
+3. Infinite loops in useEffect
+4. Heavy rendering operations
+
+ENSURE the page container allows scroll:
+
+.mint-page {
+  overflow-y: auto !important;
+  height: auto !important;
+  position: relative !important;
+  /* Remove any position: fixed */
+}
+
+/* Remove body scroll lock */
+body {
+  overflow: auto !important;
+  position: relative !important;
+  height: auto !important;
+}
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 3: FIX NFT IMAGES NOT LOADING
+═══════════════════════════════════════════════════════════════════
+
+File: Find NFT display component (likely in Mint.tsx or NFTCard.tsx)
+
+ISSUE: Images showing as white boxes means:
+- Image URLs are broken/404
+- Images not loading from API
+- CSS hiding images
+- Missing image fallback
+
+FIX:
+
+1. CHECK IMAGE SOURCES:
+   - Log image URLs to console: console.log('NFT image URL:', nft.image)
+   - Verify URLs are valid and accessible
+
+2. ADD IMAGE ERROR HANDLING:
+
+<img 
+  src={nft.image || '/placeholder.png'} 
+  alt={nft.name}
+  onError={(e) => {
+    console.error('Image failed to load:', nft.image);
+    e.currentTarget.src = '/placeholder.png';
+  }}
+  style={{
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block', // Ensure image displays
+    background: 'transparent' // Not white!
+  }}
+/>
+
+3. CHECK CSS NOT HIDING IMAGES:
+
+img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+4. VERIFY API RETURNS IMAGE DATA:
+   - Check network tab for API responses
+   - Ensure image field exists in NFT data
+   - Check if images need IPFS gateway: ipfs.io/ipfs/{hash}
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 4: REMOVE ALL WHITE BOXES
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+ADD this at the TOP of the file:
+
+/* EMERGENCY: Remove all white backgrounds */
+* {
+  box-sizing: border-box;
+}
+
+*:not(img):not(canvas) {
+  background-color: transparent !important;
+}
+
+body, html, #root {
+  background: #0a0e27 !important;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Specific white box fixes */
+.card-container,
+.placeholder,
+.box,
+.container,
+div[class*="white"],
+div[style*="background: white"],
+div[style*="background-color: white"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Navigation cards should be semi-transparent dark */
+.nav-card,
+[class*="nav"] {
+  background: rgba(10, 14, 39, 0.8) !important;
+  backdrop-filter: blur(10px);
+}
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 5: FIX FLOATING GLOBE ICON
+═══════════════════════════════════════════════════════════════════
+
+File: Find the component with globe/language icon
+
+EITHER:
+
+Option A - Remove it entirely:
+DELETE the component that renders the globe icon.
+
+Option B - Position it correctly:
+.globe-icon {
+  position: fixed;
+  top: 20px;
+  right: 100px;
+  z-index: 100;
+}
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 6: REMOVE MOBILE WALLET GUIDE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+DELETE these if they exist:
+- import { MobileWalletGuide } from './components/MobileWalletGuide';
+- <MobileWalletGuide />
+- Any useEffect injecting emergency styles
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 7: SIMPLIFY MOBILE WALLET CSS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+FIND and DELETE all complex mobile wallet CSS sections.
+
+REPLACE with MINIMAL working version:
+
+/* Mobile Wallet - Minimal Working */
+@media (max-width: 768px) {
+  div[data-rk] {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+  }
+  
+  div[data-rk] [role="dialog"] {
+    width: 90vw !important;
+    max-width: 400px !important;
+    max-height: 85vh !important;
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 8: CHECK FOR JAVASCRIPT ERRORS
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+npm run dev
+
+Look at the console output. Check for:
+- Syntax errors
+- Import errors  
+- Missing dependencies
+- Type errors
+
+Copy and paste ANY red errors you see.
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 9: FIX COMMON BREAKING ISSUES
+═══════════════════════════════════════════════════════════════════
+
+Check these files for common problems:
+
+1. Missing imports
+2. Undefined variables
+3. Incorrect prop names
+4. Missing closing tags
+5. Infinite loops in useEffect
+
+Run:
+npm run lint
+
+Fix any errors shown.
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 10: CLEAN BUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+rm -rf dist
+rm -rf node_modules/.vite
+rm -rf node_modules/.cache
+npm install
+npm run build
+
+Watch for build errors. If build fails, copy and paste the error.
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 11: TEST ALL CRITICAL FUNCTIONS
+═══════════════════════════════════════════════════════════════════
+
+After republishing, test in this order:
+
+1. HOME PAGE
+   □ Loads without white boxes
+   □ Can scroll
+   □ Navigation cards visible with text
+   □ Background is dark
+
+2. MINT PAGE
+   □ Page loads
+   □ CAN SCROLL (critical!)
+   □ NFT images load (not white boxes)
+   □ Mint form is functional
+   □ Connect wallet button works
+
+3. MARKETPLACE
+   □ Loads without errors
+   □ NFT images display
+   □ Can scroll and browse
+
+4. PORTFOLIO
+   □ Opens correctly
+   □ Shows connected wallet NFTs
+   □ Images load properly
+
+5. DESKTOP WALLET
+   □ Connect button works
+   □ Modal appears centered
+   □ Can connect MetaMask extension
+
+6. MOBILE (in MetaMask browser)
+   □ App loads
+   □ Can scroll all pages
+   □ Wallet connects automatically
+
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 12: DEBUGGING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+If issues persist, check:
+
+SCROLL ISSUES:
+□ Remove body { overflow: hidden }
+□ Remove position: fixed on page containers
+□ Check for modal backdrop blocking scroll
+□ Check for z-index issues covering content
+
+IMAGE ISSUES:
+□ Check Network tab - are images returning 404?
+□ Check if IPFS links need gateway (ipfs.io)
+□ Verify image URLs in console.log
+□ Check if images blocked by CORS
+□ Add image error handling with fallback
+
+WHITE BOXES:
+□ Search codebase for "background: white"
+□ Search for "backgroundColor: '#fff'"
+□ Check for empty <div> placeholders
+□ Remove skeleton loading states that never finish
+
+
+═══════════════════════════════════════════════════════════════════
+EMERGENCY ROLLBACK PROCEDURE
+═══════════════════════════════════════════════════════════════════
+
+IF FIXES DON'T WORK:
+
+1. Go to Replit Version Control/History
+2. Find commit from December 15-16 when wallet worked
+3. Restore that version
+4. Rebuild: rm -rf dist && npm run build
+5. Republish
+
+This returns app to last known working state.
+
+
+═══════════════════════════════════════════════════════════════════
+WHAT TO REPORT BACK
+═══════════════════════════════════════════════════════════════════
+
+After fixes, report:
+
+1. Can you scroll on Mint page? YES/NO
+2. Do NFT images load? YES/NO  
+3. Are white boxes gone? YES/NO
+4. Does desktop wallet connection work? YES/NO
+5. Any console errors? (copy/paste them)
+6. Screenshot of home page and mint page
+
+
+═══════════════════════════════════════════════════════════════════
+MOST LIKELY CAUSES
+═══════════════════════════════════════════════════════════════════
+
+Based on symptoms:
+
+1. SCROLL FREEZE: body or container has overflow: hidden or position: fixed
+2. WHITE NFT BOXES: Image URLs are 404/broken or CSS hiding images
+3. WHITE PLACEHOLDERS: Empty divs or skeleton loaders stuck on screen
+4. FLOATING ICON: Language switcher component positioned incorrectly
+
+All fixable - but may need rollback if changes too extensive.
