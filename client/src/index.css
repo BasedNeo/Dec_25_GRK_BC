@@ -375,35 +375,146 @@ replit-error-modal {
 }
 
 /* ========================================
-   RAINBOWKIT MODAL - Z-INDEX + TOUCH FIXES
-   Let RainbowKit control layout, but ensure buttons are clickable.
+   PRODUCTION: MOBILE WALLET OPTIMIZATION
    ======================================== */
 
-/* Ensure wallet modal appears above all app content */
-[data-rk],
-[data-rk-modal-root] {
-  z-index: 2147483647 !important;
+/* Desktop - use defaults */
+@media (min-width: 769px) {
+  div[data-rk] {
+    /* RainbowKit defaults work fine on desktop */
+  }
 }
 
-/* Ensure wallet buttons receive touch events on ALL devices */
-div[data-rk] button,
-div[data-rk] button[type="button"] {
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-  -webkit-tap-highlight-color: rgba(6, 182, 212, 0.3) !important;
-  cursor: pointer !important;
+/* Mobile - optimized for touch */
+@media (max-width: 768px) {
+  /* Full-screen modal container */
+  div[data-rk] {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Backdrop */
+  div[data-rk] > div[data-backdrop] {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 2147483646 !important;
+  }
+  
+  /* Modal dialog - scrollable and responsive */
+  div[data-rk] div[role="dialog"] {
+    position: relative !important;
+    z-index: 2147483647 !important;
+    width: 100% !important;
+    max-width: min(400px, calc(100vw - 32px)) !important;
+    max-height: min(600px, calc(100vh - 32px)) !important;
+    border-radius: 20px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Modal content */
+  div[data-rk] div[role="dialog"] > div {
+    padding: 24px 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  /* Wallet option buttons - optimized for touch */
+  div[data-rk] button[type="button"] {
+    width: 100% !important;
+    min-height: 64px !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 16px !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    
+    /* CRITICAL: Touch optimization */
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(6, 182, 212, 0.2) !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    
+    /* CRITICAL: Ensure button receives clicks */
+    pointer-events: auto !important;
+    position: relative !important;
+  }
+  
+  /* Active state - immediate visual feedback */
+  div[data-rk] button[type="button"]:active {
+    transform: scale(0.98) !important;
+  }
+  
+  /* Wallet icons */
+  div[data-rk] button[type="button"] img {
+    width: 40px !important;
+    height: 40px !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+    pointer-events: none !important;
+  }
+  
+  /* Button text */
+  div[data-rk] button[type="button"] span {
+    pointer-events: none !important;
+  }
+  
+  /* Close/Back button */
+  div[data-rk] button[aria-label*="Close"],
+  div[data-rk] button[aria-label*="Back"] {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Loading spinner */
+  div[data-rk] [class*="Spinner"] {
+    border-color: #06b6d4 !important;
+    border-top-color: transparent !important;
+  }
 }
 
-/* Button children should not block clicks */
-div[data-rk] button *,
-div[data-rk] button[type="button"] * {
-  pointer-events: none !important;
-}
-
-/* Ensure modal content is clickable */
-div[data-rk] [role="dialog"],
-div[data-rk] [role="dialog"] > div {
-  pointer-events: auto !important;
+/* Very small phones (iPhone SE, etc) */
+@media (max-width: 375px) {
+  div[data-rk] div[role="dialog"] {
+    border-radius: 16px !important;
+  }
+  
+  div[data-rk] div[role="dialog"] > div {
+    padding: 20px 16px !important;
+  }
+  
+  div[data-rk] button[type="button"] {
+    min-height: 60px !important;
+    padding: 14px !important;
+    font-size: 15px !important;
+  }
 }
 
 /* Force Buy Button Visibility and Styling */

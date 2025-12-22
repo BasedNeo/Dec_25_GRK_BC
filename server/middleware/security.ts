@@ -27,6 +27,8 @@ export const helmetConfig = helmet({
         "https://explorer-api.walletconnect.com",
         "https://verify.walletconnect.com",
         "https://verify.walletconnect.org",
+        "https://*.reown.com",
+        "wss://*.reown.com",
         "chrome-extension:"
       ],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -66,11 +68,13 @@ export const corsConfig = cors({
     'Content-Type',
     'Authorization',
     'Accept',
+    'Origin',
     'X-Session-ID',
     'X-CSRF-Token',
     'X-Wallet-Address',
     'X-Admin-Signature',
-    'X-Requested-With'
+    'X-Requested-With',
+    'X-WalletConnect-ProjectId'
   ],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
   maxAge: 86400

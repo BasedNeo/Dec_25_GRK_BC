@@ -1,8 +1,8 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { type Chain } from 'wagmi/chains';
-import { http } from 'wagmi';
 
+// BasedAI L1 Chain Configuration (Chain ID: 32323)
 const basedL1 = {
   id: 32323,
   name: 'BasedAI',
@@ -26,18 +26,20 @@ const basedL1 = {
     },
   },
   testnet: false,
-  fees: undefined,
 } as const satisfies Chain;
 
-const projectId = import.meta.env.VITE_WALLET_CONNECT_ID || '25a4673950aaa1276b2fa76417ef9633';
+// PRODUCTION: WalletConnect Project ID
+// Get yours from https://cloud.reown.com
+const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLET_CONNECT_ID || '25a4673950aaa1276b2fa76417ef9633';
+
+if (!WALLETCONNECT_PROJECT_ID) {
+  throw new Error('CRITICAL: WalletConnect Project ID is missing! Get one from https://cloud.reown.com');
+}
 
 export const config = getDefaultConfig({
   appName: 'Based Guardians',
-  projectId: projectId,
+  projectId: WALLETCONNECT_PROJECT_ID,
   chains: [basedL1],
-  transports: {
-    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/'),
-  },
   ssr: false,
 });
 

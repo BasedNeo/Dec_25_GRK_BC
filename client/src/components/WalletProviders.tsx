@@ -16,13 +16,12 @@ export default function WalletProviders({ children }: WalletProvidersProps) {
     <WagmiProvider config={config}>
       <RainbowKitProvider 
         theme={darkTheme({
-          accentColor: '#00ffff',
-          accentColorForeground: 'black',
-          borderRadius: 'medium',
+          accentColor: '#06b6d4',
+          accentColorForeground: 'white',
+          borderRadius: 'large',
           fontStack: 'system',
-          overlayBlur: 'small',
         })}
-        modalSize="wide"
+        modalSize="compact"
         initialChain={32323}
         showRecentTransactions={true}
         appInfo={{
