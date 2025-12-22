@@ -244,11 +244,19 @@ export function Router() {
 
 function App() {
   useEffect(() => {
-    connectionManager.startAutoCheck(30000);
-    console.log('[App] Connection manager initialized');
+    try {
+      connectionManager.startAutoCheck(30000);
+      console.log('[App] Connection manager initialized');
+    } catch (error) {
+      console.error('[App] Connection manager failed to initialize:', error);
+    }
     
     return () => {
-      connectionManager.stopAutoCheck();
+      try {
+        connectionManager.stopAutoCheck();
+      } catch (error) {
+        // Ignore cleanup errors
+      }
     };
   }, []);
 
