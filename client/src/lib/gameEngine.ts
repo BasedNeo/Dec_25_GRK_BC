@@ -484,16 +484,26 @@ export function applyInput(
   if (state.phase !== 'playing' && state.phase !== 'respawning') return;
   
   const p = state.player;
-  const speed = p.powerUp === 'speed' ? 7 : 5;
+  const acceleration = p.powerUp === 'speed' ? 0.6 : 0.5;
+  const friction = 0.85;
+  const maxSpeed = p.powerUp === 'speed' ? 8 : 6;
   
-  if (input.left) p.vel.x -= speed * 0.3;
-  if (input.right) p.vel.x += speed * 0.3;
-  if (input.up) p.vel.y -= speed * 0.3;
-  if (input.down) p.vel.y += speed * 0.3;
+  // Apply acceleration based on input
+  if (input.left) p.vel.x -= acceleration;
+  if (input.right) p.vel.x += acceleration;
+  if (input.up) p.vel.y -= acceleration;
+  if (input.down) p.vel.y += acceleration;
   
-  const maxVel = speed;
-  p.vel.x = Math.max(-maxVel, Math.min(maxVel, p.vel.x));
-  p.vel.y = Math.max(-maxVel, Math.min(maxVel, p.vel.y));
+  // Apply friction for smooth deceleration
+  p.vel.x *= friction;
+  p.vel.y *= friction;
+  
+  // Clamp to max speed using vector magnitude
+  const speed = Math.sqrt(p.vel.x ** 2 + p.vel.y ** 2);
+  if (speed > maxSpeed) {
+    p.vel.x = (p.vel.x / speed) * maxSpeed;
+    p.vel.y = (p.vel.y / speed) * maxSpeed;
+  }
   
   if (input.shoot && p.shootCooldown <= 0) {
     const bulletSpeed = -10;

@@ -173,12 +173,20 @@ export function GuardianDefender() {
     const ctx = canvas?.getContext('2d', { alpha: false });
     if (!canvas || !ctx) return;
     
+    // High DPI canvas scaling for crisp rendering
+    const dpr = window.devicePixelRatio || 1;
+    const { width, height } = canvasSize;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(dpr, dpr);
+    
     // Premium rendering settings
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
     let animId: number;
-    const { width, height } = canvasSize;
 
     const loop = () => {
       const state = stateRef.current;

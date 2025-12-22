@@ -377,7 +377,19 @@ function drawPowerUp(ctx: CanvasRenderingContext2D, pu: PowerUp, time: number): 
   
   const glow = 0.5 + 0.3 * Math.sin(time * 0.1);
   
-  ctx.fillStyle = `rgba(255, 215, 0, ${glow})`;
+  // Outer glow ring
+  const glowGradient = ctx.createRadialGradient(0, 0, 8, 0, 0, 18);
+  glowGradient.addColorStop(0, `rgba(255, 215, 0, ${glow * 0.5})`);
+  glowGradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+  ctx.fillStyle = glowGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Star shape with glow
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = '#ffd700';
+  ctx.fillStyle = `rgba(255, 215, 0, ${glow + 0.3})`;
   ctx.beginPath();
   for (let i = 0; i < 5; i++) {
     const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
@@ -387,6 +399,7 @@ function drawPowerUp(ctx: CanvasRenderingContext2D, pu: PowerUp, time: number): 
   }
   ctx.closePath();
   ctx.fill();
+  ctx.shadowBlur = 0;
   
   ctx.fillStyle = '#000';
   ctx.font = 'bold 8px Arial';
@@ -399,21 +412,39 @@ function drawPowerUp(ctx: CanvasRenderingContext2D, pu: PowerUp, time: number): 
 }
 
 function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
-  ctx.fillStyle = '#fff';
+  // Semi-transparent HUD panel
+  ctx.fillStyle = 'rgba(0, 8, 22, 0.75)';
+  ctx.fillRect(5, 5, 130, 38);
+  ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(5, 5, 130, 38);
+  
+  // Score with glow
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = '#00ffff';
+  ctx.fillStyle = '#00ffff';
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'left';
   ctx.fillText(`SCORE: ${state.score.toLocaleString()}`, 10, 20);
+  ctx.shadowBlur = 0;
   
-  ctx.fillStyle = '#888';
+  ctx.fillStyle = '#666';
   ctx.font = '10px monospace';
   ctx.fillText(`HI: ${state.highScore.toLocaleString()}`, 10, 34);
   
-  ctx.fillStyle = '#0ff';
+  // Wave indicator with glow
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = '#00ffff';
+  ctx.fillStyle = '#00ffff';
   ctx.textAlign = 'center';
   ctx.font = 'bold 12px monospace';
   ctx.fillText(`WAVE ${state.wave}`, w / 2, 20);
+  ctx.shadowBlur = 0;
   
-  ctx.fillStyle = '#0ff';
+  // Lives display with glow
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = '#00ffff';
+  ctx.fillStyle = '#00ffff';
   for (let i = 0; i < state.player.lives; i++) {
     ctx.beginPath();
     ctx.moveTo(w - 20 - i * 25, 12);
@@ -422,13 +453,18 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: 
     ctx.closePath();
     ctx.fill();
   }
+  ctx.shadowBlur = 0;
   
+  // Power-up indicator with glow
   if (state.player.powerUp !== 'none') {
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#ffd700';
     ctx.fillStyle = COLORS.powerUpGold;
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'right';
     const timeLeft = Math.ceil(state.player.powerUpTime / 60);
     ctx.fillText(`${state.player.powerUp.toUpperCase()} ${timeLeft}s`, w - 10, 38);
+    ctx.shadowBlur = 0;
   }
 }
 
