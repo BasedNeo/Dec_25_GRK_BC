@@ -1,0 +1,519 @@
+MOBILE WALLET CONNECTION FAILURE: MetaMask + All Wallets Not Working
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 1: FORCE METAMASK MOBILE CONNECTOR
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+REPLACE the entire file with this mobile-optimized config:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+import { 
+  metaMask,
+  walletConnect,
+  coinbaseWallet,
+  trustWallet,
+  injected
+} from '@rainbow-me/rainbowkit/wallets';
+
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    name: 'BASED',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.basedai.network'],
+    },
+    public: {
+      http: ['https://rpc.basedai.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'BasedAI Explorer',
+      url: 'https://explorer.basedai.network',
+    },
+  },
+  testnet: false,
+});
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  chains: [basedaiChain],
+  ssr: false,
+  autoConnect: false,
+  
+  // CRITICAL: Custom wallet list for mobile
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        metaMask({
+          projectId: '25a4673950aaa1276b2fa76417ef9633',
+          shimDisconnect: true,
+        }),
+        coinbaseWallet({
+          appName: 'Based Guardians',
+          appLogoUrl: 'https://basedguardians.com/logo.png',
+        }),
+        trustWallet({
+          projectId: '25a4673950aaa1276b2fa76417ef9633',
+          shimDisconnect: true,
+        }),
+        walletConnect({
+          projectId: '25a4673950aaa1276b2fa76417ef9633',
+        }),
+      ],
+    },
+  ],
+});
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 2: UPDATE RAINBOWKIT PROVIDER WITH WALLET LIST
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/main.tsx
+
+FIND this section:
+
+<RainbowKitProvider
+  modalSize="compact"
+  theme={darkTheme({
+    accentColor: '#06b6d4',
+    accentColorForeground: 'white',
+    borderRadius: 'large',
+  })}
+>
+
+REPLACE with:
+
+<RainbowKitProvider
+  modalSize="compact"
+  theme={darkTheme({
+    accentColor: '#06b6d4',
+    accentColorForeground: 'white',
+    borderRadius: 'large',
+  })}
+  appInfo={{
+    appName: 'Based Guardians',
+    learnMoreUrl: 'https://basedguardians.com',
+  }}
+  showRecentTransactions={true}
+  coolMode={false}
+>
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 3: ADD EXPLICIT MOBILE WALLET DETECTION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this useEffect to detect mobile and log wallet availability:
+
+useEffect(() => {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  console.log('📱 Mobile Wallet Debug:');
+  console.log('  Is Mobile:', isMobile);
+  console.log('  User Agent:', navigator.userAgent);
+  
+  // Check if MetaMask mobile browser
+  const isMetaMaskBrowser = typeof window.ethereum !== 'undefined' && 
+                            window.ethereum.isMetaMask;
+  console.log('  MetaMask Browser:', isMetaMaskBrowser);
+  
+  // Check if Trust Wallet mobile browser
+  const isTrustBrowser = typeof window.ethereum !== 'undefined' && 
+                         window.ethereum.isTrust;
+  console.log('  Trust Browser:', isTrustBrowser);
+  
+  // Check if Coinbase Wallet mobile browser
+  const isCoinbaseBrowser = typeof window.ethereum !== 'undefined' && 
+                            window.ethereum.isCoinbaseWallet;
+  console.log('  Coinbase Browser:', isCoinbaseBrowser);
+  
+  // Log available ethereum providers
+  if (window.ethereum) {
+    console.log('  Ethereum providers:', Object.keys(window.ethereum));
+  } else {
+    console.log('  ⚠️ No ethereum provider detected');
+  }
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 4: CHECK WALLETCONNECT API ACCESSIBILITY
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this useEffect to verify WalletConnect can load wallet list:
+
+useEffect(() => {
+  // Test WalletConnect API access
+  console.log('🔗 Testing WalletConnect API...');
+  
+  fetch('https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+    .then(response => {
+      console.log('  API Response Status:', response.status);
+      return response.json();
+    })
+    .then(data => {
+      console.log('  ✅ WalletConnect API accessible');
+      console.log('  Total wallets available:', Object.keys(data.listings || {}).length);
+      
+      // Check for MetaMask specifically
+      const wallets = Object.values(data.listings || {}) as any[];
+      const metaMask = wallets.find(w => w.name?.toLowerCase().includes('metamask'));
+      
+      if (metaMask) {
+        console.log('  ✅ MetaMask in registry:', {
+          id: metaMask.id,
+          name: metaMask.name,
+          mobile: metaMask.mobile_link,
+          desktop: metaMask.desktop_link,
+        });
+      } else {
+        console.log('  ⚠️ MetaMask NOT found in registry');
+      }
+    })
+    .catch(error => {
+      console.error('  ❌ WalletConnect API error:', error);
+      console.error('  This is why "All Wallets" button shows blank!');
+    });
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 5: ADD CSP HEADERS FOR WALLETCONNECT
+═══════════════════════════════════════════════════════════════════
+
+WalletConnect needs to load resources from their domains.
+
+File: server/index.ts
+
+FIND the app configuration section and ADD:
+
+// Allow WalletConnect domains
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "connect-src 'self' https://rpc.basedai.network https://explorer.basedai.network https://explorer-api.walletconnect.com https://relay.walletconnect.com wss://relay.walletconnect.com https://api.coingecko.com https://api.coinpaprika.com; " +
+    "img-src 'self' data: https: blob:; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "font-src 'self' data:; " +
+    "frame-src 'self';"
+  );
+  next();
+});
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 6: UPDATE CORS TO ALLOW WALLETCONNECT
+═══════════════════════════════════════════════════════════════════
+
+File: server/index.ts
+
+FIND the CORS configuration and UPDATE:
+
+const cors = require('cors');
+
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5000',
+    'https://*.replit.app',
+    'https://*.repl.co',
+    'https://explorer-api.walletconnect.com',
+    'https://relay.walletconnect.com',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 7: ADD METAMASK DEEP LINK HANDLER
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/MobileMetaMaskButton.tsx (NEW FILE)
+
+CREATE this custom button for MetaMask mobile:
+
+import { useConnect } from 'wagmi';
+
+export function MobileMetaMaskButton() {
+  const { connect, connectors } = useConnect();
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  const handleMetaMaskClick = () => {
+    console.log('🦊 MetaMask button clicked');
+    
+    // Try injected connector first (if in MetaMask browser)
+    const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'metaMask');
+    
+    if (injectedConnector && window.ethereum?.isMetaMask) {
+      console.log('  Using injected MetaMask');
+      connect({ connector: injectedConnector });
+      return;
+    }
+    
+    // If mobile and MetaMask not injected, use deep link
+    if (isMobile) {
+      console.log('  Opening MetaMask via deep link');
+      const currentUrl = window.location.href;
+      const metaMaskDeepLink = `https://metamask.app.link/dapp/${encodeURIComponent(currentUrl)}`;
+      
+      window.location.href = metaMaskDeepLink;
+      
+      // Fallback to WalletConnect if deep link fails
+      setTimeout(() => {
+        console.log('  Deep link failed, trying WalletConnect');
+        const wcConnector = connectors.find(c => c.id === 'walletConnect');
+        if (wcConnector) {
+          connect({ connector: wcConnector });
+        }
+      }, 2000);
+    } else {
+      // Desktop: use WalletConnect
+      const wcConnector = connectors.find(c => c.id === 'walletConnect');
+      if (wcConnector) {
+        connect({ connector: wcConnector });
+      }
+    }
+  };
+  
+  return (
+    <button
+      onClick={handleMetaMaskClick}
+      className="wallet-button metamask-button"
+      style={{
+        width: '100%',
+        padding: '16px',
+        background: '#f8f9fa',
+        border: '2px solid #e9ecef',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        fontWeight: 600,
+      }}
+    >
+      <img 
+        src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" 
+        alt="MetaMask"
+        style={{ width: '36px', height: '36px' }}
+      />
+      MetaMask
+    </button>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 8: UPDATE PACKAGE VERSIONS
+═══════════════════════════════════════════════════════════════════
+
+Ensure you have compatible versions:
+
+File: package.json
+
+CHECK these versions (update if needed):
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.1.0",
+    "wagmi": "^2.5.0",
+    "viem": "^2.7.0",
+    "@tanstack/react-query": "^5.0.0",
+    "ethers": "^6.11.0"
+  }
+}
+
+If versions are different, RUN in Replit Shell:
+
+npm install @rainbow-me/rainbowkit@latest wagmi@latest viem@latest
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 9: FORCE RELOAD WALLETCONNECT MODAL
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this to force refresh WalletConnect state:
+
+useEffect(() => {
+  // Clear WalletConnect cache on mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    console.log('📱 Clearing WalletConnect cache for mobile');
+    
+    // Clear WalletConnect storage
+    const wcKeys = Object.keys(localStorage).filter(key => 
+      key.includes('walletconnect') || 
+      key.includes('wc@2') ||
+      key.includes('-wallet')
+    );
+    
+    wcKeys.forEach(key => {
+      console.log('  Removing:', key);
+      localStorage.removeItem(key);
+    });
+    
+    // Clear wagmi cache
+    localStorage.removeItem('wagmi.store');
+    localStorage.removeItem('wagmi.cache');
+    localStorage.removeItem('wagmi.wallet');
+  }
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL FIX 10: ADD NETWORK CHECK
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+ADD this to verify mobile network connectivity:
+
+useEffect(() => {
+  // Test if mobile can reach WalletConnect
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    console.log('🌐 Testing mobile network access...');
+    
+    const testUrls = [
+      'https://explorer-api.walletconnect.com/v3/wallets?projectId=25a4673950aaa1276b2fa76417ef9633',
+      'https://relay.walletconnect.com',
+      'https://rpc.basedai.network',
+    ];
+    
+    testUrls.forEach(url => {
+      fetch(url, { method: 'HEAD', mode: 'no-cors' })
+        .then(() => console.log(`  ✅ Can reach: ${url}`))
+        .catch(() => console.error(`  ❌ Cannot reach: ${url}`));
+    });
+  }
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+TESTING PROTOCOL - MOBILE SPECIFIC
+═══════════════════════════════════════════════════════════════════
+
+After implementing fixes, test on your mobile device:
+
+STEP 1: Clear Everything
+- Close all browser tabs
+- Clear Safari/Chrome cache
+- Force close MetaMask app
+- Reopen browser
+
+STEP 2: Test Connection Flow
+1. Open app in Safari (iOS) or Chrome (Android)
+2. Open browser dev tools if possible (connect phone to computer)
+3. Click "Connect Wallet" button
+4. Watch console logs - you should see:
+   - "📱 Mobile Wallet Debug: Is Mobile: true"
+   - "🔗 Testing WalletConnect API..."
+   - "✅ WalletConnect API accessible"
+   - "✅ MetaMask in registry"
+
+STEP 3: Test MetaMask Icon
+1. Click MetaMask icon in wallet modal
+2. Check console: "🦊 MetaMask button clicked"
+3. EXPECTED: MetaMask app opens OR browser redirects to metamask.app.link
+4. IF NOTHING: Check console for errors
+
+STEP 4: Test "All Wallets" Button
+1. Click "All Wallets" button
+2. Check console for errors
+3. EXPECTED: Modal shows list of 100+ wallets
+4. IF BLANK: Check console for "❌ WalletConnect API error"
+
+STEP 5: Report Results
+Tell me EXACTLY what you see:
+- Does MetaMask icon appear? YES/NO
+- When clicked, what happens? (app opens / nothing / error)
+- Does "All Wallets" show wallet list? YES/NO / BLANK
+- Any console errors? (copy/paste them)
+
+
+═══════════════════════════════════════════════════════════════════
+EMERGENCY WORKAROUND (If Above Fails)
+═══════════════════════════════════════════════════════════════════
+
+If MetaMask icon still doesn't work, ADD this button to your wallet modal:
+
+File: client/src/components/ConnectWallet.tsx
+
+<button
+  onClick={() => {
+    const deepLink = `https://metamask.app.link/dapp/${encodeURIComponent(window.location.href)}`;
+    window.location.href = deepLink;
+  }}
+  style={{
+    width: '100%',
+    padding: '16px',
+    background: '#f8f9fa',
+    border: '2px solid #f6851b',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  }}
+>
+  <img 
+    src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" 
+    alt="MetaMask" 
+    style={{ width: '32px', height: '32px' }}
+  />
+  Open in MetaMask Browser
+</button>
+
+This button forces MetaMask to open via deep link.
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+After implementing ALL fixes:
+
+1. Rebuild in Replit: npm run build
+2. Republish
+3. Test on mobile device
+4. Report back with:
+   - Browser console logs (if accessible)
+   - Does MetaMask icon work? YES/NO
+   - Does "All Wallets" load wallet list? YES/NO
+   - Which mobile browser? (Safari/Chrome/other)
+   - Is MetaMask app installed? YES/NO
+
+This MUST fix both issues. The root cause is likely:
+- WalletConnect API blocked by CORS/CSP
+- RainbowKit not configured for mobile wallets
+- Deep link not properly formatted for MetaMask
