@@ -6,6 +6,7 @@ import { SecurityProvider } from "@/context/SecurityContext";
 import { TransactionProvider } from "@/context/TransactionContext";
 import { GuardianProfileProvider } from "@/components/GuardianProfileProvider";
 import { NotificationsProvider } from "@/context/NotificationsContext";
+import "@rainbow-me/rainbowkit/styles.css";
 
 interface WalletProvidersProps {
   children: ReactNode;

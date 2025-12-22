@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Rocket } from "lucide-react";
 import { connectionManager } from "@/lib/connectionManager";
 import { lazyWithRetry, routeImports } from "@/lib/lazyWithRetry";
+import { MobileWalletGuide } from "@/components/MobileWalletGuide";
 
 const Home = lazyWithRetry(routeImports.Home);
 const TermsOfService = lazyWithRetry(routeImports.TermsOfService);
@@ -259,6 +260,7 @@ function App() {
           <Suspense fallback={<AppLoadingFallback />}>
             <WalletProviders>
               <AppContent />
+              <MobileWalletGuide />
             </WalletProviders>
           </Suspense>
           <Toaster />

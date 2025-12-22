@@ -1,4 +1,3 @@
-import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { type Chain } from 'wagmi/chains';
 
