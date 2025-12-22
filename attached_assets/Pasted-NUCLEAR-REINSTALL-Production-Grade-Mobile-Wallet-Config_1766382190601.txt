@@ -1,0 +1,445 @@
+NUCLEAR REINSTALL: Production-Grade Mobile Wallet Configuration
+
+Goal: Remove everything, install most robust versions, mobile-first approach
+Strategy: Use proven package versions + mobile-optimized deep linking
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: UNINSTALL ALL WALLET PACKAGES
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+npm uninstall @rainbow-me/rainbowkit wagmi viem @tanstack/react-query
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: INSTALL PROVEN STABLE VERSIONS
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+npm install @rainbow-me/rainbowkit@2.1.0 wagmi@2.5.7 viem@2.7.13 @tanstack/react-query@5.28.0 --save-exact
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: CREATE CLEAN WAGMI CONFIG
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+DELETE everything and REPLACE with this production config:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+
+// BasedAI L1 Chain
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    name: 'BASED',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.basedai.network'] },
+    public: { http: ['https://rpc.basedai.network'] },
+  },
+  blockExplorers: {
+    default: { 
+      name: 'BasedAI Explorer', 
+      url: 'https://explorer.basedai.network' 
+    },
+  },
+  testnet: false,
+});
+
+// Production WalletConnect configuration
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  chains: [basedaiChain],
+  ssr: false,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: CREATE CLEAN PROVIDERS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/WalletProviders.tsx
+
+CREATE OR REPLACE with:
+
+import { ReactNode } from 'react';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { config } from '@/lib/wagmi';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+});
+
+interface Props {
+  children: ReactNode;
+}
+
+export function WalletProviders({ children }: Props) {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider
+          modalSize="compact"
+          theme={darkTheme({
+            accentColor: '#06b6d4',
+            accentColorForeground: 'white',
+            borderRadius: 'large',
+          })}
+        >
+          {children}
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: UPDATE MAIN.TSX
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/main.tsx
+
+REPLACE with:
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+import '@rainbow-me/rainbowkit/styles.css';
+import { WalletProviders } from './components/WalletProviders';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <WalletProviders>
+    <App />
+  </WalletProviders>
+);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: MOBILE-OPTIMIZED CSS
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+FIND the "MOBILE WALLET" section and REPLACE with this proven config:
+
+/* ========================================
+   PRODUCTION MOBILE WALLET
+   ======================================== */
+
+/* Desktop - use RainbowKit defaults */
+@media (min-width: 769px) {
+  /* Default styles work on desktop */
+}
+
+/* Mobile - heavily optimized */
+@media (max-width: 768px) {
+  /* Reset any conflicting styles */
+  div[data-rk] * {
+    box-sizing: border-box;
+  }
+  
+  /* Modal overlay */
+  div[data-rk] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  /* Modal dialog */
+  div[data-rk] > div {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 400px !important;
+    max-height: 85vh !important;
+    background: white !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  /* Scrollable content */
+  div[data-rk] > div > div {
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 24px 20px !important;
+  }
+  
+  /* All buttons */
+  div[data-rk] button {
+    width: 100% !important;
+    min-height: 60px !important;
+    padding: 14px !important;
+    margin: 8px 0 !important;
+    font-size: 16px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    cursor: pointer !important;
+  }
+  
+  /* Button active state */
+  div[data-rk] button:active {
+    transform: scale(0.98) !important;
+    opacity: 0.8 !important;
+  }
+  
+  /* Prevent body scroll when modal open */
+  body:has(div[data-rk]) {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: MOBILE DEEP LINK HELPER (CRITICAL FOR METAMASK)
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/components/MobileWalletGuide.tsx (NEW FILE)
+
+CREATE this file:
+
+export function MobileWalletGuide() {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (!isMobile) return null;
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 20,
+      left: 20,
+      right: 20,
+      background: '#06b6d4',
+      color: 'white',
+      padding: '16px',
+      borderRadius: '12px',
+      fontSize: '14px',
+      zIndex: 1000,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+    }}>
+      <strong>Mobile Tip:</strong> For MetaMask, open this page in MetaMask's browser for best experience.
+    </div>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: UPDATE APP.TSX TO USE GUIDE
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+At the TOP of your App component, ADD:
+
+import { MobileWalletGuide } from './components/MobileWalletGuide';
+
+function App() {
+  return (
+    <>
+      <MobileWalletGuide />
+      {/* Rest of your app */}
+    </>
+  );
+}
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: SERVER CONFIGURATION
+═══════════════════════════════════════════════════════════════════
+
+File: server/index.ts
+
+ENSURE this middleware exists:
+
+import cors from 'cors';
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+
+// Remove CSP entirely for testing
+app.use((req, res, next) => {
+  res.removeHeader('Content-Security-Policy');
+  next();
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: CLEAN BUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell:
+
+# Remove everything
+rm -rf dist
+rm -rf node_modules/.vite
+rm -rf .cache
+
+# Verify versions
+npm list @rainbow-me/rainbowkit wagmi viem
+
+# Should show:
+# @rainbow-me/rainbowkit@2.1.0
+# wagmi@2.5.7
+# viem@2.7.13
+
+# Build
+npm run build
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 11: TEST PROTOCOL
+═══════════════════════════════════════════════════════════════════
+
+After republishing:
+
+MOBILE TEST 1: Regular Browser
+1. Open Safari on iPhone
+2. Go to your app URL
+3. Click "Connect Wallet"
+4. Do you see wallet options? YES/NO
+5. Click "WalletConnect" or a wallet name
+6. What happens?
+
+MOBILE TEST 2: MetaMask Browser (THIS SHOULD WORK)
+1. Open MetaMask app
+2. Tap browser icon (bottom center)
+3. Type your app URL
+4. Click "Connect Wallet"
+5. Does it connect? YES/NO
+
+MOBILE TEST 3: Trust Wallet Browser
+1. Open Trust Wallet app
+2. Tap browser icon
+3. Type your app URL
+4. Click "Connect Wallet"
+5. Does it connect? YES/NO
+
+
+═══════════════════════════════════════════════════════════════════
+EXPECTED RESULTS
+═══════════════════════════════════════════════════════════════════
+
+Desktop Browser + MetaMask Extension:
+✅ Should work 100%
+
+Mobile Safari + WalletConnect QR:
+⚠️ May or may not work (depends on deep linking)
+
+Mobile MetaMask Browser:
+✅ Should work 100% (uses injected provider)
+
+Mobile Trust Browser:
+✅ Should work 100% (uses injected provider)
+
+
+═══════════════════════════════════════════════════════════════════
+IF STILL BROKEN ON MOBILE SAFARI
+═══════════════════════════════════════════════════════════════════
+
+That's actually NORMAL for many dApps!
+
+Solution: Add prominent mobile instructions:
+
+"For mobile users: Open this site in your wallet's built-in browser"
+
+This is how OpenSea, Uniswap, and most major dApps handle mobile.
+
+The blue banner from Step 7 tells users this.
+
+
+═══════════════════════════════════════════════════════════════════
+FINAL FALLBACK: MOBILE-SPECIFIC WALLET SELECTOR
+═══════════════════════════════════════════════════════════════════
+
+If WalletConnect still fails on mobile Safari, create mobile-specific buttons:
+
+File: client/src/components/MobileWalletButtons.tsx (NEW)
+
+import { useConnect } from 'wagmi';
+
+export function MobileWalletButtons() {
+  const { connect, connectors } = useConnect();
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (!isMobile) return null;
+  
+  const openInMetaMask = () => {
+    const url = window.location.href;
+    const deepLink = `https://metamask.app.link/dapp/${url.replace(/^https?:\/\//, '')}`;
+    window.location.href = deepLink;
+  };
+  
+  const openInTrust = () => {
+    const url = window.location.href;
+    const deepLink = `https://link.trustwallet.com/open_url?url=${encodeURIComponent(url)}`;
+    window.location.href = deepLink;
+  };
+  
+  return (
+    <div style={{ padding: '20px' }}>
+      <h3>Connect on Mobile</h3>
+      <button onClick={openInMetaMask} style={{ 
+        width: '100%', 
+        padding: '16px', 
+        margin: '8px 0',
+        fontSize: '16px',
+        borderRadius: '12px',
+        background: '#f6851b',
+        color: 'white',
+        border: 'none',
+      }}>
+        Open in MetaMask
+      </button>
+      <button onClick={openInTrust} style={{ 
+        width: '100%', 
+        padding: '16px', 
+        margin: '8px 0',
+        fontSize: '16px',
+        borderRadius: '12px',
+        background: '#3375bb',
+        color: 'white',
+        border: 'none',
+      }}>
+        Open in Trust Wallet
+      </button>
+    </div>
+  );
+}
+
+This forces deep links to work.
