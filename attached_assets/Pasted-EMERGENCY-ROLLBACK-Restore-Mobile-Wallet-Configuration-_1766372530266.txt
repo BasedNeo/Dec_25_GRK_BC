@@ -1,0 +1,333 @@
+EMERGENCY ROLLBACK: Restore Mobile Wallet Configuration to Last Sunday (Working State)
+
+═══════════════════════════════════════════════════════════════════
+ISSUE: Wallet connection worked last Sunday, now broken on mobile
+SOLUTION: Revert all wallet-related changes to last working state
+═══════════════════════════════════════════════════════════════════
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: CHECK GIT HISTORY
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+git log --since="7 days ago" --oneline --all
+
+
+This shows all commits from the last 7 days. Look for commits that mention:
+- wallet
+- wagmi
+- RainbowKit
+- WalletConnect
+- mobile
+
+Copy the output here so we can identify what changed.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: REVERT WAGMI.TS TO SIMPLE CONFIG
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/lib/wagmi.ts
+
+REPLACE entire file with this MINIMAL working configuration:
+
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { defineChain } from 'viem';
+
+export const basedaiChain = defineChain({
+  id: 8453082024,
+  name: 'BasedAI L1',
+  nativeCurrency: {
+    name: 'BASED',
+    symbol: 'BASED',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.basedai.network'],
+    },
+    public: {
+      http: ['https://rpc.basedai.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'BasedAI Explorer',
+      url: 'https://explorer.basedai.network',
+    },
+  },
+  testnet: false,
+});
+
+export const config = getDefaultConfig({
+  appName: 'Based Guardians',
+  projectId: '25a4673950aaa1276b2fa76417ef9633',
+  chains: [basedaiChain],
+  ssr: false,
+  autoConnect: false,
+});
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: REVERT MAIN.TSX TO SIMPLE CONFIG
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/main.tsx
+
+ENSURE it looks like this (NO React.StrictMode):
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { config } from './lib/wagmi';
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <WagmiProvider config={config}>
+    <QueryClientProvider client={queryClient}>
+      <RainbowKitProvider
+        modalSize="compact"
+        theme={darkTheme({
+          accentColor: '#06b6d4',
+          accentColorForeground: 'white',
+          borderRadius: 'large',
+        })}
+      >
+        <App />
+      </RainbowKitProvider>
+    </QueryClientProvider>
+  </WagmiProvider>
+);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: REMOVE ALL DIAGNOSTIC CODE FROM APP.TSX
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+FIND and DELETE all these useEffect blocks we added for debugging:
+- Emergency CSS injection
+- Prevent body scroll
+- Diagnostic logging for MetaMask
+- Available connectors logging
+- Manual click handler
+- WalletConnect configuration logging
+- API accessibility tests
+- Button click loggers
+- Modal inspectors
+
+Keep ONLY the essential app code.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: SIMPLIFY INDEX.CSS MOBILE WALLET SECTION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/index.css
+
+FIND the section that starts with:
+/* MOBILE WALLET FIX - DO NOT MODIFY */
+
+REPLACE it with this SIMPLER version:
+
+/* ========================================
+   MOBILE WALLET - BASIC CONFIGURATION
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Modal container */
+  div[data-rk] {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Modal dialog */
+  div[data-rk] div[role="dialog"] {
+    width: 90vw !important;
+    max-width: 400px !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    background: white !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+  }
+  
+  /* Wallet buttons */
+  div[data-rk] button {
+    width: 100% !important;
+    padding: 14px !important;
+    margin: 8px 0 !important;
+    font-size: 16px !important;
+    touch-action: manipulation !important;
+  }
+}
+
+DELETE any additional mobile wallet CSS sections, diagnostic borders, or emergency fixes.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: REMOVE ANY EMERGENCY CSS INJECTION
+═══════════════════════════════════════════════════════════════════
+
+File: client/src/App.tsx
+
+DELETE this entire useEffect if it exists:
+
+useEffect(() => {
+  const style = document.createElement('style');
+  style.id = 'emergency-button-fix';
+  style.textContent = `...`;
+  document.head.appendChild(style);
+  // ...
+}, []);
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: VERIFY PACKAGE VERSIONS HAVEN'T CHANGED
+═══════════════════════════════════════════════════════════════════
+
+File: package.json
+
+CHECK these versions - they should be stable, not "latest":
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.0.0",
+    "wagmi": "^2.5.0",
+    "viem": "^2.7.0",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+
+If versions are VERY different (like 1.x vs 2.x), this might be the issue.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 8: CLEAR BUILD CACHE AND REBUILD
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run these commands:
+
+# Remove old build
+rm -rf dist
+
+# Clear node cache
+rm -rf node_modules/.vite
+
+# Rebuild
+npm run build
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 9: CLEAR BROWSER STORAGE ON MOBILE
+═══════════════════════════════════════════════════════════════════
+
+On your mobile device (iPhone/Android):
+
+Safari (iPhone):
+1. Settings → Safari → Advanced → Website Data
+2. Find your replit app URL
+3. Swipe left and Delete
+4. Or "Remove All Website Data"
+
+Chrome (Android):
+1. Chrome menu → Settings → Privacy
+2. Clear browsing data
+3. Select "Cookies and site data" and "Cached images and files"
+4. Clear data
+
+This removes any broken wallet state stored from our debugging attempts.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 10: REPUBLISH AND TEST
+═══════════════════════════════════════════════════════════════════
+
+1. After making all changes above, Republish in Replit
+
+2. On mobile device:
+   - Force close all browsers
+   - Reopen Safari or Chrome
+   - Go to your app URL
+   
+3. Test wallet connection:
+   - Click "Connect Wallet"
+   - Try Trust Wallet (you said this works)
+   - Try Coinbase (you said this works)
+   - Try MetaMask
+   - Try "All Wallets" / WalletConnect
+
+4. Does MetaMask work now? YES/NO
+5. Does "All Wallets" show wallet list? YES/NO
+
+
+═══════════════════════════════════════════════════════════════════
+IF STILL BROKEN AFTER ROLLBACK
+═══════════════════════════════════════════════════════════════════
+
+If wallet connection still doesn't work after rolling back, the issue might be:
+
+1. Package version changed (npm updated something)
+   - Run: npm list @rainbow-me/rainbowkit wagmi viem
+   - Compare versions to last Sunday
+
+2. Replit environment changed
+   - Node version changed
+   - Build process changed
+
+3. Project ID got regenerated/invalidated
+   - Check if Project ID: 25a4673950aaa1276b2fa76417ef9633 is still active
+   - Go to: https://cloud.reown.com (WalletConnect dashboard)
+   - Verify Project ID is active and not expired
+
+
+═══════════════════════════════════════════════════════════════════
+ALTERNATIVE: CHECK IF WALLETCONNECT PROJECT ID EXPIRED
+═══════════════════════════════════════════════════════════════════
+
+WalletConnect Project IDs can expire or get rate-limited.
+
+1. Go to: https://cloud.reown.com
+2. Log in with your account
+3. Find project: Based Guardians
+4. Check if Project ID is still: 25a4673950aaa1276b2fa76417ef9633
+5. Check if there are any alerts or "Project Suspended" warnings
+6. Check API usage - if you hit rate limits, it might be throttled
+
+If Project ID is expired or suspended, you'll need to:
+- Create a new project
+- Get a new Project ID
+- Update client/src/lib/wagmi.ts with the new ID
+
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+After implementing this rollback:
+
+1. Does wallet connection work on mobile? YES/NO
+
+2. If YES - we know the issue was something we added recently
+
+3. If NO - check:
+   - Package versions: npm list @rainbow-me/rainbowkit wagmi viem
+   - WalletConnect Project ID status
+   - Any Replit environment changes
+
+Report back what happens!
