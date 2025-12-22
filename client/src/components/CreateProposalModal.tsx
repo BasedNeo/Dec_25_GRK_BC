@@ -105,7 +105,7 @@ export function CreateProposalModal({ isOpen, onClose, walletAddress }: CreatePr
   if (showConfirmation) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="bg-black/95 border-cyan-500/50 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-black/95 border-cyan-500/50 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl font-orbitron text-cyan-400">Confirm New Proposal</DialogTitle>
             <DialogDescription className="text-gray-400 text-sm">
@@ -179,7 +179,7 @@ export function CreateProposalModal({ isOpen, onClose, walletAddress }: CreatePr
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-black/95 border-cyan-500/50 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-black/95 border-cyan-500/50 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
         <DialogHeader>
           <DialogTitle className="text-xl sm:text-2xl font-orbitron text-cyan-400">Create New Proposal</DialogTitle>
           <DialogDescription className="text-gray-400 text-sm">

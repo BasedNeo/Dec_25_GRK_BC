@@ -138,8 +138,8 @@ function OfferModalInline({ isOpen, onClose, item }: { isOpen: boolean; onClose:
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto"
-        style={{ zIndex: 99999 }}
+        className="bg-black/95 backdrop-blur-xl border-cyan-500/30 text-white w-full h-full sm:h-auto sm:max-w-md sm:rounded-xl overflow-y-auto overscroll-contain touch-pan-y"
+        style={{ zIndex: 99999, WebkitOverflowScrolling: 'touch' }}
       >
         <DialogHeader className="pt-8 sm:pt-0">
           <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
@@ -677,7 +677,13 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
             </div>
 
             {/* Scrollable Attributes - Using overflow-y-auto instead of ScrollArea for reliability */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ maxHeight: 'calc(100% - 180px)' }}>
+            <div 
+              className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6 touch-pan-y"
+              style={{ 
+                maxHeight: 'calc(100% - 80px)',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
                 <div className="space-y-6">
                     {/* Premium Backed Value Display (Scrollable) */}
                     <div className="p-4 bg-gradient-to-r from-green-500/10 to-transparent border-l-4 border-green-500 rounded-r-lg">
