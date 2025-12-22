@@ -95,7 +95,10 @@ function OfferModalInline({ isOpen, onClose, item }: { isOpen: boolean; onClose:
     setValidationError(null);
     
     if (!isConnected) {
-      openConnectModal?.();
+      onClose();
+      setTimeout(() => {
+        openConnectModal?.();
+      }, 100);
       return;
     }
     
