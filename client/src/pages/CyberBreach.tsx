@@ -475,49 +475,106 @@ export default function CyberBreach() {
     const size = canvasSizeRef.current;
     const centerX = size / 2;
     const centerY = size / 2;
+    const time = performance.now() / 1000;
     
     ctx.save();
     ctx.scale(dpr, dpr);
     
-    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size / 2);
-    gradient.addColorStop(0, 'rgba(0, 30, 50, 1)');
-    gradient.addColorStop(0.5, 'rgba(10, 0, 40, 1)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    // Premium gradient background
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.7);
+    gradient.addColorStop(0, '#0a1628');
+    gradient.addColorStop(0.4, '#0d0d2b');
+    gradient.addColorStop(0.7, '#050510');
+    gradient.addColorStop(1, '#000000');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
     
-    const time = Date.now() / 1000;
+    // Animated grid
+    const gridSize = 25;
+    const gridOffset = (time * 10) % gridSize;
+    const pulseIntensity = 0.025 + Math.sin(time * 1.5) * 0.01;
+    
+    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseIntensity})`;
+    ctx.lineWidth = 1;
+    
+    for (let x = -gridSize + gridOffset; x < size + gridSize; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, size);
+      ctx.stroke();
+    }
+    for (let y = -gridSize + gridOffset; y < size + gridSize; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(size, y);
+      ctx.stroke();
+    }
+    
+    // Animated decorative rings with premium glow
     for (let i = 0; i < 4; i++) {
       const radius = 60 + i * 50;
       const gapAngle = time * (0.3 + i * 0.1) * (i % 2 === 0 ? 1 : -1);
       const gapSize = 45;
       
+      // Outer glow
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, gapAngle + (gapSize * Math.PI / 180), gapAngle + Math.PI * 2 - (gapSize * Math.PI / 180));
       ctx.strokeStyle = RING_COLORS[i];
+      ctx.lineWidth = 12;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.1;
+      ctx.stroke();
+      
+      // Middle glow
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, gapAngle + (gapSize * Math.PI / 180), gapAngle + Math.PI * 2 - (gapSize * Math.PI / 180));
       ctx.lineWidth = 6;
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = 0.3;
+      ctx.shadowColor = RING_COLORS[i];
+      ctx.shadowBlur = 15;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      
+      // Core ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, gapAngle + (gapSize * Math.PI / 180), gapAngle + Math.PI * 2 - (gapSize * Math.PI / 180));
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.5;
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
     
+    // Premium core glow
     const coreRadius = 35;
+    
+    const outerGlow = ctx.createRadialGradient(centerX, centerY, coreRadius * 0.5, centerX, centerY, coreRadius * 1.5);
+    outerGlow.addColorStop(0, 'rgba(0, 255, 255, 0.25)');
+    outerGlow.addColorStop(0.5, 'rgba(191, 0, 255, 0.12)');
+    outerGlow.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, coreRadius * 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = outerGlow;
+    ctx.fill();
+    
     const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius);
-    coreGradient.addColorStop(0, COLORS.primary);
-    coreGradient.addColorStop(0.7, COLORS.secondary);
-    coreGradient.addColorStop(1, 'transparent');
+    coreGradient.addColorStop(0, '#00ffff');
+    coreGradient.addColorStop(0.4, '#00ccff');
+    coreGradient.addColorStop(0.7, '#bf00ff');
+    coreGradient.addColorStop(1, 'rgba(191, 0, 255, 0.4)');
     
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
     ctx.fillStyle = coreGradient;
     ctx.shadowColor = COLORS.primary;
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 35;
     ctx.fill();
     ctx.shadowBlur = 0;
     
+    // Pulsing inner core
+    const innerPulse = 0.5 + Math.sin(time * 3) * 0.05;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, coreRadius * 0.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.arc(centerX, centerY, coreRadius * innerPulse, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
     ctx.fill();
     
     ctx.restore();
@@ -535,6 +592,7 @@ export default function CyberBreach() {
     const size = canvasSizeRef.current;
     const centerX = size / 2;
     const centerY = size / 2;
+    const time = performance.now() / 1000;
     
     ctx.save();
     ctx.scale(dpr, dpr);
@@ -545,103 +603,175 @@ export default function CyberBreach() {
       ctx.translate(shakeX, shakeY);
     }
     
-    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size / 2);
-    gradient.addColorStop(0, 'rgba(0, 30, 50, 1)');
-    gradient.addColorStop(0.5, 'rgba(10, 0, 40, 1)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    // Premium animated gradient background
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.7);
+    gradient.addColorStop(0, '#0a1628');
+    gradient.addColorStop(0.4, '#0d0d2b');
+    gradient.addColorStop(0.7, '#050510');
+    gradient.addColorStop(1, '#000000');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
     
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.03)';
+    // Animated moving grid with pulse effect
+    const gridSize = 25;
+    const gridOffset = (time * 15) % gridSize;
+    const pulseIntensity = 0.03 + Math.sin(time * 2) * 0.015;
+    
+    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseIntensity})`;
     ctx.lineWidth = 1;
-    const gridSize = 30;
-    for (let x = 0; x < size; x += gridSize) {
+    
+    for (let x = -gridSize + gridOffset; x < size + gridSize; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, size);
       ctx.stroke();
     }
-    for (let y = 0; y < size; y += gridSize) {
+    for (let y = -gridSize + gridOffset; y < size + gridSize; y += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(size, y);
       ctx.stroke();
     }
     
+    // Subtle radial grid highlight
+    const gridGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.5);
+    gridGlow.addColorStop(0, 'rgba(0, 255, 255, 0.08)');
+    gridGlow.addColorStop(0.5, 'rgba(0, 255, 255, 0.02)');
+    gridGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = gridGlow;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Premium ring rendering with multi-layer glow
     for (const ring of state.rings) {
       if (ring.opacity <= 0) continue;
       
       const gapStart = ring.gapAngle - (ring.gapSize * Math.PI / 180) / 2;
       const gapEnd = ring.gapAngle + (ring.gapSize * Math.PI / 180) / 2;
       
+      // Outer glow layer (larger, more diffuse)
       ctx.beginPath();
       ctx.arc(centerX, centerY, ring.radius, gapEnd, gapStart + Math.PI * 2);
       ctx.strokeStyle = ring.color;
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 16;
       ctx.lineCap = 'round';
-      ctx.globalAlpha = ring.opacity;
+      ctx.globalAlpha = ring.opacity * 0.15;
+      ctx.stroke();
+      
+      // Middle glow layer
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, ring.radius, gapEnd, gapStart + Math.PI * 2);
+      ctx.lineWidth = 10;
+      ctx.globalAlpha = ring.opacity * 0.4;
       ctx.shadowColor = ring.color;
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 25;
       ctx.stroke();
       ctx.shadowBlur = 0;
+      
+      // Core ring (crisp)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, ring.radius, gapEnd, gapStart + Math.PI * 2);
+      ctx.lineWidth = 4;
+      ctx.globalAlpha = ring.opacity;
+      ctx.stroke();
       ctx.globalAlpha = 1;
       
+      // Enhanced gap marker with pulse
       const gapCenterX = centerX + Math.cos(ring.gapAngle) * ring.radius;
       const gapCenterY = centerY + Math.sin(ring.gapAngle) * ring.radius;
+      const gapPulse = 1 + Math.sin(time * 8) * 0.2;
       
+      // Gap outer glow
       ctx.beginPath();
-      ctx.arc(gapCenterX, gapCenterY, 5, 0, Math.PI * 2);
+      ctx.arc(gapCenterX, gapCenterY, 10 * gapPulse, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.success;
+      ctx.globalAlpha = ring.opacity * 0.2;
+      ctx.fill();
+      
+      // Gap core
+      ctx.beginPath();
+      ctx.arc(gapCenterX, gapCenterY, 5 * gapPulse, 0, Math.PI * 2);
       ctx.fillStyle = COLORS.success;
       ctx.globalAlpha = ring.opacity;
       ctx.shadowColor = COLORS.success;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 15;
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
     
-    const targetAngle = Math.PI / 2;
+    // Target line with animation
     const lineLength = 50;
+    const linePulse = 0.4 + Math.sin(time * 4) * 0.15;
     ctx.beginPath();
     ctx.moveTo(centerX, centerY + 35);
     ctx.lineTo(centerX, centerY + 35 + lineLength);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.strokeStyle = `rgba(255, 255, 255, ${linePulse})`;
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
     
+    // Premium core with multi-layer gradient
     const coreRadius = 35;
+    
+    // Outer core glow
+    const outerGlow = ctx.createRadialGradient(centerX, centerY, coreRadius * 0.5, centerX, centerY, coreRadius * 1.5);
+    outerGlow.addColorStop(0, 'rgba(0, 255, 255, 0.3)');
+    outerGlow.addColorStop(0.5, 'rgba(191, 0, 255, 0.15)');
+    outerGlow.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, coreRadius * 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = outerGlow;
+    ctx.fill();
+    
+    // Main core gradient
     const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius);
-    coreGradient.addColorStop(0, COLORS.primary);
-    coreGradient.addColorStop(0.7, COLORS.secondary);
-    coreGradient.addColorStop(1, 'transparent');
+    coreGradient.addColorStop(0, '#00ffff');
+    coreGradient.addColorStop(0.4, '#00ccff');
+    coreGradient.addColorStop(0.7, '#bf00ff');
+    coreGradient.addColorStop(1, 'rgba(191, 0, 255, 0.5)');
     
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
     ctx.fillStyle = coreGradient;
     ctx.shadowColor = COLORS.primary;
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 40;
     ctx.fill();
     ctx.shadowBlur = 0;
     
+    // Inner bright core
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreRadius * 0.55, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.fill();
     
+    // Level number with shadow
     ctx.font = 'bold 22px Orbitron, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#000000';
     ctx.fillText(String(state.level), centerX, centerY);
     
+    // Enhanced particles with glow trails
     for (const particle of state.particles) {
+      const particleSize = particle.size * particle.life;
+      
+      // Particle glow
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * particle.life, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particleSize * 2, 0, Math.PI * 2);
+      ctx.fillStyle = particle.color;
+      ctx.globalAlpha = particle.life * 0.3;
+      ctx.fill();
+      
+      // Particle core
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particleSize, 0, Math.PI * 2);
       ctx.fillStyle = particle.color;
       ctx.globalAlpha = particle.life;
+      ctx.shadowColor = particle.color;
+      ctx.shadowBlur = 8;
       ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
     
