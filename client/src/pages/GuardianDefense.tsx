@@ -148,16 +148,16 @@ const MISSILE_COLORS: Record<MissileColor, string> = {
 };
 
 const MISSILE_POINTS: Record<MissileColor, number> = {
-  green: 15,
-  red: 20,
-  yellow: 25,
+  green: 2,
+  red: 2,
+  yellow: 3,
 };
 
-const MISSILES_PER_BATTERY = 10;
+const MISSILES_PER_BATTERY = 5;
 const DEFENSIVE_MISSILE_SPEED = 700;
 const EXPLOSION_MAX_RADIUS = 65;
 const EXPLOSION_LIFETIME = 2.0;
-const RELOAD_TIME = 4000;
+const RELOAD_TIME = 6000;
 
 const WAVE_CONFIG = [
   { count: 4, speed: 45, delay: 400, message: "The creatures sense danger!" },
@@ -423,11 +423,11 @@ export default function GuardianDefense() {
     // Bot protection: minimum play duration check
     const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
     
-    const citiesBonus = state.cities.filter(c => c.active).length * 50;
+    const citiesBonus = state.cities.filter(c => c.active).length * 5;
     const accuracyBonus = state.accuracy.shots > 0 
-      ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 100)
+      ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 10)
       : 0;
-    const waveBonus = (state.wave - 1) * 20;
+    const waveBonus = (state.wave - 1) * 2;
     
     let finalScore = Math.min(
       state.score + citiesBonus + accuracyBonus + waveBonus,
@@ -614,7 +614,7 @@ export default function GuardianDefense() {
           state.accuracy.hits++;
           
           const basePoints = MISSILE_POINTS[missile.color];
-          const chainBonus = state.chainReactions * 50;
+          const chainBonus = state.chainReactions * 5;
           state.score += basePoints + chainBonus;
           state.waveChainBonus += chainBonus;
           state.chainReactions++;
@@ -761,9 +761,9 @@ export default function GuardianDefense() {
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
-      const waveBonus = state.wave * 10;
+      const waveBonus = state.wave * 1;
       const chainBonus = state.waveChainBonus;
-      const perfectBonus = perfectDefense ? 50 : 0;
+      const perfectBonus = perfectDefense ? 5 : 0;
       state.score += waveBonus + perfectBonus;
       
       toast({

@@ -663,7 +663,7 @@ export function GuardianDefender() {
                 <p className="text-xs text-gray-600 mt-1">Lifetime: {myStats.lifetimeScore.toLocaleString()}</p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap justify-center">
                 <Button 
                   onClick={startGame} 
                   disabled={!access.canPlay} 
@@ -678,6 +678,14 @@ export function GuardianDefender() {
                   data-testid="button-view-ranks"
                 >
                   <TrophyIcon size={18} className="mr-2" /> RANKS
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setLocation('/')}
+                  className="border-white/30 text-white px-5 py-3 rounded-xl hover:bg-white/10" 
+                  data-testid="button-exit"
+                >
+                  <Home size={18} className="mr-2" /> EXIT
                 </Button>
               </div>
               

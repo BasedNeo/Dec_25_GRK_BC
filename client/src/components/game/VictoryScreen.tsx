@@ -135,7 +135,7 @@ export function VictoryScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md p-4"
+        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md p-4 overflow-y-auto"
         role="dialog"
         aria-labelledby="victory-title"
         aria-describedby="victory-message"
@@ -145,7 +145,7 @@ export function VictoryScreen({
           initial={{ scale: 0.8, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-4 border-cyan-400 rounded-2xl p-8 md:p-12 text-center backdrop-blur-lg max-w-lg w-full relative overflow-hidden"
+          className="bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-4 border-cyan-400 rounded-2xl p-6 md:p-12 text-center backdrop-blur-lg max-w-lg w-full relative max-h-[95vh] overflow-y-auto my-auto"
         >
           {/* Celebration Icon */}
           <motion.div 
