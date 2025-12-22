@@ -1,0 +1,159 @@
+SYSTEMATIC DIAGNOSIS: What Changed Since Last Sunday?
+
+Goal: Identify EXACTLY what broke mobile wallet connection
+Method: Check git history, package versions, environment changes
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: CHECK GIT HISTORY
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run these commands:
+
+# Show all commits since last Sunday
+git log --since="2024-12-15" --oneline --all
+
+# Show which files changed
+git log --since="2024-12-15" --name-only --oneline
+
+# Show specific changes to wallet files
+git log --since="2024-12-15" -p -- client/src/lib/wagmi.ts
+git log --since="2024-12-15" -p -- client/src/main.tsx
+git log --since="2024-12-15" -p -- client/src/index.css
+
+Copy ALL the output and send it to me.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: CHECK IF PACKAGES UPDATED
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+# Check current versions
+npm list @rainbow-me/rainbowkit wagmi viem
+
+# Check when packages were last installed
+ls -la node_modules/@rainbow-me/rainbowkit
+ls -la node_modules/wagmi
+
+Copy the output.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: CHECK PACKAGE LOCK FILE
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+# See if package-lock.json changed recently
+git log --since="2024-12-15" -p -- package-lock.json | head -100
+
+This shows if npm auto-updated packages.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: COMPARE WORKING VERSION TO NOW
+═══════════════════════════════════════════════════════════════════
+
+In Replit Shell, run:
+
+# Find the last working commit (around December 15)
+git log --since="2024-12-15" --until="2024-12-16" --oneline
+
+# Get the commit hash from that date (should be something like abc1234)
+# Then show what changed since then:
+git diff abc1234 HEAD -- client/src/lib/wagmi.ts
+git diff abc1234 HEAD -- client/src/main.tsx
+git diff abc1234 HEAD -- client/src/index.css
+
+Replace abc1234 with the actual commit hash from December 15.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: TRY ROLLING BACK TO LAST WORKING STATE
+═══════════════════════════════════════════════════════════════════
+
+IF you can identify a working commit from last Sunday:
+
+# DON'T RUN THIS YET - just find the commit first
+git log --since="2024-12-15" --until="2024-12-16" --oneline
+
+# This will show commits like:
+# abc1234 Fixed treasury calculation
+# def5678 Added new game
+# etc.
+
+Tell me which commit was from when it last worked.
+
+
+═══════════════════════════════════════════════════════════════════
+ALTERNATIVE: NUCLEAR OPTION - LOCK PACKAGE VERSIONS
+═══════════════════════════════════════════════════════════════════
+
+If packages auto-updated and broke things:
+
+File: package.json
+
+FIND the dependencies section and LOCK to specific versions (remove ^):
+
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "2.0.0",
+    "wagmi": "2.5.0",
+    "viem": "2.7.0",
+    "@tanstack/react-query": "5.0.0"
+  }
+}
+
+The ^ symbol means "auto-update to latest minor version"
+Removing it locks to exact version.
+
+Then run:
+rm -rf node_modules
+rm package-lock.json
+npm install
+npm run build
+
+
+═══════════════════════════════════════════════════════════════════
+MOST LIKELY CULPRITS
+═══════════════════════════════════════════════════════════════════
+
+Based on "worked last Sunday, broken now":
+
+1. RainbowKit updated to 2.1.x or 2.2.x with breaking changes
+   - Check: npm list @rainbow-me/rainbowkit
+   - Fix: Lock to working version
+
+2. We added too much diagnostic code that interferes
+   - Check: client/src/App.tsx for useEffect blocks
+   - Fix: Remove all diagnostic useEffect blocks
+
+3. iOS/Safari updated with stricter security
+   - Check: What iOS version? (Settings → General → About)
+   - Fix: May need additional CSP permissions
+
+4. Replit changed Node version
+   - Check: node --version
+   - Should be 18.x or 20.x
+   - Fix: May need to specify Node version
+
+5. Someone ran "npm update" accidentally
+   - Check: git log package-lock.json
+   - Fix: Revert package-lock.json
+
+
+═══════════════════════════════════════════════════════════════════
+DEBUGGING QUESTION
+═══════════════════════════════════════════════════════════════════
+
+When it worked last Sunday:
+
+1. Was it the EXACT SAME phone and browser?
+2. Was it the EXACT SAME Replit URL?
+3. Did you mint an NFT successfully with MetaMask?
+4. Or was it a different wallet (Trust/Coinbase)?
+
+This matters because if you successfully minted with MetaMask last Sunday,
+we know MetaMask definitely worked. If you minted with Trust or Coinbase,
+MetaMask might never have worked on mobile.
