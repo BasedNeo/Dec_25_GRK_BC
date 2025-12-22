@@ -468,8 +468,12 @@ export default function CyberBreach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
+    
+    // Enable high-quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     
     const dpr = window.devicePixelRatio || 1;
     const size = canvasSizeRef.current;
@@ -509,6 +513,18 @@ export default function CyberBreach() {
       ctx.lineTo(size, y);
       ctx.stroke();
     }
+    
+    // Twinkling stars
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    for (let i = 0; i < 35; i++) {
+      const x = (i * 37 + i * i * 7) % size;
+      const y = (i * 71 + i * 13) % size;
+      const twinkle = 0.2 + Math.sin(time * 2 + i * 0.7) * 0.25;
+      const starSize = (i % 3) + 1;
+      ctx.globalAlpha = twinkle;
+      ctx.fillRect(x, y, starSize, starSize);
+    }
+    ctx.globalAlpha = 1;
     
     // Animated decorative rings with premium glow
     for (let i = 0; i < 4; i++) {
@@ -584,8 +600,12 @@ export default function CyberBreach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
+    
+    // Enable high-quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     
     const state = gameStateRef.current;
     const dpr = window.devicePixelRatio || 1;
@@ -640,6 +660,18 @@ export default function CyberBreach() {
     gridGlow.addColorStop(1, 'transparent');
     ctx.fillStyle = gridGlow;
     ctx.fillRect(0, 0, size, size);
+    
+    // Twinkling stars
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    for (let i = 0; i < 40; i++) {
+      const x = (i * 37 + i * i * 7) % size;
+      const y = (i * 71 + i * 13) % size;
+      const twinkle = 0.3 + Math.sin(time * 3 + i * 0.5) * 0.3;
+      const starSize = (i % 3) + 1;
+      ctx.globalAlpha = twinkle;
+      ctx.fillRect(x, y, starSize, starSize);
+    }
+    ctx.globalAlpha = 1;
     
     // Premium ring rendering with multi-layer glow
     for (const ring of state.rings) {
