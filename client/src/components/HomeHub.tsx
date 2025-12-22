@@ -197,12 +197,6 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
                 data-testid={`hub-nav-${item.id}`}
                 disabled={isDisabled}
               >
-                <div className={`
-                  absolute inset-0 bg-gradient-to-r ${item.color} opacity-0 
-                  ${!isDisabled ? 'group-hover:opacity-15' : ''} rounded-2xl transition-all duration-500
-                  blur-2xl scale-105
-                `} />
-                
                 <div 
                   className={`relative flex items-center justify-between py-3 px-4 rounded-xl 
                   border border-white/10
