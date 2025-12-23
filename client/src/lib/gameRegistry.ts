@@ -1,10 +1,10 @@
 import { LucideIcon } from 'lucide-react';
-import { Target, Spade, Shield, Rocket, Zap } from 'lucide-react';
+import { Target, Spade, Shield, Rocket, Zap, Circle } from 'lucide-react';
 
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach';
+export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach' | 'ring-game';
 
 /**
  * Game difficulty levels
@@ -222,6 +222,34 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: true,
     minPlayDuration: 60,
+  },
+  
+  'ring-game': {
+    id: 'ring-game',
+    name: 'Ring Game',
+    description: 'Align the rings with perfect timing! Inspired by Apple Watch Ring-O. Tap when the gaps align to progress through increasingly difficult levels.',
+    path: '/games/ring-game',
+    icon: Circle,
+    iconColor: 'text-purple-400',
+    thumbnailGradient: 'from-purple-500 to-cyan-500',
+    category: 'action',
+    difficulty: 'easy',
+    averagePlayTime: 120,
+    maxPlaysPerDay: 15,
+    enabled: true,
+    scoring: {
+      maxScore: 50000,
+      goodScore: 5000,
+      greatScore: 15000,
+      legendaryScore: 30000,
+    },
+    features: {
+      hasTimer: false,
+      hasLives: true,
+      hasCombo: true,
+    },
+    nftRequired: false,
+    minPlayDuration: 30,
   },
 };
 

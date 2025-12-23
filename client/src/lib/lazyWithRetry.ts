@@ -110,6 +110,7 @@ export const routeImports = {
   GuardianSolitaire: () => import('@/pages/GuardianSolitaire'),
   AsteroidMining: () => import('@/pages/AsteroidMining'),
   CyberBreach: () => import('@/pages/CyberBreach'),
+  RingGame: () => import('@/pages/RingGame'),
   BasedArcade: () => import('@/pages/BasedArcade'),
   TransactionHistory: () => import('@/pages/TransactionHistory'),
   Collections: () => import('@/pages/Collections'),
