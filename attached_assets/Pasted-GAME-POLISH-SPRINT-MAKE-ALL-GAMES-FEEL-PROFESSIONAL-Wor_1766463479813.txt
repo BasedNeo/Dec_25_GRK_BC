@@ -1,0 +1,96 @@
+GAME POLISH SPRINT - MAKE ALL GAMES FEEL PROFESSIONAL
+
+Work through each game and add polish. Test after each change.
+
+═══════════════════════════════════════════════════════════════════
+FOR EVERY GAME, ADD THESE (in order):
+═══════════════════════════════════════════════════════════════════
+
+1. HIGH SCORES (Most Important)
+   - Save best score to localStorage
+   - Display "Best: XXX" during gameplay
+   - Show "🎉 NEW HIGH SCORE!" when beaten
+   - Persist between sessions
+
+2. SCORE POPUPS
+   - "+10" text floats up and fades when scoring
+   - Use CSS animation: translateY + opacity
+   - Color: cyan (#00ffff) for points
+
+3. SOUND EFFECTS
+   - Add 3-4 simple sounds per game:
+     * Score/hit sound (short beep or pop)
+     * Game over sound
+     * Level up/success sound
+     * Button click sound
+   - Add mute button (speaker icon in corner)
+   - Use HTML Audio elements or Web Audio API
+   - Default: sound ON
+
+4. VISUAL FEEDBACK
+   - Screen shake (subtle, 3-5px) on big events
+   - Button glow on hover
+   - Flash effect on score
+
+5. GAME OVER SCREEN
+   - Show final score prominently
+   - Show personal best
+   - "Play Again" button (large, centered)
+   - "Back to Arcade" button
+
+═══════════════════════════════════════════════════════════════════
+SPECIFIC GAME FIXES (from earlier):
+═══════════════════════════════════════════════════════════════════
+
+CREATURE COMMAND:
+- Slower fire rate (double the cooldown)
+- Smaller explosions (reduce by 40%)
+- Add crosshair cursor
+- Enemy variety if time permits
+
+RING GAME:
+- Large "RING 5" level display (prominent, top center)
+- "PERFECT!" text for precise timing
+- Snap/click sound when rings align
+- Style like Apple Watch Ring-O
+
+CYBER BREACH:
+- Responsive panels (stack on mobile, side-by-side on desktop)
+- Typing sound effects for hacker feel
+- Typewriter text animation
+- Progress indicator
+
+═══════════════════════════════════════════════════════════════════
+ARCADE HUB PAGE:
+═══════════════════════════════════════════════════════════════════
+
+- Show high score on each game card
+- Add hover animation (lift + glow)
+- "Play" button on each card
+- Show which games have been played (checkmark or highlight)
+
+═══════════════════════════════════════════════════════════════════
+RULES:
+═══════════════════════════════════════════════════════════════════
+
+✅ DO: Add sounds, animations, high scores, polish
+✅ DO: Test each game works after changes
+✅ DO: Make sure mobile still works
+
+❌ DON'T: Touch wallet code
+❌ DON'T: Touch navbar/navigation
+❌ DON'T: Touch marketplace buy/sell logic
+❌ DON'T: Touch mobile layout CSS (we just fixed it!)
+❌ DON'T: Break anything that's working
+
+═══════════════════════════════════════════════════════════════════
+WHEN DONE, REPORT:
+═══════════════════════════════════════════════════════════════════
+
+1. Games polished: [list]
+2. Features added per game: [list]
+3. Files modified: [list]
+4. Any issues found: [list]
+5. Testing status: [pass/fail per game]
+
+Take your time. Quality over speed. Test everything.

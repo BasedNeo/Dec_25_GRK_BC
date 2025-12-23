@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Gamepad2, Trophy, Lock, Unlock, Star, Sparkles, 
-  Home, Zap, Clock, Target, ChevronRight, Crown, Medal, Award
+  Home, Zap, Clock, Target, ChevronRight, Crown, Medal, Award, CheckCircle2
 } from 'lucide-react';
 import { getEnabledGames, GameConfig } from '@/lib/gameRegistry';
 import { GameStorageManager } from '@/lib/gameStorage';

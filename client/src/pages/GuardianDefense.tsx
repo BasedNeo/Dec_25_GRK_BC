@@ -176,9 +176,10 @@ const MISSILE_POINTS: Record<MissileColor, number> = {
 
 const MISSILES_PER_BATTERY = 5;
 const DEFENSIVE_MISSILE_SPEED = 700;
-const EXPLOSION_MAX_RADIUS = 65;
-const EXPLOSION_LIFETIME = 2.0;
+const EXPLOSION_MAX_RADIUS = 40;
+const EXPLOSION_LIFETIME = 1.8;
 const RELOAD_TIME = 6000;
+const MIN_FIRE_INTERVAL = 200;
 
 const WAVE_CONFIG = [
   { count: 4, speed: 45, delay: 400, message: "The creatures sense danger!" },
@@ -254,6 +255,7 @@ export default function GuardianDefense() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameLoopRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const lastFireTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gameStartTimeRef = useRef<number>(Date.now());
 
@@ -564,6 +566,10 @@ export default function GuardianDefense() {
   const fireMissile = useCallback((targetX: number, targetY: number) => {
     const state = gameStateRef.current;
     if (gameOver || state.waveTransition) return;
+    
+    const now = Date.now();
+    if (now - lastFireTimeRef.current < MIN_FIRE_INTERVAL) return;
+    lastFireTimeRef.current = now;
     
     const sortedBatteries = state.batteries
       .map((b, i) => ({ battery: b, index: i, dist: Math.abs(b.position.x - targetX) }))
