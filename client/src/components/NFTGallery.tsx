@@ -763,7 +763,7 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
 
   return (
     <Card 
-        className={`nft-card bg-card overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer ${
+        className={`nft-card card-lift bg-card overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer ${
           hasOffers 
             ? 'border-2 border-green-500/50 ring-2 ring-green-500/20 bg-gradient-to-b from-green-500/5 to-transparent' 
             : 'border-white/10 hover:border-primary/50'
