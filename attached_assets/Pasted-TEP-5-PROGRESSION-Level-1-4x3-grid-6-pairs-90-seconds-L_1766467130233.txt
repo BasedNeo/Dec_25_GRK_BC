@@ -1,0 +1,96 @@
+TEP 5 - PROGRESSION:
+Level 1: 4x3 grid (6 pairs), 90 seconds
+Level 2: 4x4 grid (8 pairs), 90 seconds
+Level 3: 4x4 grid (8 pairs), 75 seconds
+Level 4+: More pairs or less time
+STEP 6 - VISUAL DESIGN:
+Dark terminal/hacker aesthetic
+Cards: dark with cyan border
+Revealed cards: symbols (icons, numbers, shapes)
+Matched cards: green glow or fade out
+Timer: prominent countdown
+Progress bar: "BREACH: 6/8 COMPLETE"
+Monospace font for hacker feel
+STEP 7 - AUDIO:
+Card flip: subtle click
+Match found: positive beep
+No match: soft error sound
+Breach complete: success fanfare
+Time running low: warning beeps
+Mute button
+MOBILE REQUIREMENTS:
+Grid fits on screen in PORTRAIT
+Cards are tappable (not tiny)
+No scrolling needed
+No keyboard required
+═══════════════════════════════════════════════════════════════════
+ARCADE HUB
+═══════════════════════════════════════════════════════════════════
+Simple, clean page linking to all games.
+LAYOUT:
+Title: "ARCADE" or "GAMES"
+3 game cards in a grid
+Each card: Game icon/image, Game name, High score, PLAY button
+Mobile: stack vertically
+Desktop: 3 columns
+Back to home link
+EACH CARD:
+┌─────────────────────┐│    [Game Icon]      ││                     ││   CREATURE COMMAND  ││   High Score: 2,450 ││                     ││      [ PLAY ]       │└─────────────────────┘
+═══════════════════════════════════════════════════════════════════
+BUILD ORDER (Do one at a time):
+═══════════════════════════════════════════════════════════════════
+FIRST: Creature Command / Space Shooter
+Get controls working
+Get game loop working
+Test on mobile AND desktop
+ONLY move on when it's playable
+SECOND: Ring Game
+Get tapping working
+Get timing logic working
+Test on mobile AND desktop
+THIRD: Cyber Breach (Memory Match)
+Get card flipping working
+Get matching logic working
+Test on mobile AND desktop
+LAST: Arcade Hub
+Link all games
+Show high scores
+Make it look good
+═══════════════════════════════════════════════════════════════════
+TESTING AFTER EACH GAME:
+═══════════════════════════════════════════════════════════════════
+Before moving to next game, verify:
+□ Game loads without errors
+□ Controls work on DESKTOP
+□ Controls work on MOBILE (portrait mode)
+□ Game logic functions correctly
+□ You can win/lose
+□ Score displays and saves
+□ It's actually FUN to play
+═══════════════════════════════════════════════════════════════════
+QUALITY STANDARD:
+═══════════════════════════════════════════════════════════════════
+Each game should be simple but POLISHED. Think:
+Flappy Bird (one mechanic, done perfectly)
+2048 (simple concept, smooth execution)
+Classic arcade games (easy to learn, hard to master)
+The games should:
+✓ Work instantly with no confusion
+✓ Be playable in 30 seconds
+✓ Make you want to try again when you lose
+✓ Work perfectly on a phone in portrait mode
+═══════════════════════════════════════════════════════════════════
+REPORT AFTER EACH GAME:
+═══════════════════════════════════════════════════════════════════
+After completing each game, report:
+GAME: [Name]
+Controls work (desktop): ✅/❌
+Controls work (mobile): ✅/❌
+Game logic works: ✅/❌
+Portrait mode works: ✅/❌
+High score saves: ✅/❌
+Sound works: ✅/❌
+Fun to play: ✅/❌
+Ready for next game: ✅/❌
+═══════════════════════════════════════════════════════════════════
+TIME: Take as long as needed. Quality over speed.

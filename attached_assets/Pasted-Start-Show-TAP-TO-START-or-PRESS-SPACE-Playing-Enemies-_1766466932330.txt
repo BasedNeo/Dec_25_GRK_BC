@@ -1,0 +1,165 @@
+Start → Show "TAP TO START" or "PRESS SPACE"
+↓
+Playing → Enemies spawn, player shoots, score increases
+↓
+Hit by enemy → Lose 1 life, brief invincibility
+↓
+Lives = 0 → Game Over screentiplier for consecutive hits
+- Screen shake on explosions (subtle)
+- Satisfying hit effects
+
+STEP 5 - VISUAL DESIGN:
+
+- Dark space background with stars
+- Player ship: simple but cool (triangle or small spaceship)
+- Enemies: distinct shapes, maybe colored by type
+- Bullets: bright cyan or green laser
+- Explosions: brief particle burst
+- UI: Score top-left, Lives top-right, clean and readable
+
+STEP 6 - AUDIO:
+
+- Shoot sound: short "pew" 
+- Hit sound: satisfying "boom"
+- Player hit: alarm/warning sound
+- Game over: dramatic but short
+- All sounds SHORT (under 1 second)
+- Mute button visible
+
+MOBILE REQUIREMENTS:
+- Works in PORTRAIT mode (phone held normally)
+- Game fits on screen without scrolling
+- Controls at bottom of screen
+- Touch targets at least 60px wide
+- No "rotate your phone" messages
+
+═══════════════════════════════════════════════════════════════════
+GAME 2: RING GAME
+═══════════════════════════════════════════════════════════════════
+
+Rebuild as a simple timing game that WORKS.
+
+CONCEPT: Rings rotate. Tap when gaps align. Simple.
+
+STEP 1 - CORE MECHANICS:
+
+// Basic structure:
+- 2-3 concentric rings on screen
+- Each ring has a gap (opening)
+- Rings rotate at different speeds
+- Player taps when gaps line up
+- Correct = score + next ring pattern
+- Wrong = lose a life
+- 3 lives totalSTEP 2 - CONTROLS:
+
+DESKTOP:
+- Click anywhere = attempt alignment
+- OR Spacebar = attempt alignment
+
+MOBILE:
+- Tap anywhere on screen = attempt alignment
+- Entire game area is touch target
+- Must be INSTANT response (no delay)
+
+TEST: Do rings appear? Do they rotate? Does tapping work?
+
+STEP 3 - TIMING LOGIC:
+
+// When player taps:
+if (gaps are aligned within 30 degrees) {
+  // SUCCESS - award points
+  score += 100;
+  showFeedback("PERFECT!");
+  nextLevel();
+} else if (gaps are aligned within 60 degrees) {
+  // OKAY - smaller points
+  score += 50;
+  showFeedback("GOOD");
+  nextLevel();  
+} else {
+  // MISS - lose life
+  lives--;
+  showFeedback("MISS");
+  if (lives <= 0) gameOver();
+}STEP 4 - PROGRESSION:
+
+- Level 1-3: 2 rings, slow rotation
+- Level 4-6: 2 rings, medium rotation
+- Level 7-10: 3 rings, medium rotation
+- Level 11+: 3 rings, fast rotation
+- Display current level prominently: "RING 7"
+
+STEP 5 - VISUAL DESIGN:
+
+- Dark background, minimal distractions
+- Rings: glowing cyan/purple outlines
+- Gaps: brighter color or different style
+- Level number: LARGE, top center
+- Lives: hearts or dots
+- Feedback text: "PERFECT!" / "GOOD" / "MISS"
+- Clean, focused, zen-like aesthetic
+
+STEP 6 - AUDIO:
+
+- Tap sound: subtle click
+- Perfect: bright "ding!"
+- Good: softer chime
+- Miss: low buzz
+- All sounds SHORT
+- Mute button
+
+MOBILE REQUIREMENTS:
+- Works in PORTRAIT mode
+- Rings fit on screen with padding
+- Tap anywhere works
+- No rotation required
+
+═══════════════════════════════════════════════════════════════════
+GAME 3: CYBER BREACH
+═══════════════════════════════════════════════════════════════════
+
+Rebuild as a simple hacking puzzle game that WORKS.
+
+CONCEPT: Match patterns or type codes to "breach" the system.
+
+STEP 1 - PICK ONE SIMPLE MECHANIC:
+
+OPTION A - MEMORY MATCH (Recommended for mobile):
+- Grid of cards with symbols
+- Flip two cards, find matches
+- Match all pairs to complete breach
+- Timer adds pressure
+- Works great on mobile with taps
+
+OPTION B - SEQUENCE REPEAT (Simon Says):
+- Buttons light up in sequence
+- Player repeats the sequence
+- Sequences get longer
+- Miss = lose progress or life
+
+OPTION C - TYPING (Desktop only):
+- Words appear on screen
+- Type them correctly
+- Speed typing challenge
+- (Harder to do well on mobile)
+
+RECOMMEND OPTION A for best mobile experience.
+
+STEP 2 - CORE MECHANICS (Option A - Memory Match):
+
+// Basic structure:
+- 4x4 grid of cards (16 cards, 8 pairs)
+- Cards start face-down
+- Tap to flip a card
+- Tap second card to try match
+- Match = cards stay revealed
+- No match = both flip back
+- Match all = level complete
+- Timer counts down (90 seconds?)
+- Time runs out = game overSTEP 3 - CONTROLS:
+
+- Tap/click on card to flip it
+- That's it. Simple.
+- Cards should be big enough to tap (min 60x60px)
+
+STEP 4 - GAME LOOP:
