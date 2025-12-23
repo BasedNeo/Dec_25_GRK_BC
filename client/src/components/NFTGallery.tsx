@@ -743,10 +743,11 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
 
   const rarityTrait = guardian.traits?.find((t: any) => t.type === 'Rarity Level' || t.type === 'Rarity')?.value || guardian.rarity || 'Common';
   
-  // Normalize rarity string
+  // Normalize rarity string (new 7-tier system)
   let normalizedRarity = rarityTrait;
-  if (normalizedRarity === 'Rarest (1/1s)') normalizedRarity = 'Rarest-Legendary';
-  if (normalizedRarity === 'Rarest') normalizedRarity = 'More Rare';
+  if (normalizedRarity === 'Rarest (1/1s)' || normalizedRarity === 'Rarest' || normalizedRarity === 'Legendary' || normalizedRarity === 'Rarest-Legendary') normalizedRarity = 'Epic Legendary';
+  if (normalizedRarity === 'Very Rare') normalizedRarity = 'Very Rare Legendary';
+  if (normalizedRarity === 'More Rare') normalizedRarity = 'Rare';
 
   // Find config, handle casing or partial matches if needed, but exact match is preferred
   const rarityConfig = RARITY_CONFIG[normalizedRarity] || RARITY_CONFIG['Common'];

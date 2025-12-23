@@ -33,10 +33,11 @@ const DEFAULT_FILTERS: FilterState = {
 
 function parseFiltersFromURL(params: URLSearchParams): FilterState {
   const rarityParam = params.get('rarity');
+  const validRarities = ['Epic Legendary', 'Very Rare Legendary', 'Rare', 'Less Rare', 'Less Common', 'Common', 'Most Common'];
   return {
     minPrice: params.get('minPrice') || '',
     maxPrice: params.get('maxPrice') || '',
-    rarities: rarityParam ? rarityParam.split(',').filter(r => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'].includes(r)) : [],
+    rarities: rarityParam ? rarityParam.split(',').filter(r => validRarities.includes(r)) : [],
     sortBy: (params.get('sortBy') as FilterState['sortBy']) || 'recent',
     traits: {},
     collection: params.get('collection') || ''

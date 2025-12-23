@@ -221,7 +221,7 @@ export async function fetchSmartMintedData() {
   // --- Step 3: Metadata (Smart Caching) ---
   const nfts: Guardian[] = [];
   const distribution: Record<string, number> = {
-    "Rarest-Legendary": 0, "Very Rare": 0, "More Rare": 0, "Rare": 0,
+    "Epic Legendary": 0, "Very Rare Legendary": 0, "Rare": 0,
     "Less Rare": 0, "Less Common": 0, "Common": 0, "Most Common": 0
   };
 
@@ -272,14 +272,16 @@ export async function fetchSmartMintedData() {
               // Distribution Stats
               let r = nft.rarity || 'Common';
               
-              // Normalize rarity keys to match Chart Config
-              // Map various potential IPFS values to our standard keys
+              // Normalize rarity keys to match new 7-tier system
               const normalizationMap: Record<string, string> = {
-                  'Rarest (1/1s)': 'Rarest-Legendary',
-                  'Legendary': 'Rarest-Legendary',
-                  'Rarest': 'Rarest-Legendary',
-                  'Very Rare': 'Very Rare',
-                  'More Rare': 'More Rare',
+                  'Rarest (1/1s)': 'Epic Legendary',
+                  'Legendary': 'Epic Legendary',
+                  'Rarest': 'Epic Legendary',
+                  'Rarest-Legendary': 'Epic Legendary',
+                  'Very Rare': 'Very Rare Legendary',
+                  'More Rare': 'Rare',
+                  'Epic Legendary': 'Epic Legendary',
+                  'Very Rare Legendary': 'Very Rare Legendary',
                   'Rare': 'Rare',
                   'Less Rare': 'Less Rare',
                   'Less Common': 'Less Common',

@@ -435,7 +435,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
                         }
 
                         // Rarity Badge Logic
-                        let rarity = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value || 'Common';
+                        let rarity = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity Level' || a.trait_type === 'Rarity')?.value || 'Most Common';
                         if (isPreReveal) {
                             rarity = "Pre-Reveal";
                         }
@@ -755,7 +755,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
   const suggestedFilters = useMemo(() => {
     return [
         { label: "High Strength", action: () => applySearch("Strength >= 8") },
-        { label: "Rarest-Legendary", action: () => setRarityFilter("Rarest-Legendary") },
+        { label: "Epic Legendary", action: () => setRarityFilter("Epic Legendary") },
         { label: "Based Frog", action: () => { 
             setTraitTypeFilter("Character Type");
             setTimeout(() => setTraitValueFilter("Based Frog"), 0);

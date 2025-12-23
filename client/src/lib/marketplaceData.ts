@@ -48,10 +48,9 @@ export async function fetchRealMetadata(id: number): Promise<Guardian | null> {
             value: attr.value
         })) || [];
         
-        // Determine rarity based on traits (Mock logic for now as actual rarity might be complex)
-        // Or check if it's explicitly in traits
-        const rarityTrait = traits.find((t: any) => t.type === "Rarity");
-        const rarity = rarityTrait ? rarityTrait.value : "Common";
+        // Determine rarity based on traits
+        const rarityTrait = traits.find((t: any) => t.type === "Rarity Level" || t.type === "Rarity");
+        const rarity = rarityTrait ? rarityTrait.value : "Most Common";
 
         return {
             id,

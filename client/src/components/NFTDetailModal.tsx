@@ -388,8 +388,8 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
   
   if (!nft) return null;
 
-  // Rarity Multiplier for Display
-  const isRareItem = ['More Rare', 'Very Rare', 'Rarest-Legendary', 'Rare', 'Less Rare'].includes(nft.rarity || '');
+  // Rarity Multiplier for Display (new 7-tier system)
+  const isRareItem = ['Epic Legendary', 'Very Rare Legendary', 'Rare', 'Less Rare'].includes(nft.rarity || '');
   
   // Calculate Boosted Value
   // Base formula: 51% mint share + emissions

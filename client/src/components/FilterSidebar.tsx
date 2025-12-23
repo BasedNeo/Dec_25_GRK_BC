@@ -16,11 +16,13 @@ export interface FilterState {
 }
 
 const RARITY_OPTIONS = [
-  { value: 'common', label: 'Common', color: 'text-gray-400' },
-  { value: 'uncommon', label: 'Uncommon', color: 'text-green-400' },
-  { value: 'rare', label: 'Rare', color: 'text-blue-400' },
-  { value: 'epic', label: 'Epic', color: 'text-purple-400' },
-  { value: 'legendary', label: 'Legendary', color: 'text-yellow-400' },
+  { value: 'Epic Legendary', label: 'Epic Legendary', color: 'text-purple-400' },
+  { value: 'Very Rare Legendary', label: 'Very Rare Legendary', color: 'text-red-400' },
+  { value: 'Rare', label: 'Rare', color: 'text-orange-400' },
+  { value: 'Less Rare', label: 'Less Rare', color: 'text-yellow-400' },
+  { value: 'Less Common', label: 'Less Common', color: 'text-green-400' },
+  { value: 'Common', label: 'Common', color: 'text-blue-400' },
+  { value: 'Most Common', label: 'Most Common', color: 'text-gray-400' },
 ];
 
 const SORT_OPTIONS = [

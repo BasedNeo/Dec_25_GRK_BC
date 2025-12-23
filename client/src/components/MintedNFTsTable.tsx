@@ -142,8 +142,8 @@ export function MintedNFTsTable({ }: MintedNFTsTableProps) {
                     console.warn(`Failed to fetch metadata for #${tokenId}`);
                 }
 
-                const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity');
-                const rarity = rarityAttr ? rarityAttr.value : 'Common';
+                const rarityAttr = metadata.attributes?.find((a: any) => a.trait_type === 'Rarity Level' || a.trait_type === 'Rarity');
+                const rarity = rarityAttr ? rarityAttr.value : 'Most Common';
 
                 const guardian = {
                     id: tokenId,

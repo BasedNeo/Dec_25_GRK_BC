@@ -261,9 +261,8 @@ export function useGuardians(
              
              // 5. Sorting - ALWAYS show listed NFTs first
              const rarityScore: Record<string, number> = { 
-               'Rarest-Legendary': 8, 
-               'Very Rare': 7, 
-               'More Rare': 6, 
+               'Epic Legendary': 7, 
+               'Very Rare Legendary': 6, 
                'Rare': 5, 
                'Less Rare': 4, 
                'Less Common': 3, 
@@ -392,7 +391,7 @@ export function useGuardians(
                         } catch(e) { /* ignore */ }
                     }
 
-                    const rarityAttr = metadata.attributes?.find((a) => a.trait_type === 'Rarity');
+                    const rarityAttr = metadata.attributes?.find((a) => a.trait_type === 'Rarity Level' || a.trait_type === 'Rarity');
                     
                     return {
                         id: tokenId,

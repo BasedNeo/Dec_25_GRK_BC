@@ -58,16 +58,15 @@ export function Hero() {
     isLoading: true
   });
 
-  // Default Rarity Data Structure
+  // Default Rarity Data Structure (new 7-tier system)
   const [rarityStats, setRarityStats] = useState([
-    { name: 'Rarest-Legendary', value: 127, color: '#22d3ee', minted: 0 },
-    { name: 'Very Rare', value: 63, color: '#c084fc', minted: 0 },
-    { name: 'More Rare', value: 452, color: '#fbbf24', minted: 0 },
-    { name: 'Rare', value: 642, color: '#facc15', minted: 0 },
-    { name: 'Less Rare', value: 194, color: '#60a5fa', minted: 0 },
-    { name: 'Less Common', value: 836, color: '#4ade80', minted: 0 },
-    { name: 'Common', value: 836, color: '#ffffff', minted: 0 },
-    { name: 'Most Common', value: 582, color: '#9ca3af', minted: 0 },
+    { name: 'Epic Legendary', value: 37, color: '#9333ea', minted: 0 },
+    { name: 'Very Rare Legendary', value: 112, color: '#ef4444', minted: 0 },
+    { name: 'Rare', value: 373, color: '#f97316', minted: 0 },
+    { name: 'Less Rare', value: 560, color: '#eab308', minted: 0 },
+    { name: 'Less Common', value: 746, color: '#22c55e', minted: 0 },
+    { name: 'Common', value: 933, color: '#3b82f6', minted: 0 },
+    { name: 'Most Common', value: 971, color: '#6b7280', minted: 0 },
   ]);
 
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -193,17 +192,16 @@ export function Hero() {
   const increment = () => setMintQuantity(prev => Math.min(prev + 1, 10));
   const decrement = () => setMintQuantity(prev => Math.max(prev - 1, 1));
 
-  // Rarity Badge Color Logic
+  // Rarity Badge Color Logic (new 7-tier system)
   const getRarityColor = (rarity: string) => {
-      if (rarity === 'Rarest-Legendary') return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
-      if (rarity === 'Very Rare') return 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]';
-      if (rarity === 'More Rare') return 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]';
-      if (rarity === 'Rare') return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]';
-      if (rarity === 'Less Rare') return 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(96,165,250,0.3)]';
-      if (rarity === 'Less Common') return 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(74,222,128,0.3)]';
-      if (rarity === 'Common') return 'bg-white/10 text-white border-white/20';
-      if (rarity === 'Most Common') return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-      if (rarity?.includes('Legendary')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]';
+      if (rarity === 'Epic Legendary') return 'bg-gradient-to-r from-purple-600/30 to-amber-500/30 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(147,51,234,0.3)]';
+      if (rarity === 'Very Rare Legendary') return 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
+      if (rarity === 'Rare') return 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]';
+      if (rarity === 'Less Rare') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]';
+      if (rarity === 'Less Common') return 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+      if (rarity === 'Common') return 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+      if (rarity === 'Most Common') return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+      if (rarity?.includes('Legendary')) return 'bg-gradient-to-r from-purple-600/30 to-amber-500/30 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(147,51,234,0.3)]';
       return 'bg-black/40 text-gray-300 border-white/10';
   };
 

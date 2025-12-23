@@ -8,6 +8,23 @@ Preferred communication style: Simple, everyday language.
 
 **Default Landing Page**: Command Center (Home.tsx at route "/") - ALWAYS use this as the default landing page. If any issues occur with routing or the app, ensure users land on the Command Center page.
 
+### Rarity System (Updated Dec 2024)
+The NFT collection uses a **7-tier rarity system**:
+1. **Epic Legendary** - Purple/Gold gradient (#9333ea/#f59e0b) - 1% of collection
+2. **Very Rare Legendary** - Red (#ef4444) - 3% of collection  
+3. **Rare** - Orange (#f97316) - 10% of collection
+4. **Less Rare** - Yellow (#eab308) - 15% of collection
+5. **Less Common** - Green (#22c55e) - 20% of collection
+6. **Common** - Blue (#3b82f6) - 25% of collection
+7. **Most Common** - Gray (#6b7280) - 26% of collection
+
+**Legacy Rarity Mapping** (for backwards compatibility with existing metadata):
+- `Rarest (1/1s)`, `Legendary`, `Rarest`, `Rarest-Legendary` → `Epic Legendary`
+- `Very Rare` → `Very Rare Legendary`
+- `More Rare` → `Rare`
+
+Rarity configuration is defined in `client/src/lib/mockData.ts` (RARITY_CONFIG) and normalized in `client/src/lib/smartFetcher.ts`.
+
 ### LOCKED SYSTEMS - FINANCIAL GRADE (Do NOT modify without explicit user request)
 
 ⚠️ **CRITICAL**: This app functions as a financial tool. All calculation, data gathering, and reporting systems are LOCKED. Do not modify any of these without explicit user request.

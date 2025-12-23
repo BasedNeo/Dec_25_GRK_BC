@@ -309,7 +309,7 @@ export const LORE_CHARACTERS: LoreCharacter[] = [
     name: 'Midnight Creatures',
     type: 'creature',
     title: 'Alpha Pack Leaders',
-    rarity: 'Very Rare',
+    rarity: 'Very Rare Legendary',
     count: 28,
     nftTokenIds: [3491, 3492, 3493, 3494, 3495],
     backstory: 'These alpha creatures lead packs with unmatched strength, coordinating devastating attacks against FUD to protect the Brain-Planets. Their leadership secures $BASED frontiers, inspiring holders with legends of dominance in the BasedAI Universe. Their alpha status commands the Based Life Community\'s respect with formidable authority.',

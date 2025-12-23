@@ -34,21 +34,20 @@ export interface Guardian {
 
 export const MOCK_GUARDANS_COUNT = 3732;
 
-// Rarity Levels & Multipliers
+// Rarity Levels & Multipliers (New 7-tier system)
 export const RARITY_CONFIG: Record<string, { weight: number, multiplier: number, color: string }> = {
-  'Rarest-Legendary': { weight: 0.034, multiplier: 0.40, color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' },
-  'Very Rare': { weight: 0.017, multiplier: 0.35, color: 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(192,132,252,0.3)]' },
-  'More Rare': { weight: 0.121, multiplier: 0.30, color: 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]' }, // Gold
-  'Rare': { weight: 0.172, multiplier: 0.25, color: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50 shadow-[0_0_10px_rgba(250,204,21,0.3)]' }, // Yellow
-  'Less Rare': { weight: 0.052, multiplier: 0.20, color: 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(96,165,250,0.3)]' },
-  'Less Common': { weight: 0.224, multiplier: 0.10, color: 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(74,222,128,0.3)]' },
-  'Common': { weight: 0.224, multiplier: 0.05, color: 'bg-white/10 text-white border-white/20' },
-  'Most Common': { weight: 0.155, multiplier: 0.00, color: 'bg-gray-500/10 text-gray-400 border-gray-500/20' }
+  'Epic Legendary': { weight: 0.01, multiplier: 0.50, color: 'bg-gradient-to-r from-purple-600/30 to-amber-500/30 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(147,51,234,0.3)]' },
+  'Very Rare Legendary': { weight: 0.03, multiplier: 0.40, color: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' },
+  'Rare': { weight: 0.10, multiplier: 0.30, color: 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]' },
+  'Less Rare': { weight: 0.15, multiplier: 0.20, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]' },
+  'Less Common': { weight: 0.20, multiplier: 0.10, color: 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]' },
+  'Common': { weight: 0.25, multiplier: 0.05, color: 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]' },
+  'Most Common': { weight: 0.26, multiplier: 0.00, color: 'bg-gray-500/20 text-gray-400 border-gray-500/50' }
 };
 
 // Deterministic mock data generator for 20 items (or more if needed)
 export const generateMockGuardian = (id: number): Guardian => {
-  // Deterministic rarity distribution based on ID
+  // Deterministic rarity distribution based on ID (new 7-tier system)
   let rarity = 'Most Common';
   
   // Specific Overrides for "Live Mint" Demo State (to match contract deployment)
@@ -59,14 +58,13 @@ export const generateMockGuardian = (id: number): Guardian => {
       // Standard distribution for others
       const mod = id % 1000; // Use 1000 for finer grain
       
-      if (mod < 34) rarity = 'Rarest-Legendary';       // 3.4%
-      else if (mod < 51) rarity = 'Very Rare';         // 3.4 + 1.7 = 5.1% -> 51
-      else if (mod < 172) rarity = 'More Rare';        // 5.1 + 12.1 = 17.2% -> 172
-      else if (mod < 344) rarity = 'Rare';             // 17.2 + 17.2 = 34.4% -> 344
-      else if (mod < 396) rarity = 'Less Rare';        // 34.4 + 5.2 = 39.6% -> 396
-      else if (mod < 620) rarity = 'Less Common';      // 39.6 + 22.4 = 62.0% -> 620
-      else if (mod < 844) rarity = 'Common';           // 62.0 + 22.4 = 84.4% -> 844
-      else rarity = 'Most Common';                     // Remainder ~15.6%
+      if (mod < 10) rarity = 'Epic Legendary';           // 1%
+      else if (mod < 40) rarity = 'Very Rare Legendary'; // 3%
+      else if (mod < 140) rarity = 'Rare';               // 10%
+      else if (mod < 290) rarity = 'Less Rare';          // 15%
+      else if (mod < 490) rarity = 'Less Common';        // 20%
+      else if (mod < 740) rarity = 'Common';             // 25%
+      else rarity = 'Most Common';                       // 26%
   }
 
   return {
@@ -76,7 +74,7 @@ export const generateMockGuardian = (id: number): Guardian => {
     rarity,
     traits: [
       { type: 'Rarity Level', value: rarity },
-      { type: 'Background', value: rarity.includes('Rare') ? 'Cyber Void' : 'Industrial' },
+      { type: 'Background', value: rarity.includes('Rare') || rarity.includes('Legendary') ? 'Cyber Void' : 'Industrial' },
       { type: 'Armor', value: rarity.includes('Legendary') ? 'Quantum Plate' : 'Standard Kevlar' },
       { type: 'Weapon', value: rarity.includes('Legendary') ? 'Plasma Railgun' : 'Pulse Rifle' },
       { type: 'Strength', value: String(Math.floor(Math.random() * 10) + 1) },

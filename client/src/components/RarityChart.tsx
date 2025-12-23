@@ -11,14 +11,13 @@ interface RarityChartProps {
 }
 
 const RARITY_CONFIG = [
-  { name: 'Rarest-Legendary', color: 'linear-gradient(90deg, #ffd700, #ff8c00)' },
-  { name: 'Very Rare', color: '#9333ea' },
-  { name: 'More Rare', color: '#dc2626' },
-  { name: 'Rare', color: '#f59e0b' },
-  { name: 'Less Rare', color: '#3b82f6' },
+  { name: 'Epic Legendary', color: 'linear-gradient(90deg, #9333ea, #f59e0b)' },
+  { name: 'Very Rare Legendary', color: '#ef4444' },
+  { name: 'Rare', color: '#f97316' },
+  { name: 'Less Rare', color: '#eab308' },
   { name: 'Less Common', color: '#22c55e' },
-  { name: 'Common', color: '#6b7280' },
-  { name: 'Most Common', color: '#374151' }
+  { name: 'Common', color: '#3b82f6' },
+  { name: 'Most Common', color: '#6b7280' }
 ];
 
 export const RarityChart = React.memo(function RarityChart({ mintedCount, totalMinted, distribution, isLoading = false }: RarityChartProps) {
