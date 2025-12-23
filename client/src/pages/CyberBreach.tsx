@@ -624,7 +624,7 @@ export default function CyberBreach() {
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       <section className="fixed inset-0 bg-[#020208] pt-16 flex flex-col items-center justify-center overflow-hidden">
         {/* Animated circuit background - fills entire viewport */}
-        <canvas ref={bgCanvasRef} className="absolute inset-0 z-0" style={{ top: 64 }} />
+        <canvas ref={bgCanvasRef} className="absolute inset-0 z-0" style={{ top: 64 }} aria-hidden="true" />
         
         {/* Floating HUD - overlays game */}
         <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-20 bg-gradient-to-b from-black/80 to-transparent">
