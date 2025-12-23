@@ -74,6 +74,10 @@ export default function CyberBreach() {
   const [level, setLevel] = useState(1);
   const [isChecking, setIsChecking] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hapticEnabled, setHapticEnabled] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
+  const [introText, setIntroText] = useState('');
+  const [showAccessGranted, setShowAccessGranted] = useState(false);
 
   const stats = useMemo(() => ({
     gamesPlayed: myStats.totalGames || 0,
@@ -183,7 +187,7 @@ export default function CyberBreach() {
     if (flippedCards.length >= 2) return;
 
     playSound('flip');
-    if (isMobile) haptic.light();
+    if (isMobile && hapticEnabled) haptic.light();
 
     const newCards = cards.map(c => c.id === cardId ? { ...c, isFlipped: true } : c);
     setCards(newCards);
@@ -199,7 +203,7 @@ export default function CyberBreach() {
       if (first.symbol === second.symbol) {
         setTimeout(() => {
           playSound('match');
-          if (isMobile) haptic.medium?.() || haptic.light();
+          if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
           
           const matchedCards = newCards.map(c => 
             c.symbol === first.symbol ? { ...c, isMatched: true } : c
@@ -230,7 +234,11 @@ export default function CyberBreach() {
               }, 1500);
             } else {
               playSound('victory');
-              setGamePhase('gameover');
+              setShowAccessGranted(true);
+              setTimeout(() => {
+                setShowAccessGranted(false);
+                setGamePhase('gameover');
+              }, 2000);
             }
           }
           setIsChecking(false);
@@ -238,7 +246,7 @@ export default function CyberBreach() {
       } else {
         setTimeout(() => {
           playSound('nomatch');
-          if (isMobile) haptic.heavy();
+          if (isMobile && hapticEnabled) haptic.heavy();
           
           const resetCards = newCards.map(c => 
             (c.id === first.id || c.id === second.id) ? { ...c, isFlipped: false } : c
@@ -279,9 +287,25 @@ export default function CyberBreach() {
     setMatchedPairs(0);
     setTimeLeft(LEVEL_CONFIGS[0].time);
     setIsChecking(false);
+    setShowIntro(true);
+    setIntroText('');
     setGamePhase('playing');
     
-    setTimeout(() => startTimer(), 100);
+    const introMessage = 'INITIATING BREACH...';
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      if (i < introMessage.length) {
+        setIntroText(introMessage.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(typeInterval);
+        setTimeout(() => {
+          setShowIntro(false);
+          startTimer();
+        }, 500);
+      }
+    }, 80);
+    
     trackEvent('game_start', 'cyber-breach', '', 0);
   }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, recordPlay, startTimer]);
 
@@ -340,10 +364,16 @@ export default function CyberBreach() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400">Sound</span>
                 <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400" data-testid="button-toggle-sound">
                   {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-400">Haptic Feedback</span>
+                <Button variant="ghost" size="sm" onClick={() => setHapticEnabled(!hapticEnabled)} className={hapticEnabled ? 'text-green-400' : 'text-gray-500'} data-testid="button-toggle-haptic">
+                  {hapticEnabled ? 'ON' : 'OFF'}
                 </Button>
               </div>
 
@@ -477,6 +507,61 @@ export default function CyberBreach() {
         <div className="mt-4 text-center text-gray-500 text-xs">
           Moves: {moves}
         </div>
+
+        <AnimatePresence>
+          {showIntro && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="text-center">
+                <div className="text-2xl md:text-4xl font-mono text-green-400 mb-4">
+                  {introText}<span className="animate-pulse">_</span>
+                </div>
+                <div className="text-sm text-gray-500">Preparing security protocols...</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showAccessGranted && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="text-center"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+              >
+                <motion.div
+                  className="text-4xl md:text-6xl font-orbitron font-bold text-green-400 mb-4"
+                  animate={{ textShadow: ['0 0 10px #22c55e', '0 0 30px #22c55e', '0 0 10px #22c55e'] }}
+                  transition={{ duration: 0.5, repeat: 3 }}
+                >
+                  ACCESS GRANTED
+                </motion.div>
+                <motion.div
+                  className="text-6xl"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                >
+                  🔓
+                </motion.div>
+                <div className="mt-4 text-cyan-400 font-mono">
+                  SYSTEM BREACH COMPLETE
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
     </>
   );

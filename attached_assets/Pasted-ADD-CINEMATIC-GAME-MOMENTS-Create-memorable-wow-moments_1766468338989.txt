@@ -1,0 +1,37 @@
+ADD CINEMATIC GAME MOMENTS
+Create memorable "wow" moments:
+CREATURE COMMAND:
+Wave 1 start: "WAVE 1" zooms in dramatically, then fades
+Boss incoming: Screen dims, "⚠️ WARNING ⚠️" flashes, boss enters slowly
+Final hit on boss: Slow-motion explosion (0.5s), then normal speed
+High score beaten: Fireworks particle explosion, "NEW RECORD!"
+RING ALIGNMENT:
+Game start: Rings materialize from particles, spinning into place
+Perfect hit: Time freezes (0.2s), particles burst, then continues
+Ring 10 reached: "ADEPT UNLOCKED" banner slides in
+Ring 20+: Background transforms (nebula intensifies)
+CYBER BREACH:
+Mission start: "INITIATING BREACH..." typewriter text
+Last pair remaining: Timer flashes, tension music
+Breach complete: "ACCESS GRANTED" with matrix effect
+Speed run: "LIGHTNING BREACH! +500 BONUS"
+These moments make players feel like heroes.
+---L POLISH: COMBOS + POWER-UPS + CINEMATICSAdd these three elements to make games unforgettable:1. COMBO SYSTEM (All games):   - Consecutive hits/perfects increase multiplier   - Display: "COMBO x7" with growing glow   - High combos = big scores = bragging rights   - Resets on miss (creates tension)2. POWER-UPS (Creature Command):   - Rapid Fire (blue), Shield (green), Nuke (red)   - 10% drop chance from enemies   - 5 second duration   - Makes gameplay dynamic3. CINEMATIC MOMENTS:   - Wave/level announcements (dramatic text)   - Slow-mo on big kills   - Celebration effects on high scores   - Screen effects on damage/successTest everything on mobile. Keep 60fps.
+FINAL POLISH: COMBOS + POWER-UPS + CINEMATICS
+Add these three elements to make games unforgettable:
+COMBO SYSTEM (All games):
+Consecutive hits/perfects increase multiplier
+Display: "COMBO x7" with growing glow
+High combos = big scores = bragging rights
+Resets on miss (creates tension)
+POWER-UPS (Creature Command):
+Rapid Fire (blue), Shield (green), Nuke (red)
+10% drop chance from enemies
+5 second duration
+Makes gameplay dynamic
+CINEMATIC MOMENTS:
+Wave/level announcements (dramatic text)
+Slow-mo on big kills
+Celebration effects on high scores
+Screen effects on damage/success
+Test everything on mobile. Keep 60fps.

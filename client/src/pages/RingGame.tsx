@@ -12,7 +12,8 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Heart, Target, Volume2, VolumeX } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Target, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
 interface Ring {
@@ -101,6 +102,9 @@ export default function RingGame() {
   const [combo, setCombo] = useState(0);
   const [feedback, setFeedback] = useState<'perfect' | 'good' | 'miss' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hapticEnabled, setHapticEnabled] = useState(true);
+  const [showLevelBanner, setShowLevelBanner] = useState<string | null>(null);
+  const [timeFrozen, setTimeFrozen] = useState(false);
 
   const stats = useMemo(() => ({
     gamesPlayed: myStats.totalGames || 0,
@@ -237,20 +241,22 @@ export default function RingGame() {
       state.score += points;
       state.particles.push(...createParticles(CENTER, CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15));
       playSound('perfect');
-      if (isMobile) haptic.medium?.() || haptic.light();
+      if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
+      setTimeFrozen(true);
+      setTimeout(() => setTimeFrozen(false), 150);
     } else if (result === 'good') {
       state.combo++;
       const points = 50 * Math.min(state.combo, 10);
       state.score += points;
       state.particles.push(...createParticles(CENTER, CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
       playSound('good');
-      if (isMobile) haptic.light();
+      if (isMobile && hapticEnabled) haptic.light();
     } else {
       state.combo = 0;
       state.lives--;
       state.particles.push(...createParticles(CENTER, CENTER, '#EF4444', 12));
       playSound('miss');
-      if (isMobile) haptic.heavy();
+      if (isMobile && hapticEnabled) haptic.heavy();
       
       if (state.lives <= 0) {
         state.gameOver = true;
@@ -262,12 +268,22 @@ export default function RingGame() {
     if (result !== 'miss') {
       state.level++;
       state.rings = createRings(state.level);
+      if (state.level === 10) {
+        setShowLevelBanner('ADEPT UNLOCKED');
+        setTimeout(() => setShowLevelBanner(null), 2000);
+      } else if (state.level === 20) {
+        setShowLevelBanner('MASTER UNLOCKED');
+        setTimeout(() => setShowLevelBanner(null), 2000);
+      }
     }
-  }, [checkAlignment, createParticles, playSound]);
+  }, [checkAlignment, createParticles, playSound, hapticEnabled]);
 
+  const updateFrozenRef = useRef(false);
+  updateFrozenRef.current = timeFrozen;
+  
   const update = useCallback(() => {
     const state = gameStateRef.current;
-    if (!state || state.gameOver) return;
+    if (!state || state.gameOver || updateFrozenRef.current) return;
 
     for (const ring of state.rings) {
       ring.angle = (ring.angle + ring.speed) % 360;
@@ -510,10 +526,16 @@ export default function RingGame() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400">Sound</span>
                 <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400" data-testid="button-toggle-sound">
                   {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-400">Haptic Feedback</span>
+                <Button variant="ghost" size="sm" onClick={() => setHapticEnabled(!hapticEnabled)} className={hapticEnabled ? 'text-cyan-400' : 'text-gray-500'} data-testid="button-toggle-haptic">
+                  {hapticEnabled ? 'ON' : 'OFF'}
                 </Button>
               </div>
 
@@ -589,6 +611,38 @@ export default function RingGame() {
             onTouchStart={(e) => { e.preventDefault(); handleTap(); }}
             data-testid="game-canvas"
           />
+          <AnimatePresence>
+            {showLevelBanner && (
+              <motion.div
+                className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  className="text-center"
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 10 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  <div className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-yellow-400">
+                    {showLevelBanner}
+                  </div>
+                  <motion.div
+                    className="mt-2 text-4xl"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 0.5, repeat: 2 }}
+                  >
+                    ✨
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {timeFrozen && (
+            <div className="absolute inset-0 border-4 border-cyan-400 rounded-lg animate-pulse pointer-events-none" />
+          )}
         </div>
 
         <div className="mt-6 text-center">
