@@ -1,0 +1,519 @@
+PERFORMANCE OPTIMIZATION: FAST LOADING + SMOOTH SCROLLING
+
+The app must feel INSTANT and BUTTERY SMOOTH.
+No lag, no jank, no waiting. Professional mobile app quality.
+
+═══════════════════════════════════════════════════════════════════
+🚀 PART 1: LOADING SPEED OPTIMIZATION
+═══════════════════════════════════════════════════════════════════
+
+TARGET METRICS:
+- First Contentful Paint: <1.5 seconds
+- Time to Interactive: <3 seconds
+- Largest Contentful Paint: <2.5 seconds
+- No loading spinner visible for more than 2 seconds
+
+──────────────────────────────────────────
+1.1 CODE SPLITTING & LAZY LOADING
+──────────────────────────────────────────
+
+Split large bundles so users only load what they need:
+
+// BEFORE (Bad - loads everything upfront)
+import CreatureCommand from './games/CreatureCommand';
+import RingAlignment from './games/RingAlignment';
+import CyberBreach from './games/CyberBreach';
+import Marketplace from './pages/Marketplace';
+
+// AFTER (Good - loads on demand)
+import { lazy, Suspense } from 'react';
+
+const CreatureCommand = lazy(() => import('./games/CreatureCommand'));
+const RingAlignment = lazy(() => import('./games/RingAlignment'));
+const CyberBreach = lazy(() => import('./games/CyberBreach'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+
+// Usage with loading fallback
+<Suspense fallback={<GameLoadingSpinner />}>
+  <CreatureCommand />
+</Suspense>LAZY LOAD THESE:
+□ All game components
+□ Marketplace page
+□ Portfolio page
+□ Admin pages
+□ Any component >50KB
+
+──────────────────────────────────────────
+1.2 IMAGE OPTIMIZATION
+──────────────────────────────────────────
+
+// Lazy load images below the fold
+<img 
+  src={nft.image} 
+  loading="lazy"
+  decoding="async"
+  alt={nft.name}
+/>
+
+// Use srcset for responsive images
+<img
+  srcSet="small.webp 400w, medium.webp 800w, large.webp 1200w"
+  sizes="(max-width: 600px) 400px, (max-width: 1200px) 800px, 1200px"
+  src="medium.webp"
+  loading="lazy"
+/>IMAGE CHECKLIST:
+□ All images use loading="lazy" (except above-fold)
+□ Images have explicit width/height (prevents layout shift)
+□ Use WebP format where possible
+□ Compress images (TinyPNG, Squoosh)
+□ NFT images load progressively (blur-up effect)
+
+──────────────────────────────────────────
+1.3 PRELOADING CRITICAL ASSETS
+──────────────────────────────────────────
+
+<!-- In index.html <head> -->
+<!-- Preload critical fonts -->
+<link rel="preload" href="/fonts/main-font.woff2" as="font" type="font/woff2" crossorigin>
+
+<!-- Preload critical images (logo, hero) -->
+<link rel="preload" href="/images/logo.png" as="image">
+
+<!-- Preconnect to external domains -->
+<link rel="preconnect" href="https://api.coingecko.com">
+<link rel="preconnect" href="https://api.web3modal.org">
+<link rel="dns-prefetch" href="https://rpc.basedaibridge.io">──────────────────────────────────────────
+1.4 REDUCE JAVASCRIPT BUNDLE SIZE
+──────────────────────────────────────────
+
+// BEFORE (imports entire library)
+import _ from 'lodash';
+const result = _.debounce(fn, 300);
+
+// AFTER (imports only what's needed)
+import debounce from 'lodash/debounce';
+const result = debounce(fn, 300);
+
+// BEFORE (heavy moment.js)
+import moment from 'moment';
+
+// AFTER (lightweight alternative)
+import { formatDistanceToNow } from 'date-fns';CHECK FOR:
+□ Unused imports (remove them)
+□ Heavy libraries with lighter alternatives
+□ Duplicate dependencies
+□ Dev dependencies in production build
+
+──────────────────────────────────────────
+1.5 API & DATA LOADING
+──────────────────────────────────────────
+
+// Prefetch data user will likely need
+const queryClient = useQueryClient();
+
+// When user hovers on link, prefetch that page's data
+onMouseEnter={() => {
+  queryClient.prefetchQuery(['nft', nftId], () => fetchNFT(nftId));
+}}
+
+// Cache API responses appropriately
+useQuery(['collections'], fetchCollections, {
+  staleTime: 5 * 60 * 1000, // 5 minutes
+  cacheTime: 30 * 60 * 1000, // 30 minutes
+});
+
+// Load critical data first, defer non-critical
+const { data: criticalData } = useQuery(['critical'], fetchCritical);
+const { data: secondaryData } = useQuery(['secondary'], fetchSecondary, {
+  enabled: !!criticalData, // Only load after critical
+});──────────────────────────────────────────
+1.6 SKELETON LOADERS (Perceived Speed)
+──────────────────────────────────────────
+
+Replace spinners with skeleton loaders - feels faster even if it isn't:
+
+// Skeleton component
+function NFTCardSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="bg-gray-700 rounded-lg h-48 w-full" />
+      <div className="mt-3 h-4 bg-gray-700 rounded w-3/4" />
+      <div className="mt-2 h-4 bg-gray-700 rounded w-1/2" />
+    </div>
+  );
+}
+
+// Usage
+{isLoading ? (
+  <div className="grid grid-cols-3 gap-4">
+    {[...Array(6)].map((_, i) => <NFTCardSkeleton key={i} />)}
+  </div>
+) : (
+  <div className="grid grid-cols-3 gap-4">
+    {nfts.map(nft => <NFTCard key={nft.id} nft={nft} />)}
+  </div>
+)}CSS for skeleton animation:
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Shimmer effect (premium feel) */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.1) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}═══════════════════════════════════════════════════════════════════
+🧈 PART 2: SCROLLING SMOOTHNESS
+═══════════════════════════════════════════════════════════════════
+
+TARGET: 60fps scrolling on all devices, no jank, no stutter
+
+──────────────────────────────────────────
+2.1 CSS OPTIMIZATIONS
+──────────────────────────────────────────
+
+/* Enable smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* iOS momentum scrolling */
+.scrollable-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overscroll-behavior-y: contain; /* Prevents scroll chaining */
+}
+
+/* Force GPU acceleration on animated elements */
+.animated-element {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize fixed elements during scroll */
+.fixed-header {
+  position: fixed;
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* Prevent layout shift */
+img, video {
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* Content containment for complex layouts */
+.card {
+  contain: content; /* Isolates repaints */
+}──────────────────────────────────────────
+2.2 AVOID SCROLL JANK TRIGGERS
+──────────────────────────────────────────
+
+NEVER do these during scroll:
+// BAD - Forces layout recalculation during scroll
+window.addEventListener('scroll', () => {
+  element.style.width = container.offsetWidth + 'px'; // TRIGGERS REFLOW
+});
+
+// GOOD - Use transform (GPU accelerated)
+window.addEventListener('scroll', () => {
+  element.style.transform = `translateY(${scrollY}px)`;
+}, { passive: true }); // IMPORTANT: passive: true
+
+// BAD - Reading layout during scroll
+element.offsetHeight; // FORCES REFLOW
+
+// GOOD - Cache layout values before scroll starts
+let cachedHeight;
+function cacheLayout() {
+  cachedHeight = element.offsetHeight;
+}──────────────────────────────────────────
+2.3 PASSIVE EVENT LISTENERS
+──────────────────────────────────────────
+
+// ALWAYS use passive: true for scroll/touch events
+window.addEventListener('scroll', handleScroll, { passive: true });
+window.addEventListener('touchstart', handleTouch, { passive: true });
+window.addEventListener('touchmove', handleTouchMove, { passive: true });
+window.addEventListener('wheel', handleWheel, { passive: true });
+
+// If you MUST prevent default, you can't use passive
+// But try to avoid this during scroll──────────────────────────────────────────
+2.4 VIRTUALIZED LISTS (For Long Lists)
+──────────────────────────────────────────
+
+If you have lists with 50+ items, virtualize them:
+
+// Option 1: react-window (lightweight)
+import { FixedSizeList } from 'react-window';
+
+<FixedSizeList
+  height={600}
+  width="100%"
+  itemCount={nfts.length}
+  itemSize={120}
+>
+  {({ index, style }) => (
+    <div style={style}>
+      <NFTCard nft={nfts[index]} />
+    </div>
+  )}
+</FixedSizeList>
+
+// Option 2: Intersection Observer (DIY)
+function useInView(ref) {
+  const [inView, setInView] = useState(false);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setInView(entry.isIntersecting);
+    });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  
+  return inView;
+}
+
+// Only render when in viewport
+function LazyNFTCard({ nft }) {
+  const ref = useRef();
+  const inView = useInView(ref);
+  
+  return (
+    <div ref={ref} style={{ minHeight: 120 }}>
+      {inView ? <NFTCard nft={nft} /> : <NFTCardSkeleton />}
+    </div>
+  );
+}──────────────────────────────────────────
+2.5 DEBOUNCE SCROLL HANDLERS
+──────────────────────────────────────────
+
+// Debounce non-critical scroll handlers
+import { debounce } from 'lodash';
+
+const handleScroll = debounce(() => {
+  // Heavy operations here (analytics, lazy loading triggers)
+}, 100);
+
+// For animations, use requestAnimationFrame instead
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateAnimation();
+      ticking = false;
+    });
+    ticking = true;
+  }
+}, { passive: true });──────────────────────────────────────────
+2.6 OPTIMIZE ANIMATIONS
+──────────────────────────────────────────
+
+/* ONLY animate transform and opacity (GPU accelerated) */
+.good-animation {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* NEVER animate these during scroll (triggers repaint) */
+.bad-animation {
+  transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s, 
+              margin 0.3s, padding 0.3s, background-color 0.3s;
+}
+
+/* Use transform instead of position */
+.move-element {
+  /* BAD */
+  top: 100px;
+  left: 50px;
+  
+  /* GOOD */
+  transform: translate(50px, 100px);
+}
+
+/* Reduce animation during scroll */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}──────────────────────────────────────────
+2.7 MOBILE-SPECIFIC OPTIMIZATIONS
+──────────────────────────────────────────
+
+/* Prevent rubber-banding issues */
+body {
+  overscroll-behavior: none;
+}
+
+/* Optimize touch scrolling */
+.scrollable {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y proximity; /* Optional: adds snapping */
+}
+
+/* Prevent 300ms tap delay */
+html {
+  touch-action: manipulation;
+}
+
+/* Disable text selection during scroll (prevents janky highlighting) */
+.no-select-during-scroll {
+  user-select: none;
+  -webkit-user-select: none;
+}
+// Prevent pull-to-refresh on mobile (if causing issues)
+document.body.addEventListener('touchmove', (e) => {
+  if (e.target.closest('.game-container')) {
+    e.preventDefault();
+  }
+}, { passive: false });═══════════════════════════════════════════════════════════════════
+🔍 PART 3: PERFORMANCE TESTING & MONITORING
+═══════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────
+3.1 ADD PERFORMANCE MONITORING
+──────────────────────────────────────────
+
+// Log performance metrics
+if (typeof window !== 'undefined' && window.performance) {
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const timing = performance.timing;
+      const metrics = {
+        // Time to first byte
+        ttfb: timing.responseStart - timing.requestStart,
+        // DOM Content Loaded
+        dcl: timing.domContentLoadedEventEnd - timing.navigationStart,
+        // Full page load
+        load: timing.loadEventEnd - timing.navigationStart,
+      };
+      console.log('Performance Metrics:', metrics);
+    }, 0);
+  });
+}
+
+// Monitor frame rate
+let lastTime = performance.now();
+let frames = 0;
+function checkFPS() {
+  frames++;
+  const now = performance.now();
+  if (now - lastTime >= 1000) {
+    console.log('FPS:', frames);
+    frames = 0;
+    lastTime = now;
+  }
+  requestAnimationFrame(checkFPS);
+}
+// checkFPS(); // Uncomment to monitor──────────────────────────────────────────
+3.2 LIGHTHOUSE CHECKLIST
+──────────────────────────────────────────
+
+Run Lighthouse and aim for:
+□ Performance: 90+
+□ First Contentful Paint: <1.8s
+□ Largest Contentful Paint: <2.5s
+□ Time to Interactive: <3.8s
+□ Cumulative Layout Shift: <0.1
+□ Total Blocking Time: <200ms
+
+═══════════════════════════════════════════════════════════════════
+📋 IMPLEMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+LOADING SPEED:
+□ Lazy load all game components
+□ Lazy load heavy pages (Marketplace, Portfolio)
+□ Add loading="lazy" to all images below fold
+□ Implement skeleton loaders for lists
+□ Preconnect to external APIs
+□ Remove unused imports
+□ Check bundle size (< 500KB initial)
+
+SCROLLING SMOOTHNESS:
+□ Add -webkit-overflow-scrolling: touch
+□ Add passive: true to all scroll listeners
+□ Use transform instead of position for animations
+□ Add will-change to animated elements
+□ Implement virtualization for long lists (if any)
+□ Test on real mobile device (not just emulator)
+
+MOBILE SPECIFIC:
+□ Add touch-action: manipulation
+□ Add overscroll-behavior: none (if needed)
+□ Test on slow 3G throttling
+□ Test on low-end device if possible
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING PROTOCOL
+═══════════════════════════════════════════════════════════════════
+
+Test on these conditions:
+□ Fast WiFi (normal use)
+□ Slow 3G (Chrome DevTools throttling)
+□ Desktop Chrome
+□ Mobile Safari (iOS)
+□ Mobile Chrome (Android)
+□ Low-end device simulation (6x CPU slowdown)
+
+For each, verify:
+□ Page loads in <3 seconds
+□ Scrolling is smooth (no jank)
+□ Images load progressively
+□ Games start quickly
+□ No layout shift during load
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+
+## PERFORMANCE OPTIMIZATION REPORT
+
+### LOADING IMPROVEMENTS
+- Lazy loading implemented: ✅/❌
+- Skeleton loaders added: ✅/❌
+- Images optimized: ✅/❌
+- Bundle size before: XX KB
+- Bundle size after: XX KB
+
+### SCROLLING IMPROVEMENTS
+- Passive listeners added: ✅/❌
+- CSS containment added: ✅/❌
+- GPU acceleration enabled: ✅/❌
+- Virtualization added (if needed): ✅/❌
+
+### METRICS
+- First Contentful Paint: X.Xs
+- Time to Interactive: X.Xs
+- FPS during scroll: XX fps
+- Mobile scroll feel: Smooth/Janky
+
+### FILES MODIFIED
+[List all files]
+
+### TESTING RESULTS
+- Desktop Chrome: ✅/❌
+- Mobile Safari: ✅/❌
+- Mobile Chrome: ✅/❌
+- Slow 3G: ✅/❌
+
+═══════════════════════════════════════════════════════════════════
+MAKE IT FEEL INSTANT. MAKE IT FEEL BUTTERY. NO COMPROMISES.
+═══════════════════════════════════════════════════════════════════

@@ -48,8 +48,8 @@ interface GameState {
 
 type GamePhase = 'menu' | 'playing' | 'gameover';
 
-const CANVAS_SIZE = 350;
-const CENTER = CANVAS_SIZE / 2;
+const BASE_CANVAS_SIZE = 350;
+const BASE_CENTER = BASE_CANVAS_SIZE / 2;
 const GAP_SIZE = 40;
 const PERFECT_THRESHOLD = 20;
 const GOOD_THRESHOLD = 40;
@@ -94,6 +94,8 @@ export default function RingGame() {
   const gameLoopRef = useRef<number | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const [canvasSize, setCanvasSize] = useState(BASE_CANVAS_SIZE);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [score, setScore] = useState(0);
@@ -228,6 +230,10 @@ export default function RingGame() {
   }, []);
 
   const handleTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapTimeRef.current < 100) return;
+    lastTapTimeRef.current = now;
+    
     const state = gameStateRef.current;
     if (!state || state.gameOver || state.feedbackTimer > 0) return;
 
@@ -239,7 +245,7 @@ export default function RingGame() {
       state.combo++;
       const points = 100 * Math.min(state.combo, 10);
       state.score += points;
-      state.particles.push(...createParticles(CENTER, CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15));
+      state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15));
       playSound('perfect');
       if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
       setTimeFrozen(true);
@@ -248,13 +254,13 @@ export default function RingGame() {
       state.combo++;
       const points = 50 * Math.min(state.combo, 10);
       state.score += points;
-      state.particles.push(...createParticles(CENTER, CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
+      state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
       playSound('good');
       if (isMobile && hapticEnabled) haptic.light();
     } else {
       state.combo = 0;
       state.lives--;
-      state.particles.push(...createParticles(CENTER, CENTER, '#EF4444', 12));
+      state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER, '#EF4444', 12));
       playSound('miss');
       if (isMobile && hapticEnabled) haptic.heavy();
       
@@ -314,23 +320,27 @@ export default function RingGame() {
     if (!canvas || !state) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
+    const size = canvasSize;
+    const center = size / 2;
+    const scale = size / BASE_CANVAS_SIZE;
 
     ctx.fillStyle = '#0a0a1a';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.fillRect(0, 0, size, size);
 
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
     ctx.lineWidth = 1;
-    for (let r = 30; r < CANVAS_SIZE / 2; r += 30) {
+    for (let r = 30 * scale; r < size / 2; r += 30 * scale) {
       ctx.beginPath();
-      ctx.arc(CENTER, CENTER, r, 0, Math.PI * 2);
+      ctx.arc(center, center, r, 0, Math.PI * 2);
       ctx.stroke();
     }
 
     ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
     ctx.beginPath();
-    ctx.moveTo(CENTER, 20);
-    ctx.lineTo(CENTER - 10, 40);
-    ctx.lineTo(CENTER + 10, 40);
+    ctx.moveTo(center, 20 * scale);
+    ctx.lineTo(center - 10 * scale, 40 * scale);
+    ctx.lineTo(center + 10 * scale, 40 * scale);
     ctx.closePath();
     ctx.fill();
 
@@ -339,20 +349,20 @@ export default function RingGame() {
       const gapEnd = ((ring.angle + ring.gapAngle + GAP_SIZE - 90) * Math.PI) / 180;
 
       ctx.strokeStyle = ring.color;
-      ctx.lineWidth = 12;
+      ctx.lineWidth = 12 * scale;
       ctx.lineCap = 'round';
       ctx.shadowColor = ring.color;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 10 * scale;
 
       ctx.beginPath();
-      ctx.arc(CENTER, CENTER, ring.radius, gapEnd, gapStart + Math.PI * 2);
+      ctx.arc(center, center, ring.radius * scale, gapEnd, gapStart + Math.PI * 2);
       ctx.stroke();
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 14;
-      ctx.shadowBlur = 15;
+      ctx.lineWidth = 14 * scale;
+      ctx.shadowBlur = 15 * scale;
       ctx.beginPath();
-      ctx.arc(CENTER, CENTER, ring.radius, gapStart, gapEnd);
+      ctx.arc(center, center, ring.radius * scale, gapStart, gapEnd);
       ctx.stroke();
       
       ctx.shadowBlur = 0;
@@ -362,39 +372,39 @@ export default function RingGame() {
       ctx.fillStyle = particle.color;
       ctx.globalAlpha = particle.life;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.arc(particle.x * scale, particle.y * scale, particle.size * scale, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
     if (state.feedback) {
-      ctx.font = 'bold 32px Orbitron, monospace';
+      ctx.font = `bold ${Math.floor(32 * scale)}px Orbitron, monospace`;
       ctx.textAlign = 'center';
       if (state.feedback === 'perfect') {
         ctx.fillStyle = '#00FF88';
-        ctx.fillText('PERFECT!', CENTER, CENTER - 10);
+        ctx.fillText('PERFECT!', center, center - 10 * scale);
         if (state.combo > 1) {
-          ctx.font = 'bold 20px Orbitron, monospace';
+          ctx.font = `bold ${Math.floor(20 * scale)}px Orbitron, monospace`;
           ctx.fillStyle = '#FBBF24';
-          ctx.fillText(`x${state.combo}`, CENTER, CENTER + 20);
+          ctx.fillText(`x${state.combo}`, center, center + 20 * scale);
         }
       } else if (state.feedback === 'good') {
         ctx.fillStyle = '#FBBF24';
-        ctx.fillText('GOOD', CENTER, CENTER);
+        ctx.fillText('GOOD', center, center);
       } else {
         ctx.fillStyle = '#EF4444';
-        ctx.fillText('MISS', CENTER, CENTER);
+        ctx.fillText('MISS', center, center);
       }
     }
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 48px Orbitron, monospace';
+    ctx.font = `bold ${Math.floor(48 * scale)}px Orbitron, monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(`${state.level}`, CENTER, CENTER + (state.feedback ? 60 : 15));
-    ctx.font = '14px Orbitron, monospace';
+    ctx.fillText(`${state.level}`, center, center + (state.feedback ? 60 * scale : 15 * scale));
+    ctx.font = `${Math.floor(14 * scale)}px Orbitron, monospace`;
     ctx.fillStyle = '#888888';
-    ctx.fillText('RING', CENTER, CENTER + (state.feedback ? 80 : 35));
-  }, []);
+    ctx.fillText('RING', center, center + (state.feedback ? 80 * scale : 35 * scale));
+  }, [canvasSize]);
 
   const gameLoop = useCallback(() => {
     update();
@@ -429,7 +439,7 @@ export default function RingGame() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' && gamePhase === 'playing') {
+      if ((e.key === ' ' || e.key === 'Enter') && gamePhase === 'playing') {
         e.preventDefault();
         handleTap();
       }
@@ -439,16 +449,26 @@ export default function RingGame() {
   }, [gamePhase, handleTap]);
 
   useEffect(() => {
+    const updateSize = () => {
+      const maxSize = Math.min(window.innerWidth - 32, window.innerHeight - 280, BASE_CANVAS_SIZE);
+      setCanvasSize(Math.max(250, maxSize));
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = CANVAS_SIZE * dpr;
-    canvas.height = CANVAS_SIZE * dpr;
-    canvas.style.width = `${CANVAS_SIZE}px`;
-    canvas.style.height = `${CANVAS_SIZE}px`;
+    canvas.width = canvasSize * dpr;
+    canvas.height = canvasSize * dpr;
+    canvas.style.width = `${canvasSize}px`;
+    canvas.style.height = `${canvasSize}px`;
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.scale(dpr, dpr);
-  }, []);
+  }, [canvasSize]);
 
   const startGame = useCallback(() => {
     if (!address) {
@@ -585,7 +605,7 @@ export default function RingGame() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-2 min-h-screen bg-black pt-16 pb-24 flex flex-col items-center">
+      <section className="py-2 h-screen bg-black pt-16 flex flex-col items-center overflow-hidden">
         <div className="flex items-center justify-between w-full max-w-md px-4 mb-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -645,13 +665,11 @@ export default function RingGame() {
           )}
         </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">Tap the screen or press SPACE when gaps align at the top</p>
-        </div>
+        <p className="mt-4 text-gray-400 text-xs text-center px-4">Tap or press SPACE when gaps align at top</p>
 
         <Button
           onClick={handleTap}
-          className="mt-4 w-48 h-16 text-xl font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform"
+          className="mt-2 w-40 h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform"
           data-testid="button-tap"
         >
           TAP!
