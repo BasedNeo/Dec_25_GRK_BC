@@ -115,6 +115,74 @@
   transform: translateY(-1px);
 }
 
+/* ========================================
+   MICRO-INTERACTION UTILITIES
+   ======================================== */
+
+/* Card Lift Effect - use on NFT cards, game cards, etc. */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,255,255,0.1);
+}
+
+.card-lift:active {
+  transform: translateY(-2px);
+}
+
+/* Button Press Effect */
+.btn-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-press:hover {
+  transform: scale(1.02);
+}
+
+.btn-press:active {
+  transform: scale(0.98);
+}
+
+/* Glow on Hover */
+.hover-glow-cyan:hover {
+  box-shadow: 0 0 20px rgba(0,255,255,0.3), inset 0 0 10px rgba(0,255,255,0.1);
+}
+
+.hover-glow-purple:hover {
+  box-shadow: 0 0 20px rgba(139,92,246,0.3), inset 0 0 10px rgba(139,92,246,0.1);
+}
+
+/* Border Glow on Hover */
+.hover-border-glow {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-border-glow:hover {
+  border-color: rgba(0,255,255,0.4) !important;
+  box-shadow: 0 0 15px rgba(0,255,255,0.2);
+}
+
+/* Focus Glow for Inputs */
+.focus-glow:focus {
+  outline: none;
+  border-color: rgba(0,255,255,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(0,255,255,0.2);
+}
+
+/* Error Shake Animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
 /* Subtle Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0); }
