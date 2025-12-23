@@ -744,7 +744,7 @@ export default function CyberBreach() {
         <AnimatePresence>
           {showLightningBreach && (
             <motion.div
-              className="fixed inset-0 z-45 flex items-center justify-center pointer-events-none"
+              className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -780,7 +780,7 @@ export default function CyberBreach() {
         {/* Last pair tension effect */}
         {matchedPairs === currentConfig.pairs - 1 && currentConfig.pairs > 1 && (
           <motion.div
-            className="fixed inset-0 pointer-events-none z-5"
+            className="fixed inset-0 pointer-events-none z-10"
             animate={{
               boxShadow: ['inset 0 0 60px rgba(255,0,100,0.15)', 'inset 0 0 100px rgba(255,0,100,0.3)', 'inset 0 0 60px rgba(255,0,100,0.15)']
             }}
