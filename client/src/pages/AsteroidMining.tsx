@@ -14,7 +14,7 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { ShipSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, SHIP_SKINS, ShipSkin } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Heart, Zap, Target, Shield, Smartphone, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Zap, Target, Shield, Smartphone, Palette, Volume2, VolumeX } from 'lucide-react';
 import { useGameMusic } from '@/hooks/useGameMusic';
 import { MusicControls } from '@/components/game/MusicControls';
 import { isMobile, haptic } from '@/lib/mobileUtils';
@@ -170,7 +170,7 @@ export default function AsteroidMining() {
   const lastWaveRef = useRef(0);
 
   const stats = useMemo(() => ({
-    gamesPlayed: myStats.totalGames || 0,
+    gamesPlayed: myStats.gamesPlayed || 0,
     bestScore: myStats.bestScore || 0,
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
@@ -1165,9 +1165,9 @@ export default function AsteroidMining() {
             <VictoryScreen
               gameType="asteroid-mining"
               score={score}
-              stats={[
+              extraStats={[
                 { icon: Target, label: 'Score', value: score.toLocaleString(), color: 'text-cyan-400' },
-                { icon: Zap, label: 'Enemies', value: gameStateRef.current?.enemiesDestroyed || 0, color: 'text-purple-400' },
+                { icon: Zap, label: 'Enemies', value: String(gameStateRef.current?.enemiesDestroyed || 0), color: 'text-purple-400' },
               ]}
               playsRemaining={Math.max(0, (access.playsRemaining || 0) - 1)}
               maxPlays={gameConfig.maxPlaysPerDay}
