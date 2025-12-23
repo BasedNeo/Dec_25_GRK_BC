@@ -99,6 +99,24 @@ interface BackgroundStar {
   layer: number;
 }
 
+interface ScorePopup {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  lifetime: number;
+  isSpecial: boolean;
+}
+
+interface PowerUp {
+  id: string;
+  type: 'rapidfire' | 'shield' | 'bomb';
+  position: Vector2D;
+  velocity: Vector2D;
+  lifetime: number;
+}
+
 interface GameState {
   wave: number;
   score: number;
@@ -110,6 +128,8 @@ interface GameState {
   particles: Particle[];
   shootingStars: ShootingStar[];
   backgroundStars: BackgroundStar[];
+  scorePopups: ScorePopup[];
+  powerUps: PowerUp[];
   chainReactions: number;
   waveChainBonus: number;
   accuracy: { hits: number; shots: number };
@@ -119,6 +139,7 @@ interface GameState {
   waveComplete: boolean;
   waveTransition: boolean;
   missilesRemaining: number;
+  activePowerUp: { type: 'rapidfire' | 'shield' | 'bomb'; duration: number } | null;
 }
 
 interface GuardianDefenseSettings extends BaseGameSettings {
@@ -280,6 +301,8 @@ export default function GuardianDefense() {
     particles: [],
     shootingStars: [],
     backgroundStars: generateBackgroundStars(),
+    scorePopups: [],
+    powerUps: [],
     chainReactions: 0,
     waveChainBonus: 0,
     accuracy: { hits: 0, shots: 0 },
@@ -289,6 +312,7 @@ export default function GuardianDefense() {
     waveComplete: false,
     waveTransition: false,
     missilesRemaining: 0,
+    activePowerUp: null,
   }), []);
 
   const gameStateRef = useRef<GameState>(initialGameState());
@@ -599,6 +623,19 @@ export default function GuardianDefense() {
     playSound('explosion');
   }, [createParticles, playSound]);
 
+  const createScorePopup = useCallback((text: string, x: number, y: number, color: string, isSpecial: boolean = false) => {
+    const state = gameStateRef.current;
+    state.scorePopups.push({
+      id: `sp-${Date.now()}-${Math.random()}`,
+      text,
+      x,
+      y,
+      color,
+      lifetime: isSpecial ? 1.5 : 1.0,
+      isSpecial,
+    });
+  }, []);
+
   const checkCollisions = useCallback(() => {
     const state = gameStateRef.current;
     
@@ -615,14 +652,18 @@ export default function GuardianDefense() {
           
           const basePoints = MISSILE_POINTS[missile.color];
           const chainBonus = state.chainReactions * 5;
-          state.score += basePoints + chainBonus;
+          const totalPoints = basePoints + chainBonus;
+          state.score += totalPoints;
           state.waveChainBonus += chainBonus;
           state.chainReactions++;
           
           createExplosion(missile.position, true);
           
           if (state.chainReactions > 1) {
+            createScorePopup(`+${totalPoints} x${state.chainReactions}`, missile.position.x, missile.position.y - 20, '#FBBF24', true);
             playSound('chain');
+          } else {
+            createScorePopup(`+${totalPoints}`, missile.position.x, missile.position.y - 20, '#10B981', false);
           }
         }
       });
@@ -661,7 +702,7 @@ export default function GuardianDefense() {
         });
       }
     });
-  }, [createExplosion, playSound, toast]);
+  }, [createExplosion, createScorePopup, playSound, toast]);
 
   const update = useCallback((deltaMs: number) => {
     if (gameOver) return;
@@ -743,6 +784,12 @@ export default function GuardianDefense() {
     });
     state.particles = state.particles.filter(p => p.lifetime > 0);
     
+    state.scorePopups.forEach(popup => {
+      popup.lifetime -= dt;
+      popup.y -= 40 * dt;
+    });
+    state.scorePopups = state.scorePopups.filter(p => p.lifetime > 0);
+    
     state.screenShake = Math.max(0, state.screenShake - dt * 30);
     
     const activeCities = state.cities.filter(c => c.active).length;
@@ -765,6 +812,14 @@ export default function GuardianDefense() {
       const chainBonus = state.waveChainBonus;
       const perfectBonus = perfectDefense ? 5 : 0;
       state.score += waveBonus + perfectBonus;
+      
+      if (perfectDefense) {
+        createScorePopup('PERFECT DEFENSE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, '#10B981', true);
+        createScorePopup(`+${perfectBonus} BONUS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, '#FBBF24', false);
+      }
+      if (chainBonus > 0) {
+        createScorePopup(`CHAIN BONUS +${chainBonus}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
+      }
       
       toast({
         title: perfectDefense ? "⭐ PERFECT DEFENSE!" : `Wave ${state.wave} Complete!`,
@@ -793,7 +848,7 @@ export default function GuardianDefense() {
         }
       }, 2500);
     }
-  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, spawnWave, toast, endGame]);
+  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1042,6 +1097,20 @@ export default function GuardianDefense() {
       ctx.beginPath();
       ctx.arc(particle.position.x, particle.position.y, particle.size * alpha, 0, Math.PI * 2);
       ctx.fill();
+    });
+    
+    state.scorePopups.forEach(popup => {
+      const alpha = Math.min(1, popup.lifetime * 2);
+      const scale = popup.isSpecial ? 1.3 : 1;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `bold ${Math.floor(14 * scale)}px Orbitron, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = popup.color;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = popup.color;
+      ctx.fillText(popup.text, popup.x, popup.y);
+      ctx.restore();
     });
     
     ctx.fillStyle = '#00ffff';
