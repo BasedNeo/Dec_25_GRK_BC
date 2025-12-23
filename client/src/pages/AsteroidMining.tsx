@@ -1139,7 +1139,7 @@ export default function AsteroidMining() {
             </Card>
 
             <div className="flex justify-center">
-              <Button variant="outline" onClick={() => navigate('/arcade')} className="border-white/20" data-testid="button-back-arcade">
+              <Button variant="outline" onClick={() => navigate('/games')} className="border-white/20" data-testid="button-back-arcade">
                 <Home className="w-4 h-4 mr-2" /> Back to Arcade
               </Button>
             </div>
@@ -1173,7 +1173,7 @@ export default function AsteroidMining() {
               maxPlays={gameConfig.maxPlaysPerDay}
               isNewBest={score > stats.bestScore}
               onPlayAgain={startGame}
-              onExit={() => navigate('/arcade')}
+              onExit={() => navigate('/games')}
             />
           </div>
         </section>

@@ -723,17 +723,6 @@ export default function GuardianDefense() {
     });
     state.shootingStars = state.shootingStars.filter(s => s.progress < 1);
     
-    state.batteries.forEach(battery => {
-      if (battery.reloading) {
-        battery.reloadProgress += deltaMs;
-        if (battery.reloadProgress >= RELOAD_TIME) {
-          battery.reloading = false;
-          battery.missiles = battery.maxMissiles;
-          battery.reloadProgress = 0;
-        }
-      }
-    });
-    
     state.defensiveMissiles.forEach(missile => {
       const totalDist = getDistance(missile.start, missile.target);
       const moveAmount = (DEFENSIVE_MISSILE_SPEED * dt) / totalDist;
@@ -843,11 +832,6 @@ export default function GuardianDefense() {
       setTimeout(() => {
         if (!gameOver) {
           state.wave++;
-          state.batteries.forEach(b => {
-            b.missiles = b.maxMissiles;
-            b.reloading = false;
-            b.reloadProgress = 0;
-          });
           spawnWave(state.wave);
         }
       }, 1500);
@@ -1009,24 +993,6 @@ export default function GuardianDefense() {
       ctx.beginPath();
       ctx.arc(battery.position.x, battery.position.y - 12, 6, 0, Math.PI * 2);
       ctx.fill();
-      
-      if (battery.reloading) {
-        const progress = battery.reloadProgress / RELOAD_TIME;
-        ctx.fillStyle = '#374151';
-        ctx.fillRect(battery.position.x - 15, battery.position.y - 32, 30, 6);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(battery.position.x - 15, battery.position.y - 32, 30 * progress, 6);
-        
-        ctx.fillStyle = '#f59e0b';
-        ctx.font = 'bold 9px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('RELOAD', battery.position.x, battery.position.y - 36);
-      } else {
-        ctx.fillStyle = '#10b981';
-        ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${battery.missiles}`, battery.position.x, battery.position.y - 28);
-      }
       
       ctx.fillStyle = '#6b7280';
       ctx.font = '8px monospace';
@@ -1515,7 +1481,6 @@ export default function GuardianDefense() {
 
   const state = gameStateRef.current;
   const citiesAlive = state.cities.filter(c => c.active).length;
-  const totalMissiles = state.batteries.reduce((sum, b) => sum + b.missiles, 0);
   
   return (
     <>
