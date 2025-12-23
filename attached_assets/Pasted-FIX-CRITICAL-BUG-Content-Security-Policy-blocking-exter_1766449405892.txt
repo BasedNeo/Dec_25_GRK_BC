@@ -1,0 +1,71 @@
+FIX CRITICAL BUG: Content Security Policy blocking external APIs
+
+The app is stuck because CSP is blocking these external APIs:
+- api.coincap.io (price data)
+- api.web3modal.org (wallet connection config)
+
+The Helmet middleware needs its CSP updated to allow these domains.
+
+═══════════════════════════════════════════════════════════════════
+FILE TO EDIT: server/middleware/security.ts
+═══════════════════════════════════════════════════════════════════
+
+Find the helmetConfig or helmet configuration. It will have a contentSecurityPolicy section with a connect-src directive.
+
+The connect-src directive needs to INCLUDE these domains:
+
+For connect-src, ADD these to the allowed list:
+- https://api.coincap.io
+- https://api.web3modal.org
+- https://*.walletconnect.com
+- https://*.walletconnect.org
+- wss://*.walletconnect.org
+- wss://*.walletconnect.com
+- https://relay.walletconnect.org
+- https://relay.walletconnect.com
+
+EXAMPLE of what the connect-src should look like:
+
+connectSrc: [
+  "'self'",
+  "https://mainnet.basedaibridge.com",
+  "https://api.coincap.io",
+  "https://api.coingecko.com",
+  "https://api.web3modal.org",
+  "https://*.walletconnect.com",
+  "https://*.walletconnect.org",
+  "wss://*.walletconnect.com",
+  "wss://*.walletconnect.org",
+  "https://relay.walletconnect.org",
+  "https://relay.walletconnect.com",
+  "https://explorer-api.walletconnect.com",
+  "https://ipfs.io",
+  "https://*.mypinata.cloud",
+],
+
+═══════════════════════════════════════════════════════════════════
+ALTERNATIVE: DISABLE CSP TEMPORARILY FOR DEBUGGING
+═══════════════════════════════════════════════════════════════════
+
+If you can't find the exact CSP config, you can temporarily disable it:
+
+Find where helmet() is configured and change contentSecurityPolicy to false:
+
+helmet({
+  contentSecurityPolicy: false,  // TEMPORARY - disable CSP for debugging
+  // ... rest of config
+})
+
+WARNING: Only use contentSecurityPolicy: false temporarily for debugging. Re-enable with proper directives before production.
+
+═══════════════════════════════════════════════════════════════════
+AFTER MAKING CHANGES:
+═══════════════════════════════════════════════════════════════════
+
+1. Save the file
+2. Restart Replit (Stop and Start the server)
+3. Hard refresh the browser (Cmd+Shift+R or Ctrl+Shift+R)
+4. Check the console - the red CSP errors should be gone
+5. The app should now load past the spinner
+
+REPORT: Does the app load now? Any new errors?
