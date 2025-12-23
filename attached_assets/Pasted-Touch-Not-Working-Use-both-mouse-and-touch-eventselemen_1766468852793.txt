@@ -1,0 +1,36 @@
+Touch Not Working:
+;
+// Use both mouse and touch eventselement.addEventListener('mousedown', handler);element.addEventListener('touchstart', handler, { passive: false });// Prevent default to stop scrolling during gamee.preventDefault();
+Mobile Layout Issues:
+/* Use viewport units carefully */.game-container {  width: 100vw;  height: 100dvh; /* dynamic viewport height */  max-height: -webkit-fill-available;}/* Prevent overflow */overflow: hidden;touch-action: none;
+Animation Stutter:
+/* Only animate transform and opacity */.smooth {  will-change: transform, opacity;  transform: translateZ(0); /* Force GPU */}
+═══════════════════════════════════════════════════════════════════
+PHASE 3: CROSS-BROWSER TESTING
+═══════════════════════════════════════════════════════════════════
+Test and fix for all major browsers:
+□ Chrome (Desktop)
+□ Safari (Desktop)
+□ Firefox (Desktop)
+□ Chrome Mobile (Android)
+□ Safari Mobile (iOS)
+COMMON CROSS-BROWSER ISSUES:
+Safari Audio:
+// Safari requires user interaction before audiodocument.addEventListener('click', () => {  audioContext.resume();}, { once: true });
+Safari CSS:
+}
+/* Safari flexbox fix */.container {  display: flex;  display: -webkit-flex;}/* Safari backdrop-filter */.glass {  -webkit-backdrop-filter: blur(10px);  backdrop-filter: blur(10px);}
+Firefox:
+/* Firefox scrollbar */scrollbar-width: thin;scrollbar-color: #00FFFF #050510;
+═══════════════════════════════════════════════════════════════════
+PHASE 4: PERFORMANCE OPTIMIZATION
+═══════════════════════════════════════════════════════════════════
+Ensure 60fps on all devices:
+□ Check for memory leaks (objects not cleaned up)
+□ Limit particle count (max 50 active)
+□ Use requestAnimationFrame for game loops
+□ Debounce resize handlers
+□ Lazy load sounds/images
+□ Clean up event listeners on game end
+PERFORMANCE CHECKLIST:
+// Good: Use RAF for game loopfunction gameLoop() {  update();  render();  if (gameRunning) {    requestAnimationFrame(gameLoop);  }}// Good: Clean up on game endfunction endGame() {  gameRunning = false;  particles = []; // Clear arrays  removeEventListener('keydown', handleInput);}// Good: Object pooling for particlesconst particlePool = [];function getParticle() {  return particlePool.pop() || createNewParticle();}function releaseParticle(p) {  particlePool.push(p);}

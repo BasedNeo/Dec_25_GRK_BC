@@ -12,8 +12,9 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield, Smartphone } from 'lucide-react';
 import { isMobile, haptic } from '@/lib/mobileUtils';
+import { AnimatePresence } from 'framer-motion';
 
 interface Player {
   x: number;
@@ -134,7 +135,12 @@ export default function AsteroidMining() {
   const [hasShield, setHasShield] = useState(false);
   const [hasRapidFire, setHasRapidFire] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hapticEnabled, setHapticEnabled] = useState(true);
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 600 });
+  const [showIntro, setShowIntro] = useState(false);
+  const [introText, setIntroText] = useState('');
+  const [waveAnnouncement, setWaveAnnouncement] = useState<number | null>(null);
+  const lastWaveRef = useRef(0);
 
   const stats = useMemo(() => ({
     gamesPlayed: myStats.totalGames || 0,
@@ -312,7 +318,7 @@ export default function AsteroidMining() {
       speed: BULLET_SPEED,
     });
     playSound('shoot');
-    if (isMobile) haptic.light();
+    if (isMobile && hapticEnabled) haptic.light();
   }, [playSound]);
 
   const update = useCallback(() => {
@@ -357,7 +363,7 @@ export default function AsteroidMining() {
         state.scorePopups.push({ x: pu.x + 10, y: pu.y, text: pu.type.toUpperCase() + '!', life: 1, color: POWERUP_COLORS[pu.type] });
         state.powerUps.splice(i, 1);
         playSound('powerup');
-        if (isMobile) haptic.medium?.() || haptic.light();
+        if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
       }
     }
 
@@ -383,7 +389,7 @@ export default function AsteroidMining() {
           state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, '#00FFFF', 20));
           state.enemies.splice(i, 1);
           playSound('playerhit');
-          if (isMobile) haptic.heavy();
+          if (isMobile && hapticEnabled) haptic.heavy();
           if (state.lives <= 0) { state.gameOver = true; playSound('gameover'); }
         }
         continue;
@@ -408,7 +414,7 @@ export default function AsteroidMining() {
             spawnPowerUp(state, enemy.x + enemy.width / 2, enemy.y);
             state.enemies.splice(i, 1);
             playSound('hit');
-            if (isMobile) haptic.light();
+            if (isMobile && hapticEnabled) haptic.light();
             if (state.enemiesDestroyed % 15 === 0) state.wave++;
           } else {
             state.particles.push(...createParticles(bullet.x, bullet.y, '#FFFFFF', 4));
@@ -436,6 +442,12 @@ export default function AsteroidMining() {
     setCombo(state.combo);
     setHasShield(state.player.shield);
     setHasRapidFire(state.player.rapidFire > 0);
+    
+    if (state.wave > lastWaveRef.current) {
+      lastWaveRef.current = state.wave;
+      setWaveAnnouncement(state.wave);
+      setTimeout(() => setWaveAnnouncement(null), 1500);
+    }
   }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound]);
 
   const render = useCallback(() => {
@@ -646,13 +658,34 @@ export default function AsteroidMining() {
     }
     recordPlay();
     gameStateRef.current = initGame();
-    setGamePhase('playing');
     setScore(0);
     setLives(3);
     setCombo(0);
     setHasShield(false);
     setHasRapidFire(false);
     keysRef.current.clear();
+    lastWaveRef.current = 1;
+    
+    setShowIntro(true);
+    setIntroText('');
+    setGamePhase('playing');
+    
+    const introMessage = 'LAUNCHING MISSION...';
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      if (i < introMessage.length) {
+        setIntroText(introMessage.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(typeInterval);
+        setTimeout(() => {
+          setShowIntro(false);
+          setWaveAnnouncement(1);
+          setTimeout(() => setWaveAnnouncement(null), 1500);
+        }, 400);
+      }
+    }, 60);
+    
     trackEvent('game_start', 'asteroid-mining', '', 0);
   }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay]);
 
@@ -724,12 +757,27 @@ export default function AsteroidMining() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400">Sound</span>
                 <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400" data-testid="button-toggle-sound">
                   {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                 </Button>
               </div>
+              
+              {isMobile && (
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-gray-400 flex items-center gap-2"><Smartphone className="w-4 h-4" /> Haptic Feedback</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setHapticEnabled(!hapticEnabled)} 
+                    className={hapticEnabled ? 'text-cyan-400' : 'text-gray-500'}
+                    data-testid="button-toggle-haptic"
+                  >
+                    {hapticEnabled ? 'ON' : 'OFF'}
+                  </Button>
+                </div>
+              )}
 
               <Button onClick={startGame} disabled={!access.canPlay} className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500" data-testid="button-start-game">
                 <Play className="w-6 h-6 mr-2" />
@@ -833,6 +881,46 @@ export default function AsteroidMining() {
             </div>
           </div>
         )}
+
+        <AnimatePresence>
+          {showIntro && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="text-center">
+                <div className="text-2xl md:text-4xl font-mono text-cyan-400 mb-4">
+                  {introText}<span className="animate-pulse">_</span>
+                </div>
+                <div className="text-sm text-gray-500">Initializing weapons systems...</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {waveAnnouncement && (
+            <motion.div
+              className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.5 }}
+              transition={{ type: 'spring', stiffness: 200 }}
+            >
+              <div className="text-center">
+                <motion.div
+                  className="text-5xl md:text-7xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500"
+                  animate={{ textShadow: ['0 0 10px #22d3ee', '0 0 30px #a855f7', '0 0 10px #22d3ee'] }}
+                  transition={{ duration: 0.3, repeat: 4 }}
+                >
+                  WAVE {waveAnnouncement}
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
     </>
   );

@@ -27,9 +27,9 @@ type GamePhase = 'menu' | 'playing' | 'gameover';
 const CARD_SYMBOLS = ['⚡', '🛡️', '💾', '📡', '🔒', '🔑', '💿', '⌨️'];
 
 const LEVEL_CONFIGS = [
-  { pairs: 6, time: 60, gridCols: 4 },
+  { pairs: 6, time: 90, gridCols: 4 },
+  { pairs: 8, time: 90, gridCols: 4 },
   { pairs: 8, time: 75, gridCols: 4 },
-  { pairs: 8, time: 60, gridCols: 4 },
 ];
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -256,7 +256,7 @@ export default function CyberBreach() {
         }, 800);
       }
     }
-  }, [cards, isChecking, moves, timeLeft, currentConfig.pairs, level, playSound, startTimer]);
+  }, [cards, isChecking, moves, timeLeft, currentConfig.pairs, level, playSound, startTimer, hapticEnabled]);
 
   useEffect(() => {
     if (gamePhase === 'gameover') {
