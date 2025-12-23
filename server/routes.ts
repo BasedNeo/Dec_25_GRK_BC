@@ -829,11 +829,7 @@ export async function registerRoutes(
   });
 
   // Proposal Endpoints (Off-chain governance)
-  const ADMIN_WALLETS = [
-    '0xAe543104fDBe456478E19894f7F0e01f0971c9B4',
-    '0x50F20d5f17706e4F3f11E87dc8B1ae2DE8a9F66F'
-  ].map(w => w.toLowerCase());
-
+  // Use the main ADMIN_WALLETS array defined at the top of the file
   const isAdminWallet = (wallet: string | undefined): boolean => {
     if (!wallet) return false;
     return ADMIN_WALLETS.includes(wallet.toLowerCase());

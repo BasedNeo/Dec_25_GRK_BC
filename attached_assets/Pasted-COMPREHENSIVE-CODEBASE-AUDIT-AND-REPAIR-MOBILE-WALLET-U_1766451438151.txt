@@ -1,0 +1,179 @@
+COMPREHENSIVE CODEBASE AUDIT AND REPAIR - MOBILE WALLET + UI FOCUS
+
+You are to perform a full diagnostic of this codebase and fix all issues. This is a React + Express dApp for NFT marketplace on BasedAI blockchain (Chain ID 32323).
+
+CRITICAL CONTEXT - READ FIRST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- App was FULLY WORKING 4 days ago - users minted 3 NFTs and sold 1 via offer
+- Mobile wallet connections (MetaMask, Trust, Coinbase, Uniswap, "All Wallets") ALL worked
+- Desktop wallet still works fine
+- BREAKAGE STARTED when we added support for multiple NFT collections
+- Mobile MetaMask icon and "All Wallets" option broke FIRST
+- Then yesterday while trying to fix wallet issues, the entire mobile UI broke
+- The wallet connect uses WalletConnect/Web3Modal libraries
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CURRENT SYMPTOMS:
+1. MOBILE WALLET: MetaMask icon doesn't work, "All Wallets" option doesn't work
+2. MOBILE WALLET: Trust, Coinbase, Uniswap MAY still work (need testing)
+3. MOBILE UI: White blocks on buttons and burger menu
+4. MOBILE UI: Scrolling doesn't work on any page
+5. MOBILE UI: Welcome message cut off on left side
+6. DESKTOP: Works fine (both UI and wallet)
+7. CONSOLE: CSP errors blocking api.coincap.io and api.web3modal.org
+
+═══════════════════════════════════════════════════════════════════
+PHASE 1: WALLET CONNECTION DIAGNOSTIC
+═══════════════════════════════════════════════════════════════════
+
+Check these files for wallet configuration issues:
+
+1. client/src/lib/wagmi.ts OR client/src/lib/web3Config.ts
+   - Check WalletConnect projectId is present and valid
+   - Check chains configuration includes BasedAI (chainId: 32323)
+   - Check connectors array includes MetaMask connector
+   - Look for any mobile-specific connector config that may have changed
+   - Check if includeWalletIds or excludeWalletIds was added recently
+
+2. client/src/components/WalletProviders.tsx OR similar wrapper
+   - Check Web3Modal configuration
+   - Check if themeMode or themeVariables changed
+   - Look for any conditional logic based on isMobile
+
+3. client/src/hooks/useWallet.ts OR similar hooks
+   - Check for any mobile detection logic that may be filtering connectors
+   - Check connector initialization
+
+4. server/middleware/security.ts - CSP Configuration
+   - CRITICAL: If WalletConnect domains are blocked by CSP, mobile deep-linking fails
+   - Check connect-src directive for these REQUIRED domains:
+     * https://api.web3modal.org
+     * https://api.web3modal.com
+     * https://*.walletconnect.com
+     * https://*.walletconnect.org
+     * wss://*.walletconnect.com
+     * wss://*.walletconnect.org
+     * https://relay.walletconnect.org
+     * https://relay.walletconnect.com
+     * https://explorer-api.walletconnect.com
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2: MOBILE UI DIAGNOSTIC  
+═══════════════════════════════════════════════════════════════════
+
+1. client/src/index.css
+   - Check for overflow:hidden on html or body (breaks scrolling)
+   - Check for position:fixed that may lock the page
+   - Check for any recent changes to mobile breakpoints
+
+2. client/src/components/Navbar.tsx
+   - Check mobile menu button styling (the white block issue)
+   - Check hamburger icon implementation
+   - Look for bg-white or missing bg-transparent classes
+
+3. client/src/pages/Home.tsx OR landing component
+   - Check welcome section for left-side cutoff issue
+   - Check padding/margin on mobile breakpoints
+   - Look for overflow:hidden on containers
+
+4. All button components
+   - Search for button styling that may have white background on mobile
+   - Check for missing dark:bg-* classes
+
+═══════════════════════════════════════════════════════════════════
+PHASE 3: COLLECTIONS INTEGRATION CHECK
+═══════════════════════════════════════════════════════════════════
+
+Since breakage started with multi-collection changes:
+
+1. client/src/pages/Collections.tsx
+   - CollectionCard Link href should pass collection parameter
+   - Should be: href={`/marketplace?collection=${collection.contractAddress}`}
+
+2. client/src/pages/Marketplace.tsx  
+   - Check if it reads collection param from URL
+   - Check if filter state includes collection
+
+3. Check for any NEW files added in last 2 days that may have errors
+
+═══════════════════════════════════════════════════════════════════
+PHASE 4: APPLY FIXES IN THIS ORDER
+═══════════════════════════════════════════════════════════════════
+
+FIX 1 - CSP (Highest Priority - fixes wallet AND API calls):
+In server/middleware/security.ts, ensure connect-src includes ALL of these:
+"'self'"
+"https://api.coincap.io"
+"https://api.coingecko.com"
+"https://api.web3modal.org"
+"https://api.web3modal.com"  
+"https://*.walletconnect.com"
+"https://*.walletconnect.org"
+"wss://*.walletconnect.com"
+"wss://*.walletconnect.org"
+"https://relay.walletconnect.org"
+"https://relay.walletconnect.com"
+"https://explorer-api.walletconnect.com"
+"https://rpc.basedaibridge.io"
+"wss://rpc.basedaibridge.io"
+
+FIX 2 - Mobile Scrolling:
+In client/src/index.css, ensure:
+html, body {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+}
+
+FIX 3 - Button/Menu White Blocks:
+Find and fix any buttons or menu elements with hardcoded white backgrounds
+Add proper bg-transparent or themed backgrounds
+
+FIX 4 - Wallet Connectors:
+If you find any filtering of wallet connectors based on mobile detection, REMOVE IT
+Restore MetaMask connector to the connectors array if missing
+Remove any includeWalletIds or excludeWalletIds that may limit options
+
+FIX 5 - Collections Routing:
+Fix CollectionCard to link with collection parameter
+
+═══════════════════════════════════════════════════════════════════
+RULES - CRITICAL:
+═══════════════════════════════════════════════════════════════════
+
+- DO NOT delete any features or functionality
+- DO NOT remove wallet connectors, only ADD missing ones back
+- DO NOT refactor for code style  
+- DO NOT add new abstractions
+- PRESERVE all existing working desktop functionality
+- Make MINIMAL targeted changes
+- The wallet connection WORKED before - find what changed and revert it
+- Test that your changes don't break desktop
+
+═══════════════════════════════════════════════════════════════════
+OUTPUT REQUIRED:
+═══════════════════════════════════════════════════════════════════
+
+After completing, provide:
+
+1. WALLET DIAGNOSIS:
+   - What you found in wallet configuration
+   - What was blocking mobile wallet connections
+   - What you changed to fix it
+
+2. UI DIAGNOSIS:
+   - What was causing white blocks
+   - What was breaking scrolling
+   - What was cutting off content
+
+3. FILES MODIFIED:
+   - Full list with brief description of each change
+
+4. THINGS YOU COULDN'T FIX:
+   - Any issues that need manual testing or more info
+
+5. TESTING RECOMMENDATION:
+   - Steps to verify the fixes work
+
+DO NOT start coding until you've read ALL relevant files first.
+Report your findings BEFORE making changes.
