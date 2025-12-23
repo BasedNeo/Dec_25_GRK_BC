@@ -75,6 +75,40 @@ if (lastVersion !== APP_VERSION) {
 // Initialize analytics
 initAnalytics();
 
+// Performance monitoring (with legacy browser fallback)
+if (typeof window !== 'undefined' && window.performance) {
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      let metrics: { ttfb: number; dcl: number; load: number; fcp: number } | null = null;
+      
+      // Try Navigation Timing Level 2 first
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0) {
+        const nav = navEntries[0] as PerformanceNavigationTiming;
+        metrics = {
+          ttfb: Math.round(nav.responseStart - nav.requestStart),
+          dcl: Math.round(nav.domContentLoadedEventEnd - nav.startTime),
+          load: Math.round(nav.loadEventEnd - nav.startTime),
+          fcp: Math.round(performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 0),
+        };
+      } else if (performance.timing) {
+        // Fallback to deprecated performance.timing for older browsers
+        const timing = performance.timing;
+        metrics = {
+          ttfb: timing.responseStart - timing.requestStart,
+          dcl: timing.domContentLoadedEventEnd - timing.navigationStart,
+          load: timing.loadEventEnd - timing.navigationStart,
+          fcp: Math.round(performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 0),
+        };
+      }
+      
+      if (metrics && metrics.load > 0) {
+        console.log('[PERF] Metrics:', metrics);
+      }
+    }, 100);
+  });
+}
+
 // Global error handler for wallet extension errors (MetaMask, etc.)
 // These errors come from browser extensions and should not crash the app
 window.addEventListener('unhandledrejection', (event) => {
