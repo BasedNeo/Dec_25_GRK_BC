@@ -39,7 +39,7 @@ interface NFTGalleryProps {
 
 function GuardianCardSkeleton() {
   return (
-    <Card className="bg-card border-white/10 overflow-hidden h-full flex flex-col">
+    <Card className="bg-card border-white/10 overflow-hidden h-full flex flex-col card-containment">
       <Skeleton shimmer className="w-full aspect-square rounded-none" />
       <div className="p-4 space-y-3 flex-1">
         <div className="flex justify-between items-center">
@@ -782,7 +782,7 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
 
   return (
     <Card 
-        className={`nft-card card-lift bg-card overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer ${
+        className={`nft-card card-lift card-containment bg-card overflow-hidden transition-colors duration-300 group h-full flex flex-col cursor-pointer ${
           hasOffers 
             ? 'border-2 border-green-500/50 ring-2 ring-green-500/20 bg-gradient-to-b from-green-500/5 to-transparent' 
             : 'border-white/10 hover:border-primary/50'
