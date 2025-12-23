@@ -248,8 +248,8 @@ export function NFTGallery({
             }
         };
 
-        document.addEventListener('touchstart', handleTouchStart);
-        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', handleTouchMove, { passive: true });
 
         return () => {
             document.removeEventListener('touchstart', handleTouchStart);

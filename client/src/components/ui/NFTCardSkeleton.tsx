@@ -2,9 +2,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function NFTCardSkeleton() {
   return (
-    <div className="bg-card border border-white/10 rounded-lg overflow-hidden">
-      <div className="aspect-square bg-secondary/20">
+    <div className="bg-card border border-white/10 rounded-lg overflow-hidden card-containment">
+      <div className="aspect-square bg-secondary/20 relative overflow-hidden">
         <Skeleton className="w-full h-full" />
+        <div className="absolute inset-0 skeleton-shimmer" />
       </div>
       <div className="p-4 space-y-3">
         <div className="flex justify-between items-center">

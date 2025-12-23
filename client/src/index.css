@@ -805,6 +805,84 @@ input, textarea, select {
 }
 
 /* ========================================
+   PERFORMANCE: SCROLL & ANIMATION
+   ======================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.scrollable-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.animated-element {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.fixed-header {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.card-containment {
+  contain: content;
+}
+
+img, video {
+  content-visibility: auto;
+}
+
+/* Skeleton shimmer effect for loading states */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-base {
+  background: rgba(50, 50, 70, 0.5);
+  border-radius: 0.5rem;
+}
+
+/* GPU-accelerated animations only */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  .skeleton-shimmer {
+    animation: none;
+  }
+  
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
    WALLETCONNECT MODAL FIXES
    ======================================== */
 
