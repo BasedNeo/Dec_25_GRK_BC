@@ -1,0 +1,75 @@
+ARTICLE EFFECTS:
+Use CSS or canvas particles
+Spawn on: hits, explosions, achievements
+Colors: Match game palette (cyan, magenta, green)
+Lifetime: Short (0.5-1 second)
+Performance: Max 50 particles at once
+SCREEN SHAKE:
+}
+function screenShake(intensity = 5, duration = 100) {  const game = document.querySelector('.game-container');  game.style.transform = `translate(${Math.random()*intensity - intensity/2}px, ${Math.random()*intensity - intensity/2}px)`;  setTimeout(() => game.style.transform = '', duration);}
+═══════════════════════════════════════════════════════════════════
+MOBILE FULLSCREEN:
+═══════════════════════════════════════════════════════════════════
+}
+.game-container {  position: fixed;  top: 0;  left: 0;  right: 0;  bottom: 0;  width: 100%;  height: 100%;  /* Handle notches/safe areas */  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}/* Prevent pull-to-refresh */body {  overscroll-behavior: none;}/* Hide mobile browser UI as much as possible */html {  height: 100%;  overflow: hidden;}
+═══════════════════════════════════════════════════════════════════
+SOUND DESIGN (Punchy & Satisfying):
+═══════════════════════════════════════════════════════════════════
+All sounds: SHORT, PUNCHY, HIGH QUALITY
+Shoot: Sharp "pew" (0.1s)
+Hit: Deep "thump" + high "ping" (0.2s)
+Explosion: Bass boom + crackle (0.3s)
+Perfect: Bright ascending chime (0.2s)
+Level up: Fanfare swell (0.5s)
+Game over: Dramatic descending tone (0.8s)
+Mute button: Always visible, remembers preference
+═══════════════════════════════════════════════════════════════════
+ARCADE HUB - SHOWCASE:
+═══════════════════════════════════════════════════════════════════
+Make it feel like entering a premium arcade:
+Title: "BASED ARCADE" with massive glow effect
+Subtitle: "PROVE YOUR WORTH"
+Game cards:
+Animated preview (canvas animation or GIF)
+Neon border that pulses
+High score with trophy icon
+"PLAY" button that GLOWS and PULSES
+Background: Animated space scene
+Ambient: Subtle electronic hum
+═══════════════════════════════════════════════════════════════════
+QUALITY CHECKLIST:
+═══════════════════════════════════════════════════════════════════
+Before considering ANY game complete:
+□ Fills 100% of screen (no wasted space)
+□ Colors are VIBRANT (not muted)
+□ All elements GLOW appropriately
+□ 60fps smooth animations
+□ Controls respond INSTANTLY
+□ Difficulty is CHALLENGING
+□ Particles/effects on impacts
+□ Sound effects are punchy
+□ Works perfectly on mobile (portrait)
+□ Works perfectly on desktop (fullscreen)
+□ Makes you want to play again
+═══════════════════════════════════════════════════════════════════
+REPORT FORMAT:
+═══════════════════════════════════════════════════════════════════
+ELITE GAME DESIGN COMPLETE
+CREATURE COMMAND
+Screen maximized: ✅/❌
+Vibrant colors: ✅/❌
+Smooth 60fps: ✅/❌
+Tough difficulty: ✅/❌
+Desktop perfect: ✅/❌
+Mobile perfect: ✅/❌
+RING ALIGNMENT
+[Same checklist]
+CYBER BREACH
+[Same checklist]
+PROUDEST ACHIEVEMENTS
+[What looks/feels amazing]
+SCREENSHOTS/DESCRIPTIONS
+[Describe how each game looks now]
+═══════════════════════════════════════════════════════════════════
+CREATE GAMES WORTHY OF THE APP STORE. NOTHING LESS.
+════════

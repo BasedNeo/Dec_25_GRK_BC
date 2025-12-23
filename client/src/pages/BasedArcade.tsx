@@ -352,12 +352,16 @@ export default function BasedArcade() {
   useEffect(() => {
     const loadStats = () => {
       const stats: Record<string, { playsToday: number; personalBest: number }> = {};
+      const today = new Date().toDateString();
       games.forEach((game) => {
         const savedStats = address 
           ? GameStorageManager.loadStats(game.id, address)
           : GameStorageManager.getDefaultStats();
+        const dailyData = address
+          ? GameStorageManager.getDailyData(game.id, address, today)
+          : { gamesPlayed: 0, pointsEarned: 0 };
         stats[game.id] = {
-          playsToday: savedStats.gamesPlayed % game.maxPlaysPerDay,
+          playsToday: dailyData.gamesPlayed,
           personalBest: savedStats.bestScore,
         };
       });
