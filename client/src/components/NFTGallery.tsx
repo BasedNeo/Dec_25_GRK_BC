@@ -40,10 +40,7 @@ interface NFTGalleryProps {
 function GuardianCardSkeleton() {
   return (
     <Card className="bg-card border-white/10 overflow-hidden h-full flex flex-col">
-      <div className="relative w-full aspect-square bg-secondary/20">
-        <Skeleton className="w-full h-full rounded-none" />
-        <div className="absolute inset-0 skeleton-shimmer" />
-      </div>
+      <Skeleton shimmer className="w-full aspect-square rounded-none" />
       <div className="p-4 space-y-3 flex-1">
         <div className="flex justify-between items-center">
             <Skeleton className="h-4 w-20" />
@@ -63,6 +60,16 @@ function GuardianCardSkeleton() {
         <Skeleton className="h-9 w-full mt-4" />
       </div>
     </Card>
+  );
+}
+
+function GuardianCardSkeletonGrid({ count = 8 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <GuardianCardSkeleton key={i} />
+      ))}
+    </>
   );
 }
 
@@ -588,13 +595,20 @@ export function NFTGallery({
               ) : (
                 <>
                   {(filterByOwner ? isLoadingOwned : isLoading) && !displayNfts.length ? (
-                    // Loading State with progress indicator
-                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-primary/30 rounded-xl bg-primary/5">
-                      <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                      <h3 className="text-lg font-orbitron text-white mb-2">LOADING YOUR NFTs...</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {displayNfts.length > 0 ? `Found ${displayNfts.length} so far...` : 'Fetching from blockchain...'}
-                      </p>
+                    // Loading State with skeleton grid
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 mb-6">
+                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                        <span className="text-sm font-orbitron text-cyan-400">LOADING YOUR NFTs...</span>
+                      </div>
+                      <div className={`grid gap-6 ${
+                        gridCols === 1 ? 'grid-cols-1' : 
+                        gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                        gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                        'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                      }`}>
+                        <GuardianCardSkeletonGrid count={gridCols === 1 ? 3 : gridCols === 2 ? 4 : 8} />
+                      </div>
                     </div>
                   ) : displayNfts.length === 0 ? (
                      (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
