@@ -90,6 +90,8 @@ export default function CyberBreach() {
   const [chain, setChain] = useState(0);
   const [lastMatchTime, setLastMatchTime] = useState(0);
   const [speedBonus, setSpeedBonus] = useState<string | null>(null);
+  const [showLightningBreach, setShowLightningBreach] = useState(false);
+  const levelStartTimeRef = useRef<number>(0);
 
   const stats = useMemo(() => ({
     gamesPlayed: myStats.totalGames || 0,
@@ -353,6 +355,15 @@ export default function CyberBreach() {
             const finalBonus = timeLeft * 5;
             setScore(s => s + finalBonus);
             
+            // Lightning Breach bonus for fast level completion (under 15 seconds for the level)
+            const levelTime = (Date.now() - levelStartTimeRef.current) / 1000;
+            if (levelTime < 15) {
+              setShowLightningBreach(true);
+              setScore(s => s + 500);
+              if (isMobile && hapticEnabled) haptic.breachComplete();
+              setTimeout(() => setShowLightningBreach(false), 1500);
+            }
+            
             if (level < 3) {
               setTimeout(() => {
                 setLevel(l => l + 1);
@@ -361,10 +372,12 @@ export default function CyberBreach() {
                 setTimeLeft(nextConfig.time);
                 setMatchedPairs(0);
                 setMoves(0);
+                setChain(0);
+                levelStartTimeRef.current = Date.now();
                 startTimer();
               }, 1500);
             } else {
-              playSound('victory');
+              playSound('match');
               if (isMobile && hapticEnabled) haptic.breachComplete();
               setShowAccessGranted(true);
               setTimeout(() => {
@@ -423,6 +436,8 @@ export default function CyberBreach() {
     setChain(0);
     setLastMatchTime(0);
     setSpeedBonus(null);
+    setShowLightningBreach(false);
+    levelStartTimeRef.current = Date.now();
     setTimeLeft(LEVEL_CONFIGS[0].time);
     setIsChecking(false);
     setShowIntro(true);
@@ -724,6 +739,54 @@ export default function CyberBreach() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Lightning Breach celebration overlay */}
+        <AnimatePresence>
+          {showLightningBreach && (
+            <motion.div
+              className="fixed inset-0 z-45 flex items-center justify-center pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="text-center"
+                initial={{ scale: 0.5, y: 30 }}
+                animate={{ scale: [0.5, 1.3, 1], y: [30, -10, 0] }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              >
+                <motion.div
+                  className="text-3xl md:text-5xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-orange-500"
+                  animate={{ 
+                    filter: ['drop-shadow(0 0 10px #FBBF24)', 'drop-shadow(0 0 25px #F59E0B)', 'drop-shadow(0 0 10px #FBBF24)']
+                  }}
+                  transition={{ duration: 0.3, repeat: 4 }}
+                >
+                  ⚡ LIGHTNING BREACH ⚡
+                </motion.div>
+                <motion.div
+                  className="mt-2 text-xl text-yellow-300 font-mono"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  +500 BONUS
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Last pair tension effect */}
+        {matchedPairs === currentConfig.pairs - 1 && currentConfig.pairs > 1 && (
+          <motion.div
+            className="fixed inset-0 pointer-events-none z-5"
+            animate={{
+              boxShadow: ['inset 0 0 60px rgba(255,0,100,0.15)', 'inset 0 0 100px rgba(255,0,100,0.3)', 'inset 0 0 60px rgba(255,0,100,0.15)']
+            }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          />
+        )}
 
         <AnimatePresence>
           {showAccessGranted && (

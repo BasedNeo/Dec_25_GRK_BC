@@ -165,6 +165,8 @@ export default function AsteroidMining() {
   const [showIntro, setShowIntro] = useState(false);
   const [introText, setIntroText] = useState('');
   const [waveAnnouncement, setWaveAnnouncement] = useState<number | null>(null);
+  const [showNewRecord, setShowNewRecord] = useState(false);
+  const newRecordShownRef = useRef(false);
   const lastWaveRef = useRef(0);
 
   const stats = useMemo(() => ({
@@ -613,6 +615,16 @@ export default function AsteroidMining() {
     setHasSpreadShot(state.player.spreadShot > 0);
     setHasSlowMo(state.player.slowMo > 0);
     
+    // NEW RECORD celebration - trigger once when beating best score
+    if (state.score > stats.bestScore && stats.bestScore > 0 && !newRecordShownRef.current) {
+      newRecordShownRef.current = true;
+      setShowNewRecord(true);
+      playSound('powerup'); // Use powerup sound for celebration
+      if (isMobile && hapticEnabled) haptic.comboMilestone();
+      state.scorePopups.push({ x: width / 2, y: height / 2, text: '🎆 NEW RECORD! 🎆', life: 2.5, color: '#FFD700' });
+      setTimeout(() => setShowNewRecord(false), 2500);
+    }
+    
     // Dynamic music intensity based on wave
     const intensity = Math.min(1, state.wave / 15);
     music.setGameIntensity(intensity);
@@ -626,7 +638,7 @@ export default function AsteroidMining() {
       setWaveAnnouncement(state.wave);
       setTimeout(() => setWaveAnnouncement(null), 1500);
     }
-  }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound, music]);
+  }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound, music, stats.bestScore, hapticEnabled]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -934,6 +946,7 @@ export default function AsteroidMining() {
     }
     recordPlay();
     gameStateRef.current = initGame();
+    newRecordShownRef.current = false; // Reset new record flag
     setScore(0);
     setLives(3);
     setCombo(0);
@@ -1257,6 +1270,65 @@ export default function AsteroidMining() {
                   WAVE {waveAnnouncement}
                 </motion.div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* NEW RECORD celebration overlay */}
+        <AnimatePresence>
+          {showNewRecord && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="text-center"
+                initial={{ scale: 0.5, y: 50 }}
+                animate={{ scale: [0.5, 1.2, 1], y: [50, -20, 0] }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              >
+                <motion.div
+                  className="text-4xl md:text-6xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500"
+                  animate={{ 
+                    filter: ['drop-shadow(0 0 10px #FFD700)', 'drop-shadow(0 0 30px #FF6B00)', 'drop-shadow(0 0 10px #FFD700)']
+                  }}
+                  transition={{ duration: 0.4, repeat: 5 }}
+                >
+                  🎆 NEW RECORD! 🎆
+                </motion.div>
+                <motion.div
+                  className="mt-2 text-2xl text-yellow-300 font-mono"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {score.toLocaleString()} pts
+                </motion.div>
+                {/* Fireworks particles */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  {[...Array(12)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-3 h-3 rounded-full"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        backgroundColor: ['#FFD700', '#FF6B00', '#FF0080', '#00FFFF', '#A855F7'][i % 5],
+                      }}
+                      initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                      animate={{
+                        x: Math.cos(i * 30 * Math.PI / 180) * 150,
+                        y: Math.sin(i * 30 * Math.PI / 180) * 150,
+                        scale: [0, 1.5, 0],
+                        opacity: [1, 1, 0],
+                      }}
+                      transition={{ duration: 1.2, delay: 0.2 + i * 0.05, ease: 'easeOut' }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

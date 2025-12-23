@@ -903,11 +903,23 @@ export default function RingGame() {
             </div>
             {combo > 1 && (
               <motion.span 
-                className="text-yellow-400 font-bold text-sm px-2 py-0.5 bg-yellow-400/10 rounded"
-                initial={{ scale: 1.3 }}
-                animate={{ scale: 1 }}
+                className={`font-bold text-sm px-2 py-0.5 rounded ${
+                  combo >= 15 ? 'text-yellow-300 bg-yellow-400/20' :
+                  combo >= 10 ? 'text-orange-400 bg-orange-400/15' :
+                  combo >= 5 ? 'text-cyan-400 bg-cyan-400/10' :
+                  'text-yellow-400 bg-yellow-400/10'
+                }`}
+                initial={{ scale: 1.4 }}
+                animate={{ 
+                  scale: combo >= 10 ? [1, 1.1, 1] : 1,
+                }}
+                transition={{ duration: 0.5, repeat: combo >= 10 ? Infinity : 0 }}
+                style={{ 
+                  filter: combo >= 5 ? `drop-shadow(0 0 ${Math.min(combo, 15)}px ${combo >= 15 ? '#FBBF24' : combo >= 10 ? '#F97316' : '#00FFFF'})` : 'none',
+                  textShadow: combo >= 10 ? `0 0 10px ${combo >= 15 ? '#FBBF24' : '#F97316'}` : 'none'
+                }}
               >
-                x{combo}
+                {combo >= 15 ? '👑' : combo >= 10 ? '🔥' : combo >= 5 ? '⭐' : ''} x{combo}
               </motion.span>
             )}
           </div>
