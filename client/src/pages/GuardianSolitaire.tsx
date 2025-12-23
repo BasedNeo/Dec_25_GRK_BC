@@ -520,6 +520,8 @@ export default function GuardianSolitaire() {
     
     try {
       const ctx = audioContextRef.current;
+      // Safari requires resume after user interaction
+      if (ctx.state === 'suspended') ctx.resume();
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
       const volume = settings.soundVolume / 100;
