@@ -126,7 +126,10 @@ export function useGameScoresLocal() {
 
   useEffect(() => {
     const scores = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
-    setLeaderboard(scores.sort((a: ScoreEntry, b: ScoreEntry) => b.score - a.score).slice(0, 10));
+    // Sort by ecosystemPoints (unified economy currency) with fallback for legacy entries
+    setLeaderboard(scores.sort((a: ScoreEntry, b: ScoreEntry) => 
+      (b.ecosystemPoints || b.score) - (a.ecosystemPoints || a.score)
+    ).slice(0, 10));
     refreshStats();
   }, [address, refreshStats]);
 
@@ -220,10 +223,12 @@ export function useGameScoresLocal() {
   const getGlobalRank = useCallback(() => {
     if (!address) return 0;
     const scores: ScoreEntry[] = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
+    // Use ecosystemPoints for ranking with fallback for legacy entries
     const myBest = scores.filter(s => s.wallet.toLowerCase() === address.toLowerCase())
-      .sort((a, b) => b.score - a.score)[0];
+      .sort((a, b) => (b.ecosystemPoints || b.score) - (a.ecosystemPoints || a.score))[0];
     if (!myBest) return scores.length + 1;
-    return scores.filter(s => s.score > myBest.score).length + 1;
+    const myPoints = myBest.ecosystemPoints || myBest.score;
+    return scores.filter(s => (s.ecosystemPoints || s.score) > myPoints).length + 1;
   }, [address]);
 
   // Get economy summary for a specific game result
