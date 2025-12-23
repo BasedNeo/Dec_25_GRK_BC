@@ -197,6 +197,8 @@ export default function CyberBreach() {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
+      // Safari requires resume after user interaction
+      if (ctx.state === 'suspended') ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -468,6 +470,21 @@ export default function CyberBreach() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Pause timer when tab is hidden
+  useEffect(() => {
+    if (gamePhase !== 'playing') return;
+    const handleVisibilityChange = () => {
+      if (document.hidden && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      } else if (!document.hidden && !timerRef.current && timeLeft > 0) {
+        startTimer();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [gamePhase, timeLeft, startTimer]);
 
   if (nftLoading) {
     return (

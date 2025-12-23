@@ -216,6 +216,8 @@ export default function RingGame() {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
+      // Safari requires resume after user interaction
+      if (ctx.state === 'suspended') ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -683,6 +685,21 @@ export default function RingGame() {
     return () => {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
+  }, [gamePhase, gameLoop]);
+
+  // Pause game when tab is hidden
+  useEffect(() => {
+    if (gamePhase !== 'playing') return;
+    const handleVisibilityChange = () => {
+      if (document.hidden && gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = null;
+      } else if (!document.hidden && !gameLoopRef.current) {
+        gameLoopRef.current = requestAnimationFrame(gameLoop);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [gamePhase, gameLoop]);
 
   useEffect(() => {
