@@ -34,15 +34,26 @@ interface Particle {
   size: number;
 }
 
+interface Star {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  brightness: number;
+}
+
 interface GameState {
   rings: Ring[];
   score: number;
   level: number;
   lives: number;
   combo: number;
+  perfectStreak: number;
   particles: Particle[];
+  stars: Star[];
   feedback: 'perfect' | 'good' | 'miss' | null;
   feedbackTimer: number;
+  feedbackText: string | null;
   gameOver: boolean;
 }
 
@@ -55,6 +66,14 @@ const PERFECT_THRESHOLD = 20;
 const GOOD_THRESHOLD = 40;
 
 const RING_COLORS = ['#00FFFF', '#A855F7', '#FBBF24', '#10B981', '#F43F5E'];
+
+// Realm names for level progression
+function getLevelRealm(level: number): { name: string; color: string; description: string } {
+  if (level <= 5) return { name: 'INITIATE', color: '#00FFFF', description: 'The journey begins...' };
+  if (level <= 10) return { name: 'ADEPT', color: '#A855F7', description: 'Your skills awaken' };
+  if (level <= 15) return { name: 'MASTER', color: '#FBBF24', description: 'Cosmic wisdom flows through you' };
+  return { name: 'TRANSCENDENT', color: '#F43F5E', description: 'One with the cosmos' };
+}
 
 function getLevelConfig(level: number) {
   if (level <= 3) return { ringCount: 2, baseSpeed: 0.8 + level * 0.2 };
@@ -113,6 +132,8 @@ export default function RingGame() {
     bestScore: myStats.bestScore || 0,
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
+
+  const currentRealm = useMemo(() => getLevelRealm(level), [level]);
 
   const playSound = useCallback((type: 'perfect' | 'good' | 'miss' | 'gameover') => {
     if (!soundEnabled) return;
@@ -181,6 +202,20 @@ export default function RingGame() {
     return particles;
   }, []);
 
+  const createStars = useCallback((count: number): Star[] => {
+    const stars: Star[] = [];
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * BASE_CANVAS_SIZE,
+        y: Math.random() * BASE_CANVAS_SIZE,
+        size: 0.5 + Math.random() * 1.5,
+        speed: 0.1 + Math.random() * 0.3,
+        brightness: 0.3 + Math.random() * 0.7,
+      });
+    }
+    return stars;
+  }, []);
+
   const initGame = useCallback((): GameState => {
     return {
       rings: createRings(1),
@@ -188,12 +223,15 @@ export default function RingGame() {
       level: 1,
       lives: 3,
       combo: 0,
+      perfectStreak: 0,
       particles: [],
+      stars: createStars(50),
       feedback: null,
       feedbackTimer: 0,
+      feedbackText: null,
       gameOver: false,
     };
-  }, []);
+  }, [createStars]);
 
   const checkAlignment = useCallback((state: GameState): 'perfect' | 'good' | 'miss' => {
     const targetAngle = 270;
@@ -243,15 +281,29 @@ export default function RingGame() {
 
     if (result === 'perfect') {
       state.combo++;
+      state.perfectStreak++;
       const points = 100 * Math.min(state.combo, 10);
       state.score += points;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15));
+      
+      // Special feedback for perfect streaks
+      if (state.perfectStreak === 5) {
+        state.feedbackText = 'HARMONIOUS';
+        state.score += 250; // Bonus
+      } else if (state.perfectStreak === 10) {
+        state.feedbackText = 'THE COSMOS ALIGNS';
+        state.score += 500; // Big bonus
+      } else if (state.perfectStreak >= 3) {
+        state.feedbackText = `${state.perfectStreak}x PERFECT`;
+      }
+      
       playSound('perfect');
       if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
       setTimeFrozen(true);
       setTimeout(() => setTimeFrozen(false), 150);
     } else if (result === 'good') {
       state.combo++;
+      state.perfectStreak = 0; // Reset perfect streak on good
       const points = 50 * Math.min(state.combo, 10);
       state.score += points;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
@@ -259,6 +311,7 @@ export default function RingGame() {
       if (isMobile && hapticEnabled) haptic.light();
     } else {
       state.combo = 0;
+      state.perfectStreak = 0;
       state.lives--;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER, '#EF4444', 12));
       playSound('miss');
@@ -274,11 +327,17 @@ export default function RingGame() {
     if (result !== 'miss') {
       state.level++;
       state.rings = createRings(state.level);
-      if (state.level === 10) {
-        setShowLevelBanner('ADEPT UNLOCKED');
+      state.feedbackText = null; // Clear special feedback
+      
+      // Realm transition banners
+      if (state.level === 6) {
+        setShowLevelBanner('REALM: ADEPT');
         setTimeout(() => setShowLevelBanner(null), 2000);
-      } else if (state.level === 20) {
-        setShowLevelBanner('MASTER UNLOCKED');
+      } else if (state.level === 11) {
+        setShowLevelBanner('REALM: MASTER');
+        setTimeout(() => setShowLevelBanner(null), 2000);
+      } else if (state.level === 16) {
+        setShowLevelBanner('REALM: TRANSCENDENT');
         setTimeout(() => setShowLevelBanner(null), 2000);
       }
     }
@@ -295,9 +354,23 @@ export default function RingGame() {
       ring.angle = (ring.angle + ring.speed) % 360;
     }
 
+    // Animate stars (parallax scrolling)
+    for (const star of state.stars) {
+      star.y += star.speed;
+      if (star.y > BASE_CANVAS_SIZE) {
+        star.y = 0;
+        star.x = Math.random() * BASE_CANVAS_SIZE;
+      }
+      // Subtle twinkle
+      star.brightness = 0.3 + Math.sin(Date.now() * 0.001 + star.x) * 0.3 + 0.4;
+    }
+
     if (state.feedbackTimer > 0) {
       state.feedbackTimer--;
-      if (state.feedbackTimer === 0) state.feedback = null;
+      if (state.feedbackTimer === 0) {
+        state.feedback = null;
+        state.feedbackText = null;
+      }
     }
 
     for (let i = state.particles.length - 1; i >= 0; i--) {
@@ -324,11 +397,26 @@ export default function RingGame() {
     const size = canvasSize;
     const center = size / 2;
     const scale = size / BASE_CANVAS_SIZE;
+    const realm = getLevelRealm(state.level);
 
-    ctx.fillStyle = '#0a0a1a';
+    // Deep space gradient background
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, size / 2);
+    gradient.addColorStop(0, '#0a0a1a');
+    gradient.addColorStop(0.5, '#050510');
+    gradient.addColorStop(1, '#000005');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
 
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+    // Animated starfield
+    for (const star of state.stars) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+      ctx.beginPath();
+      ctx.arc(star.x * scale, star.y * scale, star.size * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Subtle concentric guide rings with realm color
+    ctx.strokeStyle = `${realm.color}15`;
     ctx.lineWidth = 1;
     for (let r = 30 * scale; r < size / 2; r += 30 * scale) {
       ctx.beginPath();
@@ -336,31 +424,54 @@ export default function RingGame() {
       ctx.stroke();
     }
 
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+    // Target indicator at top
+    ctx.fillStyle = `${realm.color}50`;
     ctx.beginPath();
-    ctx.moveTo(center, 20 * scale);
-    ctx.lineTo(center - 10 * scale, 40 * scale);
-    ctx.lineTo(center + 10 * scale, 40 * scale);
+    ctx.moveTo(center, 15 * scale);
+    ctx.lineTo(center - 12 * scale, 40 * scale);
+    ctx.lineTo(center + 12 * scale, 40 * scale);
     ctx.closePath();
     ctx.fill();
+    
+    // Glow effect for target
+    ctx.shadowColor = realm.color;
+    ctx.shadowBlur = 20 * scale;
+    ctx.fillStyle = realm.color;
+    ctx.beginPath();
+    ctx.arc(center, 25 * scale, 4 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
 
-    for (const ring of state.rings) {
+    // Draw rings with enhanced glow and rune-like markings
+    for (let i = 0; i < state.rings.length; i++) {
+      const ring = state.rings[i];
       const gapStart = ((ring.angle + ring.gapAngle - 90) * Math.PI) / 180;
       const gapEnd = ((ring.angle + ring.gapAngle + GAP_SIZE - 90) * Math.PI) / 180;
 
+      // Outer glow layer
       ctx.strokeStyle = ring.color;
-      ctx.lineWidth = 12 * scale;
+      ctx.lineWidth = 16 * scale;
       ctx.lineCap = 'round';
       ctx.shadowColor = ring.color;
-      ctx.shadowBlur = 10 * scale;
+      ctx.shadowBlur = 20 * scale;
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.arc(center, center, ring.radius * scale, gapEnd, gapStart + Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
 
+      // Main ring
+      ctx.lineWidth = 12 * scale;
+      ctx.shadowBlur = 10 * scale;
       ctx.beginPath();
       ctx.arc(center, center, ring.radius * scale, gapEnd, gapStart + Math.PI * 2);
       ctx.stroke();
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      // Gap (bright portal)
+      ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 14 * scale;
-      ctx.shadowBlur = 15 * scale;
+      ctx.shadowColor = '#FFFFFF';
+      ctx.shadowBlur = 25 * scale;
       ctx.beginPath();
       ctx.arc(center, center, ring.radius * scale, gapStart, gapEnd);
       ctx.stroke();
@@ -368,42 +479,71 @@ export default function RingGame() {
       ctx.shadowBlur = 0;
     }
 
+    // Particles
     for (const particle of state.particles) {
       ctx.fillStyle = particle.color;
       ctx.globalAlpha = particle.life;
+      ctx.shadowColor = particle.color;
+      ctx.shadowBlur = 8 * scale;
       ctx.beginPath();
       ctx.arc(particle.x * scale, particle.y * scale, particle.size * scale, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
 
+    // Feedback text
     if (state.feedback) {
-      ctx.font = `bold ${Math.floor(32 * scale)}px Orbitron, monospace`;
+      ctx.font = `bold ${Math.floor(28 * scale)}px Orbitron, monospace`;
       ctx.textAlign = 'center';
+      
       if (state.feedback === 'perfect') {
-        ctx.fillStyle = '#00FF88';
-        ctx.fillText('PERFECT!', center, center - 10 * scale);
-        if (state.combo > 1) {
-          ctx.font = `bold ${Math.floor(20 * scale)}px Orbitron, monospace`;
+        // Special text for perfect streaks
+        if (state.feedbackText) {
+          ctx.shadowColor = '#00FF88';
+          ctx.shadowBlur = 15 * scale;
+          ctx.fillStyle = '#00FF88';
+          ctx.fillText(state.feedbackText, center, center - 20 * scale);
+        } else {
+          ctx.fillStyle = '#00FF88';
+          ctx.fillText('PERFECT!', center, center - 10 * scale);
+        }
+        if (state.combo > 1 && !state.feedbackText) {
+          ctx.font = `bold ${Math.floor(18 * scale)}px Orbitron, monospace`;
           ctx.fillStyle = '#FBBF24';
-          ctx.fillText(`x${state.combo}`, center, center + 20 * scale);
+          ctx.fillText(`x${state.combo}`, center, center + 15 * scale);
         }
       } else if (state.feedback === 'good') {
         ctx.fillStyle = '#FBBF24';
         ctx.fillText('GOOD', center, center);
       } else {
+        ctx.shadowColor = '#EF4444';
+        ctx.shadowBlur = 10 * scale;
         ctx.fillStyle = '#EF4444';
         ctx.fillText('MISS', center, center);
       }
+      ctx.shadowBlur = 0;
     }
 
+    // Level display with realm name
+    if (!state.feedback) {
+      ctx.fillStyle = realm.color;
+      ctx.font = `bold ${Math.floor(10 * scale)}px Orbitron, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(realm.name, center, center - 25 * scale);
+    }
+    
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${Math.floor(48 * scale)}px Orbitron, monospace`;
+    ctx.font = `bold ${Math.floor(44 * scale)}px Orbitron, monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(`${state.level}`, center, center + (state.feedback ? 60 * scale : 15 * scale));
-    ctx.font = `${Math.floor(14 * scale)}px Orbitron, monospace`;
-    ctx.fillStyle = '#888888';
-    ctx.fillText('RING', center, center + (state.feedback ? 80 * scale : 35 * scale));
+    ctx.shadowColor = realm.color;
+    ctx.shadowBlur = 10 * scale;
+    ctx.fillText(`${state.level}`, center, center + (state.feedback ? 55 * scale : 12 * scale));
+    ctx.shadowBlur = 0;
+    
+    ctx.font = `${Math.floor(12 * scale)}px Orbitron, monospace`;
+    ctx.fillStyle = '#666666';
+    ctx.fillText('RING', center, center + (state.feedback ? 72 * scale : 28 * scale));
   }, [canvasSize]);
 
   const gameLoop = useCallback(() => {
@@ -515,11 +655,15 @@ export default function RingGame() {
         <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
         <section className="py-6 min-h-screen bg-gradient-to-b from-black via-purple-900/20 to-black pt-16 pb-24">
           <div className="max-w-md mx-auto px-4">
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-              <h1 className="text-4xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
+              <p className="text-cyan-400/60 text-xs font-orbitron tracking-[0.3em] mb-2">THE ALIGNMENT PROTOCOL</p>
+              <h1 className="text-4xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-3">
                 RING GAME
               </h1>
-              <p className="text-gray-400">Time your taps. Align the gaps. Stay focused.</p>
+              <p className="text-gray-500 text-sm italic leading-relaxed px-4">
+                "Ancient rings power the Guardian network.<br/>
+                Align them to maintain the cosmic balance."
+              </p>
             </motion.div>
 
             <Card className="bg-black/60 border-cyan-500/30 backdrop-blur-xl p-6 mb-6">
@@ -534,15 +678,14 @@ export default function RingGame() {
                 </div>
               </div>
 
-              <div className="mb-4 p-4 bg-white/5 rounded-lg">
-                <h3 className="text-sm font-bold text-cyan-400 mb-2">HOW TO PLAY</h3>
-                <div className="text-xs text-gray-400 space-y-1">
-                  <p>• Rings rotate with gaps (bright sections)</p>
-                  <p>• Tap or press SPACE when all gaps align at the top</p>
-                  <p>• <span className="text-green-400">PERFECT</span> = gaps centered = 100 pts</p>
-                  <p>• <span className="text-yellow-400">GOOD</span> = gaps close = 50 pts</p>
-                  <p>• <span className="text-red-400">MISS</span> = gaps misaligned = lose 1 life</p>
-                  <p>• Build combos for bonus multipliers!</p>
+              <div className="mb-4 p-4 bg-gradient-to-b from-cyan-500/5 to-purple-500/5 rounded-lg border border-white/5">
+                <h3 className="text-sm font-bold text-cyan-400 mb-3">THE PROTOCOL</h3>
+                <div className="text-xs text-gray-400 space-y-2">
+                  <p>• <span className="text-white">Ancient rings</span> rotate with glowing gaps</p>
+                  <p>• <span className="text-white">Align</span> gaps at the top marker</p>
+                  <p>• <span className="text-green-400">PERFECT</span> alignment = 100 pts + streak bonus</p>
+                  <p>• <span className="text-yellow-400">GOOD</span> = 50 pts • <span className="text-red-400">MISS</span> = lose 1 life</p>
+                  <p>• Advance through <span className="text-cyan-400">Initiate</span> → <span className="text-purple-400">Adept</span> → <span className="text-yellow-400">Master</span> → <span className="text-pink-400">Transcendent</span></p>
                 </div>
               </div>
 
@@ -606,27 +749,46 @@ export default function RingGame() {
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       <section className="py-2 h-screen bg-black pt-16 flex flex-col items-center overflow-hidden">
-        <div className="flex items-center justify-between w-full max-w-md px-4 mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-white font-mono font-bold">{score}</span>
+        {/* Enhanced HUD */}
+        <div className="flex items-center justify-between w-full max-w-md px-4 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] font-orbitron tracking-wider" style={{ color: currentRealm.color }}>{currentRealm.name}</span>
+              <div className="flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-white font-mono font-bold text-sm">{score.toLocaleString()}</span>
+              </div>
             </div>
-            {combo > 1 && <span className="text-yellow-400 font-bold text-sm animate-pulse">x{combo}</span>}
-            <div className="flex items-center gap-1">
-              {[...Array(lives)].map((_, i) => <Heart key={i} className="w-4 h-4 text-red-500 fill-red-500" />)}
-            </div>
+            {combo > 1 && (
+              <motion.span 
+                className="text-yellow-400 font-bold text-sm px-2 py-0.5 bg-yellow-400/10 rounded"
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
+              >
+                x{combo}
+              </motion.span>
+            )}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400">
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {[...Array(3)].map((_, i) => (
+                <Heart 
+                  key={i} 
+                  className={`w-4 h-4 transition-all ${i < lives ? 'text-red-500 fill-red-500' : 'text-gray-700 fill-gray-700'}`}
+                />
+              ))}
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8">
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
           <canvas
             ref={canvasRef}
-            className="border border-cyan-500/30 rounded-lg cursor-pointer"
-            style={{ touchAction: 'none' }}
+            className="rounded-lg cursor-pointer shadow-[0_0_30px_rgba(0,255,255,0.15)]"
+            style={{ touchAction: 'none', border: `1px solid ${currentRealm.color}30` }}
             onClick={handleTap}
             onTouchStart={(e) => { e.preventDefault(); handleTap(); }}
             data-testid="game-canvas"
@@ -634,45 +796,79 @@ export default function RingGame() {
           <AnimatePresence>
             {showLevelBanner && (
               <motion.div
-                className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-lg"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
                 <motion.div
-                  className="text-center"
-                  initial={{ scale: 0, rotate: -10 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 10 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
+                  className="text-center px-6"
+                  initial={{ scale: 0, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                 >
-                  <div className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-yellow-400">
-                    {showLevelBanner}
-                  </div>
                   <motion.div
-                    className="mt-2 text-4xl"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 0.5, repeat: 2 }}
+                    className="text-sm font-orbitron tracking-[0.2em] text-white/60 mb-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
                   >
-                    ✨
+                    ENTERING
+                  </motion.div>
+                  <motion.div 
+                    className="text-2xl font-orbitron font-bold"
+                    style={{ color: currentRealm.color, textShadow: `0 0 20px ${currentRealm.color}` }}
+                  >
+                    {showLevelBanner}
+                  </motion.div>
+                  <motion.p
+                    className="mt-2 text-xs text-gray-400 italic"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {currentRealm.description}
+                  </motion.p>
+                  <motion.div
+                    className="mt-3 flex justify-center gap-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {[...Array(3)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: currentRealm.color }}
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                      />
+                    ))}
                   </motion.div>
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
           {timeFrozen && (
-            <div className="absolute inset-0 border-4 border-cyan-400 rounded-lg animate-pulse pointer-events-none" />
+            <motion.div 
+              className="absolute inset-0 border-4 rounded-lg pointer-events-none"
+              style={{ borderColor: currentRealm.color }}
+              initial={{ opacity: 0.8 }}
+              animate={{ opacity: [0.8, 0.4, 0.8] }}
+              transition={{ duration: 0.3, repeat: Infinity }}
+            />
           )}
         </div>
 
-        <p className="mt-4 text-gray-400 text-xs text-center px-4">Tap or press SPACE when gaps align at top</p>
+        <p className="mt-3 text-gray-500 text-[11px] text-center">Tap or press SPACE when gaps align</p>
 
         <Button
           onClick={handleTap}
-          className="mt-2 w-40 h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform"
+          className="mt-2 w-36 h-12 text-base font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform shadow-lg shadow-cyan-500/20"
           data-testid="button-tap"
         >
-          TAP!
+          ALIGN
         </Button>
       </section>
     </>

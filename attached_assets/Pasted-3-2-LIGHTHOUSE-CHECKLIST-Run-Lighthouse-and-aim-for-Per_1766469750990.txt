@@ -1,0 +1,77 @@
+3.2 LIGHTHOUSE CHECKLIST
+Run Lighthouse and aim for:
+□ Performance: 90+
+□ First Contentful Paint: <1.8s
+□ Largest Contentful Paint: <2.5s
+□ Time to Interactive: <3.8s
+□ Cumulative Layout Shift: <0.1
+□ Total Blocking Time: <200ms
+═══════════════════════════════════════════════════════════════════
+📋 IMPLEMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════
+LOADING SPEED:
+□ Lazy load all game components
+□ Lazy load heavy pages (Marketplace, Portfolio)
+□ Add loading="lazy" to all images below fold
+□ Implement skeleton loaders for lists
+□ Preconnect to external APIs
+□ Remove unused imports
+□ Check bundle size (< 500KB initial)
+SCROLLING SMOOTHNESS:
+□ Add -webkit-overflow-scrolling: touch
+□ Add passive: true to all scroll listeners
+□ Use transform instead of position for animations
+□ Add will-change to animated elements
+□ Implement virtualization for long lists (if any)
+□ Test on real mobile device (not just emulator)
+MOBILE SPECIFIC:
+□ Add touch-action: manipulation
+□ Add overscroll-behavior: none (if needed)
+□ Test on slow 3G throttling
+□ Test on low-end device if possible
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING PROTOCOL
+═══════════════════════════════════════════════════════════════════
+Test on these conditions:
+□ Fast WiFi (normal use)
+□ Slow 3G (Chrome DevTools throttling)
+□ Desktop Chrome
+□ Mobile Safari (iOS)
+□ Mobile Chrome (Android)
+□ Low-end device simulation (6x CPU slowdown)
+For each, verify:
+□ Page loads in <3 seconds
+□ Scrolling is smooth (no jank)
+□ Images load progressively
+□ Games start quickly
+□ No layout shift during load
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE
+═══════════════════════════════════════════════════════════════════
+PERFORMANCE OPTIMIZATION REPORT
+LOADING IMPROVEMENTS
+Lazy loading implemented: ✅/❌
+Skeleton loaders added: ✅/❌
+Images optimized: ✅/❌
+Bundle size before: XX KB
+Bundle size after: XX KB
+SCROLLING IMPROVEMENTS
+Passive listeners added: ✅/❌
+CSS containment added: ✅/❌
+GPU acceleration enabled: ✅/❌
+Virtualization added (if needed): ✅/❌
+METRICS
+First Contentful Paint: X.Xs
+Time to Interactive: X.Xs
+FPS during scroll: XX fps
+Mobile scroll feel: Smooth/Janky
+FILES MODIFIED
+[List all files]
+TESTING RESULTS
+Desktop Chrome: ✅/❌
+Mobile Safari: ✅/❌
+Mobile Chrome: ✅/❌
+Slow 3G: ✅/❌
+═══════════════════════════════════════════════════════════════════
+MAKE IT FEEL INSTANT. MAKE IT FEEL BUTTERY. NO COMPROMISES.
+═══════════════════════════════════════════════════════════════════

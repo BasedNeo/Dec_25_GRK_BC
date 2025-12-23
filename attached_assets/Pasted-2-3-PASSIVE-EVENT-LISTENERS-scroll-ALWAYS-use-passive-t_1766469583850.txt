@@ -1,0 +1,13 @@
+2.3 PASSIVE EVENT LISTENERS
+scroll
+// ALWAYS use passive: true for scroll/touch eventswindow.addEventListener('scroll', handleScroll, { passive: true });window.addEventListener('touchstart', handleTouch, { passive: true });window.addEventListener('touchmove', handleTouchMove, { passive: true });window.addEventListener('wheel', handleWheel, { passive: true });// If you MUST prevent default, you can't use passive// But try to avoid this during scroll
+2.4 VIRTUALIZED LISTS (For Long Lists)
+If you have lists with 50+ items, virtualize them:
+}
+// Option 1: react-window (lightweight)import { FixedSizeList } from 'react-window';<FixedSizeList  height={600}  width="100%"  itemCount={nfts.length}  itemSize={120}>  {({ index, style }) => (    <div style={style}>      <NFTCard nft={nfts[index]} />    </div>  )}</FixedSizeList>// Option 2: Intersection Observer (DIY)function useInView(ref) {  const [inView, setInView] = useState(false);    useEffect(() => {    const observer = new IntersectionObserver(([entry]) => {      setInView(entry.isIntersecting);    });    if (ref.current) observer.observe(ref.current);    return () => observer.disconnect();  }, []);    return inView;}// Only render when in viewportfunction LazyNFTCard({ nft }) {  const ref = useRef();  const inView = useInView(ref);    return (    <div ref={ref} style={{ minHeight: 120 }}>      {inView ? <NFTCard nft={nft} /> : <NFTCardSkeleton />}    </div>  );}
+2.5 DEBOUNCE SCROLL HANDLERS
+;
+// Debounce non-critical scroll handlersimport { debounce } from 'lodash';const handleScroll = debounce(() => {  // Heavy operations here (analytics, lazy loading triggers)}, 100);// For animations, use requestAnimationFrame insteadlet ticking = false;window.addEventListener('scroll', () => {  if (!ticking) {    requestAnimationFrame(() => {      updateAnimation();      ticking = false;    });    ticking = true;  }}, { passive: true });
+2.6 OPTIMIZE ANIMATIONS
+}
+/* ONLY animate transform and opacity (GPU accelerated) */.good-animation {  transition: transform 0.3s ease, opacity 0.3s ease;}/* NEVER animate these during scroll (triggers repaint) */.bad-animation {  transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s,               margin 0.3s, padding 0.3s, background-color 0.3s;}/* Use transform instead of position */.move-element {  /* BAD */  top: 100px;  left: 50px;    /* GOOD */  transform: translate(50px, 100px);}/* Reduce animation during scroll */@media (prefers-reduced-motion: reduce) {  * {    animation-duration: 0.01ms !important;    transition-duration: 0.01ms !important;  }}
