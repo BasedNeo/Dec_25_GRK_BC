@@ -22,7 +22,6 @@ import { NFT_CONTRACT, BLOCK_EXPLORER } from "@/lib/constants";
 import { Security } from "@/lib/security";
 import { CacheService } from "@/lib/cache";
 import { clearCSVCache } from "@/lib/csvLoader";
-import { prefetchNFTListing } from "@/lib/prefetch";
 
 const NFTDetailModal = lazy(() => import("./NFTDetailModal").then(m => ({ default: m.NFTDetailModal })));
 import { RetrieveOldListing } from "./RetrieveOldListing";
@@ -772,7 +771,6 @@ function GuardianCard({ guardian, onClick, tokenOffers }: { guardian: Guardian, 
             : 'border-white/10 hover:border-primary/50'
         }`}
         onClick={onClick}
-        onMouseEnter={() => prefetchNFTListing(guardian.id)}
         data-token-id={guardian.id}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary/20">
