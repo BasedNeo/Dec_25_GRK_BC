@@ -1,0 +1,90 @@
+═══════════════════════════════════════════════════════════════════
+🎮 CREATURE COMMAND - CREATURE NAMES (IMPORTANT)
+═══════════════════════════════════════════════════════════════════
+
+WRONG: The game currently lists random animal names for creatures.
+
+CORRECT: Use ONLY these creature types from the Based Guardians universe:
+
+OFFICIAL CREATURE TYPES:
+1. Golden Creatures
+2. Crystal Creatures
+3. Midnight Creatures
+4. Jelly Creatures
+5. Based Creatures
+6. Pearlescent Creatures
+7. Guardian (can appear as boss or special enemy)
+
+IMPLEMENTATION:
+- Find where creature/enemy names are defined
+- Replace random animal names with the official creature types
+- Can use as enemy types with different behaviors:
+
+const CREATURE_TYPES = [
+  { 
+    name: 'Based Creature',
+    color: '#00FFFF', // cyan
+    speed: 1,
+    points: 10,
+    health: 1
+  },
+  { 
+    name: 'Crystal Creature',
+    color: '#E0E0FF', // crystal white
+    speed: 1.2,
+    points: 15,
+    health: 1
+  },
+  { 
+    name: 'Midnight Creature',
+    color: '#4B0082', // dark purple
+    speed: 1.5,
+    points: 20,
+    health: 1
+  },
+  { 
+    name: 'Jelly Creature',
+    color: '#FF69B4', // pink
+    speed: 0.8,
+    points: 15,
+    health: 2  // takes 2 hits (squishy but resilient)
+  },
+  { 
+    name: 'Golden Creature',
+    color: '#FFD700', // gold
+    speed: 2,
+    points: 50,
+    health: 1  // fast but fragile, high value
+  },
+  { 
+    name: 'Pearlescent Creature',
+    color: '#FFF0F5', // pearl
+    speed: 1,
+    points: 25,
+    health: 2
+  },
+  { 
+    name: 'Guardian',  // Boss enemy
+    color: '#FF00FF', // magenta
+    speed: 0.5,
+    points: 200,
+    health: 5  // boss - takes multiple hits
+  }
+];WAVE SPAWNING EXAMPLE:
+- Wave 1-3: Based Creatures, Crystal Creatures (basic enemies)
+- Wave 4-5: Add Midnight Creatures, Jelly Creatures
+- Wave 6-7: Add Golden Creatures (fast, high value)
+- Wave 8-9: Add Pearlescent Creatures
+- Wave 10: Guardian Boss + mixed creatures
+
+DISPLAY:
+- When creature appears: Can show type name briefly
+- On kill: "+20 Crystal Creature" (optional)
+- Wave preview: "Incoming: Midnight Creatures" (optional)
+
+Search the code for:
+- Any animal names (cat, dog, bird, etc.)
+- Enemy type definitions
+- Creature name arrays
+
+Replace ALL with the official Based Guardians creature types.

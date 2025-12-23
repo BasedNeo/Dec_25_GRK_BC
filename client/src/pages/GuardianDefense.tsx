@@ -139,8 +139,16 @@ interface GameState {
   waveComplete: boolean;
   waveTransition: boolean;
   missilesRemaining: number;
+  shotsRemaining: number;
   activePowerUp: { type: 'rapidfire' | 'shield' | 'bomb'; duration: number } | null;
 }
+
+const getShotsForWave = (wave: number): number => {
+  if (wave <= 3) return 3;
+  if (wave <= 5) return 4;
+  if (wave <= 7) return 5;
+  return 6;
+};
 
 interface GuardianDefenseSettings extends BaseGameSettings {
 }
@@ -314,6 +322,7 @@ export default function GuardianDefense() {
     waveComplete: false,
     waveTransition: false,
     missilesRemaining: 0,
+    shotsRemaining: getShotsForWave(1),
     activePowerUp: null,
   }), []);
 
@@ -519,6 +528,7 @@ export default function GuardianDefense() {
     state.waveTransition = false;
     state.waveChainBonus = 0;
     state.missilesRemaining = config.count;
+    state.shotsRemaining = getShotsForWave(waveNumber);
     
     const waveToast = toast({
       title: waveNumber === 10 ? "⚠️ FINAL BOSS WAVE" : `WAVE ${waveNumber}`,
@@ -568,31 +578,22 @@ export default function GuardianDefense() {
     const state = gameStateRef.current;
     if (gameOver || state.waveTransition) return;
     
+    if (state.shotsRemaining <= 0) {
+      return;
+    }
+    
     const now = Date.now();
     if (now - lastFireTimeRef.current < MIN_FIRE_INTERVAL) return;
     lastFireTimeRef.current = now;
     
     const sortedBatteries = state.batteries
       .map((b, i) => ({ battery: b, index: i, dist: Math.abs(b.position.x - targetX) }))
-      .filter(b => b.battery.missiles > 0 && !b.battery.reloading)
       .sort((a, b) => a.dist - b.dist);
     
-    if (sortedBatteries.length === 0) {
-      const totalMissiles = state.batteries.reduce((sum, b) => sum + b.missiles, 0);
-      const anyReloading = state.batteries.some(b => b.reloading);
-      
-      if (totalMissiles === 0 && !anyReloading) {
-        toast({
-          title: "All Batteries Empty!",
-          description: "Wait for reload...",
-          variant: "destructive"
-        });
-      }
-      return;
-    }
+    if (sortedBatteries.length === 0) return;
     
     const { battery, index } = sortedBatteries[0];
-    battery.missiles--;
+    state.shotsRemaining--;
     state.accuracy.shots++;
     
     state.defensiveMissiles.push({
@@ -605,12 +606,7 @@ export default function GuardianDefense() {
     });
     
     playSound('launch');
-    
-    if (battery.missiles === 0) {
-      battery.reloading = true;
-      battery.reloadProgress = 0;
-    }
-  }, [playSound, toast, gameOver]);
+  }, [playSound, gameOver]);
 
   const createExplosion = useCallback((position: Vector2D, isPlayer: boolean) => {
     const state = gameStateRef.current;
@@ -1284,7 +1280,7 @@ export default function GuardianDefense() {
           { icon: Star, label: 'Chain Bonus', value: state.waveChainBonus, color: 'text-yellow-400' },
         ]}
         onPlayAgain={restartGame}
-        onExit={() => setLocation('/')}
+        onExit={() => setLocation('/games')}
       />
       </>
     );
@@ -1294,7 +1290,7 @@ export default function GuardianDefense() {
     return (
       <>
         <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-        <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden pt-16">
+        <section className="py-8 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden pt-20">
         <div className="fixed inset-0 pointer-events-none">
           {[...Array(80)].map((_, i) => (
             <motion.div
@@ -1532,7 +1528,7 @@ export default function GuardianDefense() {
           extraStats={[
             { icon: Zap, label: 'Wave', value: `${state.wave}/10`, color: 'text-purple-400' },
             { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: 'text-cyan-400' },
-            { icon: Target, label: 'Missiles', value: totalMissiles, color: 'text-yellow-400' },
+            { icon: Crosshair, label: 'Shots', value: state.shotsRemaining, color: state.shotsRemaining <= 1 ? 'text-red-400' : 'text-yellow-400' },
           ]}
         />
 
@@ -1563,6 +1559,9 @@ export default function GuardianDefense() {
             </div>
             <div className="absolute top-2 right-2 text-yellow-400 text-xs font-mono opacity-70">
               {state.score.toLocaleString()} PTS
+            </div>
+            <div className={`absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono ${state.shotsRemaining <= 1 ? 'text-red-400 animate-pulse' : 'text-green-400'}`}>
+              {state.shotsRemaining > 0 ? `🎯 ${state.shotsRemaining}` : '❌ NO SHOTS'}
             </div>
           </div>
         </div>
