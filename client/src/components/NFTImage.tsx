@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, AlertTriangle, ImageOff } from "lucide-react";
+import { Loader2, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Fast gateway for IPFS images
@@ -23,6 +22,8 @@ interface NFTImageProps {
   fallbackSrc?: string;
   aspectRatio?: string; // e.g. "aspect-square"
   priority?: boolean; // For above-the-fold images
+  width?: number; // Explicit width to prevent layout shift
+  height?: number; // Explicit height to prevent layout shift
 }
 
 export const NFTImage = React.memo(function NFTImage({ 
@@ -32,7 +33,9 @@ export const NFTImage = React.memo(function NFTImage({
   className, 
   fallbackSrc,
   aspectRatio = "aspect-square",
-  priority = false
+  priority = false,
+  width = 400,
+  height = 400
 }: NFTImageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -75,13 +78,42 @@ export const NFTImage = React.memo(function NFTImage({
   };
 
   return (
-    <div className={cn("relative overflow-hidden bg-secondary/20", aspectRatio, className)}>
+    <div className={cn("relative overflow-hidden", aspectRatio, className)}>
       
-      {/* Loading State: Skeleton or Spinner */}
-      {isLoading && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm">
-           <Skeleton className="absolute inset-0 w-full h-full bg-secondary/30" />
-           <div className="relative z-20 flex flex-col items-center">
+      {/* Gradient placeholder - always visible as base layer */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-cyan-900/30 via-purple-900/20 to-black/40"
+        style={{
+          opacity: isLoading ? 1 : 0,
+          transition: 'opacity 0.4s ease-out',
+        }}
+      />
+      
+      {/* Image with fade-in effect on load */}
+      {(!hasError || optimizedFallback) && (
+        <img
+          ref={imgRef}
+          src={currentSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          onLoad={handleLoad}
+          onError={handleError}
+          style={{
+            opacity: isLoading ? 0 : 1,
+            transform: isLoading ? 'scale(1.02)' : 'scale(1)',
+            transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
+          }}
+          className="w-full h-full object-cover nft-image"
+        />
+      )}
+      
+      {/* Loading indicator overlay */}
+      {isLoading && !hasError && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+           <div className="flex flex-col items-center">
              <Loader2 className="w-6 h-6 text-primary animate-spin mb-2" />
              {id && <span className="text-[10px] font-mono text-primary/70">#{id}</span>}
            </div>
@@ -97,23 +129,6 @@ export const NFTImage = React.memo(function NFTImage({
            <span className="text-xs text-muted-foreground font-mono">Metadata unavailable</span>
            {id && <span className="text-sm font-bold text-white font-orbitron mt-1">#{id}</span>}
         </div>
-      )}
-
-      {/* Image */}
-      {(!hasError || optimizedFallback) && (
-        <img
-          ref={imgRef}
-          src={currentSrc}
-          alt={alt}
-          loading={priority ? "eager" : "lazy"}
-          decoding="async"
-          onLoad={handleLoad}
-          onError={handleError}
-          className={cn(
-            "w-full h-full object-cover transition-all duration-300 ease-out nft-image",
-            isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100 loaded"
-          )}
-        />
       )}
     </div>
   );
