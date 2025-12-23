@@ -12,19 +12,17 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield } from 'lucide-react';
 import { isMobile, haptic } from '@/lib/mobileUtils';
-
-interface Vector2D {
-  x: number;
-  y: number;
-}
 
 interface Player {
   x: number;
   y: number;
   width: number;
   height: number;
+  invincible: number;
+  rapidFire: number;
+  shield: boolean;
 }
 
 interface Bullet {
@@ -32,6 +30,8 @@ interface Bullet {
   y: number;
   speed: number;
 }
+
+type EnemyType = 'basic' | 'fast' | 'tank' | 'elite';
 
 interface Enemy {
   x: number;
@@ -41,6 +41,17 @@ interface Enemy {
   speed: number;
   color: string;
   points: number;
+  type: EnemyType;
+  health: number;
+}
+
+type PowerUpType = 'shield' | 'rapidfire' | 'extralife';
+
+interface PowerUp {
+  x: number;
+  y: number;
+  type: PowerUpType;
+  speed: number;
 }
 
 interface Particle {
@@ -65,20 +76,39 @@ interface GameState {
   player: Player;
   bullets: Bullet[];
   enemies: Enemy[];
+  powerUps: PowerUp[];
   particles: Particle[];
   scorePopups: ScorePopup[];
   score: number;
   lives: number;
   gameOver: boolean;
   enemiesDestroyed: number;
+  combo: number;
+  lastHitTime: number;
+  screenShake: number;
+  wave: number;
 }
 
 type GamePhase = 'menu' | 'playing' | 'gameover';
 
 const PLAYER_SPEED = 8;
-const BULLET_SPEED = 12;
-const ENEMY_BASE_SPEED = 2;
-const SHOOT_COOLDOWN = 150;
+const BULLET_SPEED = 14;
+const SHOOT_COOLDOWN = 180;
+const RAPID_FIRE_COOLDOWN = 80;
+const COMBO_TIMEOUT = 1500;
+
+const ENEMY_TYPES: Record<EnemyType, { color: string; speed: number; points: number; health: number; width: number }> = {
+  basic: { color: '#EF4444', speed: 2, points: 50, health: 1, width: 30 },
+  fast: { color: '#FBBF24', speed: 4, points: 75, health: 1, width: 25 },
+  tank: { color: '#8B5CF6', speed: 1.5, points: 150, health: 3, width: 45 },
+  elite: { color: '#F97316', speed: 3, points: 200, health: 2, width: 35 },
+};
+
+const POWERUP_COLORS: Record<PowerUpType, string> = {
+  shield: '#3B82F6',
+  rapidfire: '#FBBF24',
+  extralife: '#22C55E',
+};
 
 export default function AsteroidMining() {
   const { address, isConnected } = useAccount();
@@ -95,10 +125,14 @@ export default function AsteroidMining() {
   const lastShootRef = useRef<number>(0);
   const touchRef = useRef<{ left: boolean; right: boolean; shoot: boolean }>({ left: false, right: false, shoot: false });
   const audioContextRef = useRef<AudioContext | null>(null);
+  const starsRef = useRef<{ x: number; y: number; speed: number; brightness: number }[]>([]);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
+  const [combo, setCombo] = useState(0);
+  const [hasShield, setHasShield] = useState(false);
+  const [hasRapidFire, setHasRapidFire] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 600 });
 
@@ -108,7 +142,7 @@ export default function AsteroidMining() {
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
 
-  const playSound = useCallback((type: 'shoot' | 'hit' | 'explosion' | 'gameover') => {
+  const playSound = useCallback((type: 'shoot' | 'hit' | 'explosion' | 'gameover' | 'powerup' | 'playerhit') => {
     if (!soundEnabled) return;
     try {
       if (!audioContextRef.current) {
@@ -122,24 +156,41 @@ export default function AsteroidMining() {
 
       switch (type) {
         case 'shoot':
-          osc.frequency.setValueAtTime(800, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+          osc.frequency.setValueAtTime(900, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
           osc.start();
-          osc.stop(ctx.currentTime + 0.1);
+          osc.stop(ctx.currentTime + 0.08);
           break;
         case 'hit':
-          osc.frequency.setValueAtTime(300, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
-          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          osc.frequency.setValueAtTime(400, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+          break;
+        case 'explosion':
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.18, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.25);
+          break;
+        case 'powerup':
+          osc.frequency.setValueAtTime(400, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
           osc.start();
           osc.stop(ctx.currentTime + 0.15);
           break;
-        case 'explosion':
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(150, ctx.currentTime);
+        case 'playerhit':
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(200, ctx.currentTime);
           osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
           gain.gain.setValueAtTime(0.2, ctx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
@@ -148,11 +199,11 @@ export default function AsteroidMining() {
           break;
         case 'gameover':
           osc.frequency.setValueAtTime(400, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.5);
+          osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.6);
           gain.gain.setValueAtTime(0.2, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
           osc.start();
-          osc.stop(ctx.currentTime + 0.5);
+          osc.stop(ctx.currentTime + 0.6);
           break;
       }
     } catch (e) {}
@@ -162,70 +213,97 @@ export default function AsteroidMining() {
     const particles: Particle[] = [];
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 4;
+      const speed = 2 + Math.random() * 5;
       particles.push({
-        x,
-        y,
+        x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
         color,
-        size: 2 + Math.random() * 3,
+        size: 2 + Math.random() * 4,
       });
     }
     return particles;
   }, []);
 
-  const createScorePopup = useCallback((x: number, y: number, text: string, color: string): ScorePopup => {
-    return { x, y, text, life: 1, color };
-  }, []);
-
   const initGame = useCallback((): GameState => {
     const { width, height } = canvasSize;
+    starsRef.current = Array.from({ length: 80 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      speed: 0.5 + Math.random() * 2,
+      brightness: 0.3 + Math.random() * 0.7,
+    }));
     return {
       player: {
         x: width / 2 - 20,
         y: height - 80,
         width: 40,
         height: 40,
+        invincible: 0,
+        rapidFire: 0,
+        shield: false,
       },
       bullets: [],
       enemies: [],
+      powerUps: [],
       particles: [],
       scorePopups: [],
       score: 0,
       lives: 3,
       gameOver: false,
       enemiesDestroyed: 0,
+      combo: 0,
+      lastHitTime: 0,
+      screenShake: 0,
+      wave: 1,
     };
   }, [canvasSize]);
 
   const spawnEnemy = useCallback((state: GameState) => {
     const { width } = canvasSize;
-    const enemyWidth = 30 + Math.random() * 20;
-    const x = Math.random() * (width - enemyWidth);
-    const colors = ['#EF4444', '#F97316', '#FBBF24', '#A855F7', '#3B82F6'];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const speed = ENEMY_BASE_SPEED + Math.random() * 2 + (state.enemiesDestroyed * 0.05);
-    const points = Math.floor(50 + Math.random() * 100);
+    const wave = state.wave;
+    
+    const types: EnemyType[] = wave < 3 ? ['basic', 'basic', 'fast'] 
+      : wave < 6 ? ['basic', 'fast', 'fast', 'tank'] 
+      : ['basic', 'fast', 'tank', 'elite', 'elite'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const config = ENEMY_TYPES[type];
+    
+    const x = Math.random() * (width - config.width);
+    const speedMultiplier = 1 + (wave * 0.1);
 
     state.enemies.push({
-      x,
-      y: -50,
-      width: enemyWidth,
+      x, y: -50,
+      width: config.width,
       height: 30,
-      speed,
-      color,
-      points,
+      speed: config.speed * speedMultiplier,
+      color: config.color,
+      points: config.points,
+      type,
+      health: config.health,
     });
   }, [canvasSize]);
+
+  const spawnPowerUp = useCallback((state: GameState, x: number, y: number) => {
+    if (Math.random() > 0.15) return;
+    const types: PowerUpType[] = ['shield', 'rapidfire', 'extralife'];
+    const weights = [0.4, 0.4, 0.2];
+    let r = Math.random();
+    let type: PowerUpType = 'shield';
+    for (let i = 0; i < types.length; i++) {
+      r -= weights[i];
+      if (r <= 0) { type = types[i]; break; }
+    }
+    state.powerUps.push({ x, y, type, speed: 2 });
+  }, []);
 
   const shoot = useCallback(() => {
     const state = gameStateRef.current;
     if (!state || state.gameOver) return;
-
     const now = Date.now();
-    if (now - lastShootRef.current < SHOOT_COOLDOWN) return;
+    const cooldown = state.player.rapidFire > 0 ? RAPID_FIRE_COOLDOWN : SHOOT_COOLDOWN;
+    if (now - lastShootRef.current < cooldown) return;
     lastShootRef.current = now;
 
     state.bullets.push({
@@ -233,7 +311,6 @@ export default function AsteroidMining() {
       y: state.player.y,
       speed: BULLET_SPEED,
     });
-
     playSound('shoot');
     if (isMobile) haptic.light();
   }, [playSound]);
@@ -241,79 +318,101 @@ export default function AsteroidMining() {
   const update = useCallback(() => {
     const state = gameStateRef.current;
     if (!state || state.gameOver) return;
-
     const { width, height } = canvasSize;
     const keys = keysRef.current;
     const touch = touchRef.current;
+    const now = Date.now();
 
-    if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A') || touch.left) {
-      state.player.x -= PLAYER_SPEED;
-    }
-    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D') || touch.right) {
-      state.player.x += PLAYER_SPEED;
-    }
-    if (keys.has(' ') || touch.shoot) {
-      shoot();
-    }
-
+    if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A') || touch.left) state.player.x -= PLAYER_SPEED;
+    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D') || touch.right) state.player.x += PLAYER_SPEED;
+    if (keys.has(' ') || touch.shoot) shoot();
     state.player.x = Math.max(0, Math.min(width - state.player.width, state.player.x));
+
+    if (state.player.invincible > 0) state.player.invincible--;
+    if (state.player.rapidFire > 0) state.player.rapidFire--;
+    if (state.screenShake > 0) state.screenShake *= 0.9;
+    if (now - state.lastHitTime > COMBO_TIMEOUT && state.combo > 0) state.combo = 0;
+
+    for (const star of starsRef.current) {
+      star.y += star.speed;
+      if (star.y > height) { star.y = 0; star.x = Math.random() * width; }
+    }
 
     for (let i = state.bullets.length - 1; i >= 0; i--) {
       state.bullets[i].y -= state.bullets[i].speed;
-      if (state.bullets[i].y < -10) {
-        state.bullets.splice(i, 1);
+      if (state.bullets[i].y < -10) state.bullets.splice(i, 1);
+    }
+
+    for (let i = state.powerUps.length - 1; i >= 0; i--) {
+      const pu = state.powerUps[i];
+      pu.y += pu.speed;
+      if (pu.y > height + 30) { state.powerUps.splice(i, 1); continue; }
+      
+      if (state.player.x < pu.x + 20 && state.player.x + state.player.width > pu.x &&
+          state.player.y < pu.y + 20 && state.player.y + state.player.height > pu.y) {
+        if (pu.type === 'shield') { state.player.shield = true; state.player.invincible = 300; }
+        else if (pu.type === 'rapidfire') state.player.rapidFire = 600;
+        else if (pu.type === 'extralife') state.lives = Math.min(5, state.lives + 1);
+        state.particles.push(...createParticles(pu.x + 10, pu.y + 10, POWERUP_COLORS[pu.type], 8));
+        state.scorePopups.push({ x: pu.x + 10, y: pu.y, text: pu.type.toUpperCase() + '!', life: 1, color: POWERUP_COLORS[pu.type] });
+        state.powerUps.splice(i, 1);
+        playSound('powerup');
+        if (isMobile) haptic.medium?.() || haptic.light();
       }
     }
 
     for (let i = state.enemies.length - 1; i >= 0; i--) {
-      state.enemies[i].y += state.enemies[i].speed;
-      
-      if (state.enemies[i].y > height + 50) {
-        state.enemies.splice(i, 1);
-        continue;
-      }
-
       const enemy = state.enemies[i];
-      if (
-        state.player.x < enemy.x + enemy.width &&
-        state.player.x + state.player.width > enemy.x &&
-        state.player.y < enemy.y + enemy.height &&
-        state.player.y + state.player.height > enemy.y
-      ) {
-        state.lives--;
-        state.particles.push(...createParticles(
-          state.player.x + state.player.width / 2,
-          state.player.y + state.player.height / 2,
-          '#00FFFF',
-          15
-        ));
-        state.enemies.splice(i, 1);
-        playSound('explosion');
-        if (isMobile) haptic.heavy();
+      enemy.y += enemy.speed;
+      if (enemy.y > height + 50) { state.enemies.splice(i, 1); continue; }
 
-        if (state.lives <= 0) {
-          state.gameOver = true;
-          playSound('gameover');
+      if (state.player.invincible <= 0 &&
+          state.player.x < enemy.x + enemy.width && state.player.x + state.player.width > enemy.x &&
+          state.player.y < enemy.y + enemy.height && state.player.y + state.player.height > enemy.y) {
+        if (state.player.shield) {
+          state.player.shield = false;
+          state.player.invincible = 60;
+          state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, '#3B82F6', 20));
+          state.enemies.splice(i, 1);
+          playSound('explosion');
+        } else {
+          state.lives--;
+          state.combo = 0;
+          state.player.invincible = 120;
+          state.screenShake = 15;
+          state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, '#00FFFF', 20));
+          state.enemies.splice(i, 1);
+          playSound('playerhit');
+          if (isMobile) haptic.heavy();
+          if (state.lives <= 0) { state.gameOver = true; playSound('gameover'); }
         }
         continue;
       }
 
       for (let j = state.bullets.length - 1; j >= 0; j--) {
         const bullet = state.bullets[j];
-        if (
-          bullet.x < enemy.x + enemy.width &&
-          bullet.x + 6 > enemy.x &&
-          bullet.y < enemy.y + enemy.height &&
-          bullet.y + 10 > enemy.y
-        ) {
-          state.score += enemy.points;
-          state.enemiesDestroyed++;
-          state.particles.push(...createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 10));
-          state.scorePopups.push(createScorePopup(enemy.x + enemy.width / 2, enemy.y, `+${enemy.points}`, enemy.color));
+        if (bullet.x < enemy.x + enemy.width && bullet.x + 6 > enemy.x &&
+            bullet.y < enemy.y + enemy.height && bullet.y + 10 > enemy.y) {
+          enemy.health--;
           state.bullets.splice(j, 1);
-          state.enemies.splice(i, 1);
-          playSound('hit');
-          if (isMobile) haptic.light();
+          if (enemy.health <= 0) {
+            state.combo++;
+            state.lastHitTime = now;
+            const multiplier = Math.min(state.combo, 10);
+            const points = Math.floor(enemy.points * (1 + multiplier * 0.1));
+            state.score += points;
+            state.enemiesDestroyed++;
+            state.screenShake = Math.min(state.screenShake + 3, 8);
+            state.particles.push(...createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 12));
+            state.scorePopups.push({ x: enemy.x + enemy.width / 2, y: enemy.y, text: `+${points}${multiplier > 1 ? ` x${multiplier}` : ''}`, life: 1, color: enemy.color });
+            spawnPowerUp(state, enemy.x + enemy.width / 2, enemy.y);
+            state.enemies.splice(i, 1);
+            playSound('hit');
+            if (isMobile) haptic.light();
+            if (state.enemiesDestroyed % 15 === 0) state.wave++;
+          } else {
+            state.particles.push(...createParticles(bullet.x, bullet.y, '#FFFFFF', 4));
+          }
           break;
         }
       }
@@ -322,73 +421,110 @@ export default function AsteroidMining() {
     for (let i = state.particles.length - 1; i >= 0; i--) {
       state.particles[i].x += state.particles[i].vx;
       state.particles[i].y += state.particles[i].vy;
-      state.particles[i].life -= 0.02;
-      if (state.particles[i].life <= 0) {
-        state.particles.splice(i, 1);
-      }
+      state.particles[i].life -= 0.025;
+      if (state.particles[i].life <= 0) state.particles.splice(i, 1);
     }
 
     for (let i = state.scorePopups.length - 1; i >= 0; i--) {
-      state.scorePopups[i].y -= 1;
-      state.scorePopups[i].life -= 0.02;
-      if (state.scorePopups[i].life <= 0) {
-        state.scorePopups.splice(i, 1);
-      }
+      state.scorePopups[i].y -= 1.5;
+      state.scorePopups[i].life -= 0.025;
+      if (state.scorePopups[i].life <= 0) state.scorePopups.splice(i, 1);
     }
 
     setScore(state.score);
     setLives(state.lives);
-  }, [canvasSize, shoot, createParticles, createScorePopup, playSound]);
+    setCombo(state.combo);
+    setHasShield(state.player.shield);
+    setHasRapidFire(state.player.rapidFire > 0);
+  }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const state = gameStateRef.current;
     if (!canvas || !state) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     const { width, height } = canvasSize;
 
-    ctx.fillStyle = '#0a0a1a';
-    ctx.fillRect(0, 0, width, height);
-
-    for (let i = 0; i < 50; i++) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + Math.random() * 0.3})`;
-      ctx.fillRect(
-        (i * 37 + Date.now() * 0.01) % width,
-        (i * 71 + Date.now() * 0.02) % height,
-        1, 1
-      );
+    ctx.save();
+    if (state.screenShake > 0.5) {
+      ctx.translate((Math.random() - 0.5) * state.screenShake, (Math.random() - 0.5) * state.screenShake);
     }
 
-    ctx.fillStyle = '#00FFFF';
-    ctx.shadowColor = '#00FFFF';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.moveTo(state.player.x + state.player.width / 2, state.player.y);
-    ctx.lineTo(state.player.x + state.player.width, state.player.y + state.player.height);
-    ctx.lineTo(state.player.x + state.player.width / 2, state.player.y + state.player.height - 10);
-    ctx.lineTo(state.player.x, state.player.y + state.player.height);
-    ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#050510';
+    ctx.fillRect(0, 0, width, height);
 
-    ctx.fillStyle = '#FBBF24';
-    ctx.shadowColor = '#FBBF24';
-    ctx.shadowBlur = 8;
+    for (const star of starsRef.current) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+      ctx.fillRect(star.x, star.y, 1.5, 1.5);
+    }
+
+    const flash = state.player.invincible > 0 && Math.floor(state.player.invincible / 8) % 2 === 0;
+    if (!flash) {
+      ctx.fillStyle = state.player.shield ? '#3B82F6' : '#00FFFF';
+      ctx.shadowColor = state.player.shield ? '#3B82F6' : '#00FFFF';
+      ctx.shadowBlur = state.player.rapidFire > 0 ? 15 : 10;
+      ctx.beginPath();
+      ctx.moveTo(state.player.x + state.player.width / 2, state.player.y);
+      ctx.lineTo(state.player.x + state.player.width, state.player.y + state.player.height);
+      ctx.lineTo(state.player.x + state.player.width / 2, state.player.y + state.player.height - 10);
+      ctx.lineTo(state.player.x, state.player.y + state.player.height);
+      ctx.closePath();
+      ctx.fill();
+      if (state.player.shield) {
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 30, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillStyle = '#00FF88';
+    ctx.shadowColor = '#00FF88';
+    ctx.shadowBlur = 6;
     for (const bullet of state.bullets) {
       ctx.beginPath();
-      ctx.arc(bullet.x + 3, bullet.y + 5, 3, 0, Math.PI * 2);
+      ctx.ellipse(bullet.x + 3, bullet.y + 5, 3, 6, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.shadowBlur = 0;
+
+    for (const pu of state.powerUps) {
+      ctx.fillStyle = POWERUP_COLORS[pu.type];
+      ctx.shadowColor = POWERUP_COLORS[pu.type];
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(pu.x + 10, pu.y + 10, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(pu.type === 'shield' ? 'S' : pu.type === 'rapidfire' ? 'R' : '+', pu.x + 10, pu.y + 14);
+      ctx.shadowBlur = 0;
+    }
 
     for (const enemy of state.enemies) {
       ctx.fillStyle = enemy.color;
       ctx.shadowColor = enemy.color;
       ctx.shadowBlur = 8;
-      ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+      if (enemy.type === 'tank') {
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(enemy.x + 5, enemy.y + 5, enemy.width - 10, enemy.height - 10);
+      } else if (enemy.type === 'elite') {
+        ctx.beginPath();
+        ctx.moveTo(enemy.x + enemy.width / 2, enemy.y);
+        ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+        ctx.lineTo(enemy.x, enemy.y + enemy.height);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.shadowBlur = 0;
     }
 
@@ -401,7 +537,7 @@ export default function AsteroidMining() {
     }
     ctx.globalAlpha = 1;
 
-    ctx.font = 'bold 16px Orbitron, monospace';
+    ctx.font = 'bold 14px Orbitron, monospace';
     ctx.textAlign = 'center';
     for (const popup of state.scorePopups) {
       ctx.fillStyle = popup.color;
@@ -409,16 +545,16 @@ export default function AsteroidMining() {
       ctx.fillText(popup.text, popup.x, popup.y);
     }
     ctx.globalAlpha = 1;
+
+    ctx.restore();
   }, [canvasSize]);
 
   const gameLoop = useCallback(() => {
     update();
     render();
-
     const state = gameStateRef.current;
     if (state && state.gameOver) {
       setGamePhase('gameover');
-      
       const playerAddress = address || 'anonymous';
       const today = new Date().toDateString();
       const dailyData = GameStorageManager.getDailyData('asteroid-mining', playerAddress, today);
@@ -426,36 +562,29 @@ export default function AsteroidMining() {
         gamesPlayed: dailyData.gamesPlayed + 1,
         pointsEarned: dailyData.pointsEarned + state.score
       });
-      
       if (address && state.score > 0) {
         submitScore(state.score, state.enemiesDestroyed);
         refreshStats();
       }
-      
       trackEvent('game_complete', 'asteroid-mining', String(state.enemiesDestroyed), state.score);
       return;
     }
-
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [update, render, address, recordPlay, submitScore, refreshStats]);
+  }, [update, render, address, submitScore, refreshStats]);
 
   useEffect(() => {
     if (gamePhase !== 'playing') return;
-
-    const enemyInterval = setInterval(() => {
+    const spawnInterval = setInterval(() => {
       const state = gameStateRef.current;
       if (state && !state.gameOver) {
-        spawnEnemy(state);
+        const spawnCount = Math.min(1 + Math.floor(state.wave / 3), 3);
+        for (let i = 0; i < spawnCount; i++) setTimeout(() => spawnEnemy(state), i * 300);
       }
-    }, 1500);
-
+    }, 1200);
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-
     return () => {
-      clearInterval(enemyInterval);
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
-      }
+      clearInterval(spawnInterval);
+      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
   }, [gamePhase, gameLoop, spawnEnemy]);
 
@@ -466,14 +595,9 @@ export default function AsteroidMining() {
         keysRef.current.add(e.key);
       }
     };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key);
-    };
-
+    const handleKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -484,19 +608,11 @@ export default function AsteroidMining() {
     const updateCanvasSize = () => {
       const maxWidth = Math.min(window.innerWidth - 32, 500);
       const maxHeight = Math.min(window.innerHeight - 200, 700);
-      const aspectRatio = 2 / 3;
-
       let width = maxWidth;
-      let height = width / aspectRatio;
-
-      if (height > maxHeight) {
-        height = maxHeight;
-        width = height * aspectRatio;
-      }
-
+      let height = width * 1.5;
+      if (height > maxHeight) { height = maxHeight; width = height / 1.5; }
       setCanvasSize({ width: Math.floor(width), height: Math.floor(height) });
     };
-
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
     return () => window.removeEventListener('resize', updateCanvasSize);
@@ -505,66 +621,45 @@ export default function AsteroidMining() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvasSize.width * dpr;
     canvas.height = canvasSize.height * dpr;
     canvas.style.width = `${canvasSize.width}px`;
     canvas.style.height = `${canvasSize.height}px`;
-    
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.scale(dpr, dpr);
-    }
+    if (ctx) ctx.scale(dpr, dpr);
   }, [canvasSize]);
 
   const startGame = useCallback(() => {
     if (!address) {
-      toast({
-        title: "Wallet Required",
-        description: "Connect your wallet to play",
-        variant: "destructive",
-      });
+      toast({ title: "Wallet Required", description: "Connect your wallet to play", variant: "destructive" });
       return;
     }
-
     if (!access.canPlay) {
-      toast({
-        title: "No Plays Left",
-        description: access.reason || "Come back tomorrow!",
-        variant: "destructive",
-      });
+      toast({ title: "No Plays Left", description: access.reason || "Come back tomorrow!", variant: "destructive" });
       return;
     }
-
     const dailyLimits = GameStorageManager.checkDailyLimits('asteroid-mining', address, gameConfig.maxPlaysPerDay, 50000);
     if (!dailyLimits.canPlay) {
-      toast({
-        title: "Daily Limit Reached",
-        description: dailyLimits.reason || "Come back tomorrow!",
-        variant: "destructive",
-      });
+      toast({ title: "Daily Limit Reached", description: dailyLimits.reason || "Come back tomorrow!", variant: "destructive" });
       return;
     }
-
     recordPlay();
-    
     gameStateRef.current = initGame();
     setGamePhase('playing');
     setScore(0);
     setLives(3);
+    setCombo(0);
+    setHasShield(false);
+    setHasRapidFire(false);
     keysRef.current.clear();
-    
     trackEvent('game_start', 'asteroid-mining', '', 0);
   }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay]);
 
   const handleTouchStart = useCallback((zone: 'left' | 'right' | 'shoot') => {
     if (zone === 'left') touchRef.current.left = true;
     if (zone === 'right') touchRef.current.right = true;
-    if (zone === 'shoot') {
-      touchRef.current.shoot = true;
-      shoot();
-    }
+    if (zone === 'shoot') { touchRef.current.shoot = true; shoot(); }
   }, [shoot]);
 
   const handleTouchEnd = useCallback((zone: 'left' | 'right' | 'shoot') => {
@@ -593,15 +688,11 @@ export default function AsteroidMining() {
         <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
         <section className="py-6 min-h-screen bg-gradient-to-b from-black via-purple-900/20 to-black pt-16 pb-24">
           <div className="max-w-md mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
-            >
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
               <h1 className="text-4xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
                 SPACE SHOOTER
               </h1>
-              <p className="text-gray-400">Destroy asteroids. Survive. Get high scores.</p>
+              <p className="text-gray-400">Destroy enemies. Collect power-ups. Get high scores.</p>
             </motion.div>
 
             <Card className="bg-black/60 border-cyan-500/30 backdrop-blur-xl p-6 mb-6">
@@ -610,16 +701,9 @@ export default function AsteroidMining() {
                   <Trophy className="w-5 h-5 text-yellow-400" />
                   <span className="text-white font-bold">Best: {stats.bestScore.toLocaleString()}</span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4 text-center mb-6">
-                  <div>
-                    <div className="text-2xl text-cyan-400 font-bold">{stats.gamesPlayed}</div>
-                    <div className="text-xs text-gray-500">Games Played</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl text-purple-400 font-bold">{stats.totalScore.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500">Total Score</div>
-                  </div>
+                  <div><div className="text-2xl text-cyan-400 font-bold">{stats.gamesPlayed}</div><div className="text-xs text-gray-500">Games Played</div></div>
+                  <div><div className="text-2xl text-purple-400 font-bold">{stats.totalScore.toLocaleString()}</div><div className="text-xs text-gray-500">Total Score</div></div>
                 </div>
               </div>
 
@@ -627,49 +711,36 @@ export default function AsteroidMining() {
                 <h3 className="text-sm font-bold text-cyan-400 mb-2">CONTROLS</h3>
                 <div className="text-xs text-gray-400 space-y-1">
                   <p><span className="text-white">Desktop:</span> Arrow keys or A/D to move, Spacebar to shoot</p>
-                  <p><span className="text-white">Mobile:</span> Use the on-screen buttons below</p>
+                  <p><span className="text-white">Mobile:</span> On-screen buttons below the game</p>
+                </div>
+              </div>
+
+              <div className="mb-4 p-4 bg-white/5 rounded-lg">
+                <h3 className="text-sm font-bold text-purple-400 mb-2">POWER-UPS</h3>
+                <div className="text-xs text-gray-400 space-y-1">
+                  <p><span className="text-blue-400">● Shield</span> - Blocks one hit</p>
+                  <p><span className="text-yellow-400">● Rapid Fire</span> - Faster shooting</p>
+                  <p><span className="text-green-400">● Extra Life</span> - +1 life (max 5)</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-400">Sound</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="text-cyan-400"
-                  data-testid="button-toggle-sound"
-                >
+                <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400" data-testid="button-toggle-sound">
                   {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                 </Button>
               </div>
 
-              <Button
-                onClick={startGame}
-                disabled={!access.canPlay}
-                className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500"
-                data-testid="button-start-game"
-              >
+              <Button onClick={startGame} disabled={!access.canPlay} className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500" data-testid="button-start-game">
                 <Play className="w-6 h-6 mr-2" />
                 {!access.canPlay ? 'NO PLAYS LEFT' : 'START GAME'}
               </Button>
-
-              {access.playsRemaining !== undefined && (
-                <p className="text-center text-sm text-gray-400 mt-3">
-                  {access.playsRemaining} plays remaining today
-                </p>
-              )}
+              {access.playsRemaining !== undefined && <p className="text-center text-sm text-gray-400 mt-3">{access.playsRemaining} plays remaining today</p>}
             </Card>
 
             <div className="flex justify-center">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/')}
-                className="border-white/20"
-                data-testid="button-back-home"
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Command Center
+              <Button variant="outline" onClick={() => navigate('/arcade')} className="border-white/20" data-testid="button-back-arcade">
+                <Home className="w-4 h-4 mr-2" /> Back to Arcade
               </Button>
             </div>
           </div>
@@ -713,28 +784,21 @@ export default function AsteroidMining() {
               <Trophy className="w-4 h-4 text-yellow-400" />
               <span className="text-white font-mono font-bold">{score}</span>
             </div>
+            {combo > 1 && <span className="text-yellow-400 font-bold text-sm animate-pulse">x{Math.min(combo, 10)}</span>}
             <div className="flex items-center gap-1">
-              {[...Array(lives)].map((_, i) => (
-                <Heart key={i} className="w-4 h-4 text-red-500 fill-red-500" />
-              ))}
+              {[...Array(lives)].map((_, i) => <Heart key={i} className="w-4 h-4 text-red-500 fill-red-500" />)}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="text-cyan-400"
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            {hasShield && <Shield className="w-4 h-4 text-blue-400" />}
+            {hasRapidFire && <Zap className="w-4 h-4 text-yellow-400" />}
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400">
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+          </div>
         </div>
 
-        <canvas
-          ref={canvasRef}
-          className="border border-cyan-500/30 rounded-lg"
-          style={{ touchAction: 'none' }}
-          data-testid="game-canvas"
-        />
+        <canvas ref={canvasRef} className="border border-cyan-500/30 rounded-lg" style={{ touchAction: 'none' }} data-testid="game-canvas" />
 
         {isMobile && (
           <div className="fixed bottom-4 left-0 right-0 px-4">
@@ -747,9 +811,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleTouchEnd('left')}
                 onMouseLeave={() => handleTouchEnd('left')}
                 data-testid="button-move-left"
-              >
-                ←
-              </Button>
+              >←</Button>
               <Button
                 className="w-24 h-16 bg-red-500/20 border border-red-500/50 text-red-400 text-lg font-bold active:bg-red-500/40"
                 onTouchStart={() => handleTouchStart('shoot')}
@@ -758,9 +820,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleTouchEnd('shoot')}
                 onMouseLeave={() => handleTouchEnd('shoot')}
                 data-testid="button-shoot"
-              >
-                FIRE
-              </Button>
+              >FIRE</Button>
               <Button
                 className="w-20 h-16 bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40"
                 onTouchStart={() => handleTouchStart('right')}
@@ -769,9 +829,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleTouchEnd('right')}
                 onMouseLeave={() => handleTouchEnd('right')}
                 data-testid="button-move-right"
-              >
-                →
-              </Button>
+              >→</Button>
             </div>
           </div>
         )}
