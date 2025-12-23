@@ -1,0 +1,96 @@
+
+After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode (no rotation)
+□ Have working controls
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🔴 GAME 2: CYBER BREACH - COMPLETE BROKEN
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Error on both mobile and desktop. Cannot play at all.
+
+TASK:
+1. Find the Cyber Breach game component
+2. Check console for the specific error
+3. Fix the error so the game LOADS
+4. Test on desktop - does it load?
+5. Test on mobile - does it load?
+
+Same debugging approach as Asteroid.
+
+After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode
+□ Have working touch controls for cards
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🔴 GAME 3: RING GAME - COMPLETE BROKEN
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Error on both mobile and desktop. Cannot play at all.
+
+TASK:
+1. Find the Ring game component
+2. Check console for the specific error
+3. Fix the error so the game LOADS
+4. Test on desktop - does it load?
+5. Test on mobile - does it load?
+
+Same debugging approach as above.
+
+After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode
+□ Tap anywhere to trigger alignment
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🟡 GAME 4: RETRO DEFENDER - NEEDS FIXES
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Requires sideways orientation (WRONG). Ship too big.
+
+FIX 1: REMOVE LANDSCAPE REQUIREMENT
+- Find and remove orientation lock code
+- Find and remove "rotate device" message
+- Game MUST work in portrait mode
+- Test: Can you play holding phone normally? Must be YES.
+
+FIX 2: REDUCE SHIP SIZE BY 20%
+- Find ship size/scale variable
+- Current size: 100% (or whatever value)
+- New size: 80% of current
+- Example: if width is 100px, make it 80px
+- Keep proportions (don't stretch)
+
+FIX 3: APPLY GLOBAL FIXES
+- Add navbar to start screen
+- Add navbar to game over screen
+- Fix title cut-off (add top padding)
+- Add "Return to Arcade" button at bottom of game over
+
+After fixing:
+□ Plays in portrait mode (no rotation needed)
+□ Ship is 20% smaller
+□ Navbar visible on start/end screens
+□ Title not cut off
+□ "Return to Arcade" button on game over
+
+═══════════════════════════════════════════════════════════════════
+🟡 GAME 5: CREATURE COMMAND - NEEDS MAJOR BALANCING
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Works but too easy. Several UX issues.
+
+FIX 1: WAVE POPUPS AUTO-DISMISS (Mobile)
+- Wave messages currently require manual exit button
+- CHANGE: Popups appear for 3 seconds then auto-fade
+- Remove the exit/close button
+- Use setTimeout to dismiss after 3000ms
+- Fade out animation (opacity 0 over 500ms)

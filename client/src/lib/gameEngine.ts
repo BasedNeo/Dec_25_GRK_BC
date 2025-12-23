@@ -108,9 +108,9 @@ export function createGame(w: number, h: number, extraLife: boolean): GameState 
     stage: 1,
     wave: 1,
     player: {
-      pos: { x: w / 2 - 32, y: h - 80 },
+      pos: { x: w / 2 - 26, y: h - 70 },
       vel: { x: 0, y: 0 },
-      size: { x: 64, y: 64 },
+      size: { x: 52, y: 52 },
       active: true,
       lives: extraLife ? 4 : 3,
       powerUp: 'none',

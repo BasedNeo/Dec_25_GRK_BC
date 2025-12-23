@@ -1,0 +1,370 @@
+CRITICAL GAME FIXES - DETAILED INSTRUCTIONS
+
+These are SPECIFIC bugs and issues that MUST be fixed.
+Work on ONE GAME AT A TIME. Fix it completely before moving to the next.
+DO NOT skip any issue. Each one is documented from real user testing.
+
+═══════════════════════════════════════════════════════════════════
+⚠️ PRIORITY ORDER:
+═══════════════════════════════════════════════════════════════════
+
+1. FIRST: Fix games that don't work AT ALL (Asteroid, Cyber Breach, Ring Game)
+2. SECOND: Fix Retro Defender (sideways requirement, ship size)
+3. THIRD: Fix Creature Command (too easy, wave popups, shots limit)
+4. FOURTH: Apply global fixes to ALL games (navbar, cut-off titles, etc.)
+
+═══════════════════════════════════════════════════════════════════
+🚫 GLOBAL RULES (Apply to ALL games):
+═══════════════════════════════════════════════════════════════════
+
+1. NO SIDEWAYS/LANDSCAPE REQUIREMENT
+   - Remove ALL orientation locks
+   - Remove ALL "rotate your device" messages
+   - ALL games MUST work in portrait mode (phone held normally)
+   - Search for: "orientation", "landscape", "rotate"
+   - Delete or disable all of it
+
+2. NO "PLAYED TOO FAST" RESTRICTION
+   - Remove the 60-second minimum play time requirement
+   - Remove any timer that prevents game completion
+   - Players should be able to finish as fast as they can
+   - Search for: "played too fast", "60 seconds", "minimum time"
+   - Delete all of it
+
+3. USE WALLET NAME, NOT INITIALS
+   - If player has a connected wallet with a custom name, USE IT
+   - Do NOT ask for initials if wallet name exists
+   - Only ask for initials if no wallet connected
+   - Get wallet name from app state/context
+
+4. HEADER NAVBAR ON ALL SCREENS
+   - Welcome/Start screen: Show app navbar at top
+   - Game Over screen: Show app navbar at top
+   - This allows easy navigation without "Back" buttons only
+
+5. GAME TITLE NOT CUT OFF
+   - On welcome screen, game title is cut off by ~10% at top
+   - Add proper padding/margin at top of game container
+   - Ensure title is fully visible below navbar
+   - Add: padding-top: 60px (or navbar height) to game container
+
+6. GAME OVER SCREEN LAYOUT
+   - Top: App navbar (for navigation)
+   - Middle: Score, stats, high score
+   - Bottom: "RETURN TO ARCADE" button (large, prominent)
+
+═══════════════════════════════════════════════════════════════════
+🔴 GAME 1: ASTEROID - COMPLETE BROKEN (Fix First)
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Error on both mobile and desktop. Cannot play at all.
+
+TASK:
+1. Find the Asteroid game component
+2. Check console for the specific error
+3. Fix the error so the game LOADS
+4. Test on desktop - does it load?
+5. Test on mobile - does it load?
+6. If the game is too broken, consider rebuilding it simply
+
+COMMON CAUSES OF GAME ERRORS:
+- Missing import
+- Undefined variable
+- Canvas context error
+- Event listener on null element
+- Array index out of bounds
+
+DEBUG STEPS:
+// Add try-catch to find the error
+try {
+  // Game initialization code
+} catch (error) {
+  console.error('Asteroid game error:', error);
+}After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode (no rotation)
+□ Have working controls
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🔴 GAME 2: CYBER BREACH - COMPLETE BROKEN
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Error on both mobile and desktop. Cannot play at all.
+
+TASK:
+1. Find the Cyber Breach game component
+2. Check console for the specific error
+3. Fix the error so the game LOADS
+4. Test on desktop - does it load?
+5. Test on mobile - does it load?
+
+Same debugging approach as Asteroid.
+
+After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode
+□ Have working touch controls for cards
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🔴 GAME 3: RING GAME - COMPLETE BROKEN
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Error on both mobile and desktop. Cannot play at all.
+
+TASK:
+1. Find the Ring game component
+2. Check console for the specific error
+3. Fix the error so the game LOADS
+4. Test on desktop - does it load?
+5. Test on mobile - does it load?
+
+Same debugging approach as above.
+
+After fixing, the game must:
+□ Load without errors on desktop
+□ Load without errors on mobile
+□ Be playable in PORTRAIT mode
+□ Tap anywhere to trigger alignment
+□ Show navbar on start/end screens
+
+═══════════════════════════════════════════════════════════════════
+🟡 GAME 4: RETRO DEFENDER - NEEDS FIXES
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Requires sideways orientation (WRONG). Ship too big.
+
+FIX 1: REMOVE LANDSCAPE REQUIREMENT
+- Find and remove orientation lock code
+- Find and remove "rotate device" message
+- Game MUST work in portrait mode
+- Test: Can you play holding phone normally? Must be YES.
+
+FIX 2: REDUCE SHIP SIZE BY 20%
+- Find ship size/scale variable
+- Current size: 100% (or whatever value)
+- New size: 80% of current
+- Example: if width is 100px, make it 80px
+- Keep proportions (don't stretch)
+
+FIX 3: APPLY GLOBAL FIXES
+- Add navbar to start screen
+- Add navbar to game over screen
+- Fix title cut-off (add top padding)
+- Add "Return to Arcade" button at bottom of game over
+
+After fixing:
+□ Plays in portrait mode (no rotation needed)
+□ Ship is 20% smaller
+□ Navbar visible on start/end screens
+□ Title not cut off
+□ "Return to Arcade" button on game over
+
+═══════════════════════════════════════════════════════════════════
+🟡 GAME 5: CREATURE COMMAND - NEEDS MAJOR BALANCING
+═══════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: Works but too easy. Several UX issues.
+
+FIX 1: WAVE POPUPS AUTO-DISMISS (Mobile)
+- Wave messages currently require manual exit button
+- CHANGE: Popups appear for 3 seconds then auto-fade
+- Remove the exit/close button
+- Use setTimeout to dismiss after 3000ms
+- Fade out animation (opacity 0 over 500ms)
+
+// Show wave message
+showWaveMessage(`WAVE ${waveNumber}`);
+
+// Auto-dismiss after 3 seconds
+setTimeout(() => {
+  hideWaveMessage(); // Fade out
+}, 3000);FIX 2: LIMITED SHOTS PER WAVE (MAJOR BALANCE CHANGE)
+- Currently: Unlimited shots (too easy)
+- NEW SYSTEM: Limited shots based on level
+
+SHOT ALLOCATION:
+- Wave 1: 3 shots
+- Wave 2: 3 shots
+- Wave 3: 3 shots
+- Wave 4: 4 shots
+- Wave 5: 4 shots
+- Wave 6: 5 shots
+- Wave 7: 5 shots
+- Wave 8: 6 shots
+- Wave 9: 6 shots
+- Wave 10+: 6 shots
+
+IMPLEMENTATION:
+function getShotsForWave(wave) {
+  if (wave <= 3) return 3;
+  if (wave <= 5) return 4;
+  if (wave <= 7) return 5;
+  return 6;
+}
+
+// Track shots remaining
+let shotsRemaining = getShotsForWave(currentWave);
+
+// On shoot
+function shoot() {
+  if (shotsRemaining <= 0) {
+    // Can't shoot - maybe play "empty" sound
+    return;
+  }
+  shotsRemaining--;
+  updateShotsDisplay();
+  // ... fire projectile
+}
+
+// On wave complete
+function nextWave() {
+  currentWave++;
+  shotsRemaining = getShotsForWave(currentWave);
+  updateShotsDisplay();
+}DISPLAY SHOTS REMAINING:
+- Show: "SHOTS: 3" or "🔫 3" on screen
+- Visual warning when 1 shot left
+- Empty indicator when 0 shots
+
+FIX 3: REDUCE SCORING (Currently inflated)
+- User got 50,000 on first try (should be ~2,000-6,000 max)
+- Reduce ALL point values by 80-90%
+
+CURRENT → NEW SCORING:
+- Basic enemy: 100 → 10 points
+- Fast enemy: 250 → 25 points
+- Tank enemy: 500 → 50 points
+- Wave complete: 1000 → 100 points
+- Boss: 2000 → 200 points
+
+Target scores:
+- Beginner: 500-1,000
+- Average: 1,000-3,000
+- Good: 3,000-6,000
+- Expert: 6,000-10,000
+
+FIX 4: PORTRAIT MODE SUPPORT
+- Game should work with phone held normally
+- Landscape can be OPTIONAL but not required
+- Remove any forced orientation
+- Test: Can you play in portrait? Must work.
+
+FIX 5: TITLE CUT OFF ON WELCOME SCREEN
+- Add padding-top to game container
+- Ensure "CREATURE COMMAND" title fully visible
+- Account for navbar height
+
+FIX 6: APPLY GLOBAL FIXES
+- Navbar on welcome screen
+- Navbar on game over screen
+- Use wallet name instead of asking for initials
+- "Return to Arcade" button on game over
+- Remove "Played too fast" restriction
+
+After fixing:
+□ Wave messages auto-dismiss after 3 seconds
+□ Limited shots per wave (3-6 based on level)
+□ Reduced scoring (max ~6,000-10,000 for expert)
+□ Works in portrait mode
+□ Title not cut off
+□ Navbar on all screens
+□ Uses wallet name for high scores
+
+═══════════════════════════════════════════════════════════════════
+📋 TESTING CHECKLIST FOR EACH GAME
+═══════════════════════════════════════════════════════════════════
+
+Before marking a game as DONE, verify ALL of these:
+
+□ Game loads without errors (desktop)
+□ Game loads without errors (mobile)
+□ Plays in PORTRAIT mode (no rotation required)
+□ Controls work on desktop
+□ Controls work on mobile (touch)
+□ Navbar visible on welcome screen
+□ Navbar visible on game over screen
+□ Title not cut off at top
+□ "Return to Arcade" button on game over
+□ No "Played too fast" restriction
+□ Uses wallet name (not initials) if available
+□ Game is challenging (not too easy)
+
+═══════════════════════════════════════════════════════════════════
+WORK ORDER:
+═══════════════════════════════════════════════════════════════════
+
+1. FIX ASTEROID (make it load and work)
+2. FIX CYBER BREACH (make it load and work)
+3. FIX RING GAME (make it load and work)
+4. FIX RETRO DEFENDER (remove rotation, shrink ship)
+5. FIX CREATURE COMMAND (balance difficulty, wave popups)
+6. APPLY GLOBAL FIXES to all games
+7. TEST ALL GAMES on desktop AND mobile
+
+DO NOT proceed to next game until current one is fully fixed and tested.
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE:
+═══════════════════════════════════════════════════════════════════
+
+## GAME FIX REPORT
+
+### ASTEROID
+- Previous error: [What was the error?]
+- Fix applied: [What did you change?]
+- Loads on desktop: ✅/❌
+- Loads on mobile: ✅/❌
+- Portrait mode works: ✅/❌
+- Fully playable: ✅/❌
+
+### CYBER BREACH
+- Previous error: [What was the error?]
+- Fix applied: [What did you change?]
+- Loads on desktop: ✅/❌
+- Loads on mobile: ✅/❌
+- Portrait mode works: ✅/❌
+- Fully playable: ✅/❌
+
+### RING GAME
+- Previous error: [What was the error?]
+- Fix applied: [What did you change?]
+- Loads on desktop: ✅/❌
+- Loads on mobile: ✅/❌
+- Portrait mode works: ✅/❌
+- Fully playable: ✅/❌
+
+### RETRO DEFENDER
+- Rotation requirement removed: ✅/❌
+- Ship reduced by 20%: ✅/❌
+- Portrait mode works: ✅/❌
+- Global fixes applied: ✅/❌
+
+### CREATURE COMMAND
+- Wave popups auto-dismiss: ✅/❌
+- Limited shots implemented: ✅/❌
+- Scoring reduced: ✅/❌
+- Portrait mode works: ✅/❌
+- Global fixes applied: ✅/❌
+
+### GLOBAL FIXES (All Games)
+- Navbar on welcome screens: ✅/❌
+- Navbar on game over screens: ✅/❌
+- Titles not cut off: ✅/❌
+- "Return to Arcade" buttons: ✅/❌
+- "Played too fast" removed: ✅/❌
+- Wallet name used: ✅/❌
+- No rotation requirements: ✅/❌
+
+### FILES MODIFIED
+[List all files]
+
+### REMAINING ISSUES
+[Any issues that couldn't be fixed]
+
+═══════════════════════════════════════════════════════════════════
+FIX EACH GAME COMPLETELY. TEST THOROUGHLY. ONE AT A TIME.
+═══════════════════════════════════════════════════════════════════
