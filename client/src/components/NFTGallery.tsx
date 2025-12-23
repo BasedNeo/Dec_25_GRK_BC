@@ -40,24 +40,27 @@ interface NFTGalleryProps {
 function GuardianCardSkeleton() {
   return (
     <Card className="bg-card border-white/10 overflow-hidden h-full flex flex-col">
-      <Skeleton className="w-full aspect-square skeleton rounded-none" />
+      <div className="relative w-full aspect-square bg-secondary/20">
+        <Skeleton className="w-full h-full rounded-none" />
+        <div className="absolute inset-0 skeleton-shimmer" />
+      </div>
       <div className="p-4 space-y-3 flex-1">
         <div className="flex justify-between items-center">
-            <Skeleton className="h-4 w-20 skeleton" />
-            <Skeleton className="h-5 w-16 rounded-full skeleton" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-5 w-16 rounded-full" />
         </div>
-        <Skeleton className="h-6 w-3/4 skeleton" />
+        <Skeleton className="h-6 w-3/4" />
         <div className="pt-4 mt-auto space-y-2">
             <div className="flex justify-between">
-                <Skeleton className="h-3 w-16 skeleton" />
-                <Skeleton className="h-3 w-12 skeleton" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-12" />
             </div>
             <div className="flex justify-between">
-                <Skeleton className="h-3 w-20 skeleton" />
-                <Skeleton className="h-3 w-10 skeleton" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-10" />
             </div>
         </div>
-        <Skeleton className="h-9 w-full mt-4 skeleton" />
+        <Skeleton className="h-9 w-full mt-4" />
       </div>
     </Card>
   );
