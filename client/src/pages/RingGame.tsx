@@ -371,9 +371,18 @@ export default function RingGame() {
         setGameOver(true);
         playSound('gameover');
         
+        const playerAddress = address || 'anonymous';
+        const today = new Date().toDateString();
+        const dailyData = GameStorageManager.getDailyData('ring-game', playerAddress, today);
+        GameStorageManager.updateDailyData('ring-game', playerAddress, today, {
+          gamesPlayed: dailyData.gamesPlayed + 1,
+          pointsEarned: dailyData.pointsEarned + state.score
+        });
+        
+        recordPlay();
+        
         if (address && state.score > 0) {
           submitScore(state.score, state.level);
-          recordPlay();
           refreshStats();
         }
         

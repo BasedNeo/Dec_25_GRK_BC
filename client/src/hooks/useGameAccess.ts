@@ -100,6 +100,7 @@ export function useGameAccess() {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     setCooldown(COOLDOWN_SECONDS);
+    setRefreshKey(k => k + 1);
   }, []);
 
   return {

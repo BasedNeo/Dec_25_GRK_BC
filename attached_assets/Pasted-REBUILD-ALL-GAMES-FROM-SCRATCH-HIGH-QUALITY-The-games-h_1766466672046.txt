@@ -1,0 +1,65 @@
+REBUILD ALL GAMES FROM SCRATCH - HIGH QUALITY
+
+The games have always been bad. We're not patching them.
+We're REBUILDING each one properly, with working controls as the foundation.
+
+Take your time. Do ONE game at a time. Make it WORK before making it pretty.
+
+═══════════════════════════════════════════════════════════════════
+🚫 DO NOT TOUCH:
+═══════════════════════════════════════════════════════════════════
+
+- Wallet code (wagmi, rainbowkit, web3modal)
+- Navbar/header
+- Marketplace transactions
+- Mobile app layout
+
+═══════════════════════════════════════════════════════════════════
+CORE PRINCIPLE: WORKING > PRETTY
+═══════════════════════════════════════════════════════════════════
+
+For each game, build in this order:
+1. CONTROLS WORK (can you play it?)
+2. GAME LOGIC WORKS (does it function correctly?)
+3. MOBILE WORKS (portrait mode, touch controls)
+4. LOOKS GOOD (visual polish)
+5. SOUNDS GOOD (audio feedback)
+
+Do NOT skip ahead. A pretty game that doesn't work is worthless.
+
+═══════════════════════════════════════════════════════════════════
+GAME 1: SPACE SHOOTER / ASTEROID / CREATURE COMMAND
+═══════════════════════════════════════════════════════════════════
+
+Rebuild this as a simple, fun space shooter that WORKS.
+
+STEP 1 - CORE MECHANICS (Get this working first):
+
+// Basic structure needed:
+- Game canvas or container (fills available space)
+- Player ship (starts at bottom center)
+- Player can move left/right
+- Player can shoot upward
+- Enemies spawn at top, move down
+- Collision detection (bullets hit enemies, enemies hit player)
+- Score counter
+- Lives (3)
+- Game over when lives = 0STEP 2 - CONTROLS (Must work perfectly):
+
+DESKTOP:
+- Left Arrow OR A key = move left
+- Right Arrow OR D key = move right  
+- Spacebar = shoot
+- Movement should be SMOOTH (not choppy)
+- Shooting should have reasonable cooldown (3-4 shots/second max)
+
+MOBILE:
+- Left side of screen = move left
+- Right side of screen = move right
+- Tap anywhere = shoot
+- OR: On-screen buttons (Left | Shoot | Right) at bottom
+- Touch must be RESPONSIVE (no delay)
+
+TEST: Can you move? Can you shoot? Do enemies appear? Can you hit them?
+
+STEP 3 - GAME LOOP:
