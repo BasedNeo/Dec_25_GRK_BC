@@ -14,7 +14,9 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { ShipSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, SHIP_SKINS, ShipSkin } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield, Smartphone, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Zap, Target, Shield, Smartphone, Palette } from 'lucide-react';
+import { useGameMusic } from '@/hooks/useGameMusic';
+import { MusicControls } from '@/components/game/MusicControls';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 import { AnimatePresence } from 'framer-motion';
 
@@ -122,6 +124,7 @@ export default function AsteroidMining() {
   const { selected, updateStats } = useUnlockables();
   const [showShipSelector, setShowShipSelector] = useState(false);
   const currentShip = useMemo(() => SHIP_SKINS[selected.ship], [selected.ship]);
+  const music = useGameMusic();
 
   const gameConfig = useMemo(() => getGameConfig('asteroid-mining'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -514,12 +517,20 @@ export default function AsteroidMining() {
     setHasShield(state.player.shield);
     setHasRapidFire(state.player.rapidFire > 0);
     
+    // Dynamic music intensity based on wave
+    const intensity = Math.min(1, state.wave / 15);
+    music.setGameIntensity(intensity);
+    
+    // Danger when low on lives
+    const dangerLevel = state.lives <= 1 ? 0.8 : state.lives <= 2 ? 0.4 : 0;
+    music.setDanger(state.lives <= 2, dangerLevel);
+    
     if (state.wave > lastWaveRef.current) {
       lastWaveRef.current = state.wave;
       setWaveAnnouncement(state.wave);
       setTimeout(() => setWaveAnnouncement(null), 1500);
     }
-  }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound]);
+  }, [canvasSize, shoot, createParticles, spawnPowerUp, playSound, music]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -653,6 +664,7 @@ export default function AsteroidMining() {
       }
       // Track unlocks
       updateStats('asteroid-mining', { highScore: state.score, maxWave: state.wave });
+      music.stopMusic();
       trackEvent('game_complete', 'asteroid-mining', String(state.enemiesDestroyed), state.score);
       return;
     }
@@ -775,8 +787,9 @@ export default function AsteroidMining() {
       }
     }, 60);
     
+    music.startMusic();
     trackEvent('game_start', 'asteroid-mining', '', 0);
-  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay]);
+  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay, music]);
 
   const handleTouchStart = useCallback((zone: 'left' | 'right' | 'shoot') => {
     if (zone === 'left') touchRef.current.left = true;
@@ -846,11 +859,17 @@ export default function AsteroidMining() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400">Sound</span>
-                <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400" data-testid="button-toggle-sound">
-                  {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                </Button>
+              <div className="mb-4 p-4 bg-white/5 rounded-lg">
+                <h3 className="text-sm font-bold text-cyan-400 mb-3">AUDIO</h3>
+                <MusicControls
+                  masterVolume={music.prefs.masterVolume}
+                  musicEnabled={music.prefs.musicEnabled}
+                  sfxEnabled={music.prefs.sfxEnabled}
+                  onVolumeChange={music.setMasterVolume}
+                  onMusicToggle={music.setMusicEnabled}
+                  onSfxToggle={(enabled) => { music.setSfxEnabled(enabled); setSoundEnabled(enabled); }}
+                  accentColor="cyan"
+                />
               </div>
               
               {isMobile && (

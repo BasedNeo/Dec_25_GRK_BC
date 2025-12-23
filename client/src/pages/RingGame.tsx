@@ -14,7 +14,9 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { RingThemeSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, RING_THEMES, RingTheme } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Heart, Target, Volume2, VolumeX, Sparkles, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Target, Sparkles, Palette } from 'lucide-react';
+import { useGameMusic } from '@/hooks/useGameMusic';
+import { MusicControls } from '@/components/game/MusicControls';
 import { AnimatePresence } from 'framer-motion';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
@@ -112,6 +114,7 @@ export default function RingGame() {
   const { selected, updateStats } = useUnlockables();
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const currentTheme = useMemo(() => RING_THEMES[selected.ringTheme], [selected.ringTheme]);
+  const music = useGameMusic();
 
   const gameConfig = useMemo(() => getGameConfig('ring-game'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -456,7 +459,18 @@ export default function RingGame() {
     setLives(state.lives);
     setCombo(state.combo);
     setFeedback(state.feedback);
-  }, []);
+    
+    // Dynamic music - tempo increases with level
+    const tempo = 1 + (state.level - 1) * 0.1;
+    music.setTempo(Math.min(2, tempo));
+    
+    // Intensity based on level
+    const intensity = Math.min(1, state.level / 20);
+    music.setGameIntensity(intensity);
+    
+    // Danger when low on lives
+    music.setDanger(state.lives <= 1, state.lives === 1 ? 0.8 : 0.4);
+  }, [music]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -636,6 +650,7 @@ export default function RingGame() {
       }
       // Track unlocks
       updateStats('ring-game', { maxRing: state.level });
+      music.stopMusic();
       trackEvent('game_complete', 'ring-game', String(state.level), state.score);
       return;
     }
@@ -707,8 +722,9 @@ export default function RingGame() {
     setLives(3);
     setCombo(0);
     setFeedback(null);
+    music.startMusic();
     trackEvent('game_start', 'ring-game', '', 0);
-  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay]);
+  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay, music]);
 
   if (nftLoading) {
     return (
@@ -764,11 +780,17 @@ export default function RingGame() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400">Sound</span>
-                <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400" data-testid="button-toggle-sound">
-                  {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                </Button>
+              <div className="mb-4 p-4 bg-white/5 rounded-lg">
+                <h3 className="text-sm font-bold text-cyan-400 mb-3">AUDIO</h3>
+                <MusicControls
+                  masterVolume={music.prefs.masterVolume}
+                  musicEnabled={music.prefs.musicEnabled}
+                  sfxEnabled={music.prefs.sfxEnabled}
+                  onVolumeChange={music.setMasterVolume}
+                  onMusicToggle={music.setMusicEnabled}
+                  onSfxToggle={(enabled) => { music.setSfxEnabled(enabled); setSoundEnabled(enabled); }}
+                  accentColor="cyan"
+                />
               </div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-400">Haptic Feedback</span>

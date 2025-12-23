@@ -14,7 +14,9 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { TerminalSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, TERMINAL_SKINS, TerminalSkin } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Clock, Target, Volume2, VolumeX, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Clock, Target, Palette } from 'lucide-react';
+import { useGameMusic } from '@/hooks/useGameMusic';
+import { MusicControls } from '@/components/game/MusicControls';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
 interface GameCard {
@@ -65,6 +67,7 @@ export default function CyberBreach() {
   const { selected, updateStats } = useUnlockables();
   const [showTerminalSelector, setShowTerminalSelector] = useState(false);
   const currentTerminal = useMemo(() => TERMINAL_SKINS[selected.terminal], [selected.terminal]);
+  const music = useGameMusic();
 
   const gameConfig = useMemo(() => getGameConfig('cyber-breach'), []);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -256,8 +259,9 @@ export default function CyberBreach() {
     }
     // Track unlocks
     updateStats('cyber-breach', { maxLevel: level });
+    music.stopMusic();
     trackEvent('game_complete', 'cyber-breach', String(level), score);
-  }, [address, score, level, submitScore, refreshStats, updateStats]);
+  }, [address, score, level, submitScore, refreshStats, updateStats, music]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -269,10 +273,16 @@ export default function CyberBreach() {
           setGamePhase('gameover');
           return 0;
         }
+        
+        // Dynamic music - tension builds as time drops
+        const timePercent = t / currentConfig.time;
+        music.setGameIntensity(1 - timePercent);
+        music.setDanger(t <= 15, t <= 10 ? 0.8 : 0.5);
+        
         return t - 1;
       });
     }, 1000);
-  }, [playSound]);
+  }, [playSound, currentConfig.time, music]);
 
   const handleCardClick = useCallback((cardId: number) => {
     if (isChecking) return;
@@ -403,8 +413,9 @@ export default function CyberBreach() {
       }
     }, 80);
     
+    music.startMusic();
     trackEvent('game_start', 'cyber-breach', '', 0);
-  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, recordPlay, startTimer]);
+  }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, recordPlay, startTimer, music]);
 
   useEffect(() => {
     return () => {
@@ -461,11 +472,17 @@ export default function CyberBreach() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400">Sound</span>
-                <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400" data-testid="button-toggle-sound">
-                  {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                </Button>
+              <div className="mb-4 p-4 bg-white/5 rounded-lg">
+                <h3 className="text-sm font-bold text-green-400 mb-3">AUDIO</h3>
+                <MusicControls
+                  masterVolume={music.prefs.masterVolume}
+                  musicEnabled={music.prefs.musicEnabled}
+                  sfxEnabled={music.prefs.sfxEnabled}
+                  onVolumeChange={music.setMasterVolume}
+                  onMusicToggle={music.setMusicEnabled}
+                  onSfxToggle={(enabled) => { music.setSfxEnabled(enabled); setSoundEnabled(enabled); }}
+                  accentColor="green"
+                />
               </div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-400">Haptic Feedback</span>
