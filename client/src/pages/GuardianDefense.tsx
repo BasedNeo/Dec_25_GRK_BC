@@ -1538,7 +1538,7 @@ export default function GuardianDefense() {
         <div className="flex justify-center gap-4 mt-6 pb-8">
           <Button
             variant="outline"
-            onClick={() => setLocation('/arcade')}
+            onClick={() => setLocation('/games')}
             className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
             data-testid="button-back-arcade"
           >
