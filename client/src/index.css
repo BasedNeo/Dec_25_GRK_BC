@@ -811,12 +811,23 @@ input, textarea, select {
 
 html {
   scroll-behavior: smooth;
+  touch-action: manipulation;
+}
+
+body {
+  overscroll-behavior: none;
 }
 
 .scrollable-container {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
   overscroll-behavior-y: contain;
+  scroll-snap-type: y proximity;
+}
+
+.no-select-during-scroll {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .animated-element {
