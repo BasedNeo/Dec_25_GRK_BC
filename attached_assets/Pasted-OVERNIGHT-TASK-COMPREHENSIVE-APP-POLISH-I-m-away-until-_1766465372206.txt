@@ -1,0 +1,134 @@
+OVERNIGHT TASK: COMPREHENSIVE APP POLISH
+
+I'm away until tomorrow. Work autonomously to polish the entire app.
+BE CAREFUL - the app is finally stable. Don't break anything.
+
+═══════════════════════════════════════════════════════════════════
+⚠️ CRITICAL - DO NOT TOUCH THESE:
+═══════════════════════════════════════════════════════════════════
+
+- Wallet connection code (finally working)
+- Mobile layout CSS (finally working)  
+- Navbar/header structure
+- Marketplace buy/sell/offer smart contract calls
+- Any file with "wagmi", "rainbowkit", "web3modal" in the name
+
+If you're unsure, DON'T change it.
+
+═══════════════════════════════════════════════════════════════════
+TASK 1: GAME POLISH (Priority: High)
+═══════════════════════════════════════════════════════════════════
+
+For ALL games:
+□ Add high score saving (localStorage)
+□ Add "Best: XXX" display during play
+□ Add "NEW HIGH SCORE!" celebration
+□ Add score popup animations (+10 floating up)
+□ Add sound effects (with mute button)
+□ Add satisfying game over screen
+□ Test each game works on desktop AND mobile
+
+Creature Command specifically:
+□ Double the fire rate cooldown (slower shooting)
+□ Reduce explosion size by 40%
+
+Ring Game specifically:
+□ Add large "RING X" level number display
+□ Add "PERFECT!" text for good timing
+
+Cyber Breach specifically:
+□ Make panels responsive (stack on mobile)
+□ Add typing sound effects
+
+═══════════════════════════════════════════════════════════════════
+TASK 2: UI POLISH (Priority: Medium)
+═══════════════════════════════════════════════════════════════════
+
+Add micro-interactions:
+□ Button hover: subtle scale (1.02) + glow
+□ Card hover: lift up (translateY -2px) + shadow
+□ Smooth transitions (200ms ease) on interactive elements
+□ Loading spinners where data is being fetched
+
+Add empty states:
+□ "No NFTs found" with friendly message
+□ "No activity yet" with icon
+□ Error states with "Try Again" button
+
+═══════════════════════════════════════════════════════════════════
+TASK 3: ARCADE HUB (Priority: Medium)
+═══════════════════════════════════════════════════════════════════
+
+□ Show personal high score on each game card
+□ Add hover effects to game cards
+□ Make sure all game links work
+□ Add "Play" button on each card
+
+═══════════════════════════════════════════════════════════════════
+TASK 4: GENERAL CLEANUP (Priority: Low)
+═══════════════════════════════════════════════════════════════════
+
+□ Remove console.log statements (except errors)
+□ Fix any TypeScript warnings you see
+□ Ensure consistent spacing/padding
+□ Check all images have alt text
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST - DO THIS BEFORE STOPPING:
+═══════════════════════════════════════════════════════════════════
+
+□ App loads without errors
+□ Mobile scrolling still works
+□ Wallet connect button appears
+□ All navigation links work
+□ All games load and are playable
+□ Marketplace page loads
+□ Portfolio page loads
+
+If ANY of these fail, REVERT your last change.
+
+═══════════════════════════════════════════════════════════════════
+WORK ORDER:
+═══════════════════════════════════════════════════════════════════
+
+1. Start with games (highest impact)
+2. Then Arcade hub
+3. Then UI polish
+4. Then cleanup
+5. Run full test checklist
+6. Write summary report
+
+═══════════════════════════════════════════════════════════════════
+WHEN FINISHED, PROVIDE THIS REPORT:
+═══════════════════════════════════════════════════════════════════
+
+## OVERNIGHT WORK SUMMARY
+
+### ✅ COMPLETED:
+- [list everything you did]
+
+### 📁 FILES MODIFIED:
+- [list all files changed]
+
+### 🎮 GAME STATUS:
+- Creature Command: [working/broken] - changes made: [list]
+- Ring Game: [working/broken] - changes made: [list]  
+- Cyber Breach: [working/broken] - changes made: [list]
+- Other games: [status]
+
+### ⚠️ ISSUES FOUND:
+- [any problems you encountered]
+
+### 🧪 TESTING STATUS:
+- App loads: ✅/❌
+- Mobile works: ✅/❌
+- Wallet button visible: ✅/❌
+- Games playable: ✅/❌
+- Navigation works: ✅/❌
+
+### 💡 RECOMMENDATIONS:
+- [anything that needs manual attention]
+
+═══════════════════════════════════════════════════════════════════
+TIME LIMIT: Work for up to 45 minutes of changes, then stop and report.
+═══════════════════════════════════════════════════════════════════

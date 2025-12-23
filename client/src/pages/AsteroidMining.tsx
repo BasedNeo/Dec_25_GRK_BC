@@ -86,6 +86,16 @@ interface Ship {
   invulnerableTime: number;
 }
 
+interface ScorePopup {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  lifetime: number;
+  isSpecial: boolean;
+}
+
 interface GameState {
   ship: Ship;
   asteroids: Asteroid[];
@@ -93,6 +103,7 @@ interface GameState {
   resources: Resource[];
   powerUps: PowerUp[];
   particles: Particle[];
+  scorePopups: ScorePopup[];
   score: number;
   combo: number;
   comboTimer: number;
@@ -269,6 +280,7 @@ export default function AsteroidMining() {
     resources: [],
     powerUps: [],
     particles: [],
+    scorePopups: [],
     score: 0,
     combo: 0,
     comboTimer: 0,
@@ -416,6 +428,19 @@ export default function AsteroidMining() {
     }
   }, [settings.particleIntensity]);
 
+  const createScorePopup = useCallback((text: string, x: number, y: number, color: string, isSpecial: boolean = false) => {
+    const state = gameStateRef.current;
+    state.scorePopups.push({
+      id: `popup-${Date.now()}-${Math.random()}`,
+      text,
+      x,
+      y,
+      color,
+      lifetime: 1.0,
+      isSpecial,
+    });
+  }, []);
+
   const spawnAsteroid = useCallback(() => {
     const state = gameStateRef.current;
     const side = Math.floor(Math.random() * 4);
@@ -527,6 +552,10 @@ export default function AsteroidMining() {
     state.combo++;
     state.comboTimer = COMBO_TIMEOUT;
     
+    const comboText = state.combo >= 2 ? ` x${Math.min(state.combo, 4)}` : '';
+    const popupColor = asteroid.color === 'gold' ? '#FBBF24' : (state.combo >= 3 ? '#A855F7' : '#00FFFF');
+    createScorePopup(`+${points}${comboText}`, asteroid.position.x, asteroid.position.y - 20, popupColor, state.combo >= 3);
+    
     createParticles(asteroid.position, ASTEROID_COLORS[asteroid.color], 15, 150);
     
     const resourceValue = Math.floor(points * 0.5);
@@ -567,7 +596,7 @@ export default function AsteroidMining() {
     if (asteroid.size !== 'small') {
       splitAsteroid(asteroid);
     }
-  }, [createParticles, playSound, splitAsteroid]);
+  }, [createParticles, createScorePopup, playSound, splitAsteroid]);
 
   const shoot = useCallback(() => {
     const state = gameStateRef.current;
@@ -723,6 +752,12 @@ export default function AsteroidMining() {
       return particle.lifetime > 0;
     });
     
+    state.scorePopups.forEach(popup => {
+      popup.y -= dt * 40;
+      popup.lifetime -= dt;
+    });
+    state.scorePopups = state.scorePopups.filter(popup => popup.lifetime > 0);
+    
     const bulletsToRemove: string[] = [];
     const asteroidsToDestroy: Asteroid[] = [];
     
@@ -836,6 +871,20 @@ export default function AsteroidMining() {
       ctx.beginPath();
       ctx.arc(particle.position.x, particle.position.y, particle.size * alpha, 0, Math.PI * 2);
       ctx.fill();
+    });
+    
+    state.scorePopups.forEach(popup => {
+      const alpha = popup.lifetime;
+      const scale = popup.isSpecial ? 1.3 : 1;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `bold ${Math.floor(16 * scale)}px Orbitron, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = popup.color;
+      ctx.shadowColor = popup.color;
+      ctx.shadowBlur = popup.isSpecial ? 10 : 5;
+      ctx.fillText(popup.text, popup.x, popup.y);
+      ctx.restore();
     });
     
     state.asteroids.forEach(asteroid => {
@@ -1079,6 +1128,7 @@ export default function AsteroidMining() {
       resources: [],
       powerUps: [],
       particles: [],
+      scorePopups: [],
       score: 0,
       combo: 0,
       comboTimer: 0,
