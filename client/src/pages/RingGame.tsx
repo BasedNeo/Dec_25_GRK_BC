@@ -469,6 +469,12 @@ export default function RingGame() {
       }
     }
 
+    // Limit particles to prevent performance issues
+    const MAX_PARTICLES = 50;
+    if (state.particles.length > MAX_PARTICLES) {
+      state.particles.splice(0, state.particles.length - MAX_PARTICLES);
+    }
+    
     for (let i = state.particles.length - 1; i >= 0; i--) {
       state.particles[i].x += state.particles[i].vx;
       state.particles[i].y += state.particles[i].vy;

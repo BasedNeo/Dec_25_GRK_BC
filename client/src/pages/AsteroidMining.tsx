@@ -596,6 +596,12 @@ export default function AsteroidMining() {
       }
     }
 
+    // Limit particles to prevent performance issues
+    const MAX_PARTICLES = 50;
+    if (state.particles.length > MAX_PARTICLES) {
+      state.particles.splice(0, state.particles.length - MAX_PARTICLES);
+    }
+    
     for (let i = state.particles.length - 1; i >= 0; i--) {
       state.particles[i].x += state.particles[i].vx;
       state.particles[i].y += state.particles[i].vy;
@@ -998,13 +1004,27 @@ export default function AsteroidMining() {
     trackEvent('game_start', 'asteroid-mining', '', 0);
   }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay, music]);
 
-  const handleTouchStart = useCallback((zone: 'left' | 'right' | 'shoot') => {
+  const handleTouchStart = useCallback((e: React.TouchEvent, zone: 'left' | 'right' | 'shoot') => {
+    e.preventDefault(); // Prevent scrolling during game
     if (zone === 'left') touchRef.current.left = true;
     if (zone === 'right') touchRef.current.right = true;
     if (zone === 'shoot') { touchRef.current.shoot = true; shoot(); }
   }, [shoot]);
 
-  const handleTouchEnd = useCallback((zone: 'left' | 'right' | 'shoot') => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent, zone: 'left' | 'right' | 'shoot') => {
+    e.preventDefault();
+    if (zone === 'left') touchRef.current.left = false;
+    if (zone === 'right') touchRef.current.right = false;
+    if (zone === 'shoot') touchRef.current.shoot = false;
+  }, []);
+
+  const handleMouseDown = useCallback((zone: 'left' | 'right' | 'shoot') => {
+    if (zone === 'left') touchRef.current.left = true;
+    if (zone === 'right') touchRef.current.right = true;
+    if (zone === 'shoot') { touchRef.current.shoot = true; shoot(); }
+  }, [shoot]);
+
+  const handleMouseUp = useCallback((zone: 'left' | 'right' | 'shoot') => {
     if (zone === 'left') touchRef.current.left = false;
     if (zone === 'right') touchRef.current.right = false;
     if (zone === 'shoot') touchRef.current.shoot = false;
@@ -1222,29 +1242,29 @@ export default function AsteroidMining() {
             <div className="flex justify-center gap-3">
               <Button
                 className="w-20 h-14 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40 shadow-[0_0_15px_#00FFFF30]"
-                onTouchStart={() => handleTouchStart('left')}
-                onTouchEnd={() => handleTouchEnd('left')}
-                onMouseDown={() => handleTouchStart('left')}
-                onMouseUp={() => handleTouchEnd('left')}
-                onMouseLeave={() => handleTouchEnd('left')}
+                onTouchStart={(e) => handleTouchStart(e, 'left')}
+                onTouchEnd={(e) => handleTouchEnd(e, 'left')}
+                onMouseDown={() => handleMouseDown('left')}
+                onMouseUp={() => handleMouseUp('left')}
+                onMouseLeave={() => handleMouseUp('left')}
                 data-testid="button-move-left"
               >←</Button>
               <Button
                 className="w-28 h-14 bg-red-500/30 border border-red-500/50 text-red-400 text-lg font-bold active:bg-red-500/50 shadow-[0_0_15px_#EF444430]"
-                onTouchStart={() => handleTouchStart('shoot')}
-                onTouchEnd={() => handleTouchEnd('shoot')}
-                onMouseDown={() => handleTouchStart('shoot')}
-                onMouseUp={() => handleTouchEnd('shoot')}
-                onMouseLeave={() => handleTouchEnd('shoot')}
+                onTouchStart={(e) => handleTouchStart(e, 'shoot')}
+                onTouchEnd={(e) => handleTouchEnd(e, 'shoot')}
+                onMouseDown={() => handleMouseDown('shoot')}
+                onMouseUp={() => handleMouseUp('shoot')}
+                onMouseLeave={() => handleMouseUp('shoot')}
                 data-testid="button-shoot"
               >FIRE</Button>
               <Button
                 className="w-20 h-14 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40 shadow-[0_0_15px_#00FFFF30]"
-                onTouchStart={() => handleTouchStart('right')}
-                onTouchEnd={() => handleTouchEnd('right')}
-                onMouseDown={() => handleTouchStart('right')}
-                onMouseUp={() => handleTouchEnd('right')}
-                onMouseLeave={() => handleTouchEnd('right')}
+                onTouchStart={(e) => handleTouchStart(e, 'right')}
+                onTouchEnd={(e) => handleTouchEnd(e, 'right')}
+                onMouseDown={() => handleMouseDown('right')}
+                onMouseUp={() => handleMouseUp('right')}
+                onMouseLeave={() => handleMouseUp('right')}
                 data-testid="button-move-right"
               >→</Button>
             </div>
