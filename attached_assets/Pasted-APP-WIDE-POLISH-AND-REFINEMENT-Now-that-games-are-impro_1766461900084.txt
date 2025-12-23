@@ -1,0 +1,124 @@
+APP-WIDE POLISH AND REFINEMENT
+
+Now that games are improved, let's polish the rest of the app.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 1: LOADING & TRANSITIONS
+═══════════════════════════════════════════════════════════════════
+
+1. PAGE TRANSITIONS
+   - Smooth fade or slide between pages
+   - Use framer-motion or CSS transitions
+   - Consistent animation timing (200-300ms)
+
+2. LOADING STATES
+   - Skeleton loaders instead of spinners where possible
+   - NFT cards: show placeholder with shimmer effect
+   - Lists: show 3-6 skeleton items while loading
+
+3. IMAGE LOADING
+   - Blur-up effect: show blurry placeholder, then sharp image
+   - Lazy load images below the fold
+   - Error state: show placeholder if image fails
+
+═══════════════════════════════════════════════════════════════════
+SECTION 2: MICRO-INTERACTIONS
+═══════════════════════════════════════════════════════════════════
+
+Add subtle animations that delight:
+
+1. BUTTONS
+   - Hover: slight scale (1.02) + glow
+   - Click: scale down (0.98) + color shift
+   - Disabled: reduced opacity + no cursor
+
+2. CARDS (NFT cards, menu cards)
+   - Hover: lift up (translateY -4px) + shadow
+   - Border glow on hover
+   - Smooth transition (200ms ease)
+
+3. NAVIGATION
+   - Active link indicator (underline or glow)
+   - Smooth scroll for anchor links
+   - Breadcrumb animations
+
+4. FORMS & INPUTS
+   - Focus: border glow (cyan)
+   - Error: shake animation + red border
+   - Success: green checkmark
+
+═══════════════════════════════════════════════════════════════════
+SECTION 3: EMPTY STATES
+═══════════════════════════════════════════════════════════════════
+
+When there's no content, show helpful empty states:
+
+1. NO NFTs OWNED
+   - Friendly illustration
+   - "You don't own any NFTs yet"
+   - "Mint your first Guardian" button
+
+2. NO LISTINGS
+   - "No NFTs listed for sale"
+   - "Be the first to list!"
+
+3. NO ACTIVITY
+   - "No recent activity"
+   - "Transactions will appear here"
+
+4. ERROR STATES
+   - Friendly error message
+   - "Try Again" button
+   - Link to support/help
+
+═══════════════════════════════════════════════════════════════════
+SECTION 4: MOBILE REFINEMENTS
+═══════════════════════════════════════════════════════════════════
+
+Extra polish for mobile:
+
+1. TOUCH FEEDBACK
+   - Active states on tap
+   - Ripple effect on buttons (optional)
+
+2. PULL TO REFRESH
+   - On marketplace and portfolio pages
+   - Smooth animation
+
+3. BOTTOM NAVIGATION (if not present)
+   - Fixed bottom bar for key actions
+   - Home, Marketplace, Portfolio, Menu
+
+4. SWIPE GESTURES
+   - Swipe between NFT images in gallery
+   - Swipe to dismiss modals
+
+═══════════════════════════════════════════════════════════════════
+SECTION 5: PERFORMANCE
+═══════════════════════════════════════════════════════════════════
+
+1. IMAGE OPTIMIZATION
+   - Use WebP format where possible
+   - Proper sizing (don't load 2000px image for 200px display)
+   - CDN caching
+
+2. CODE SPLITTING
+   - Lazy load game components
+   - Lazy load heavy pages
+
+3. REDUCE RE-RENDERS
+   - Memoize expensive components
+   - Use React.memo on list items
+   - useCallback for event handlers
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY ORDER:
+═══════════════════════════════════════════════════════════════════
+
+1. Loading states and skeleton loaders
+2. Button/card hover effects
+3. Empty states
+4. Page transitions
+5. Performance optimizations
+
+DO NOT touch wallet or mobile layout code.

@@ -38,6 +38,17 @@ interface Particle {
   life: number;
 }
 
+interface ScorePopup {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  scale: number;
+  life: number;
+  isPerfect: boolean;
+}
+
 type GamePhase = 'menu' | 'playing' | 'paused' | 'gameover';
 
 interface GameState {
@@ -53,8 +64,23 @@ interface GameState {
   survivalTime: number;
   rings: Ring[];
   particles: Particle[];
+  scorePopups: ScorePopup[];
   screenShake: number;
   lastEscapeTime: number;
+}
+
+let popupIdCounter = 0;
+function createScorePopup(text: string, x: number, y: number, color: string, isPerfect: boolean = false): ScorePopup {
+  return {
+    id: ++popupIdCounter,
+    text,
+    x,
+    y,
+    color,
+    scale: isPerfect ? 1.5 : 1,
+    life: 1,
+    isPerfect,
+  };
 }
 
 const GAME_CONFIG = getGameConfig('cyber-breach');
@@ -157,6 +183,7 @@ export default function CyberBreach() {
     survivalTime: 0,
     rings: [],
     particles: [],
+    scorePopups: [],
     screenShake: 0,
     lastEscapeTime: 0,
   });
@@ -311,15 +338,68 @@ export default function CyberBreach() {
       }
       
       const comboMultiplier = Math.min(1 + state.combo * 0.1, 3);
-      state.score += Math.floor(points * comboMultiplier);
+      const finalPoints = Math.floor(points * comboMultiplier);
+      state.score += finalPoints;
+      
+      const popupText = state.combo > 1 
+        ? `+${finalPoints} x${state.combo}` 
+        : `+${finalPoints}`;
+      
+      if (perfectEscape) {
+        state.scorePopups.push(createScorePopup(
+          'PERFECT!', 
+          centerX, 
+          centerY - 80, 
+          COLORS.success, 
+          true
+        ));
+        state.scorePopups.push(createScorePopup(
+          popupText,
+          centerX,
+          centerY - 45,
+          COLORS.success,
+          false
+        ));
+      } else {
+        state.scorePopups.push(createScorePopup(
+          popupText, 
+          centerX, 
+          centerY - 60, 
+          COLORS.primary, 
+          false
+        ));
+      }
       
       if (state.escapes % 10 === 0) {
         state.level++;
-        state.score += 500 * state.level;
+        const levelBonus = 500 * state.level;
+        state.score += levelBonus;
         playSound('levelup');
+        
+        state.scorePopups.push(createScorePopup(
+          `LEVEL ${state.level}!`,
+          centerX,
+          centerY - 100,
+          COLORS.warning,
+          true
+        ));
+        state.scorePopups.push(createScorePopup(
+          `+${levelBonus} BONUS`,
+          centerX,
+          centerY - 70,
+          COLORS.warning,
+          false
+        ));
         
         if (state.lives < state.maxLives) {
           state.lives++;
+          state.scorePopups.push(createScorePopup(
+            '+1 LIFE!',
+            centerX,
+            centerY - 40,
+            '#ff6b6b',
+            false
+          ));
         }
       }
       
@@ -448,6 +528,12 @@ export default function CyberBreach() {
       p.vy += 0.05;
       p.life -= deltaTime * 2;
       return p.life > 0;
+    });
+    
+    state.scorePopups = state.scorePopups.filter(popup => {
+      popup.y -= deltaTime * 40;
+      popup.life -= deltaTime * 1.2;
+      return popup.life > 0;
     });
     
     if (state.screenShake > 0) {
@@ -807,6 +893,31 @@ export default function CyberBreach() {
       ctx.globalAlpha = 1;
     }
     
+    // Floating score popups
+    for (const popup of state.scorePopups) {
+      const fontSize = popup.isPerfect ? 28 : 22;
+      ctx.font = `bold ${fontSize * popup.scale}px Orbitron, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Glow effect
+      ctx.shadowColor = popup.color;
+      ctx.shadowBlur = 15;
+      ctx.globalAlpha = popup.life;
+      
+      // Text outline
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(popup.text, popup.x, popup.y);
+      
+      // Main text
+      ctx.fillStyle = popup.color;
+      ctx.fillText(popup.text, popup.x, popup.y);
+      
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+    
     ctx.restore();
   }, []);
   
@@ -849,6 +960,7 @@ export default function CyberBreach() {
       survivalTime: 0,
       rings: [],
       particles: [],
+      scorePopups: [],
       screenShake: 0,
       lastEscapeTime: 0,
     };
