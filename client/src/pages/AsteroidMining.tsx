@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type TouchEvent as ReactTouchEvent } from 'react';
 import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
@@ -1004,14 +1004,14 @@ export default function AsteroidMining() {
     trackEvent('game_start', 'asteroid-mining', '', 0);
   }, [address, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, toast, initGame, recordPlay, music]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent, zone: 'left' | 'right' | 'shoot') => {
+  const handleTouchStart = useCallback((e: ReactTouchEvent<HTMLButtonElement>, zone: 'left' | 'right' | 'shoot') => {
     e.preventDefault(); // Prevent scrolling during game
     if (zone === 'left') touchRef.current.left = true;
     if (zone === 'right') touchRef.current.right = true;
     if (zone === 'shoot') { touchRef.current.shoot = true; shoot(); }
   }, [shoot]);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent, zone: 'left' | 'right' | 'shoot') => {
+  const handleTouchEnd = useCallback((e: ReactTouchEvent<HTMLButtonElement>, zone: 'left' | 'right' | 'shoot') => {
     e.preventDefault();
     if (zone === 'left') touchRef.current.left = false;
     if (zone === 'right') touchRef.current.right = false;
