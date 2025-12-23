@@ -24,6 +24,7 @@ export function useGameLeaderboard(limit: number = 20) {
     },
     refetchInterval: 30000,
     staleTime: 15000,
+    gcTime: 2 * 60 * 1000, // 2min garbage collection
   });
 }
 
@@ -40,6 +41,7 @@ export function usePlayerGameStats() {
     },
     enabled: isConnected && !!address,
     staleTime: 10000,
+    gcTime: 2 * 60 * 1000, // 2min garbage collection
   });
 }
 

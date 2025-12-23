@@ -452,6 +452,7 @@ export function useGuardians(
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: true,
-    staleTime: 30000, // 30s stale time
+    staleTime: 60000, // 1min stale time for NFT metadata
+    gcTime: 10 * 60 * 1000, // 10min garbage collection
   });
 }

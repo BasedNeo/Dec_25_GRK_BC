@@ -78,5 +78,6 @@ export function useTokenPrice() {
     },
     refetchInterval: 30000,
     staleTime: 30000,
+    gcTime: 5 * 60 * 1000, // 5min garbage collection
   });
 }
