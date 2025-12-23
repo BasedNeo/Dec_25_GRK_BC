@@ -4,7 +4,7 @@ import { useWaitForTransactionReceipt } from 'wagmi';
 import { Loader2, CheckCircle2, XCircle, ExternalLink, RefreshCw, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BLOCK_EXPLORER } from '@/lib/constants';
-import confetti from 'canvas-confetti';
+import { getConfetti } from '@/lib/dynamicImports';
 import { useInterval } from '@/hooks/useInterval';
 import { TimerManager } from '@/lib/timerManager';
 
@@ -39,26 +39,8 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
     setElapsedTime(prev => prev + 1);
   }, transaction && transaction.status !== 'idle' ? 1000 : null);
   
-  useEffect(() => {
-    if (isSuccess && !showConfetti) {
-      setShowConfetti(true);
-      triggerConfetti();
-    }
-  }, [isSuccess, showConfetti]);
-  
-  useEffect(() => {
-    if (receipt?.blockNumber) {
-      setConfirmations(1);
-    }
-  }, [receipt]);
-  
-  useEffect(() => {
-    setElapsedTime(0);
-    setConfirmations(0);
-    setShowConfetti(false);
-  }, [transaction?.hash]);
-  
-  const triggerConfetti = useCallback(() => {
+  const triggerConfettiEffect = useCallback(async () => {
+    const confetti = await getConfetti();
     const duration = 3000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
@@ -87,6 +69,25 @@ export function TransactionOverlay({ transaction, onClose }: TransactionOverlayP
       });
     }, 250);
   }, []);
+  
+  useEffect(() => {
+    if (isSuccess && !showConfetti) {
+      setShowConfetti(true);
+      triggerConfettiEffect();
+    }
+  }, [isSuccess, showConfetti, triggerConfettiEffect]);
+  
+  useEffect(() => {
+    if (receipt?.blockNumber) {
+      setConfirmations(1);
+    }
+  }, [receipt]);
+  
+  useEffect(() => {
+    setElapsedTime(0);
+    setConfirmations(0);
+    setShowConfetti(false);
+  }, [transaction?.hash]);
   
   const copyHash = useCallback(() => {
     if (!transaction?.hash) return;

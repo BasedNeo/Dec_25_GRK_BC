@@ -10,7 +10,7 @@ import { X, ShieldCheck, Zap, Info, Share2, ExternalLink, Activity, Copy, Check,
 import { Guardian, calculateBackedValue } from "@/lib/mockData";
 const MINT_PRICE = 69420;
 import { motion } from "framer-motion";
-import confetti from "canvas-confetti";
+import { triggerConfetti } from "@/lib/dynamicImports";
 import { useEffect, useState, useMemo } from "react";
 import { useInterval } from "@/hooks/useInterval";
 import { MarketItem } from "@/lib/marketplaceData";
@@ -372,7 +372,7 @@ export function NFTDetailModal({ isOpen, onClose, nft }: NFTDetailModalProps) {
       if (isLegendary) {
         // Use a slightly lower z-index than modal to ensure it doesn't block interactions if that was the issue
         setTimeout(() => {
-            confetti({
+            triggerConfetti({
             particleCount: 150,
             spread: 100,
             origin: { y: 0.6 },

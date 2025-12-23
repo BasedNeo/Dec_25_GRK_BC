@@ -19,7 +19,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
+import { triggerConfetti } from "@/lib/dynamicImports";
 import { generateMarketplaceData, MarketItem } from "@/lib/marketplaceData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -823,7 +823,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
           
           if (success) {
               trackEvent('nft_offer_v3', 'Marketplace', `Item #${offerItem.id}`, amount);
-              confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 }, colors: ['#00ffff', '#bf00ff'] });
+              triggerConfetti({ particleCount: 100, spread: 60, origin: { y: 0.7 }, colors: ['#00ffff', '#bf00ff'] });
           }
       } catch {
           // Error handled in hook
@@ -836,7 +836,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       try {
           await marketplace.acceptOffer(tokenId, offererAddress);
           // Offers will auto-refresh from blockchain via useOffersForOwner hook
-          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
+          triggerConfetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
           trackEvent('nft_accept_offer', 'Marketplace', `Item #${tokenId}`);
       } catch {
           // Error handled by marketplace hook
@@ -959,7 +959,7 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
             trackEvent('nft_buy', 'Marketplace', `Item #${item.id}`, priceFormatted);
             
             // Show confetti on success (hook handles toast)
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
+            triggerConfetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#00ffff', '#bf00ff'] });
         } catch {
             toast({ 
                 title: "Purchase Failed", 

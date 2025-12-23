@@ -10,7 +10,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import confetti from "canvas-confetti";
+import { triggerConfetti } from "@/lib/dynamicImports";
 import { showToast } from "@/lib/customToast";
 import { useQueryClient } from "@tanstack/react-query";
 import { WalletBalanceDisplay } from "./WalletBalanceDisplay";
@@ -114,7 +114,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
       if (!hasConnectedBefore) {
         const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         if (!isMobile) {
-          confetti({
+          triggerConfetti({
             particleCount: 150,
             spread: 80,
             origin: { y: 0.2 },

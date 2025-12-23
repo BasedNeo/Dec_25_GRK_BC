@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ethers } from 'ethers';
 import { RPC_URL, NFT_CONTRACT } from '@/lib/constants';
-import confetti from 'canvas-confetti';
+import { triggerConfetti } from '@/lib/dynamicImports';
 import { useGameScoresLocal, RANKS as GAME_RANKS_DATA } from '@/hooks/useGameScoresLocal';
 import { Link } from 'wouter';
 
@@ -596,7 +596,7 @@ export function UserStats() {
   useEffect(() => {
     if (currentLevel > previousLevel && previousLevel >= 0) {
       setShowLevelUp(true);
-      confetti({
+      triggerConfetti({
         particleCount: 150,
         spread: 100,
         origin: { y: 0.4 },
