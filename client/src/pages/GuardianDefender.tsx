@@ -392,7 +392,7 @@ export function GuardianDefender() {
               <div className="w-24 h-20 mx-auto mb-4 relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30" />
                 <div className="absolute inset-2 flex items-center justify-center" style={{ animation: 'ship-hover 3s ease-in-out infinite' }}>
-                  <img src={rocketShip} alt="Ship" className="w-10 h-10 object-contain" />
+                  <img src={rocketShip} alt="Ship" className="w-10 h-10 object-contain" loading="lazy" decoding="async" />
                 </div>
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-cyan-500/20 text-cyan-400 text-[8px] font-mono px-2 py-0.5 rounded border border-cyan-500/30" style={{ animation: 'status-blink 2s ease-in-out infinite' }}>
                   HANGAR A7

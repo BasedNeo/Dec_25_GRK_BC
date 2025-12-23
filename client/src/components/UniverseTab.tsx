@@ -2,11 +2,12 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Heart, BookOpen, ArrowRightLeft, Loader2, Globe, Cpu, Sparkles } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useAccount } from "wagmi";
 import { Footer } from "./Footer";
 import { Link } from "wouter";
-import { LoreExplorer } from "./LoreExplorer";
+
+const LoreExplorer = lazy(() => import("./LoreExplorer").then(m => ({ default: m.LoreExplorer })));
 
 function AnimatedStarfield() {
   const { scrollY } = useScroll();
@@ -715,7 +716,9 @@ export function UniverseTab({ onMintClick }: UniverseTabProps) {
               transition={{ delay: 0.2 }}
               className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6"
             >
-              <LoreExplorer />
+              <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-cyan-400 animate-spin" /></div>}>
+                <LoreExplorer />
+              </Suspense>
             </motion.div>
           </div>
         </motion.section>

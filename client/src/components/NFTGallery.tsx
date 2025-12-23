@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Lock, Loader2, RefreshCw, AlertTriangle, Filter, TrendingUp, Search, ArrowUpDown, Download, Square, LayoutGrid, Grid3x3, Grid, ExternalLink } from "lucide-react";
 import { Guardian, RARITY_CONFIG, calculateBackedValue } from "@/lib/mockData";
 import { useAccount } from "wagmi";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useGuardians } from "@/hooks/useGuardians";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
@@ -23,7 +23,7 @@ import { Security } from "@/lib/security";
 import { CacheService } from "@/lib/cache";
 import { clearCSVCache } from "@/lib/csvLoader";
 
-import { NFTDetailModal } from "./NFTDetailModal";
+const NFTDetailModal = lazy(() => import("./NFTDetailModal").then(m => ({ default: m.NFTDetailModal })));
 import { RetrieveOldListing } from "./RetrieveOldListing";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -599,7 +599,7 @@ export function NFTGallery({
                            <>
                              <div className="w-20 h-20 rounded-xl overflow-hidden mb-4 bg-muted">
                                {selectedCollectionInfo.representativeImage ? (
-                                 <img src={selectedCollectionInfo.representativeImage} alt={selectedCollectionInfo.name} className="w-full h-full object-cover" />
+                                 <img src={selectedCollectionInfo.representativeImage} alt={selectedCollectionInfo.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                ) : (
                                  <div className="w-full h-full flex items-center justify-center text-4xl">🖼️</div>
                                )}
@@ -699,11 +699,13 @@ export function NFTGallery({
               </div>
             )}
 
-            <NFTDetailModal 
-              isOpen={!!selectedNFT} 
-              onClose={() => setSelectedNFT(null)} 
-              nft={selectedNFT} 
-            />
+            <Suspense fallback={null}>
+              <NFTDetailModal 
+                isOpen={!!selectedNFT} 
+                onClose={() => setSelectedNFT(null)} 
+                nft={selectedNFT} 
+              />
+            </Suspense>
         </section>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useInterval } from "@/hooks/useInterval";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ import { ContractService } from "@/lib/contractService";
 import { useGuardians } from "@/hooks/useGuardians";
 import Fuse from 'fuse.js';
 import { useDebounce } from "@/hooks/use-debounce"; 
-import { NFTDetailModal } from "./NFTDetailModal";
+const NFTDetailModal = lazy(() => import("./NFTDetailModal").then(m => ({ default: m.NFTDetailModal })));
 import { BuyButton } from "./BuyButton";
 import { useMarketplace, useListing, useFloorPrice } from "@/hooks/useMarketplace";
 import { useOffersForOwner } from "@/hooks/useOffers";
@@ -1606,11 +1606,13 @@ export function EscrowMarketplace({ onNavigateToMint, onNavigateToPortfolio }: E
       </div>
       
       {/* Modals */}
-      <NFTDetailModal 
-        isOpen={!!selectedNFT} 
-        onClose={() => setSelectedNFT(null)} 
-        nft={selectedNFT} 
-      />
+      <Suspense fallback={null}>
+        <NFTDetailModal 
+          isOpen={!!selectedNFT} 
+          onClose={() => setSelectedNFT(null)} 
+          nft={selectedNFT} 
+        />
+      </Suspense>
 
       {/* Offer Modal */}
       <OfferModal 
