@@ -12,7 +12,9 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield, Smartphone } from 'lucide-react';
+import { ShipSelector } from '@/components/game/CosmeticSelector';
+import { useUnlockables, SHIP_SKINS, ShipSkin } from '@/hooks/useUnlockables';
+import { Play, Home, Trophy, Heart, Zap, Volume2, VolumeX, Target, Shield, Smartphone, Palette } from 'lucide-react';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 import { AnimatePresence } from 'framer-motion';
 
@@ -117,6 +119,9 @@ export default function AsteroidMining() {
   const [, navigate] = useLocation();
   const { submitScore, myStats, refreshStats } = useGameScoresLocal();
   const { access, recordPlay, isLoading: nftLoading } = useGameAccess();
+  const { selected, updateStats } = useUnlockables();
+  const [showShipSelector, setShowShipSelector] = useState(false);
+  const currentShip = useMemo(() => SHIP_SKINS[selected.ship], [selected.ship]);
 
   const gameConfig = useMemo(() => getGameConfig('asteroid-mining'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -452,7 +457,7 @@ export default function AsteroidMining() {
           state.combo = 0;
           state.player.invincible = 120;
           state.screenShake = 15;
-          state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, '#00FFFF', 20));
+          state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, currentShip.colors.primary, 20));
           state.enemies.splice(i, 1);
           playSound('playerhit');
           if (isMobile && hapticEnabled) haptic.heavy();
@@ -539,8 +544,10 @@ export default function AsteroidMining() {
 
     const flash = state.player.invincible > 0 && Math.floor(state.player.invincible / 8) % 2 === 0;
     if (!flash) {
-      ctx.fillStyle = state.player.shield ? '#3B82F6' : '#00FFFF';
-      ctx.shadowColor = state.player.shield ? '#3B82F6' : '#00FFFF';
+      const shipColor = state.player.shield ? '#3B82F6' : currentShip.colors.primary;
+      const shipGlow = state.player.shield ? '#3B82F6' : currentShip.colors.glow;
+      ctx.fillStyle = shipColor;
+      ctx.shadowColor = shipGlow;
       ctx.shadowBlur = state.player.rapidFire > 0 ? 15 : 10;
       ctx.beginPath();
       ctx.moveTo(state.player.x + state.player.width / 2, state.player.y);
@@ -644,6 +651,8 @@ export default function AsteroidMining() {
         submitScore(state.score, state.enemiesDestroyed);
         refreshStats();
       }
+      // Track unlocks
+      updateStats('asteroid-mining', { highScore: state.score, maxWave: state.wave });
       trackEvent('game_complete', 'asteroid-mining', String(state.enemiesDestroyed), state.score);
       return;
     }
@@ -858,6 +867,20 @@ export default function AsteroidMining() {
                   </Button>
                 </div>
               )}
+              
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-400 flex items-center gap-2"><Palette className="w-4 h-4" /> Ship Skin</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowShipSelector(true)} 
+                  className="text-purple-400"
+                  data-testid="button-ship-selector"
+                >
+                  <span className="w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: currentShip.colors.primary }} />
+                  {currentShip.name}
+                </Button>
+              </div>
 
               <Button onClick={startGame} disabled={!access.canPlay} className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500" data-testid="button-start-game">
                 <Play className="w-6 h-6 mr-2" />
@@ -873,6 +896,13 @@ export default function AsteroidMining() {
             </div>
           </div>
         </section>
+        
+        {showShipSelector && (
+          <ShipSelector 
+            onSelect={() => setShowShipSelector(false)}
+            onClose={() => setShowShipSelector(false)}
+          />
+        )}
       </>
     );
   }

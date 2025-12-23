@@ -12,7 +12,9 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Heart, Target, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { RingThemeSelector } from '@/components/game/CosmeticSelector';
+import { useUnlockables, RING_THEMES, RingTheme } from '@/hooks/useUnlockables';
+import { Play, Home, Trophy, Heart, Target, Volume2, VolumeX, Sparkles, Palette } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
@@ -107,6 +109,9 @@ export default function RingGame() {
   const [, navigate] = useLocation();
   const { submitScore, myStats, refreshStats } = useGameScoresLocal();
   const { access, recordPlay, isLoading: nftLoading } = useGameAccess();
+  const { selected, updateStats } = useUnlockables();
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const currentTheme = useMemo(() => RING_THEMES[selected.ringTheme], [selected.ringTheme]);
 
   const gameConfig = useMemo(() => getGameConfig('ring-game'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -629,6 +634,8 @@ export default function RingGame() {
         submitScore(state.score, state.level);
         refreshStats();
       }
+      // Track unlocks
+      updateStats('ring-game', { maxRing: state.level });
       trackEvent('game_complete', 'ring-game', String(state.level), state.score);
       return;
     }
@@ -769,6 +776,20 @@ export default function RingGame() {
                   {hapticEnabled ? 'ON' : 'OFF'}
                 </Button>
               </div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-400 flex items-center gap-2"><Palette className="w-4 h-4" /> Ring Theme</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowThemeSelector(true)} 
+                  className="text-cyan-400"
+                  data-testid="button-theme-selector"
+                >
+                  <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: currentTheme.colors.ring1 }} />
+                  {currentTheme.name}
+                </Button>
+              </div>
 
               <Button onClick={startGame} disabled={!access.canPlay} className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500" data-testid="button-start-game">
                 <Play className="w-6 h-6 mr-2" />
@@ -784,6 +805,13 @@ export default function RingGame() {
             </div>
           </div>
         </section>
+        
+        {showThemeSelector && (
+          <RingThemeSelector 
+            onSelect={() => setShowThemeSelector(false)}
+            onClose={() => setShowThemeSelector(false)}
+          />
+        )}
       </>
     );
   }

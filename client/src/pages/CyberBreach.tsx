@@ -12,7 +12,9 @@ import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
-import { Play, Home, Trophy, Clock, Target, Volume2, VolumeX } from 'lucide-react';
+import { TerminalSelector } from '@/components/game/CosmeticSelector';
+import { useUnlockables, TERMINAL_SKINS, TerminalSkin } from '@/hooks/useUnlockables';
+import { Play, Home, Trophy, Clock, Target, Volume2, VolumeX, Palette } from 'lucide-react';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
 interface GameCard {
@@ -60,6 +62,9 @@ export default function CyberBreach() {
   const [, navigate] = useLocation();
   const { submitScore, myStats, refreshStats } = useGameScoresLocal();
   const { access, recordPlay, isLoading: nftLoading } = useGameAccess();
+  const { selected, updateStats } = useUnlockables();
+  const [showTerminalSelector, setShowTerminalSelector] = useState(false);
+  const currentTerminal = useMemo(() => TERMINAL_SKINS[selected.terminal], [selected.terminal]);
 
   const gameConfig = useMemo(() => getGameConfig('cyber-breach'), []);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -249,8 +254,10 @@ export default function CyberBreach() {
       submitScore(score, level);
       refreshStats();
     }
+    // Track unlocks
+    updateStats('cyber-breach', { maxLevel: level });
     trackEvent('game_complete', 'cyber-breach', String(level), score);
-  }, [address, score, level, submitScore, refreshStats]);
+  }, [address, score, level, submitScore, refreshStats, updateStats]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -466,6 +473,20 @@ export default function CyberBreach() {
                   {hapticEnabled ? 'ON' : 'OFF'}
                 </Button>
               </div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-400 flex items-center gap-2"><Palette className="w-4 h-4" /> Terminal Skin</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowTerminalSelector(true)} 
+                  className="text-green-400"
+                  data-testid="button-terminal-selector"
+                >
+                  <span className="w-3 h-3 rounded mr-2" style={{ backgroundColor: currentTerminal.colors.text }} />
+                  {currentTerminal.name}
+                </Button>
+              </div>
 
               <Button onClick={startGame} disabled={!access.canPlay} className="w-full h-14 text-lg font-orbitron bg-gradient-to-r from-green-500 to-cyan-600 hover:from-green-400 hover:to-cyan-500" data-testid="button-start-game">
                 <Play className="w-6 h-6 mr-2" />
@@ -481,6 +502,13 @@ export default function CyberBreach() {
             </div>
           </div>
         </section>
+        
+        {showTerminalSelector && (
+          <TerminalSelector 
+            onSelect={() => setShowTerminalSelector(false)}
+            onClose={() => setShowTerminalSelector(false)}
+          />
+        )}
       </>
     );
   }
