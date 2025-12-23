@@ -520,13 +520,14 @@ export default function GuardianDefense() {
     state.waveChainBonus = 0;
     state.missilesRemaining = config.count;
     
-    toast({
+    const waveToast = toast({
       title: waveNumber === 10 ? "⚠️ FINAL BOSS WAVE" : `WAVE ${waveNumber}`,
       description: config.message,
       className: waveNumber === 10 
         ? "bg-black/90 border-red-500 text-red-400"
         : "bg-black/90 border-cyan-500/50 text-cyan-400"
     });
+    setTimeout(() => waveToast.dismiss(), 3000);
     
     playSound('wave');
     
@@ -827,11 +828,12 @@ export default function GuardianDefense() {
         createScorePopup(`CHAIN BONUS +${chainBonus}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
       }
       
-      toast({
+      const completeToast = toast({
         title: perfectDefense ? "⭐ PERFECT DEFENSE!" : `Wave ${state.wave} Complete!`,
         description: WAVE_MESSAGES[state.wave - 1] || "Well defended!",
         className: "bg-black/90 border-green-500 text-green-400"
       });
+      setTimeout(() => completeToast.dismiss(), 3000);
       
       if (state.wave >= 10) {
         setGameWon(true);

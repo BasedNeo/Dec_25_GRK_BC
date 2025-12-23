@@ -657,11 +657,11 @@ export function GuardianDefender() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => setLocation('/')}
+                  onClick={() => setLocation('/games')}
                   className="border-white/30 text-white px-5 py-3 rounded-xl hover:bg-white/10" 
-                  data-testid="button-exit"
+                  data-testid="button-return-arcade"
                 >
-                  <Home size={18} className="mr-2" /> EXIT
+                  <Home size={18} className="mr-2" /> RETURN TO ARCADE
                 </Button>
               </div>
               
