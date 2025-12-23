@@ -1,0 +1,208 @@
+COMPREHENSIVE CODEBASE EVALUATION AND IMPROVEMENT AUDIT
+
+Now that the critical mobile bugs are fixed, perform a thorough evaluation of the entire codebase. Focus on code quality, performance, user experience, and maintainability.
+
+DO NOT make changes yet - first report your findings, then I'll tell you which improvements to implement.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 1: CODE QUALITY AUDIT
+═══════════════════════════════════════════════════════════════════
+
+Evaluate these areas and rate each 1-5 (5=excellent):
+
+1. TYPE SAFETY
+   - Are there any "any" types that should be properly typed?
+   - Are API responses properly typed?
+   - Are there missing interface definitions?
+
+2. ERROR HANDLING
+   - Do API calls have proper try/catch?
+   - Are errors displayed to users gracefully?
+   - Is there proper fallback UI for error states?
+
+3. CODE DUPLICATION
+   - Are there repeated patterns that should be abstracted?
+   - Are there copy-pasted functions across files?
+
+4. COMPONENT STRUCTURE
+   - Are components too large (>300 lines)?
+   - Are there components doing too many things?
+   - Is prop drilling excessive?
+
+5. STATE MANAGEMENT
+   - Is state properly lifted/colocated?
+   - Are there unnecessary re-renders?
+   - Is React Query being used effectively?
+
+═══════════════════════════════════════════════════════════════════
+SECTION 2: PERFORMANCE AUDIT
+═══════════════════════════════════════════════════════════════════
+
+Check for these issues:
+
+1. BUNDLE SIZE
+   - Are there unused imports?
+   - Are large libraries imported when smaller alternatives exist?
+   - Is code-splitting being used effectively?
+
+2. RENDER PERFORMANCE
+   - Are expensive computations memoized (useMemo)?
+   - Are callback functions memoized (useCallback)?
+   - Are components wrapped in React.memo where appropriate?
+
+3. NETWORK PERFORMANCE
+   - Are API calls properly cached?
+   - Are there redundant API calls?
+   - Is data being refetched too frequently?
+
+4. IMAGE OPTIMIZATION
+   - Are images lazy-loaded?
+   - Are there missing width/height attributes causing layout shift?
+   - Are image formats optimized (WebP)?
+
+5. CSS PERFORMANCE
+   - Are there unused CSS rules?
+   - Are animations GPU-accelerated (transform/opacity)?
+   - Are there layout thrashing issues?
+
+═══════════════════════════════════════════════════════════════════
+SECTION 3: UX/UI AUDIT
+═══════════════════════════════════════════════════════════════════
+
+Evaluate user experience:
+
+1. LOADING STATES
+   - Do all async operations show loading indicators?
+   - Are skeleton loaders used instead of spinners where appropriate?
+   - Is the initial app load optimized?
+
+2. FEEDBACK & INTERACTIONS
+   - Do buttons show disabled state when actions are in progress?
+   - Are success/error toasts shown for user actions?
+   - Are hover/active states defined for interactive elements?
+
+3. RESPONSIVE DESIGN
+   - Does the layout work on all screen sizes (320px to 1920px+)?
+   - Are touch targets large enough on mobile (44x44px minimum)?
+   - Is text readable on all devices?
+
+4. ACCESSIBILITY
+   - Do images have alt text?
+   - Is color contrast sufficient?
+   - Can the app be navigated with keyboard?
+   - Are ARIA labels used where needed?
+
+5. NAVIGATION & FLOW
+   - Is navigation intuitive?
+   - Are there dead-ends in the user flow?
+   - Is the back button behavior correct?
+
+═══════════════════════════════════════════════════════════════════
+SECTION 4: WALLET & WEB3 AUDIT
+═══════════════════════════════════════════════════════════════════
+
+Since this is a dApp, check Web3 integration:
+
+1. WALLET CONNECTION
+   - Does wallet connection work on all supported browsers?
+   - Is there proper handling when user rejects connection?
+   - Does the app handle chain switching gracefully?
+
+2. TRANSACTION HANDLING
+   - Are transaction states (pending/success/failed) shown clearly?
+   - Is there proper error messaging for failed transactions?
+   - Are gas estimation errors handled?
+
+3. CONTRACT INTERACTIONS
+   - Are contract calls properly awaited?
+   - Is there proper handling for reverted transactions?
+   - Are approval flows clear to users?
+
+4. SECURITY
+   - Are private keys or sensitive data exposed in client code?
+   - Is CSP properly configured?
+   - Are external API calls validated?
+
+═══════════════════════════════════════════════════════════════════
+SECTION 5: MARKETPLACE-SPECIFIC AUDIT
+═══════════════════════════════════════════════════════════════════
+
+For the NFT marketplace features:
+
+1. LISTINGS
+   - Is the listing flow intuitive?
+   - Are price inputs validated properly?
+   - Is there confirmation before listing?
+
+2. BUYING
+   - Is the buy flow smooth?
+   - Are fees and totals clearly displayed?
+   - Is there proper handling for insufficient balance?
+
+3. OFFERS
+   - Is the offer system working correctly?
+   - Can users see and manage their offers?
+   - Are offer expirations handled?
+
+4. COLLECTIONS
+   - Do collection pages load correctly?
+   - Is filtering and sorting working?
+   - Are collection stats accurate?
+
+5. PORTFOLIO
+   - Can users see their owned NFTs?
+   - Is activity history displayed?
+   - Are pending transactions shown?
+
+═══════════════════════════════════════════════════════════════════
+SECTION 6: SERVER/API AUDIT
+═══════════════════════════════════════════════════════════════════
+
+For the Express backend:
+
+1. API DESIGN
+   - Are endpoints RESTful?
+   - Is error handling consistent?
+   - Are responses properly structured?
+
+2. DATABASE
+   - Are queries optimized?
+   - Is there proper indexing?
+   - Are there N+1 query problems?
+
+3. CACHING
+   - Is data being cached appropriately?
+   - Are cache invalidation strategies correct?
+
+4. SECURITY
+   - Is input validation in place?
+   - Are SQL injection attacks prevented?
+   - Is rate limiting implemented?
+
+═══════════════════════════════════════════════════════════════════
+OUTPUT FORMAT:
+═══════════════════════════════════════════════════════════════════
+
+For each section, provide:
+
+1. RATING: 1-5 score
+2. ISSUES FOUND: List specific problems with file:line references
+3. QUICK WINS: Easy fixes that would improve things significantly
+4. MAJOR IMPROVEMENTS: Larger changes that would help
+
+Then provide a PRIORITIZED LIST of the top 10 improvements ranked by:
+- Impact (how much it improves UX/performance)
+- Effort (how long to implement)
+- Risk (chance of breaking something)
+
+Format: "1. [Impact: High/Med/Low] [Effort: Low/Med/High] [Risk: Low/Med/High] - Description"
+
+═══════════════════════════════════════════════════════════════════
+CONSTRAINTS:
+═══════════════════════════════════════════════════════════════════
+
+- DO NOT make any changes yet
+- DO NOT delete any features
+- Focus on improvements, not rewrites
+- Preserve all existing functionality
+- Consider this a production app with real users
