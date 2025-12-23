@@ -1570,7 +1570,7 @@ export default function AsteroidMining() {
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
             <div className="flex gap-1">
-              {[...Array(state.ship.lives)].map((_, i) => (
+              {[...Array(Math.max(0, state.ship.lives))].map((_, i) => (
                 <Heart key={i} className="w-5 h-5 text-red-400 fill-current" data-testid={`icon-life-${i}`} />
               ))}
             </div>
@@ -1625,6 +1625,16 @@ export default function AsteroidMining() {
               setTargetPosition({ x, y });
             }}
             onTouchStart={(e) => {
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const touch = e.touches[0];
+              const scaleX = CANVAS_WIDTH / rect.width;
+              const scaleY = CANVAS_HEIGHT / rect.height;
+              const x = (touch.clientX - rect.left) * scaleX;
+              const y = (touch.clientY - rect.top) * scaleY;
+              setTargetPosition({ x, y });
+            }}
+            onTouchMove={(e) => {
               e.preventDefault();
               const rect = e.currentTarget.getBoundingClientRect();
               const touch = e.touches[0];
