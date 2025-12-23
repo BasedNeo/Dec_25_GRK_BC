@@ -356,19 +356,26 @@ export default function RingGame() {
     if (result === 'perfect') {
       state.combo++;
       state.perfectStreak++;
-      const points = 100 * Math.min(state.combo, 10);
-      state.score += points;
-      state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15));
       
-      // Special feedback for perfect streaks
+      // Streak bonus: +50 per streak level
+      const streakBonus = state.perfectStreak * 50;
+      const basePoints = 100 * Math.min(state.combo, 10);
+      const points = basePoints + streakBonus;
+      state.score += points;
+      state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#00FF88', 15 + state.perfectStreak));
+      
+      // Enhanced streak milestones
       if (state.perfectStreak === 5) {
-        state.feedbackText = 'HARMONIOUS';
-        state.score += 250; // Bonus
+        state.feedbackText = '5 STREAK! ⭐';
+        state.score += 250;
       } else if (state.perfectStreak === 10) {
-        state.feedbackText = 'THE COSMOS ALIGNS';
-        state.score += 500; // Big bonus
+        state.feedbackText = 'UNSTOPPABLE! 🔥';
+        state.score += 1000;
+      } else if (state.perfectStreak === 15) {
+        state.feedbackText = 'LEGENDARY! 👑';
+        state.score += 2500;
       } else if (state.perfectStreak >= 3) {
-        state.feedbackText = `${state.perfectStreak}x PERFECT`;
+        state.feedbackText = `PERFECT STREAK: ${state.perfectStreak}`;
       }
       
       playSound('perfect');
@@ -377,16 +384,19 @@ export default function RingGame() {
       setTimeout(() => setTimeFrozen(false), 150);
     } else if (result === 'good') {
       state.combo++;
-      state.perfectStreak = 0; // Reset perfect streak on good
+      // Good keeps the combo but resets perfect streak
+      state.perfectStreak = 0;
       const points = 50 * Math.min(state.combo, 10);
       state.score += points;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
+      state.feedbackText = null;
       playSound('good');
       if (isMobile && hapticEnabled) haptic.light();
     } else {
       state.combo = 0;
       state.perfectStreak = 0;
       state.lives--;
+      state.feedbackText = null;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER, '#EF4444', 12));
       playSound('miss');
       if (isMobile && hapticEnabled) haptic.heavy();
@@ -774,8 +784,9 @@ export default function RingGame() {
                 <div className="text-xs text-gray-400 space-y-2">
                   <p>• <span className="text-white">Ancient rings</span> rotate with glowing gaps</p>
                   <p>• <span className="text-white">Align</span> gaps at the top marker</p>
-                  <p>• <span className="text-green-400">PERFECT</span> alignment = 100 pts + streak bonus</p>
+                  <p>• <span className="text-green-400">PERFECT</span> = 100 pts + <span className="text-purple-400">STREAK</span> bonus (+50/streak)</p>
                   <p>• <span className="text-yellow-400">GOOD</span> = 50 pts • <span className="text-red-400">MISS</span> = lose 1 life</p>
+                  <p>• 5 streak = ⭐, 10 = <span className="text-orange-400">UNSTOPPABLE 🔥</span>, 15 = <span className="text-yellow-400">LEGENDARY 👑</span></p>
                   <p>• Advance through <span className="text-cyan-400">Initiate</span> → <span className="text-purple-400">Adept</span> → <span className="text-yellow-400">Master</span> → <span className="text-pink-400">Transcendent</span></p>
                 </div>
               </div>

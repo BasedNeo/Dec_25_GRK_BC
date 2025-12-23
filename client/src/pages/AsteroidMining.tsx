@@ -540,15 +540,35 @@ export default function AsteroidMining() {
           enemy.health--;
           state.bullets.splice(j, 1);
           if (enemy.health <= 0) {
+            const prevCombo = state.combo;
             state.combo++;
             state.lastHitTime = now;
-            const multiplier = Math.min(state.combo, 10);
-            const points = Math.floor(enemy.points * (1 + multiplier * 0.1));
+            
+            // Uncapped multiplier: combo/10 bonus (combo 10=2x, 20=3x, 50=6x)
+            const multiplier = 1 + state.combo / 10;
+            const points = Math.floor(enemy.points * multiplier);
             state.score += points;
             state.enemiesDestroyed++;
             state.screenShake = Math.min(state.screenShake + 3, 8);
             state.particles.push(...createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 12));
-            state.scorePopups.push({ x: enemy.x + enemy.width / 2, y: enemy.y, text: `+${points}${multiplier > 1 ? ` x${multiplier}` : ''}`, life: 1, color: enemy.color });
+            
+            // Show multiplier in popup
+            const multDisplay = multiplier >= 2 ? ` x${multiplier.toFixed(1)}` : state.combo > 1 ? ` x${state.combo}` : '';
+            state.scorePopups.push({ x: enemy.x + enemy.width / 2, y: enemy.y, text: `+${points}${multDisplay}`, life: 1, color: enemy.color });
+            
+            // Combo milestones with celebrations!
+            if (state.combo === 10 && prevCombo < 10) {
+              state.scorePopups.push({ x: width / 2, y: height / 3, text: '10 COMBO! 🔥', life: 1.5, color: '#FBBF24' });
+              state.score += 500;
+            } else if (state.combo === 25 && prevCombo < 25) {
+              state.scorePopups.push({ x: width / 2, y: height / 3, text: '25 COMBO! 💥', life: 1.8, color: '#F97316' });
+              state.score += 1500;
+            } else if (state.combo === 50 && prevCombo < 50) {
+              state.scorePopups.push({ x: width / 2, y: height / 3, text: '50 COMBO! 👑', life: 2, color: '#A855F7' });
+              state.score += 5000;
+              state.screenShake = 20;
+            }
+            
             spawnPowerUp(state, enemy.x + enemy.width / 2, enemy.y);
             state.enemies.splice(i, 1);
             playSound('hit');
@@ -1116,8 +1136,19 @@ export default function AsteroidMining() {
               <span className="text-white font-mono font-bold text-lg" style={{ textShadow: '0 0 10px #00FFFF' }}>{score.toLocaleString()}</span>
             </div>
             {combo > 1 && (
-              <span className="text-yellow-400 font-bold text-sm px-2 py-0.5 bg-yellow-400/10 rounded animate-pulse">
-                x{Math.min(combo, 10)}
+              <span 
+                className={`font-bold px-2 py-0.5 rounded animate-pulse ${
+                  combo >= 50 ? 'text-purple-400 bg-purple-400/20 text-lg' :
+                  combo >= 25 ? 'text-orange-400 bg-orange-400/15 text-base' :
+                  combo >= 10 ? 'text-yellow-400 bg-yellow-400/15 text-base' :
+                  'text-yellow-400 bg-yellow-400/10 text-sm'
+                }`}
+                style={{ 
+                  filter: combo >= 10 ? `drop-shadow(0 0 ${Math.min(combo / 5, 12)}px ${combo >= 50 ? '#A855F7' : combo >= 25 ? '#F97316' : '#FBBF24'})` : 'none',
+                  transform: `scale(${1 + Math.min(combo / 100, 0.3)})`
+                }}
+              >
+                COMBO x{combo}
               </span>
             )}
           </div>

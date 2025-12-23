@@ -87,6 +87,9 @@ export default function CyberBreach() {
   const [showIntro, setShowIntro] = useState(false);
   const [introText, setIntroText] = useState('');
   const [showAccessGranted, setShowAccessGranted] = useState(false);
+  const [chain, setChain] = useState(0);
+  const [lastMatchTime, setLastMatchTime] = useState(0);
+  const [speedBonus, setSpeedBonus] = useState<string | null>(null);
 
   const stats = useMemo(() => ({
     gamesPlayed: myStats.totalGames || 0,
@@ -318,9 +321,29 @@ export default function CyberBreach() {
           setCards(matchedCards);
           setMatchedPairs(p => p + 1);
           
+          // Chain system - consecutive matches
+          const now = Date.now();
+          const timeSinceLastMatch = now - lastMatchTime;
+          setLastMatchTime(now);
+          
+          setChain(prevChain => {
+            const newChain = prevChain + 1;
+            
+            // Speed bonus for matches under 2 seconds
+            if (timeSinceLastMatch < 2000 && lastMatchTime > 0) {
+              const speedPts = 25 + newChain * 5;
+              setSpeedBonus(`SPEED BONUS +${speedPts}`);
+              setScore(s => s + speedPts);
+              setTimeout(() => setSpeedBonus(null), 1000);
+            }
+            
+            return newChain;
+          });
+          
           const timeBonus = Math.floor(timeLeft / 10);
           const moveBonus = Math.max(0, 10 - moves);
-          const points = 100 + timeBonus * 10 + moveBonus * 5;
+          const chainBonus = chain * 10; // +10 per chain level
+          const points = 100 + timeBonus * 10 + moveBonus * 5 + chainBonus;
           setScore(s => s + points);
           
           const newMatchedCount = matchedCards.filter(c => c.isMatched).length / 2;
@@ -355,6 +378,9 @@ export default function CyberBreach() {
           playSound('nomatch');
           if (isMobile && hapticEnabled) haptic.heavy();
           
+          // Reset chain on mismatch
+          setChain(0);
+          
           const resetCards = newCards.map(c => 
             (c.id === first.id || c.id === second.id) ? { ...c, isFlipped: false } : c
           );
@@ -363,7 +389,7 @@ export default function CyberBreach() {
         }, 800);
       }
     }
-  }, [cards, isChecking, moves, timeLeft, currentConfig.pairs, level, playSound, startTimer, hapticEnabled]);
+  }, [cards, isChecking, moves, timeLeft, currentConfig.pairs, level, playSound, startTimer, hapticEnabled, chain, lastMatchTime]);
 
   useEffect(() => {
     if (gamePhase === 'gameover') {
@@ -392,6 +418,9 @@ export default function CyberBreach() {
     setScore(0);
     setMoves(0);
     setMatchedPairs(0);
+    setChain(0);
+    setLastMatchTime(0);
+    setSpeedBonus(null);
     setTimeLeft(LEVEL_CONFIGS[0].time);
     setIsChecking(false);
     setShowIntro(true);
@@ -467,7 +496,8 @@ export default function CyberBreach() {
                 <div className="text-xs text-gray-400 space-y-1">
                   <p>• Tap cards to reveal symbols</p>
                   <p>• Match pairs before time runs out</p>
-                  <p>• Faster matches = higher score</p>
+                  <p>• <span className="text-cyan-400">CHAIN</span> = consecutive matches (+10 pts per level)</p>
+                  <p>• <span className="text-yellow-400">SPEED BONUS</span> = match within 2 sec (+25 pts)</p>
                   <p>• Complete all 3 levels to win</p>
                 </div>
               </div>
@@ -564,7 +594,7 @@ export default function CyberBreach() {
         
         {/* Floating HUD - overlays game */}
         <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-20 bg-gradient-to-b from-black/80 to-transparent">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
               <span className="text-white font-mono font-bold text-lg" style={{ textShadow: '0 0 10px #00FF88' }}>{score.toLocaleString()}</span>
@@ -573,6 +603,20 @@ export default function CyberBreach() {
               <Target className="w-4 h-4 text-green-400" />
               <span className="text-green-400 font-mono font-bold">LVL {level}</span>
             </div>
+            {chain > 1 && (
+              <span 
+                className={`font-bold px-2 py-0.5 rounded animate-pulse ${
+                  chain >= 5 ? 'text-purple-400 bg-purple-400/20' :
+                  chain >= 3 ? 'text-cyan-400 bg-cyan-400/15' :
+                  'text-green-400 bg-green-400/10'
+                }`}
+                style={{ 
+                  filter: chain >= 3 ? `drop-shadow(0 0 ${Math.min(chain * 2, 10)}px ${chain >= 5 ? '#A855F7' : '#00FFFF'})` : 'none'
+                }}
+              >
+                CHAIN x{chain}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 px-3 py-1 rounded ${timeLeft <= 10 ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-cyan-400'}`}>
@@ -584,6 +628,15 @@ export default function CyberBreach() {
             </Button>
           </div>
         </div>
+
+        {/* Speed bonus popup */}
+        {speedBonus && (
+          <div className="absolute top-24 left-0 right-0 flex justify-center z-30 pointer-events-none">
+            <span className="text-yellow-400 font-bold text-lg animate-bounce" style={{ textShadow: '0 0 15px #FBBF24' }}>
+              {speedBonus}
+            </span>
+          </div>
+        )}
 
         {/* Progress bar - floating */}
         <div className="absolute top-28 left-0 right-0 px-6 z-10">
