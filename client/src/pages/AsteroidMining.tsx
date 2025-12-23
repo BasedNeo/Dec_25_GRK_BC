@@ -28,6 +28,8 @@ interface Player {
   invincible: number;
   rapidFire: number;
   shield: boolean;
+  spreadShot: number;
+  slowMo: number;
 }
 
 interface Bullet {
@@ -50,7 +52,7 @@ interface Enemy {
   health: number;
 }
 
-type PowerUpType = 'shield' | 'rapidfire' | 'extralife';
+type PowerUpType = 'shield' | 'rapidfire' | 'extralife' | 'nuke' | 'spreadshot' | 'slowmo';
 
 interface PowerUp {
   x: number;
@@ -110,9 +112,21 @@ const ENEMY_TYPES: Record<EnemyType, { color: string; speed: number; points: num
 };
 
 const POWERUP_COLORS: Record<PowerUpType, string> = {
-  shield: '#3B82F6',
-  rapidfire: '#FBBF24',
-  extralife: '#22C55E',
+  shield: '#22C55E',
+  rapidfire: '#3B82F6',
+  extralife: '#FF69B4',
+  nuke: '#EF4444',
+  spreadshot: '#FBBF24',
+  slowmo: '#A855F7',
+};
+
+const POWERUP_ICONS: Record<PowerUpType, string> = {
+  shield: '🛡',
+  rapidfire: '⚡',
+  extralife: '♥',
+  nuke: '💥',
+  spreadshot: '🔱',
+  slowmo: '⏱',
 };
 
 export default function AsteroidMining() {
@@ -143,6 +157,8 @@ export default function AsteroidMining() {
   const [combo, setCombo] = useState(0);
   const [hasShield, setHasShield] = useState(false);
   const [hasRapidFire, setHasRapidFire] = useState(false);
+  const [hasSpreadShot, setHasSpreadShot] = useState(false);
+  const [hasSlowMo, setHasSlowMo] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticEnabled, setHapticEnabled] = useState(true);
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 600 });
@@ -323,6 +339,8 @@ export default function AsteroidMining() {
         invincible: 0,
         rapidFire: 0,
         shield: false,
+        spreadShot: 0,
+        slowMo: 0,
       },
       bullets: [],
       enemies: [],
@@ -366,16 +384,16 @@ export default function AsteroidMining() {
   }, [canvasSize]);
 
   const spawnPowerUp = useCallback((state: GameState, x: number, y: number) => {
-    if (Math.random() > 0.15) return;
-    const types: PowerUpType[] = ['shield', 'rapidfire', 'extralife'];
-    const weights = [0.4, 0.4, 0.2];
+    if (Math.random() > 0.12) return; // 12% chance
+    const types: PowerUpType[] = ['shield', 'rapidfire', 'spreadshot', 'slowmo', 'nuke', 'extralife'];
+    const weights = [0.25, 0.25, 0.2, 0.15, 0.08, 0.07]; // nuke and extralife are rarer
     let r = Math.random();
     let type: PowerUpType = 'shield';
     for (let i = 0; i < types.length; i++) {
       r -= weights[i];
       if (r <= 0) { type = types[i]; break; }
     }
-    state.powerUps.push({ x, y, type, speed: 2 });
+    state.powerUps.push({ x, y, type, speed: 1.5 });
   }, []);
 
   const shoot = useCallback(() => {
@@ -386,11 +404,16 @@ export default function AsteroidMining() {
     if (now - lastShootRef.current < cooldown) return;
     lastShootRef.current = now;
 
-    state.bullets.push({
-      x: state.player.x + state.player.width / 2 - 3,
-      y: state.player.y,
-      speed: BULLET_SPEED,
-    });
+    const centerX = state.player.x + state.player.width / 2 - 3;
+    
+    if (state.player.spreadShot > 0) {
+      // Spread shot - 3 bullets in a fan pattern
+      state.bullets.push({ x: centerX, y: state.player.y, speed: BULLET_SPEED });
+      state.bullets.push({ x: centerX - 8, y: state.player.y + 5, speed: BULLET_SPEED * 0.95 });
+      state.bullets.push({ x: centerX + 8, y: state.player.y + 5, speed: BULLET_SPEED * 0.95 });
+    } else {
+      state.bullets.push({ x: centerX, y: state.player.y, speed: BULLET_SPEED });
+    }
     playSound('shoot');
     if (isMobile && hapticEnabled) haptic.light();
   }, [playSound]);
@@ -410,8 +433,13 @@ export default function AsteroidMining() {
 
     if (state.player.invincible > 0) state.player.invincible--;
     if (state.player.rapidFire > 0) state.player.rapidFire--;
+    if (state.player.spreadShot > 0) state.player.spreadShot--;
+    if (state.player.slowMo > 0) state.player.slowMo--;
     if (state.screenShake > 0) state.screenShake *= 0.9;
     if (now - state.lastHitTime > COMBO_TIMEOUT && state.combo > 0) state.combo = 0;
+    
+    const slowMoActive = state.player.slowMo > 0;
+    const enemySpeedMult = slowMoActive ? 0.4 : 1;
 
     for (const star of starsRef.current) {
       star.y += star.speed;
@@ -430,11 +458,47 @@ export default function AsteroidMining() {
       
       if (state.player.x < pu.x + 20 && state.player.x + state.player.width > pu.x &&
           state.player.y < pu.y + 20 && state.player.y + state.player.height > pu.y) {
-        if (pu.type === 'shield') { state.player.shield = true; state.player.invincible = 300; }
-        else if (pu.type === 'rapidfire') state.player.rapidFire = 600;
-        else if (pu.type === 'extralife') state.lives = Math.min(5, state.lives + 1);
-        state.particles.push(...createParticles(pu.x + 10, pu.y + 10, POWERUP_COLORS[pu.type], 8));
-        state.scorePopups.push({ x: pu.x + 10, y: pu.y, text: pu.type.toUpperCase() + '!', life: 1, color: POWERUP_COLORS[pu.type] });
+        
+        const powerUpLabel = {
+          shield: '+SHIELD!',
+          rapidfire: '+RAPID FIRE!',
+          spreadshot: '+SPREAD SHOT!',
+          slowmo: '+SLOW-MO!',
+          nuke: '+NUKE!',
+          extralife: '+1 UP!',
+        }[pu.type];
+        
+        if (pu.type === 'shield') { 
+          state.player.shield = true; 
+          state.player.invincible = 300; 
+        } else if (pu.type === 'rapidfire') { 
+          state.player.rapidFire = 360; // 6 seconds @ 60fps
+        } else if (pu.type === 'spreadshot') { 
+          state.player.spreadShot = 300; // 5 seconds
+        } else if (pu.type === 'slowmo') { 
+          state.player.slowMo = 240; // 4 seconds
+        } else if (pu.type === 'nuke') {
+          // NUKE - Destroy all enemies on screen with massive effect!
+          let nukePoints = 0;
+          for (const enemy of state.enemies) {
+            nukePoints += enemy.points * 2; // Double points for nuke kills
+            state.particles.push(...createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 15));
+          }
+          state.score += nukePoints;
+          state.enemiesDestroyed += state.enemies.length;
+          state.screenShake = 25;
+          state.enemies = [];
+          if (nukePoints > 0) {
+            state.scorePopups.push({ x: width / 2, y: height / 2, text: `NUKE +${nukePoints}!`, life: 1.5, color: '#EF4444' });
+          }
+          playSound('explosion');
+          if (isMobile && hapticEnabled) haptic.heavy();
+        } else if (pu.type === 'extralife') { 
+          state.lives = Math.min(5, state.lives + 1); 
+        }
+        
+        state.particles.push(...createParticles(pu.x + 10, pu.y + 10, POWERUP_COLORS[pu.type], 12));
+        state.scorePopups.push({ x: pu.x + 10, y: pu.y, text: powerUpLabel, life: 1.2, color: POWERUP_COLORS[pu.type] });
         state.powerUps.splice(i, 1);
         playSound('powerup');
         if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
@@ -443,7 +507,7 @@ export default function AsteroidMining() {
 
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const enemy = state.enemies[i];
-      enemy.y += enemy.speed;
+      enemy.y += enemy.speed * enemySpeedMult;
       if (enemy.y > height + 50) { state.enemies.splice(i, 1); continue; }
 
       if (state.player.invincible <= 0 &&
@@ -516,6 +580,8 @@ export default function AsteroidMining() {
     setCombo(state.combo);
     setHasShield(state.player.shield);
     setHasRapidFire(state.player.rapidFire > 0);
+    setHasSpreadShot(state.player.spreadShot > 0);
+    setHasSlowMo(state.player.slowMo > 0);
     
     // Dynamic music intensity based on wave
     const intensity = Math.min(1, state.wave / 15);
@@ -553,13 +619,43 @@ export default function AsteroidMining() {
       ctx.fillRect(star.x, star.y, 1.5, 1.5);
     }
 
+    // Slow-mo overlay effect
+    if (state.player.slowMo > 0) {
+      ctx.fillStyle = `rgba(168, 85, 247, ${0.08 + Math.sin(Date.now() * 0.005) * 0.04})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
     const flash = state.player.invincible > 0 && Math.floor(state.player.invincible / 8) % 2 === 0;
     if (!flash) {
-      const shipColor = state.player.shield ? '#3B82F6' : currentShip.colors.primary;
-      const shipGlow = state.player.shield ? '#3B82F6' : currentShip.colors.glow;
+      // Determine ship color based on active power-ups
+      let shipColor = currentShip.colors.primary;
+      let shipGlow = currentShip.colors.glow;
+      let glowIntensity = 10;
+      
+      if (state.player.shield) {
+        shipColor = '#22C55E';
+        shipGlow = '#22C55E';
+        glowIntensity = 20;
+      } else if (state.player.rapidFire > 0) {
+        shipColor = '#3B82F6';
+        shipGlow = '#3B82F6';
+        glowIntensity = 18;
+      } else if (state.player.spreadShot > 0) {
+        shipColor = '#FBBF24';
+        shipGlow = '#FBBF24';
+        glowIntensity = 15;
+      }
+      
       ctx.fillStyle = shipColor;
       ctx.shadowColor = shipGlow;
-      ctx.shadowBlur = state.player.rapidFire > 0 ? 15 : 10;
+      ctx.shadowBlur = glowIntensity;
+      
+      // Draw spread shot triple barrels
+      if (state.player.spreadShot > 0) {
+        ctx.fillRect(state.player.x + 4, state.player.y + 5, 4, 12);
+        ctx.fillRect(state.player.x + state.player.width - 8, state.player.y + 5, 4, 12);
+      }
+      
       ctx.beginPath();
       ctx.moveTo(state.player.x + state.player.width / 2, state.player.y);
       ctx.lineTo(state.player.x + state.player.width, state.player.y + state.player.height);
@@ -567,19 +663,30 @@ export default function AsteroidMining() {
       ctx.lineTo(state.player.x, state.player.y + state.player.height);
       ctx.closePath();
       ctx.fill();
+      
+      // Shield barrier effect
       if (state.player.shield) {
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+        const shieldPulse = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 30, 0, Math.PI * 2);
+        ctx.arc(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 28 * shieldPulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 35 * shieldPulse, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.shadowBlur = 0;
     }
 
-    ctx.fillStyle = '#00FF88';
-    ctx.shadowColor = '#00FF88';
-    ctx.shadowBlur = 6;
+    // Bullet color based on active power-up
+    const bulletColor = state.player.spreadShot > 0 ? '#FBBF24' : 
+                        state.player.rapidFire > 0 ? '#3B82F6' : '#00FF88';
+    ctx.fillStyle = bulletColor;
+    ctx.shadowColor = bulletColor;
+    ctx.shadowBlur = 8;
     for (const bullet of state.bullets) {
       ctx.beginPath();
       ctx.ellipse(bullet.x + 3, bullet.y + 5, 3, 6, 0, 0, Math.PI * 2);
@@ -588,16 +695,30 @@ export default function AsteroidMining() {
     ctx.shadowBlur = 0;
 
     for (const pu of state.powerUps) {
-      ctx.fillStyle = POWERUP_COLORS[pu.type];
-      ctx.shadowColor = POWERUP_COLORS[pu.type];
-      ctx.shadowBlur = 10;
+      const puColor = POWERUP_COLORS[pu.type];
+      const pulse = 1 + Math.sin(Date.now() * 0.008) * 0.15;
+      
+      // Outer glow ring
+      ctx.strokeStyle = puColor;
+      ctx.shadowColor = puColor;
+      ctx.shadowBlur = 15;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pu.x + 10, pu.y + 10, 14 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Inner orb
+      ctx.fillStyle = puColor;
       ctx.beginPath();
       ctx.arc(pu.x + 10, pu.y + 10, 10, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Icon
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 10px Arial';
+      ctx.font = 'bold 12px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(pu.type === 'shield' ? 'S' : pu.type === 'rapidfire' ? 'R' : '+', pu.x + 10, pu.y + 14);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(POWERUP_ICONS[pu.type], pu.x + 10, pu.y + 11);
       ctx.shadowBlur = 0;
     }
 
@@ -605,6 +726,30 @@ export default function AsteroidMining() {
       ctx.fillStyle = enemy.color;
       ctx.shadowColor = enemy.color;
       ctx.shadowBlur = 8;
+      
+      // Motion blur trail during slow-mo
+      if (state.player.slowMo > 0) {
+        ctx.globalAlpha = 0.3;
+        for (let trail = 1; trail <= 3; trail++) {
+          const trailY = enemy.y - trail * 8;
+          if (enemy.type === 'tank') {
+            ctx.fillRect(enemy.x, trailY, enemy.width, enemy.height);
+          } else if (enemy.type === 'elite') {
+            ctx.beginPath();
+            ctx.moveTo(enemy.x + enemy.width / 2, trailY);
+            ctx.lineTo(enemy.x + enemy.width, trailY + enemy.height);
+            ctx.lineTo(enemy.x, trailY + enemy.height);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.ellipse(enemy.x + enemy.width / 2, trailY + enemy.height / 2, enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      
       if (enemy.type === 'tank') {
         ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -764,6 +909,8 @@ export default function AsteroidMining() {
     setCombo(0);
     setHasShield(false);
     setHasRapidFire(false);
+    setHasSpreadShot(false);
+    setHasSlowMo(false);
     keysRef.current.clear();
     lastWaveRef.current = 1;
     
@@ -851,11 +998,14 @@ export default function AsteroidMining() {
               </div>
 
               <div className="mb-4 p-4 bg-white/5 rounded-lg">
-                <h3 className="text-sm font-bold text-purple-400 mb-2">POWER-UPS</h3>
-                <div className="text-xs text-gray-400 space-y-1">
-                  <p><span className="text-blue-400">● Shield</span> - Blocks one hit</p>
-                  <p><span className="text-yellow-400">● Rapid Fire</span> - Faster shooting</p>
-                  <p><span className="text-green-400">● Extra Life</span> - +1 life (max 5)</p>
+                <h3 className="text-sm font-bold text-purple-400 mb-2">POWER-UPS (12% drop rate)</h3>
+                <div className="text-xs text-gray-400 space-y-1 grid grid-cols-2 gap-x-2">
+                  <p><span className="text-green-400">🛡 Shield</span> - Blocks 1 hit</p>
+                  <p><span className="text-blue-400">⚡ Rapid Fire</span> - 3x speed</p>
+                  <p><span className="text-yellow-400">🔱 Spread Shot</span> - 3 bullets</p>
+                  <p><span className="text-purple-400">⏱ Slow-Mo</span> - Time slows</p>
+                  <p><span className="text-red-400">💥 Nuke</span> - Clears screen!</p>
+                  <p><span className="text-pink-400">♥ Extra Life</span> - +1 life</p>
                 </div>
               </div>
 
@@ -977,8 +1127,10 @@ export default function AsteroidMining() {
                 <Heart key={i} className={`w-5 h-5 transition-all ${i < lives ? 'text-red-500 fill-red-500' : 'text-gray-700'}`} />
               ))}
             </div>
-            {hasShield && <Shield className="w-5 h-5 text-blue-400" style={{ filter: 'drop-shadow(0 0 8px #3B82F6)' }} />}
-            {hasRapidFire && <Zap className="w-5 h-5 text-yellow-400" style={{ filter: 'drop-shadow(0 0 8px #FBBF24)' }} />}
+            {hasShield && <span className="text-lg" style={{ filter: 'drop-shadow(0 0 8px #22C55E)' }}>🛡</span>}
+            {hasRapidFire && <span className="text-lg" style={{ filter: 'drop-shadow(0 0 8px #3B82F6)' }}>⚡</span>}
+            {hasSpreadShot && <span className="text-lg" style={{ filter: 'drop-shadow(0 0 8px #FBBF24)' }}>🔱</span>}
+            {hasSlowMo && <span className="text-lg animate-pulse" style={{ filter: 'drop-shadow(0 0 8px #A855F7)' }}>⏱</span>}
             <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8">
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
