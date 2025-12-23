@@ -886,7 +886,7 @@ export default function CyberBreach() {
   
   const exitToArcade = useCallback(() => {
     cancelAnimationFrame(animationFrameRef.current);
-    setLocation('/games');
+    setLocation('/arcade');
   }, [setLocation]);
   
   useEffect(() => {
@@ -902,10 +902,10 @@ export default function CyberBreach() {
     const getGameDimensions = () => {
       // Calculate based on viewport, accounting for all UI chrome
       const navbarHeight = 80;
-      const statsBarHeight = 50;
-      const headerBarHeight = 50;
-      const instructionHeight = 40;
-      const padding = 48;
+      const statsBarHeight = 60;
+      const headerBarHeight = 60;
+      const instructionHeight = 50;
+      const padding = 32;
       
       // Available space in viewport
       const availableWidth = window.innerWidth - padding;
@@ -914,9 +914,9 @@ export default function CyberBreach() {
       // Square aspect ratio - use smaller dimension
       let size = Math.min(availableWidth, availableHeight);
       
-      // Clamp to reasonable bounds
-      const minSize = 250;
-      const maxSize = 500; // Cap at 500px for good gameplay
+      // Clamp to reasonable bounds - larger max for desktop
+      const minSize = 280;
+      const maxSize = 650; // Increased from 500px for better desktop experience
       
       size = Math.max(minSize, Math.min(size, maxSize));
       
