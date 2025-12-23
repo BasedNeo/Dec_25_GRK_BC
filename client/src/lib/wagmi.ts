@@ -1,4 +1,10 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { 
+  metaMaskWallet, 
+  coinbaseWallet, 
+  trustWallet,
+  walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
 
 // BasedAI L1 Chain Configuration (Chain ID: 32323)
@@ -40,6 +46,17 @@ export const config = getDefaultConfig({
   projectId: WALLETCONNECT_PROJECT_ID,
   chains: [basedL1],
   ssr: false,
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        metaMaskWallet,
+        trustWallet,
+        coinbaseWallet,
+        walletConnectWallet,
+      ],
+    },
+  ],
 });
 
 export { basedL1 };

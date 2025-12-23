@@ -1,0 +1,81 @@
+MINIMAL CHANGE: REPLACE RAINBOW WALLET BUTTON WITH TRUST WALLET
+
+⚠️ CRITICAL: THE MOBILE APP FINALLY WORKS. DO NOT BREAK IT.
+
+CONTEXT:
+- Mobile wallet connection is MOSTLY working now
+- MetaMask works when accessed through "All Wallets" modal
+- Coinbase wallet button works on main screen
+- Rainbow wallet button on main screen does NOT work
+- We want to swap Rainbow for Trust Wallet (which worked before)
+- The MetaMask shortcut on main screen doesn't work but we'll leave it for now
+
+YOUR TASK (ONE SIMPLE CHANGE):
+Find the wallet connection buttons displayed on the main connect screen (before opening the full wallet modal) and replace the Rainbow wallet option with Trust Wallet.
+
+═══════════════════════════════════════════════════════════════════
+FIND THIS CODE:
+═══════════════════════════════════════════════════════════════════
+
+Look in these likely locations:
+- client/src/components/WalletConnect.tsx
+- client/src/components/ConnectWallet.tsx  
+- client/src/components/WalletButton.tsx
+- client/src/lib/wagmi.ts
+- client/src/lib/web3Config.ts
+
+You're looking for either:
+1. A list of "featured" or "recommended" wallets shown as quick-connect buttons
+2. Web3Modal/RainbowKit configuration with walletIds or wallet list
+3. An array defining which wallet icons to show
+
+═══════════════════════════════════════════════════════════════════
+MAKE THIS CHANGE:
+═══════════════════════════════════════════════════════════════════
+
+Replace "rainbow" wallet ID with "trust" wallet ID.
+
+Common patterns:
+
+If using wallet IDs:
+  BEFORE: ["metamask", "rainbow", "coinbase"]
+  AFTER:  ["metamask", "trust", "coinbase"]
+
+If using RainbowKit wallets:
+  BEFORE: import { rainbowWallet } from '@rainbow-me/rainbowkit/wallets';
+  AFTER:  import { trustWallet } from '@rainbow-me/rainbowkit/wallets';
+
+If using Web3Modal featuredWalletIds:
+  BEFORE: featuredWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', ...]  // rainbow
+  AFTER:  featuredWalletIds: ['4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0', ...]  // trust
+
+═══════════════════════════════════════════════════════════════════
+WALLET IDs REFERENCE (Web3Modal):
+═══════════════════════════════════════════════════════════════════
+
+MetaMask: c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96
+Trust:    4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0
+Coinbase: fd20dc426fb37566d803205b19bbc1d4096b248ac04548e3cfb6b3a38bd033aa
+Rainbow:  1ae92b26df02f0abca6304df07debccd18262fdf5fe82daa81593582dac9a369
+
+═══════════════════════════════════════════════════════════════════
+RULES - EXTREMELY IMPORTANT:
+═══════════════════════════════════════════════════════════════════
+
+1. ONLY change the Rainbow reference to Trust - nothing else
+2. DO NOT modify any CSS
+3. DO NOT modify any layout code
+4. DO NOT modify the wallet connection logic
+5. DO NOT touch the "All Wallets" modal functionality
+6. DO NOT change how MetaMask or Coinbase are configured
+7. Make ONE file change maximum
+8. If you can't find the exact place to change, STOP and tell me what you found
+
+═══════════════════════════════════════════════════════════════════
+SHOW ME:
+═══════════════════════════════════════════════════════════════════
+
+1. Which file you found the wallet configuration in
+2. The EXACT line(s) you're changing (before and after)
+3. Confirmation this is the ONLY change you made
+4. DO NOT make any other "improvements" or "fixes" you notice
