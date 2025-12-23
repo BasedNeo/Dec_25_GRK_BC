@@ -14,7 +14,7 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { TerminalSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, TERMINAL_SKINS, TerminalSkin } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Clock, Target, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Clock, Target, Palette, Volume2, VolumeX } from 'lucide-react';
 import { useGameMusic } from '@/hooks/useGameMusic';
 import { MusicControls } from '@/components/game/MusicControls';
 import { isMobile, haptic } from '@/lib/mobileUtils';
@@ -94,7 +94,7 @@ export default function CyberBreach() {
   const levelStartTimeRef = useRef<number>(0);
 
   const stats = useMemo(() => ({
-    gamesPlayed: myStats.totalGames || 0,
+    gamesPlayed: myStats.gamesPlayed || 0,
     bestScore: myStats.bestScore || 0,
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
@@ -603,9 +603,9 @@ export default function CyberBreach() {
             <VictoryScreen
               gameType="cyber-breach"
               score={score}
-              stats={[
+              extraStats={[
                 { icon: Target, label: 'Score', value: score.toLocaleString(), color: 'text-green-400' },
-                { icon: Trophy, label: 'Level', value: level, color: 'text-cyan-400' },
+                { icon: Trophy, label: 'Level', value: String(level), color: 'text-cyan-400' },
               ]}
               playsRemaining={Math.max(0, (access.playsRemaining || 0) - 1)}
               maxPlays={gameConfig.maxPlaysPerDay}

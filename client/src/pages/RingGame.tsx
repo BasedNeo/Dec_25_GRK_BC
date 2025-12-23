@@ -14,7 +14,7 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { RingThemeSelector } from '@/components/game/CosmeticSelector';
 import { useUnlockables, RING_THEMES, RingTheme } from '@/hooks/useUnlockables';
-import { Play, Home, Trophy, Heart, Target, Sparkles, Palette } from 'lucide-react';
+import { Play, Home, Trophy, Heart, Target, Sparkles, Palette, Volume2, VolumeX } from 'lucide-react';
 import { useGameMusic } from '@/hooks/useGameMusic';
 import { MusicControls } from '@/components/game/MusicControls';
 import { AnimatePresence } from 'framer-motion';
@@ -137,7 +137,7 @@ export default function RingGame() {
   const [timeFrozen, setTimeFrozen] = useState(false);
 
   const stats = useMemo(() => ({
-    gamesPlayed: myStats.totalGames || 0,
+    gamesPlayed: myStats.gamesPlayed || 0,
     bestScore: myStats.bestScore || 0,
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
@@ -891,9 +891,9 @@ export default function RingGame() {
             <VictoryScreen
               gameType="ring-game"
               score={score}
-              stats={[
+              extraStats={[
                 { icon: Target, label: 'Score', value: score.toLocaleString(), color: 'text-cyan-400' },
-                { icon: Trophy, label: 'Level', value: level, color: 'text-purple-400' },
+                { icon: Trophy, label: 'Level', value: String(level), color: 'text-purple-400' },
               ]}
               playsRemaining={Math.max(0, (access.playsRemaining || 0) - 1)}
               maxPlays={gameConfig.maxPlaysPerDay}
