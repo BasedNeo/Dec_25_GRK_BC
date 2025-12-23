@@ -367,3 +367,194 @@ export function getProgressToNextTier(
 export function isGamePlayable(gameId: string): gameId is GameType {
   return gameId in GAME_REGISTRY && GAME_REGISTRY[gameId as GameType].enabled;
 }
+
+// ============================================
+// ECOSYSTEM ECONOMY CONFIGURATION
+// Points system coordinated across all games
+// ============================================
+
+/**
+ * Economy configuration for normalized point conversion
+ * All games convert raw scores to ecosystem points using this formula:
+ * ecosystemPoints = floor(baseWeight * clamp01(log1p(score) / log1p(legendaryScore)) * difficultyMultiplier * 1000)
+ * 
+ * This ensures:
+ * - Fair comparison across games with different score scales
+ * - Points capped at MAX_ECOSYSTEM_POINTS per session
+ * - Consistent rewards regardless of which game is played
+ */
+export const ECONOMY_CONFIG = {
+  // Maximum ecosystem points awardable per game session
+  MAX_ECOSYSTEM_POINTS: 1000,
+  
+  // Daily point cap to prevent abuse
+  DAILY_POINT_CAP: 5000,
+  
+  // Per-game base weights (tuned for fair cross-game comparison)
+  GAME_WEIGHTS: {
+    'guardian-defense': 1.0,     // Action - medium complexity
+    'guardian-solitaire': 1.1,   // Strategy - skill-based
+    'space-defender': 1.0,       // Action - classic
+    'asteroid-mining': 0.95,     // Action - survival
+    'cyber-breach': 1.05,        // Puzzle - memory
+    'ring-game': 0.9,            // Easy - timing
+  } as Record<GameType, number>,
+  
+  // Difficulty multipliers applied on top of base weight
+  DIFFICULTY_MULTIPLIERS: {
+    'easy': 0.8,
+    'medium': 1.0,
+    'hard': 1.2,
+  } as Record<GameDifficulty, number>,
+  
+  // Streak bonuses for consecutive days played
+  STREAK_BONUSES: {
+    3: 1.1,   // 10% bonus after 3 days
+    7: 1.2,   // 20% bonus after 7 days
+    14: 1.3,  // 30% bonus after 14 days
+    30: 1.5,  // 50% bonus after 30 days
+  } as Record<number, number>,
+  
+  // Anti-exploitation: minimum time between score submissions (seconds)
+  MIN_SUBMISSION_INTERVAL: 30,
+  
+  // Score verification checksums enabled
+  REQUIRE_CHECKSUM: true,
+  
+  // Version for cache invalidation on economy updates
+  VERSION: 1,
+} as const;
+
+/**
+ * Convert raw game score to normalized ecosystem points
+ * Uses logarithmic scaling to prevent score inflation
+ * 
+ * @param gameId - The game type
+ * @param rawScore - The raw score from the game
+ * @param streakDays - Number of consecutive days played (optional)
+ * @returns Normalized ecosystem points (0 to MAX_ECOSYSTEM_POINTS)
+ */
+export function calculateEcosystemPoints(
+  gameId: GameType,
+  rawScore: number,
+  streakDays: number = 0
+): number {
+  const config = getGameConfig(gameId);
+  const weight = ECONOMY_CONFIG.GAME_WEIGHTS[gameId] ?? 1.0;
+  const difficultyMult = ECONOMY_CONFIG.DIFFICULTY_MULTIPLIERS[config.difficulty] ?? 1.0;
+  
+  // Logarithmic scaling: log1p(score) / log1p(legendaryScore)
+  // This gives diminishing returns as scores increase
+  const legendaryScore = config.scoring.legendaryScore;
+  const normalizedRatio = Math.min(1, Math.log1p(rawScore) / Math.log1p(legendaryScore));
+  
+  // Calculate base points
+  let points = Math.floor(weight * normalizedRatio * difficultyMult * ECONOMY_CONFIG.MAX_ECOSYSTEM_POINTS);
+  
+  // Apply streak bonus
+  const applicableStreaks = Object.keys(ECONOMY_CONFIG.STREAK_BONUSES)
+    .map(Number)
+    .filter(days => streakDays >= days)
+    .sort((a, b) => b - a);
+  
+  if (applicableStreaks.length > 0) {
+    const streakBonus = ECONOMY_CONFIG.STREAK_BONUSES[applicableStreaks[0]] ?? 1.0;
+    points = Math.floor(points * streakBonus);
+  }
+  
+  // Cap at maximum
+  return Math.min(points, ECONOMY_CONFIG.MAX_ECOSYSTEM_POINTS);
+}
+
+/**
+ * Validate score submission for anti-exploitation
+ * Returns true if the score appears legitimate
+ */
+export function validateScoreSubmission(
+  gameId: GameType,
+  rawScore: number,
+  playDuration: number, // seconds
+): { valid: boolean; reason?: string } {
+  const config = getGameConfig(gameId);
+  
+  // Check minimum play duration
+  if (playDuration < config.minPlayDuration) {
+    return { valid: false, reason: `Minimum play time is ${config.minPlayDuration} seconds` };
+  }
+  
+  // Check maximum score
+  if (rawScore > config.scoring.maxScore * 1.1) { // 10% tolerance for bonuses
+    return { valid: false, reason: 'Score exceeds maximum possible' };
+  }
+  
+  // Check negative scores
+  if (rawScore < 0) {
+    return { valid: false, reason: 'Invalid score' };
+  }
+  
+  // Check score rate (points per second) - flag impossibly fast scoring
+  const maxPointsPerSecond = config.scoring.maxScore / config.minPlayDuration;
+  const actualPointsPerSecond = rawScore / playDuration;
+  
+  if (actualPointsPerSecond > maxPointsPerSecond * 2) {
+    return { valid: false, reason: 'Score rate exceeds possible maximum' };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Generate a simple checksum for score verification
+ * Used to detect tampering on client-side score submission
+ */
+export function generateScoreChecksum(
+  gameId: GameType,
+  score: number,
+  duration: number,
+  timestamp: number
+): string {
+  // Simple checksum - rotate and XOR
+  const data = `${gameId}:${score}:${duration}:${timestamp}:${ECONOMY_CONFIG.VERSION}`;
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
+
+/**
+ * Get economy summary for a player's session
+ */
+export function getEconomySummary(
+  gameId: GameType,
+  rawScore: number,
+  streakDays: number = 0
+): {
+  rawScore: number;
+  ecosystemPoints: number;
+  tier: PerformanceTier;
+  streakBonus: number;
+  maxDailyPoints: number;
+} {
+  const points = calculateEcosystemPoints(gameId, rawScore, streakDays);
+  const tier = getScorePerformanceTier(gameId, rawScore);
+  
+  const applicableStreaks = Object.keys(ECONOMY_CONFIG.STREAK_BONUSES)
+    .map(Number)
+    .filter(days => streakDays >= days)
+    .sort((a, b) => b - a);
+  
+  const streakBonus = applicableStreaks.length > 0 
+    ? ECONOMY_CONFIG.STREAK_BONUSES[applicableStreaks[0]] ?? 1.0 
+    : 1.0;
+  
+  return {
+    rawScore,
+    ecosystemPoints: points,
+    tier,
+    streakBonus,
+    maxDailyPoints: ECONOMY_CONFIG.DAILY_POINT_CAP,
+  };
+}

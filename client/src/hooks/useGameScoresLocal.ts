@@ -2,10 +2,20 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { SecureStorage } from '@/lib/secureStorage';
 import { getLoreProgressStatic } from './useLoreProgress';
+import { 
+  GameType, 
+  calculateEcosystemPoints, 
+  validateScoreSubmission, 
+  generateScoreChecksum,
+  ECONOMY_CONFIG,
+  getEconomySummary
+} from '@/lib/gameRegistry';
 
 interface ScoreEntry {
   wallet: string;
   score: number;
+  ecosystemPoints: number;
+  gameType: GameType;
   wave: number;
   timestamp: number;
 }
@@ -127,12 +137,35 @@ export function useGameScoresLocal() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [refreshStats]);
 
-  const submitScore = useCallback(async (score: number, wave: number) => {
+  const submitScore = useCallback(async (
+    score: number, 
+    wave: number,
+    gameType: GameType = 'space-defender',
+    duration: number = 60
+  ) => {
     if (!address || score <= 0) return;
 
+    // Validate score submission
+    const validation = validateScoreSubmission(gameType, score, duration);
+    if (!validation.valid) {
+      console.warn('[GameScores] Invalid score submission:', validation.reason);
+    }
+
+    // Calculate ecosystem points using the unified economy system
+    const ecosystemPoints = calculateEcosystemPoints(gameType, score, 0);
+    const timestamp = Date.now();
+    const checksum = generateScoreChecksum(gameType, score, duration, timestamp);
+
     const scores: ScoreEntry[] = SecureStorage.get<ScoreEntry[]>(SCORES_KEY, []) || [];
-    scores.push({ wallet: address, score, wave, timestamp: Date.now() });
-    scores.sort((a, b) => b.score - a.score);
+    scores.push({ 
+      wallet: address, 
+      score, 
+      ecosystemPoints,
+      gameType,
+      wave, 
+      timestamp 
+    });
+    scores.sort((a, b) => b.ecosystemPoints - a.ecosystemPoints);
     SecureStorage.set(SCORES_KEY, scores.slice(0, 50));
     setLeaderboard(scores.slice(0, 10));
 
@@ -140,13 +173,14 @@ export function useGameScoresLocal() {
     const existing: PlayerStats = SecureStorage.get<PlayerStats>(statsKey) || 
       { lifetimeScore: 0, bestScore: 0, gamesPlayed: 0, rank: 'Cadet' };
     
-    const newLifetimeScore = existing.lifetimeScore + score;
+    // Use ecosystem points for lifetime score (economy currency)
+    const newLifetimeScore = existing.lifetimeScore + ecosystemPoints;
     const newGamesPlayed = existing.gamesPlayed + 1;
     const rankInfo = calculateEffectiveRank(newLifetimeScore, newGamesPlayed);
     
     const newStats: PlayerStats = {
       lifetimeScore: newLifetimeScore,
-      bestScore: Math.max(existing.bestScore, score),
+      bestScore: Math.max(existing.bestScore, ecosystemPoints),
       gamesPlayed: newGamesPlayed,
       rank: rankInfo.rank,
       effectiveRank: rankInfo.effectiveRank,
@@ -164,6 +198,10 @@ export function useGameScoresLocal() {
         body: JSON.stringify({
           walletAddress: address,
           score: score,
+          ecosystemPoints: ecosystemPoints,
+          gameType: gameType,
+          duration: duration,
+          checksum: checksum,
           level: Math.min(Math.max(wave, 1), 5),
         })
       });
@@ -176,7 +214,7 @@ export function useGameScoresLocal() {
       console.error('[GameScores] Failed to submit score to server:', err);
     }
 
-    return newStats;
+    return { ...newStats, ecosystemPoints };
   }, [address]);
 
   const getGlobalRank = useCallback(() => {
@@ -188,5 +226,19 @@ export function useGameScoresLocal() {
     return scores.filter(s => s.score > myBest.score).length + 1;
   }, [address]);
 
-  return { leaderboard, myStats, submitScore, getGlobalRank, refreshStats, RANKS };
+  // Get economy summary for a specific game result
+  const getPointsSummary = useCallback((gameType: GameType, rawScore: number, streakDays: number = 0) => {
+    return getEconomySummary(gameType, rawScore, streakDays);
+  }, []);
+
+  return { 
+    leaderboard, 
+    myStats, 
+    submitScore, 
+    getGlobalRank, 
+    refreshStats, 
+    getPointsSummary,
+    RANKS,
+    ECONOMY_CONFIG 
+  };
 }
