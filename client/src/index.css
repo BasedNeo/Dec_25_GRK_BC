@@ -375,237 +375,28 @@ replit-error-modal {
 }
 
 /* ========================================
-   MOBILE SCROLLING - CRITICAL FIX
+   MOBILE SCROLLING FIX
    ======================================== */
 
 @media (max-width: 768px) {
-  /* Ensure proper scrolling on mobile - base reset */
+  /* Basic mobile scrolling support */
   html, body {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior: auto !important;
-    height: auto !important;
-    min-height: 100% !important;
-  }
-  
-  /* Ensure main content containers are properly positioned */
-  #root, .app-container, main {
-    position: static !important;
-    transform: none !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    margin: 0 !important;
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
   }
 }
 
 /* ========================================
-   MOBILE WALLET - EMERGENCY FIX
+   RAINBOWKIT WALLET MODAL - MOBILE FIX
    ======================================== */
 
+/* Style wallet buttons for better touch targets on mobile */
 @media (max-width: 768px) {
-  /* CRITICAL: Only apply fixed positioning when modal is actually OPEN */
-  /* The div[data-rk] wrapper always exists, so we MUST scope to [role="dialog"] */
-  div[data-rk]:has([role="dialog"]),
-  div[data-rk]:has([role="dialog"]) > div {
-    position: fixed !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    transform: none !important;
-    left: auto !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: auto !important;
-  }
-  
-  /* Modal overlay - full screen centered - ONLY when dialog is open */
-  div[data-rk]:has([role="dialog"]) {
-    inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 2147483647 !important;
-    background: rgba(0, 0, 0, 0.5) !important;
-  }
-  
-  /* When NO modal is open, the wrapper should be invisible and not affect layout */
-  div[data-rk]:not(:has([role="dialog"])) {
-    position: static !important;
-    display: contents !important;
-  }
-  
-  /* Modal container - ONLY when dialog is open */
-  div[data-rk]:has([role="dialog"]) > div {
-    position: relative !important;
-    width: calc(100vw - 40px) !important;
-    max-width: 400px !important;
-    max-height: calc(100vh - 40px) !important;
-    margin: 0 auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    transform: none !important;
-  }
-  
-  /* Modal dialog */
-  div[data-rk] [role="dialog"] {
-    position: relative !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    background: white !important;
-    border-radius: 20px !important;
-    overflow: hidden !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
-    left: 0 !important;
-    right: 0 !important;
-    transform: none !important;
-  }
-  
-  /* Scrollable content area */
-  div[data-rk] [role="dialog"] > div {
-    width: 100% !important;
-    max-height: calc(100vh - 80px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 24px 20px !important;
-  }
-  
-  /* Wallet buttons - full width, clickable */
-  div[data-rk] button {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 64px !important;
-    padding: 16px 14px !important;
-    margin: 10px 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 16px !important;
-    background: #f8f9fa !important;
-    border: 2px solid #e9ecef !important;
-    border-radius: 12px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    box-sizing: border-box !important;
-    
-    /* CRITICAL: Touch optimization */
-    touch-action: manipulation !important;
-    -webkit-tap-highlight-color: rgba(6, 182, 212, 0.2) !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    pointer-events: auto !important;
-    position: relative !important;
-    transform: none !important;
-    left: 0 !important;
-    right: 0 !important;
-  }
-  
-  /* Button active state */
-  div[data-rk] button:active {
-    background: #e9ecef !important;
-    transform: scale(0.98) !important;
-    border-color: #06b6d4 !important;
-  }
-  
-  /* Wallet icons */
-  div[data-rk] button img {
-    width: 40px !important;
-    height: 40px !important;
-    flex-shrink: 0 !important;
-    border-radius: 8px !important;
-    pointer-events: none !important;
-  }
-  
-  /* Button text */
-  div[data-rk] button span,
-  div[data-rk] button div {
-    pointer-events: none !important;
-    flex: 1 !important;
-    text-align: left !important;
-  }
-  
-  /* Close button */
-  div[data-rk] button[aria-label*="Close"],
-  div[data-rk] button[aria-label*="Back"] {
-    position: absolute !important;
-    top: 16px !important;
-    right: 16px !important;
-    width: 40px !important;
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: rgba(0, 0, 0, 0.05) !important;
-    border: none !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 10 !important;
-  }
-  
-  /* Modal header/title */
-  div[data-rk] [role="dialog"] h1,
-  div[data-rk] [role="dialog"] h2 {
-    font-size: 22px !important;
-    font-weight: 700 !important;
-    margin-bottom: 20px !important;
-    padding-right: 50px !important;
-  }
-  
-  /* Prevent body scroll when RainbowKit modal dialog is ACTUALLY OPEN */
-  /* Only match when there's an actual modal dialog element visible, not just the wrapper */
-  body:has(div[data-rk] [role="dialog"]) {
-    overflow: hidden !important;
-    position: fixed !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-  
-  /* CRITICAL: Ensure body can scroll when no modal is open */
-  html:not(:has(div[data-rk] [role="dialog"])),
-  body:not(:has(div[data-rk] [role="dialog"])) {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  
-  /* Loading spinner */
-  div[data-rk] [class*="Spinner"],
-  div[data-rk] [class*="spinner"] {
-    margin: 20px auto !important;
-    display: block !important;
-  }
-  
-  /* Ensure all children are properly sized */
-  div[data-rk] * {
-    box-sizing: border-box !important;
-  }
-}
-
-/* Very small phones (iPhone SE, etc) */
-@media (max-width: 375px) {
-  div[data-rk] > div {
-    width: calc(100vw - 20px) !important;
-  }
-  
-  div[data-rk] [role="dialog"] {
-    border-radius: 16px !important;
-  }
-  
-  div[data-rk] [role="dialog"] > div {
-    padding: 20px 16px !important;
-  }
-  
-  div[data-rk] button {
-    min-height: 60px !important;
-    padding: 14px 12px !important;
-    font-size: 15px !important;
+  /* Wallet modal buttons */
+  div[data-rk] [role="dialog"] button {
+    min-height: 56px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(6, 182, 212, 0.2);
   }
 }
 

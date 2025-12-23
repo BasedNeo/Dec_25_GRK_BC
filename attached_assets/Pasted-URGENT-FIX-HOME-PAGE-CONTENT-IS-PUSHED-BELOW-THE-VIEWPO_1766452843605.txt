@@ -1,0 +1,80 @@
+URGENT FIX: HOME PAGE CONTENT IS PUSHED BELOW THE VIEWPORT
+
+CURRENT STATUS:
+✅ Scrolling now works (fixed)
+✅ Hamburger menu icon visible (fixed)
+❌ NEW BUG: First screen shows ONLY background - content is pushed DOWN
+❌ User has to scroll down to see the Command Center menu
+❌ The header/navbar with rocket logo and price ticker is at the BOTTOM of a blank screen
+
+Look at the user's screenshots:
+- Screenshot 1: Shows the home page AFTER scrolling down - content is visible
+- Screenshot 2: Shows the FIRST view when loading - completely blank except background stars
+- Screenshot 3: Shows more content after scrolling further
+
+The content exists but is positioned below the initial viewport.
+
+═══════════════════════════════════════════════════════════════════
+FIND AND FIX:
+═══════════════════════════════════════════════════════════════════
+
+1. Check client/src/pages/Home.tsx (or landing page component):
+   - Look for: margin-top, padding-top, or top values that push content down
+   - Look for: height: 100vh on a spacer or wrapper element BEFORE the content
+   - Look for: min-height: 100vh on an empty container
+   - Look for: flex-grow or flex-1 on an element that's expanding incorrectly
+
+2. Check client/src/components/Layout.tsx or main wrapper:
+   - Look for: A hero section or spacer div that's taking up the whole viewport
+   - Look for: Navbar with height: 100vh instead of auto/fixed height
+   - Look for: padding-top that accounts for a fixed header but header isn't fixed anymore
+
+3. Check client/src/index.css:
+   - After the recent fixes, check if any rule is adding large top margin/padding
+   - Look for: main { margin-top: 100vh } or similar
+   - Look for: .content { padding-top: 100vh } or similar
+
+4. Check client/src/App.tsx:
+   - Look for: A Route or component that renders an empty fullscreen element first
+   - Look for: Suspense fallback that's taking up space even after loading
+
+═══════════════════════════════════════════════════════════════════
+LIKELY CULPRIT:
+═══════════════════════════════════════════════════════════════════
+
+When you fixed the position:fixed issue, you may have:
+- Removed position:fixed from a header that needed it, so content no longer flows under it
+- OR there's a spacer/placeholder div that was invisible when things were fixed-positioned
+- OR the navbar wrapper has height:100vh making it push content down
+
+THE NAVBAR SHOULD BE:
+- Either: position: fixed with content having padding-top equal to navbar height
+- OR: position: static/relative with content flowing naturally below it
+
+═══════════════════════════════════════════════════════════════════
+THE FIX SHOULD:
+═══════════════════════════════════════════════════════════════════
+
+1. Make the navbar visible at the TOP of the viewport on load
+2. Make the "COMMAND CENTER" content visible WITHOUT scrolling
+3. NOT break the scrolling that is now working
+4. NOT break desktop layout
+
+═══════════════════════════════════════════════════════════════════
+SEARCH FOR THESE PATTERNS:
+═══════════════════════════════════════════════════════════════════
+
+Search the codebase for:
+- "h-screen" or "height: 100vh" or "min-h-screen" - one of these is likely on a wrong element
+- "pt-" classes with large values like "pt-96" or "pt-[100vh]"
+- "mt-" classes with large values
+- Any div with className containing "spacer" or "hero-spacer"
+
+═══════════════════════════════════════════════════════════════════
+SHOW ME:
+═══════════════════════════════════════════════════════════════════
+
+1. What element was pushing content below the viewport
+2. What CSS rule or className caused it
+3. How you fixed it
+4. Confirm the Command Center is visible on first load without scrolling
