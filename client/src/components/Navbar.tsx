@@ -70,7 +70,9 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
   const handleLogoClick = () => {
     setIsShaking(true);
+    setIsMobileMenuOpen(false);
     onTabChange('hub');
+    setLocation('/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => setIsShaking(false), 500);
   };
