@@ -236,7 +236,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     if (state.time % 60 === 0) {
       if (state.player.lives > 0) {
         state.phase = 'respawning';
-        state.player.pos = { x: w / 2 - 26, y: h - 70 };
+        state.player.pos = { x: w / 2 - 21, y: h - 60 };
         state.player.active = true;
         state.player.invincible = 200;
       } else {
@@ -449,7 +449,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     
     if (state.wave > 0 && state.wave % 4 === 0) {
       state.phase = 'landerReady';
-      state.player.pos = { x: w / 2 - 26, y: 60 };
+      state.player.pos = { x: w / 2 - 21, y: 60 };
       state.player.vel = { x: 0, y: 0 };
       state.player.fuel = 100;
     }
@@ -462,10 +462,10 @@ function playerHit(state: GameState, w: number, h: number): void {
   state.phase = 'dying';
   
   state.explosions.push({
-    pos: { x: state.player.pos.x + 26, y: state.player.pos.y + 26 },
+    pos: { x: state.player.pos.x + 21, y: state.player.pos.y + 21 },
     frame: 0,
     maxFrames: 30,
-    size: 48,
+    size: 42,
   });
 }
 
@@ -556,12 +556,12 @@ export function updateLander(state: GameState, w: number, h: number): void {
     if (onPad && speed < 1.5) {
       state.score += Math.floor((1.5 - speed) * 500);
       state.phase = 'playing';
-      state.player.pos = { x: w / 2 - 26, y: h - 70 };
+      state.player.pos = { x: w / 2 - 21, y: h - 60 };
       state.spawnTimer = 60;
     } else {
       state.player.lives--;
       if (state.player.lives > 0) {
-        p.pos = { x: w / 2 - 26, y: 60 };
+        p.pos = { x: w / 2 - 21, y: 60 };
         p.vel = { x: 0, y: 0 };
         p.fuel = 100;
       } else {
