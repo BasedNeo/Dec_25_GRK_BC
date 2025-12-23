@@ -409,10 +409,16 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-foreground hover:text-primary transition-colors p-2 flex-shrink-0 bg-transparent border-0 outline-none"
-              style={{ background: 'transparent' }}
+              className="text-white hover:text-cyan-400 transition-colors p-2 flex-shrink-0 border-0 outline-none"
+              style={{ 
+                background: 'transparent', 
+                backgroundColor: 'transparent',
+                WebkitAppearance: 'none',
+                boxShadow: 'none'
+              }}
+              data-testid="button-mobile-menu"
             >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMobileMenuOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
             </button>
           </div>
         </div>

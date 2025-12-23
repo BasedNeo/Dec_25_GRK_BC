@@ -1,0 +1,103 @@
+URGENT: MOBILE LAYOUT IS COMPLETELY BROKEN - FIX NOW
+
+Look at what's happening on mobile:
+1. The ENTIRE page content is shifted to the RIGHT - half the screen is empty black space
+2. The hamburger menu icon is a WHITE SQUARE instead of the menu icon
+3. Scrolling is COMPLETELY LOCKED - users cannot scroll at all
+4. This happens on multiple phones, multiple browsers (Chrome, DuckDuckGo), on cellular and wifi
+5. Desktop works perfectly fine
+
+This is a CSS/layout emergency. The app is UNUSABLE on mobile.
+
+═══════════════════════════════════════════════════════════════════
+DIAGNOSE THESE FILES IMMEDIATELY:
+═══════════════════════════════════════════════════════════════════
+
+1. client/src/index.css
+   - Look for: overflow: hidden on html, body, or #root
+   - Look for: position: fixed on any global element
+   - Look for: any transform or translateX that shifts content
+   - Look for: width greater than 100vw or negative margins
+
+2. client/src/App.tsx or main layout wrapper
+   - Check for overflow: hidden on main containers
+   - Check for flex or grid issues that push content off-screen
+
+3. client/src/components/Navbar.tsx (or Header/Navigation)
+   - The hamburger icon is showing as a WHITE SQUARE
+   - Check the mobile menu button - likely missing icon or has bg-white
+   - Check for: className with bg-white or missing icon component
+
+4. client/src/components/Layout.tsx (if exists)
+   - Check for wrapper divs with overflow: hidden
+   - Check for fixed positioning that locks scroll
+
+5. tailwind.config.js or tailwind.config.ts
+   - Check if any custom styles were added that break mobile
+
+═══════════════════════════════════════════════════════════════════
+LIKELY CULPRITS - CHECK THESE FIRST:
+═══════════════════════════════════════════════════════════════════
+
+A) SCROLL LOCK - One of these is probably true:
+   - html or body has "overflow: hidden" or "overflow-x: hidden" 
+   - A modal backdrop is stuck open with fixed positioning
+   - touch-action: none is set somewhere
+
+B) CONTENT SHIFTED RIGHT - One of these:
+   - A container has "margin-left: auto" without "margin-right: auto"
+   - Flexbox with "justify-content: end" on wrong container
+   - A fixed sidebar is pushing content
+   - Negative right margin or positive left margin
+
+C) WHITE SQUARE BURGER MENU:
+   - The icon component is missing or not rendering
+   - The button has "bg-white" instead of "bg-transparent"
+   - An SVG icon has fill="white" on white background
+
+═══════════════════════════════════════════════════════════════════
+FIX REQUIREMENTS:
+═══════════════════════════════════════════════════════════════════
+
+1. Make scrolling work on mobile:
+   html, body, #root {
+     overflow-y: auto !important;
+     overflow-x: hidden;
+     -webkit-overflow-scrolling: touch;
+     overscroll-behavior: auto;
+   }
+
+2. Center the content properly - remove any transforms or margins shifting it right
+
+3. Fix the hamburger menu - either:
+   - Fix the icon import/component
+   - Remove bg-white and add proper styling
+   - Make sure the Menu icon from lucide-react or similar is rendering
+
+4. Remove any position: fixed from page-level containers (except navbar if needed)
+
+5. Ensure main content container has:
+   - width: 100%
+   - max-width: 100vw
+   - margin: 0 auto (if centering)
+   - No transform or translateX
+
+═══════════════════════════════════════════════════════════════════
+DO NOT:
+═══════════════════════════════════════════════════════════════════
+- Change desktop layout
+- Remove features
+- Add new components
+- Refactor code structure
+
+ONLY fix the mobile CSS issues.
+
+═══════════════════════════════════════════════════════════════════
+SHOW ME:
+═══════════════════════════════════════════════════════════════════
+1. What CSS rule was causing the scroll lock
+2. What was pushing content to the right
+3. What was making the burger menu a white square
+4. Each file you modified and the specific change
+
+Start by reading client/src/index.css and client/src/components/Navbar.tsx FIRST.
