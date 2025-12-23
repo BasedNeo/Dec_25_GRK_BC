@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { trackEvent } from '@/lib/analytics';
-import { GameStorageManager, GameStats, GameSettings as BaseGameSettings } from '@/lib/gameStorage';
+import { GameStorageManager, GameSettings as BaseGameSettings } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
 import { GameHUD } from '@/components/game/GameHUD';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
@@ -105,7 +105,7 @@ export default function RingGame() {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { submitScore } = useGameScoresLocal();
+  const { submitScore, myStats, refreshStats } = useGameScoresLocal();
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
 
   const gameConfig = useMemo(() => getGameConfig('ring-game'), []);
@@ -120,11 +120,12 @@ export default function RingGame() {
   const [playsToday, setPlaysToday] = useState(0);
   const [showFeedback, setShowFeedback] = useState<'perfect' | 'good' | 'miss' | null>(null);
 
-  const [stats, setStats] = useState<GameStats>(() =>
-    address 
-      ? GameStorageManager.loadStats('ring-game', address)
-      : GameStorageManager.getDefaultStats()
-  );
+  const stats = useMemo(() => ({
+    gamesPlayed: myStats.totalGames || 0,
+    bestScore: myStats.bestScore || 0,
+    longestStreak: myStats.bestLevel || 0,
+    totalScore: myStats.lifetimeScore || 0,
+  }), [myStats]);
 
   const [settings, setSettings] = useState<RingGameSettings>(() =>
     GameStorageManager.loadSettings<RingGameSettings>('ring-game', {
@@ -373,9 +374,7 @@ export default function RingGame() {
         if (address && state.score > 0) {
           submitScore(state.score, state.level);
           recordPlay();
-          
-          const loadedStats = GameStorageManager.loadStats('ring-game', address);
-          setStats(loadedStats);
+          refreshStats();
         }
         
         trackEvent('game_complete', 'ring-game', String(state.level), state.score);
@@ -385,7 +384,7 @@ export default function RingGame() {
         state.rings = createRingsForLevel(state.level);
       }
     }
-  }, [gameOver, gameStarted, address, submitScore, createRingsForLevel, playSound, haptic, createParticles, createScorePopup]);
+  }, [gameOver, gameStarted, address, submitScore, recordPlay, refreshStats, createRingsForLevel, playSound, haptic, createParticles, createScorePopup]);
 
   const update = useCallback((dt: number) => {
     if (gameOver) return;
@@ -523,13 +522,12 @@ export default function RingGame() {
 
   useEffect(() => {
     if (address) {
-      const loadedStats = GameStorageManager.loadStats('ring-game', address);
-      setStats(loadedStats);
+      refreshStats();
       setPlaysToday(access.playsRemaining !== undefined ? gameConfig.maxPlaysPerDay - access.playsRemaining : 0);
     }
-  }, [address, access.playsRemaining, gameConfig.maxPlaysPerDay]);
+  }, [address, access.playsRemaining, gameConfig.maxPlaysPerDay, refreshStats]);
 
-  const startGame = useCallback(async () => {
+  const startGame = useCallback(() => {
     if (!address) {
       toast({
         title: "Wallet Required",
@@ -548,6 +546,16 @@ export default function RingGame() {
       return;
     }
     
+    const dailyLimits = GameStorageManager.checkDailyLimits('ring-game', address, gameConfig.maxPlaysPerDay, 50000);
+    if (!dailyLimits.canPlay) {
+      toast({
+        title: "Daily Limit Reached",
+        description: dailyLimits.reason || "Come back tomorrow!",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     gameStateRef.current = initialGameState();
     setGameStarted(true);
     setGameOver(false);
@@ -555,7 +563,7 @@ export default function RingGame() {
     lastTimeRef.current = 0;
     
     trackEvent('game_start', 'ring-game', '', 0);
-  }, [address, toast, access.canPlay, access.reason, initialGameState]);
+  }, [address, toast, access.canPlay, access.reason, gameConfig.maxPlaysPerDay, initialGameState]);
 
   const state = gameStateRef.current;
 
