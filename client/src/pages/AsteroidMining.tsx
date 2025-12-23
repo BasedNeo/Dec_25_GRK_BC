@@ -120,6 +120,7 @@ export default function AsteroidMining() {
 
   const gameConfig = useMemo(() => getGameConfig('asteroid-mining'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const keysRef = useRef<Set<string>>(new Set());
@@ -147,6 +148,71 @@ export default function AsteroidMining() {
     bestScore: myStats.bestScore || 0,
     totalScore: myStats.lifetimeScore || 0,
   }), [myStats]);
+
+  // Animated parallax starfield background - before conditional returns
+  useEffect(() => {
+    const bgCanvas = bgCanvasRef.current;
+    if (!bgCanvas) return;
+    const ctx = bgCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    const resize = () => {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    
+    const layers = [
+      { stars: [] as { x: number; y: number; size: number }[], speed: 0.3, color: '#333344' },
+      { stars: [] as { x: number; y: number; size: number }[], speed: 0.6, color: '#4444ff' },
+      { stars: [] as { x: number; y: number; size: number }[], speed: 1.0, color: '#00ffff' },
+    ];
+    
+    layers.forEach((layer, idx) => {
+      for (let i = 0; i < 80 - idx * 20; i++) {
+        layer.stars.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          size: (idx + 1) * 0.8
+        });
+      }
+    });
+    
+    let animId: number;
+    const animate = () => {
+      ctx.fillStyle = '#030308';
+      ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      const gradient = ctx.createRadialGradient(0, bgCanvas.height, 0, 0, bgCanvas.height, bgCanvas.width * 0.5);
+      gradient.addColorStop(0, 'rgba(100, 0, 150, 0.15)');
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      layers.forEach(layer => {
+        ctx.fillStyle = layer.color;
+        layer.stars.forEach(star => {
+          star.y += layer.speed;
+          if (star.y > bgCanvas.height) {
+            star.y = 0;
+            star.x = Math.random() * bgCanvas.width;
+          }
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+      
+      animId = requestAnimationFrame(animate);
+    };
+    animate();
+    
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   const playSound = useCallback((type: 'shoot' | 'hit' | 'explosion' | 'gameover' | 'powerup' | 'playerhit') => {
     if (!soundEnabled) return;
@@ -839,9 +905,12 @@ export default function AsteroidMining() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+      <section className="fixed inset-0 bg-[#030308] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Animated parallax starfield - fills entire viewport */}
+        <canvas ref={bgCanvasRef} className="absolute inset-0 z-0" style={{ top: 64 }} />
+        
         {/* Floating HUD - overlays game */}
-        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-20 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
@@ -870,8 +939,8 @@ export default function AsteroidMining() {
         {/* Game canvas - centered */}
         <canvas 
           ref={canvasRef} 
-          className="rounded-lg shadow-[0_0_40px_#00FFFF20]" 
-          style={{ touchAction: 'none', border: '1px solid rgba(0, 255, 255, 0.2)' }} 
+          className="relative z-10 rounded-lg shadow-[0_0_50px_#00FFFF30]" 
+          style={{ touchAction: 'none', border: '2px solid rgba(0, 255, 255, 0.3)' }} 
           data-testid="game-canvas" 
         />
 

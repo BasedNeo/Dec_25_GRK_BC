@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Star, Clock, Target, TrendingUp, Play, Home, Share2, 
@@ -11,6 +12,8 @@ import {
   getScorePerformanceTier,
   PerformanceTier 
 } from '@/lib/gameRegistry';
+import { InitialsEntry } from './InitialsEntry';
+import { useArcadeLeaderboard } from '@/hooks/useArcadeLeaderboard';
 
 /**
  * Additional stat to display in victory screen
@@ -49,6 +52,10 @@ export interface VictoryScreenProps {
   
   // Customization
   formatTime?: (seconds: number) => string;
+  
+  // Leaderboard integration
+  showInitialsEntry?: boolean;
+  onInitialsSubmit?: (initials: string, rank: number | null) => void;
 }
 
 /**
@@ -117,17 +124,31 @@ export function VictoryScreen({
     const mins = Math.floor(s / 60);
     const secs = s % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
+  },
+  showInitialsEntry = true,
+  onInitialsSubmit
 }: VictoryScreenProps) {
   const config = getGameConfig(gameType);
   const tier = getScorePerformanceTier(gameType, score);
   const message = PERFORMANCE_MESSAGES[tier];
   const MessageIcon = message.icon;
+  const { submitScore, playerInitials, saveInitials } = useArcadeLeaderboard();
+  
+  const [showingInitials, setShowingInitials] = useState(showInitialsEntry);
+  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   
   // Calculate improvement percentage
   const improvement = personalBest && personalBest > 0
     ? ((score - personalBest) / personalBest) * 100
     : 0;
+  
+  const handleInitialsSubmit = (initials: string) => {
+    saveInitials(initials);
+    const result = submitScore(gameType, score, initials);
+    setLeaderboardRank(result.rank);
+    setShowingInitials(false);
+    onInitialsSubmit?.(initials, result.rank);
+  };
   
   return (
     <AnimatePresence>
@@ -202,8 +223,24 @@ export function VictoryScreen({
                 +{improvement.toFixed(1)}% improvement!
               </p>
             )}
+            
+            {leaderboardRank && leaderboardRank <= 10 && !showingInitials && (
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 mt-2" data-testid="leaderboard-rank-badge">
+                🏆 Leaderboard Rank #{leaderboardRank}
+              </Badge>
+            )}
           </motion.div>
           
+          {showingInitials ? (
+            <div className="mb-6">
+              <InitialsEntry 
+                onSubmit={handleInitialsSubmit}
+                score={score}
+                defaultInitials={playerInitials}
+              />
+            </div>
+          ) : (
+          <>
           {/* Stats Grid */}
           {(time !== undefined || moves !== undefined || extraStats.length > 0) && (
             <div className="grid grid-cols-2 gap-3 mb-6" data-testid="stats-grid">
@@ -303,6 +340,8 @@ export function VictoryScreen({
               Exit
             </Button>
           </div>
+          </>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

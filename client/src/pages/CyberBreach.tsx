@@ -64,6 +64,7 @@ export default function CyberBreach() {
   const gameConfig = useMemo(() => getGameConfig('cyber-breach'), []);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [cards, setCards] = useState<GameCard[]>([]);
@@ -110,6 +111,71 @@ export default function CyberBreach() {
     window.addEventListener('resize', calculateCardSize);
     return () => window.removeEventListener('resize', calculateCardSize);
   }, [currentConfig.gridCols, currentConfig.pairs]);
+
+  // Animated circuit background - before conditional returns
+  useEffect(() => {
+    const bgCanvas = bgCanvasRef.current;
+    if (!bgCanvas) return;
+    const ctx = bgCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    const resize = () => {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    
+    const nodes: { x: number; y: number; pulse: number }[] = [];
+    for (let i = 0; i < 30; i++) {
+      nodes.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+    
+    let animId: number;
+    const animate = () => {
+      ctx.fillStyle = '#020208';
+      ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.03)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < bgCanvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, bgCanvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < bgCanvas.height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(bgCanvas.width, y);
+        ctx.stroke();
+      }
+      
+      nodes.forEach(node => {
+        node.pulse += 0.02;
+        const intensity = Math.sin(node.pulse) * 0.3 + 0.4;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 255, 136, ${intensity})`;
+        ctx.shadowColor = '#00FF88';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+      
+      animId = requestAnimationFrame(animate);
+    };
+    animate();
+    
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   const playSound = useCallback((type: 'flip' | 'match' | 'nomatch' | 'victory' | 'gameover') => {
     if (!soundEnabled) return;
@@ -447,9 +513,12 @@ export default function CyberBreach() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+      <section className="fixed inset-0 bg-[#020208] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Animated circuit background - fills entire viewport */}
+        <canvas ref={bgCanvasRef} className="absolute inset-0 z-0" style={{ top: 64 }} />
+        
         {/* Floating HUD - overlays game */}
-        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-20 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
@@ -488,7 +557,7 @@ export default function CyberBreach() {
 
         {/* Card grid - centered and maximized */}
         <div 
-          className="grid gap-1 p-1"
+          className="relative z-10 grid gap-1 p-1"
           style={{ 
             gridTemplateColumns: `repeat(${currentConfig.gridCols}, ${cardSize}px)`,
           }}

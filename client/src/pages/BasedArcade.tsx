@@ -14,6 +14,7 @@ import { getEnabledGames, GameConfig } from '@/lib/gameRegistry';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
+import { LeaderboardPanel } from '@/components/game/LeaderboardPanel';
 
 interface LeaderboardEntry {
   id: string;
@@ -518,7 +519,25 @@ export default function BasedArcade() {
           </div>
         </motion.div>
 
-        <GlobalLeaderboard />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-16">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <Trophy className="w-8 h-8 text-yellow-400" />
+              <h2 className="text-2xl md:text-3xl font-orbitron font-bold text-white">
+                Local High Scores
+              </h2>
+            </div>
+            <LeaderboardPanel showPersonalStats={true} showDailyChallenge={true} />
+          </motion.div>
+          
+          <div>
+            <GlobalLeaderboard />
+          </div>
+        </div>
       </div>
     </section>
   );

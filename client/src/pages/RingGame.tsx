@@ -110,6 +110,7 @@ export default function RingGame() {
 
   const gameConfig = useMemo(() => getGameConfig('ring-game'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -134,6 +135,71 @@ export default function RingGame() {
   }), [myStats]);
 
   const currentRealm = useMemo(() => getLevelRealm(level), [level]);
+
+  // Animated starfield background - declared before conditional returns
+  useEffect(() => {
+    const bgCanvas = bgCanvasRef.current;
+    if (!bgCanvas) return;
+    const ctx = bgCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    const resize = () => {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    
+    const stars: { x: number; y: number; size: number; speed: number; color: string }[] = [];
+    for (let i = 0; i < 150; i++) {
+      const colors = ['#00ffff', '#ff00ff', '#ffff00', '#ffffff'];
+      stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 0.5 + 0.1,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+    
+    let animId: number;
+    const animate = () => {
+      ctx.fillStyle = '#050510';
+      ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      const cx = bgCanvas.width / 2;
+      const cy = bgCanvas.height / 2;
+      for (let r = 100; r < Math.max(bgCanvas.width, bgCanvas.height); r += 150) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.03 - r * 0.00002})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      
+      stars.forEach(star => {
+        star.y += star.speed;
+        if (star.y > bgCanvas.height) {
+          star.y = 0;
+          star.x = Math.random() * bgCanvas.width;
+        }
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fillStyle = star.color;
+        ctx.globalAlpha = 0.6;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+      
+      animId = requestAnimationFrame(animate);
+    };
+    animate();
+    
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   const playSound = useCallback((type: 'perfect' | 'good' | 'miss' | 'gameover') => {
     if (!soundEnabled) return;
@@ -751,8 +817,11 @@ export default function RingGame() {
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Animated starfield background - fills entire viewport */}
+        <canvas ref={bgCanvasRef} className="absolute inset-0 z-0" style={{ top: 64 }} />
+        
         {/* Floating HUD - overlays game */}
-        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10">
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-20">
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-start">
               <span className="text-[10px] font-orbitron tracking-wider" style={{ color: currentRealm.color }}>{currentRealm.name}</span>
@@ -786,11 +855,11 @@ export default function RingGame() {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative z-10">
           <canvas
             ref={canvasRef}
-            className="rounded-lg cursor-pointer shadow-[0_0_30px_rgba(0,255,255,0.15)]"
-            style={{ touchAction: 'none', border: `1px solid ${currentRealm.color}30` }}
+            className="rounded-lg cursor-pointer shadow-[0_0_40px_rgba(0,255,255,0.3)]"
+            style={{ touchAction: 'none', border: `2px solid ${currentRealm.color}60` }}
             onClick={handleTap}
             onTouchStart={(e) => { e.preventDefault(); handleTap(); }}
             data-testid="game-canvas"
