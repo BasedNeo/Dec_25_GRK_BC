@@ -977,13 +977,43 @@ export async function registerRoutes(
     }
   });
 
-  // Race-to-Base Game Score Endpoints
+  // Game Score Endpoints - Unified Economy System
+  // Valid game types for score submission
+  const VALID_GAME_TYPES = [
+    'guardian-defense', 'guardian-solitaire', 'space-defender', 
+    'asteroid-mining', 'cyber-breach', 'ring-game'
+  ] as const;
+  
+  // Maximum scores per game type (server-side validation, 10% buffer for bonuses)
+  const MAX_SCORES: Record<string, number> = {
+    'guardian-defense': 55000,
+    'guardian-solitaire': 55000,
+    'space-defender': 110000,
+    'asteroid-mining': 55000,
+    'cyber-breach': 55000,
+    'ring-game': 55000,
+  };
+  
+  // Minimum play durations per game type (seconds)
+  const MIN_DURATIONS: Record<string, number> = {
+    'guardian-defense': 60,
+    'guardian-solitaire': 120,
+    'space-defender': 60,
+    'asteroid-mining': 90,
+    'cyber-breach': 60,
+    'ring-game': 30,
+  };
+
   app.post("/api/game/score", gameLimiter, writeLimiter, async (req, res) => {
     try {
       const schema = z.object({
         walletAddress: z.string().min(10),
         score: z.number().min(0),
-        level: z.number().min(1).max(5),
+        ecosystemPoints: z.number().min(0).max(1000).optional(), // Max 1000 points per session
+        gameType: z.enum(VALID_GAME_TYPES).optional().default('space-defender'),
+        duration: z.number().min(0).optional().default(60),
+        checksum: z.string().optional(),
+        level: z.number().min(1).max(10), // Increased max for wave-based games
         customName: z.string().max(20).optional(),
       });
       
@@ -992,15 +1022,31 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid score data", details: parsed.error.errors });
       }
 
+      const { walletAddress, score, ecosystemPoints, gameType, duration, level, customName } = parsed.data;
+      
+      // Server-side validation: Check max score
+      const maxScore = MAX_SCORES[gameType] || 55000;
+      if (score > maxScore) {
+        console.warn(`[Game] Suspicious score rejected: ${walletAddress.slice(0, 8)}... - ${score} exceeds max ${maxScore} for ${gameType}`);
+        return res.status(400).json({ error: "Score exceeds maximum possible" });
+      }
+      
+      // Server-side validation: Check minimum duration
+      const minDuration = MIN_DURATIONS[gameType] || 30;
+      if (duration < minDuration * 0.5) { // 50% tolerance for fast completions
+        console.warn(`[Game] Suspicious duration rejected: ${walletAddress.slice(0, 8)}... - ${duration}s < min ${minDuration}s for ${gameType}`);
+        return res.status(400).json({ error: "Play duration too short" });
+      }
+
       const result = await storage.submitGameScore(
-        parsed.data.walletAddress,
-        parsed.data.score,
-        parsed.data.level,
-        parsed.data.customName
+        walletAddress,
+        score,
+        level,
+        customName
       );
 
-      console.log(`[Game] Score submitted: ${parsed.data.walletAddress.slice(0, 8)}... - ${parsed.data.score} points`);
-      return res.json({ success: true, stats: result });
+      console.log(`[Game] Score submitted: ${walletAddress.slice(0, 8)}... - ${score} pts (${ecosystemPoints || 0} eco) in ${gameType}`);
+      return res.json({ success: true, stats: result, ecosystemPoints: ecosystemPoints || 0 });
     } catch (error) {
       console.error("[Game] Error submitting score:", error);
       return res.status(500).json({ error: "Failed to submit score" });
