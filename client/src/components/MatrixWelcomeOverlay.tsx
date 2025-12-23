@@ -164,7 +164,7 @@ export function MatrixWelcomeOverlay({
             <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
           </div>
 
-          <div className="relative z-10 max-w-2xl w-full px-8 md:px-12">
+          <div className="relative z-10 max-w-2xl w-full px-6 sm:px-8 md:px-12 mx-auto">
             <div className="font-mono flex flex-col gap-4">
               {displayedLines.map((line, index) => (
                 <div

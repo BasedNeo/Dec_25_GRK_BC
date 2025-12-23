@@ -882,6 +882,64 @@ input, textarea, select {
 }
 
 /* ========================================
+   MOBILE EMERGENCY FIXES
+   ======================================== */
+@media (max-width: 767px) {
+  /* Fix scrolling on mobile */
+  html {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100%;
+  }
+  
+  body {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+    -webkit-overflow-scrolling: touch;
+    position: relative !important;
+  }
+  
+  /* Fix white blocks on buttons - ensure transparent backgrounds */
+  button:not([class*="bg-"]):not([data-rk] button) {
+    background-color: transparent !important;
+  }
+  
+  /* Fix hamburger menu button */
+  button.md\\:hidden,
+  .md\\:hidden button {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  
+  /* Ensure main content can scroll */
+  main, #root, .app-container {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-height: 100vh;
+  }
+  
+  /* Container padding for welcome message visibility */
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Fix any fixed positioning that might block scroll */
+  [class*="fixed"]:not(.fixed-bottom):not([class*="navbar"]):not([class*="header"]):not([data-rk]) {
+    position: relative !important;
+  }
+}
+
+/* Override body fixed position when NO modal is open */
+body:not(:has(div[data-rk])):not(:has([role="dialog"])) {
+  position: relative !important;
+  overflow-y: auto !important;
+}
+
+/* ========================================
    WALLETCONNECT MODAL FIXES
    ======================================== */
 
