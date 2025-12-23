@@ -169,12 +169,12 @@ const MISSILE_COLORS: Record<MissileColor, string> = {
 };
 
 const MISSILE_POINTS: Record<MissileColor, number> = {
-  green: 2,
-  red: 2,
-  yellow: 3,
+  green: 1,
+  red: 1,
+  yellow: 2,
 };
 
-const MISSILES_PER_BATTERY = 5;
+const MISSILES_PER_BATTERY = 4;
 const DEFENSIVE_MISSILE_SPEED = 700;
 const EXPLOSION_MAX_RADIUS = 40;
 const EXPLOSION_LIFETIME = 1.8;
@@ -852,7 +852,7 @@ export default function GuardianDefense() {
           });
           spawnWave(state.wave);
         }
-      }, 2500);
+      }, 1500);
     }
   }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame]);
 

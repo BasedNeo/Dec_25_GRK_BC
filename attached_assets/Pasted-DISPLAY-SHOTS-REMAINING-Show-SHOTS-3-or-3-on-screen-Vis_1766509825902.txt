@@ -1,0 +1,119 @@
+DISPLAY SHOTS REMAINING:
+Show: "SHOTS: 3" or "🔫 3" on screen
+Visual warning when 1 shot left
+Empty indicator when 0 shots
+FIX 3: REDUCE SCORING (Currently inflated)
+User got 50,000 on first try (should be ~2,000-6,000 max)
+Reduce ALL point values by 80-90%
+CURRENT → NEW SCORING:
+Basic enemy: 100 → 10 points
+Fast enemy: 250 → 25 points
+Tank enemy: 500 → 50 points
+Wave complete: 1000 → 100 points
+Boss: 2000 → 200 points
+Target scores:
+Beginner: 500-1,000
+Average: 1,000-3,000
+Good: 3,000-6,000
+Expert: 6,000-10,000
+FIX 4: PORTRAIT MODE SUPPORT
+Game should work with phone held normally
+Landscape can be OPTIONAL but not required
+Remove any forced orientation
+Test: Can you play in portrait? Must work.
+FIX 5: TITLE CUT OFF ON WELCOME SCREEN
+Add padding-top to game container
+Ensure "CREATURE COMMAND" title fully visible
+Account for navbar height
+FIX 6: APPLY GLOBAL FIXES
+Navbar on welcome screen
+Navbar on game over screen
+Use wallet name instead of asking for initials
+"Return to Arcade" button on game over
+Remove "Played too fast" restriction
+After fixing:
+□ Wave messages auto-dismiss after 3 seconds
+□ Limited shots per wave (3-6 based on level)
+□ Reduced scoring (max ~6,000-10,000 for expert)
+□ Works in portrait mode
+□ Title not cut off
+□ Navbar on all screens
+□ Uses wallet name for high scores
+═══════════════════════════════════════════════════════════════════
+📋 TESTING CHECKLIST FOR EACH GAME
+═══════════════════════════════════════════════════════════════════
+Before marking a game as DONE, verify ALL of these:
+□ Game loads without errors (desktop)
+□ Game loads without errors (mobile)
+□ Plays in PORTRAIT mode (no rotation required)
+□ Controls work on desktop
+□ Controls work on mobile (touch)
+□ Navbar visible on welcome screen
+□ Navbar visible on game over screen
+□ Title not cut off at top
+□ "Return to Arcade" button on game over
+□ No "Played too fast" restriction
+□ Uses wallet name (not initials) if available
+□ Game is challenging (not too easy)
+═══════════════════════════════════════════════════════════════════
+WORK ORDER:
+═══════════════════════════════════════════════════════════════════
+FIX ASTEROID (make it load and work)
+FIX CYBER BREACH (make it load and work)
+FIX RING GAME (make it load and work)
+FIX RETRO DEFENDER (remove rotation, shrink ship)
+FIX CREATURE COMMAND (balance difficulty, wave popups)
+APPLY GLOBAL FIXES to all games
+TEST ALL GAMES on desktop AND mobile
+DO NOT proceed to next game until current one is fully fixed and tested.
+═══════════════════════════════════════════════════════════════════
+DELIVERABLE:
+═══════════════════════════════════════════════════════════════════
+GAME FIX REPORT
+ASTEROID
+Previous error: [What was the error?]
+Fix applied: [What did you change?]
+Loads on desktop: ✅/❌
+Loads on mobile: ✅/❌
+Portrait mode works: ✅/❌
+Fully playable: ✅/❌
+CYBER BREACH
+Previous error: [What was the error?]
+Fix applied: [What did you change?]
+Loads on desktop: ✅/❌
+Loads on mobile: ✅/❌
+Portrait mode works: ✅/❌
+Fully playable: ✅/❌
+RING GAME
+Previous error: [What was the error?]
+Fix applied: [What did you change?]
+Loads on desktop: ✅/❌
+Loads on mobile: ✅/❌
+Portrait mode works: ✅/❌
+Fully playable: ✅/❌
+RETRO DEFENDER
+Rotation requirement removed: ✅/❌
+Ship reduced by 20%: ✅/❌
+Portrait mode works: ✅/❌
+Global fixes applied: ✅/❌
+CREATURE COMMAND
+Wave popups auto-dismiss: ✅/❌
+Limited shots implemented: ✅/❌
+Scoring reduced: ✅/❌
+Portrait mode works: ✅/❌
+Global fixes applied: ✅/❌
+GLOBAL FIXES (All Games)
+Navbar on welcome screens: ✅/❌
+Navbar on game over screens: ✅/❌
+Titles not cut off: ✅/❌
+"Return to Arcade" buttons: ✅/❌
+"Played too fast" removed: ✅/❌
+Wallet name used: ✅/❌
+No rotation requirements: ✅/❌
+FILES MODIFIED
+[List all files]
+REMAINING ISSUES
+[Any issues that couldn't be fixed]
+═══════════════════════════════════════════════════════════════════
+FIX EACH GAME COMPLETELY. TEST THOROUGHLY. ONE AT A TIME.
+═══════════════════════════════════════════════════════════════════
