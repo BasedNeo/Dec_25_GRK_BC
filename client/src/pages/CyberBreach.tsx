@@ -657,7 +657,7 @@ export default function CyberBreach() {
               <Clock className="w-4 h-4" />
               <span className="font-mono font-bold text-lg">{timeLeft}s</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400 h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400 h-8 w-8" aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}>
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>

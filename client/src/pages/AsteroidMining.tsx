@@ -1222,7 +1222,7 @@ export default function AsteroidMining() {
             {hasRapidFire && <span className="text-lg" style={{ filter: 'drop-shadow(0 0 8px #3B82F6)' }}>⚡</span>}
             {hasSpreadShot && <span className="text-lg" style={{ filter: 'drop-shadow(0 0 8px #FBBF24)' }}>🔱</span>}
             {hasSlowMo && <span className="text-lg animate-pulse" style={{ filter: 'drop-shadow(0 0 8px #A855F7)' }}>⏱</span>}
-            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8" aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}>
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>
@@ -1233,7 +1233,9 @@ export default function AsteroidMining() {
           ref={canvasRef} 
           className="relative z-10 rounded-lg shadow-[0_0_50px_#00FFFF30]" 
           style={{ touchAction: 'none', border: '2px solid rgba(0, 255, 255, 0.3)' }} 
-          data-testid="game-canvas" 
+          data-testid="game-canvas"
+          aria-label="Space shooter game canvas"
+          role="application"
         />
 
         {/* Mobile touch controls - floating at bottom */}
@@ -1248,6 +1250,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleMouseUp('left')}
                 onMouseLeave={() => handleMouseUp('left')}
                 data-testid="button-move-left"
+                aria-label="Move left"
               >←</Button>
               <Button
                 className="w-28 h-14 bg-red-500/30 border border-red-500/50 text-red-400 text-lg font-bold active:bg-red-500/50 shadow-[0_0_15px_#EF444430]"
@@ -1257,6 +1260,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleMouseUp('shoot')}
                 onMouseLeave={() => handleMouseUp('shoot')}
                 data-testid="button-shoot"
+                aria-label="Fire weapon"
               >FIRE</Button>
               <Button
                 className="w-20 h-14 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40 shadow-[0_0_15px_#00FFFF30]"
@@ -1266,6 +1270,7 @@ export default function AsteroidMining() {
                 onMouseUp={() => handleMouseUp('right')}
                 onMouseLeave={() => handleMouseUp('right')}
                 data-testid="button-move-right"
+                aria-label="Move right"
               >→</Button>
             </div>
           </div>

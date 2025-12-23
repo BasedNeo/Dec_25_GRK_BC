@@ -955,7 +955,7 @@ export default function RingGame() {
                 />
               ))}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8" aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}>
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>
@@ -969,6 +969,8 @@ export default function RingGame() {
             onClick={handleTap}
             onTouchStart={(e) => { e.preventDefault(); handleTap(); }}
             data-testid="game-canvas"
+            aria-label="Ring game canvas - tap to align rings"
+            role="application"
           />
           <AnimatePresence>
             {showLevelBanner && (
