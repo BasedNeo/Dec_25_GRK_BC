@@ -87,6 +87,30 @@ export default function CyberBreach() {
 
   const currentConfig = useMemo(() => LEVEL_CONFIGS[Math.min(level - 1, LEVEL_CONFIGS.length - 1)], [level]);
 
+  // Responsive card sizing - must be before conditional returns
+  const [cardSize, setCardSize] = useState(80);
+  
+  useEffect(() => {
+    const calculateCardSize = () => {
+      // 92% of true viewport for ≥90% coverage
+      const gap = 4;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      
+      const cols = currentConfig.gridCols;
+      const totalCards = currentConfig.pairs * 2;
+      const rows = Math.ceil(totalCards / cols);
+      // Use 92% of viewport
+      const maxCardWidth = ((vw * 0.92) - (cols - 1) * gap) / cols;
+      const maxCardHeight = ((vh * 0.92) - (rows - 1) * gap) / rows;
+      setCardSize(Math.max(1, Math.min(maxCardWidth, maxCardHeight)));
+    };
+    
+    calculateCardSize();
+    window.addEventListener('resize', calculateCardSize);
+    return () => window.removeEventListener('resize', calculateCardSize);
+  }, [currentConfig.gridCols, currentConfig.pairs]);
+
   const playSound = useCallback((type: 'flip' | 'match' | 'nomatch' | 'victory' | 'gameover') => {
     if (!soundEnabled) return;
     try {
@@ -423,46 +447,50 @@ export default function CyberBreach() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-2 min-h-screen bg-black pt-16 pb-24 flex flex-col items-center">
-        <div className="flex items-center justify-between w-full max-w-md px-4 mb-4">
+      <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Floating HUD - overlays game */}
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-white font-mono font-bold">{score}</span>
+              <span className="text-white font-mono font-bold text-lg" style={{ textShadow: '0 0 10px #00FF88' }}>{score.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2 py-1 bg-green-500/10 rounded">
               <Target className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 font-mono">LVL {level}</span>
+              <span className="text-green-400 font-mono font-bold">LVL {level}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-400'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded ${timeLeft <= 10 ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-cyan-400'}`}>
               <Clock className="w-4 h-4" />
-              <span className="font-mono font-bold">{timeLeft}s</span>
+              <span className="font-mono font-bold text-lg">{timeLeft}s</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400">
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-green-400 h-8 w-8">
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>
         </div>
 
-        <div className="text-center mb-4">
-          <p className="text-gray-400 text-sm">
-            BREACH: {matchedPairs}/{currentConfig.pairs} COMPLETE
-          </p>
-          <div className="w-48 h-2 bg-gray-800 rounded-full mt-2 mx-auto">
-            <div 
-              className="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all"
-              style={{ width: `${(matchedPairs / currentConfig.pairs) * 100}%` }}
-            />
+        {/* Progress bar - floating */}
+        <div className="absolute top-28 left-0 right-0 px-6 z-10">
+          <div className="max-w-md mx-auto">
+            <p className="text-gray-400 text-xs text-center mb-1">
+              BREACH: {matchedPairs}/{currentConfig.pairs}
+            </p>
+            <div className="w-full h-2 bg-gray-800/50 rounded-full">
+              <div 
+                className="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all shadow-[0_0_10px_#00FF88]"
+                style={{ width: `${(matchedPairs / currentConfig.pairs) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
 
+        {/* Card grid - centered and maximized */}
         <div 
-          className="grid gap-2 p-4"
+          className="grid gap-1 p-1"
           style={{ 
-            gridTemplateColumns: `repeat(${currentConfig.gridCols}, minmax(0, 1fr))`,
-            maxWidth: isMobile ? '100%' : '400px'
+            gridTemplateColumns: `repeat(${currentConfig.gridCols}, ${cardSize}px)`,
           }}
         >
           <AnimatePresence>
@@ -472,26 +500,27 @@ export default function CyberBreach() {
                 onClick={() => handleCardClick(card.id)}
                 disabled={card.isFlipped || card.isMatched || isChecking}
                 className={`
-                  aspect-square rounded-lg border-2 font-bold text-2xl
+                  rounded-lg border-2 font-bold
                   flex items-center justify-center
-                  transition-all duration-200
+                  transition-all duration-150
                   ${card.isMatched 
-                    ? 'bg-green-500/20 border-green-500/50 opacity-60' 
+                    ? 'bg-green-500/20 border-green-500/50 opacity-60 shadow-[0_0_15px_#00FF8840]' 
                     : card.isFlipped 
-                      ? 'bg-cyan-500/20 border-cyan-500/50' 
-                      : 'bg-gray-900 border-gray-700 hover:border-cyan-500/50 hover:bg-gray-800'
+                      ? 'bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_15px_#00FFFF40]' 
+                      : 'bg-gray-900/80 border-gray-600 hover:border-cyan-500/50 hover:bg-gray-800 hover:shadow-[0_0_10px_#00FFFF20]'
                   }
                 `}
                 style={{ 
-                  minWidth: isMobile ? '60px' : '70px',
-                  minHeight: isMobile ? '60px' : '70px'
+                  width: `${cardSize}px`,
+                  height: `${cardSize}px`,
+                  fontSize: `${Math.max(cardSize * 0.4, 18)}px`
                 }}
                 initial={{ rotateY: 0 }}
                 animate={{ 
                   rotateY: card.isFlipped || card.isMatched ? 180 : 0,
                   scale: card.isMatched ? 0.9 : 1
                 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 data-testid={`card-${card.id}`}
               >
                 {(card.isFlipped || card.isMatched) ? (
@@ -504,7 +533,8 @@ export default function CyberBreach() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-4 text-center text-gray-500 text-xs">
+        {/* Floating moves counter */}
+        <div className="absolute bottom-4 left-0 right-0 text-center text-gray-500 text-sm z-10">
           Moves: {moves}
         </div>
 

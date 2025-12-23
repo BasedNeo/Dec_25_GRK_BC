@@ -590,8 +590,10 @@ export default function RingGame() {
 
   useEffect(() => {
     const updateSize = () => {
-      const maxSize = Math.min(window.innerWidth - 32, window.innerHeight - 280, BASE_CANVAS_SIZE);
-      setCanvasSize(Math.max(250, maxSize));
+      // Fullscreen: 95% of true viewport for ≥90% coverage
+      // Canvas extends under floating HUD/navbar for maximum size
+      const size = Math.max(1, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.95));
+      setCanvasSize(size);
     };
     updateSize();
     window.addEventListener('resize', updateSize);
@@ -748,9 +750,9 @@ export default function RingGame() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-2 h-screen bg-black pt-16 flex flex-col items-center overflow-hidden">
-        {/* Enhanced HUD */}
-        <div className="flex items-center justify-between w-full max-w-md px-4 mb-3">
+      <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Floating HUD - overlays game */}
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10">
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-start">
               <span className="text-[10px] font-orbitron tracking-wider" style={{ color: currentRealm.color }}>{currentRealm.name}</span>
@@ -861,15 +863,17 @@ export default function RingGame() {
           )}
         </div>
 
-        <p className="mt-3 text-gray-500 text-[11px] text-center">Tap or press SPACE when gaps align</p>
-
-        <Button
-          onClick={handleTap}
-          className="mt-2 w-36 h-12 text-base font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform shadow-lg shadow-cyan-500/20"
-          data-testid="button-tap"
-        >
-          ALIGN
-        </Button>
+        {/* Floating bottom controls */}
+        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center z-10">
+          <p className="text-gray-500 text-[11px] text-center mb-2">Tap or press SPACE when gaps align</p>
+          <Button
+            onClick={handleTap}
+            className="w-40 h-14 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-95 transition-transform shadow-[0_0_20px_#00FFFF40]"
+            data-testid="button-tap"
+          >
+            ALIGN
+          </Button>
+        </div>
       </section>
     </>
   );

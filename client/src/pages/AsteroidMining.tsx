@@ -618,12 +618,26 @@ export default function AsteroidMining() {
 
   useEffect(() => {
     const updateCanvasSize = () => {
-      const maxWidth = Math.min(window.innerWidth - 32, 500);
-      const maxHeight = Math.min(window.innerHeight - 200, 700);
-      let width = maxWidth;
-      let height = width * 1.5;
-      if (height > maxHeight) { height = maxHeight; width = height / 1.5; }
-      setCanvasSize({ width: Math.floor(width), height: Math.floor(height) });
+      // Fullscreen: 95% of true viewport for ≥90% coverage
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      
+      // 2:3 aspect ratio at 95% of viewport
+      const targetRatio = 2 / 3;
+      let width, height;
+      
+      if (vw / vh < targetRatio) {
+        width = vw * 0.95;
+        height = Math.min(width / targetRatio, vh * 0.95);
+      } else {
+        height = vh * 0.95;
+        width = Math.min(height * targetRatio, vw * 0.95);
+      }
+      
+      setCanvasSize({ 
+        width: Math.max(1, Math.floor(width)), 
+        height: Math.max(1, Math.floor(height)) 
+      });
     };
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
@@ -825,34 +839,48 @@ export default function AsteroidMining() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-2 min-h-screen bg-black pt-16 pb-32 flex flex-col items-center">
-        <div className="flex items-center justify-between w-full max-w-md px-4 mb-2">
+      <section className="fixed inset-0 bg-[#050510] pt-16 flex flex-col items-center justify-center overflow-hidden">
+        {/* Floating HUD - overlays game */}
+        <div className="absolute top-16 left-0 right-0 flex items-center justify-between px-4 py-2 z-10 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-white font-mono font-bold">{score}</span>
+              <span className="text-white font-mono font-bold text-lg" style={{ textShadow: '0 0 10px #00FFFF' }}>{score.toLocaleString()}</span>
             </div>
-            {combo > 1 && <span className="text-yellow-400 font-bold text-sm animate-pulse">x{Math.min(combo, 10)}</span>}
-            <div className="flex items-center gap-1">
-              {[...Array(lives)].map((_, i) => <Heart key={i} className="w-4 h-4 text-red-500 fill-red-500" />)}
-            </div>
+            {combo > 1 && (
+              <span className="text-yellow-400 font-bold text-sm px-2 py-0.5 bg-yellow-400/10 rounded animate-pulse">
+                x{Math.min(combo, 10)}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            {hasShield && <Shield className="w-4 h-4 text-blue-400" />}
-            {hasRapidFire && <Zap className="w-4 h-4 text-yellow-400" />}
-            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              {[...Array(3)].map((_, i) => (
+                <Heart key={i} className={`w-5 h-5 transition-all ${i < lives ? 'text-red-500 fill-red-500' : 'text-gray-700'}`} />
+              ))}
+            </div>
+            {hasShield && <Shield className="w-5 h-5 text-blue-400" style={{ filter: 'drop-shadow(0 0 8px #3B82F6)' }} />}
+            {hasRapidFire && <Zap className="w-5 h-5 text-yellow-400" style={{ filter: 'drop-shadow(0 0 8px #FBBF24)' }} />}
+            <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)} className="text-cyan-400 h-8 w-8">
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>
         </div>
 
-        <canvas ref={canvasRef} className="border border-cyan-500/30 rounded-lg" style={{ touchAction: 'none' }} data-testid="game-canvas" />
+        {/* Game canvas - centered */}
+        <canvas 
+          ref={canvasRef} 
+          className="rounded-lg shadow-[0_0_40px_#00FFFF20]" 
+          style={{ touchAction: 'none', border: '1px solid rgba(0, 255, 255, 0.2)' }} 
+          data-testid="game-canvas" 
+        />
 
+        {/* Mobile touch controls - floating at bottom */}
         {isMobile && (
-          <div className="fixed bottom-4 left-0 right-0 px-4">
-            <div className="flex justify-center gap-4">
+          <div className="absolute bottom-4 left-0 right-0 px-4 z-10">
+            <div className="flex justify-center gap-3">
               <Button
-                className="w-20 h-16 bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40"
+                className="w-20 h-14 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40 shadow-[0_0_15px_#00FFFF30]"
                 onTouchStart={() => handleTouchStart('left')}
                 onTouchEnd={() => handleTouchEnd('left')}
                 onMouseDown={() => handleTouchStart('left')}
@@ -861,7 +889,7 @@ export default function AsteroidMining() {
                 data-testid="button-move-left"
               >←</Button>
               <Button
-                className="w-24 h-16 bg-red-500/20 border border-red-500/50 text-red-400 text-lg font-bold active:bg-red-500/40"
+                className="w-28 h-14 bg-red-500/30 border border-red-500/50 text-red-400 text-lg font-bold active:bg-red-500/50 shadow-[0_0_15px_#EF444430]"
                 onTouchStart={() => handleTouchStart('shoot')}
                 onTouchEnd={() => handleTouchEnd('shoot')}
                 onMouseDown={() => handleTouchStart('shoot')}
@@ -870,7 +898,7 @@ export default function AsteroidMining() {
                 data-testid="button-shoot"
               >FIRE</Button>
               <Button
-                className="w-20 h-16 bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40"
+                className="w-20 h-14 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-2xl font-bold active:bg-cyan-500/40 shadow-[0_0_15px_#00FFFF30]"
                 onTouchStart={() => handleTouchStart('right')}
                 onTouchEnd={() => handleTouchEnd('right')}
                 onMouseDown={() => handleTouchStart('right')}
