@@ -18,7 +18,7 @@ import {
   Home, Loader2, Trophy, Zap, Target, Star, Crosshair
 } from 'lucide-react';
 
-type MissileColor = 'green' | 'red' | 'yellow';
+type CreatureType = 'based' | 'crystal' | 'midnight' | 'jelly' | 'golden' | 'pearlescent' | 'guardian';
 
 interface Vector2D {
   x: number;
@@ -30,10 +30,11 @@ interface EnemyMissile {
   start: Vector2D;
   target: Vector2D;
   position: Vector2D;
-  color: MissileColor;
+  creatureType: CreatureType;
   speed: number;
   progress: number;
   active: boolean;
+  health: number;
 }
 
 interface DefensiveMissile {
@@ -170,16 +171,54 @@ const CITY_POSITIONS = [
   { x: 480, y: GROUND_Y, name: 'WOLF DEN' },
 ];
 
-const MISSILE_COLORS: Record<MissileColor, string> = {
-  green: '#10B981',
-  red: '#EF4444',
-  yellow: '#FBBF24',
+const CREATURE_COLORS: Record<CreatureType, string> = {
+  based: '#00FFFF',
+  crystal: '#E0E0FF',
+  midnight: '#4B0082',
+  jelly: '#FF69B4',
+  golden: '#FFD700',
+  pearlescent: '#FFF0F5',
+  guardian: '#FF00FF',
 };
 
-const MISSILE_POINTS: Record<MissileColor, number> = {
-  green: 1,
-  red: 1,
-  yellow: 2,
+const CREATURE_POINTS: Record<CreatureType, number> = {
+  based: 10,
+  crystal: 15,
+  midnight: 20,
+  jelly: 15,
+  golden: 50,
+  pearlescent: 25,
+  guardian: 200,
+};
+
+const CREATURE_HEALTH: Record<CreatureType, number> = {
+  based: 1,
+  crystal: 1,
+  midnight: 1,
+  jelly: 2,
+  golden: 1,
+  pearlescent: 2,
+  guardian: 5,
+};
+
+const CREATURE_SPEEDS: Record<CreatureType, number> = {
+  based: 1,
+  crystal: 1.2,
+  midnight: 1.5,
+  jelly: 0.8,
+  golden: 2,
+  pearlescent: 1,
+  guardian: 0.5,
+};
+
+const CREATURE_NAMES: Record<CreatureType, string> = {
+  based: 'Based Creature',
+  crystal: 'Crystal Creature',
+  midnight: 'Midnight Creature',
+  jelly: 'Jelly Creature',
+  golden: 'Golden Creature',
+  pearlescent: 'Pearlescent Creature',
+  guardian: 'Guardian',
 };
 
 const MISSILES_PER_BATTERY = 4;
@@ -225,13 +264,42 @@ const lerp = (start: number, end: number, t: number): number => {
   return start + (end - start) * Math.min(1, Math.max(0, t));
 };
 
-const randomColor = (): MissileColor => {
-  const colors: MissileColor[] = ['green', 'red', 'yellow'];
-  const weights = [0.5, 0.35, 0.15];
+const getCreatureForWave = (wave: number, forceGuardian: boolean = false): CreatureType => {
+  if (forceGuardian) return 'guardian';
+  
   const r = Math.random();
-  if (r < weights[0]) return colors[0];
-  if (r < weights[0] + weights[1]) return colors[1];
-  return colors[2];
+  
+  if (wave <= 3) {
+    return r < 0.6 ? 'based' : 'crystal';
+  }
+  if (wave <= 5) {
+    if (r < 0.35) return 'based';
+    if (r < 0.6) return 'crystal';
+    if (r < 0.8) return 'midnight';
+    return 'jelly';
+  }
+  if (wave <= 7) {
+    if (r < 0.2) return 'based';
+    if (r < 0.4) return 'crystal';
+    if (r < 0.55) return 'midnight';
+    if (r < 0.7) return 'jelly';
+    if (r < 0.85) return 'golden';
+    return 'pearlescent';
+  }
+  if (wave <= 9) {
+    if (r < 0.15) return 'based';
+    if (r < 0.3) return 'crystal';
+    if (r < 0.45) return 'midnight';
+    if (r < 0.6) return 'jelly';
+    if (r < 0.75) return 'golden';
+    return 'pearlescent';
+  }
+  if (r < 0.25) return 'golden';
+  if (r < 0.45) return 'pearlescent';
+  if (r < 0.60) return 'midnight';
+  if (r < 0.75) return 'jelly';
+  if (r < 0.88) return 'crystal';
+  return 'based';
 };
 
 const generateBackgroundStars = (): BackgroundStar[] => {
@@ -560,15 +628,20 @@ export default function GuardianDefense() {
           target = { x: 50 + Math.random() * (CANVAS_WIDTH - 100), y: GROUND_Y };
         }
         
+        const isGuardianSlot = waveNumber === 10 && (i === 0 || i === 7 || i === 14 || i === 21);
+        const creatureType = getCreatureForWave(waveNumber, isGuardianSlot);
+        const speedMultiplier = CREATURE_SPEEDS[creatureType];
+        
         state.enemyMissiles.push({
           id: `em-${Date.now()}-${i}-${Math.random()}`,
           start: { x: startX, y: -10 },
           target,
           position: { x: startX, y: -10 },
-          color: randomColor(),
-          speed: config.speed + Math.random() * 15,
+          creatureType,
+          speed: (config.speed + Math.random() * 15) * speedMultiplier,
           progress: 0,
           active: true,
+          health: CREATURE_HEALTH[creatureType],
         });
       }, i * config.delay + Math.random() * 100);
     }
@@ -650,23 +723,31 @@ export default function GuardianDefense() {
         
         const dist = getDistance(explosion.position, missile.position);
         if (dist < explosion.radius + 8) {
-          missile.active = false;
-          state.accuracy.hits++;
+          missile.health--;
           
-          const basePoints = MISSILE_POINTS[missile.color];
-          const chainBonus = state.chainReactions * 5;
-          const totalPoints = basePoints + chainBonus;
-          state.score += totalPoints;
-          state.waveChainBonus += chainBonus;
-          state.chainReactions++;
-          
-          createExplosion(missile.position, true);
-          
-          if (state.chainReactions > 1) {
-            createScorePopup(`+${totalPoints} x${state.chainReactions}`, missile.position.x, missile.position.y - 20, '#FBBF24', true);
-            playSound('chain');
+          if (missile.health <= 0) {
+            missile.active = false;
+            state.accuracy.hits++;
+            
+            const basePoints = CREATURE_POINTS[missile.creatureType];
+            const chainBonus = state.chainReactions * 5;
+            const totalPoints = basePoints + chainBonus;
+            state.score += totalPoints;
+            state.waveChainBonus += chainBonus;
+            state.chainReactions++;
+            
+            createExplosion(missile.position, true);
+            
+            const creatureName = CREATURE_NAMES[missile.creatureType];
+            if (state.chainReactions > 1) {
+              createScorePopup(`+${totalPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], true);
+              playSound('chain');
+            } else {
+              createScorePopup(`+${totalPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+            }
           } else {
-            createScorePopup(`+${totalPoints}`, missile.position.x, missile.position.y - 20, '#10B981', false);
+            playSound('hit');
+            createScorePopup(`HIT! (${missile.health} left)`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
           }
         }
       });
@@ -1002,21 +1083,32 @@ export default function GuardianDefense() {
     state.enemyMissiles.forEach(missile => {
       if (!missile.active) return;
       
-      const color = MISSILE_COLORS[missile.color];
+      const color = CREATURE_COLORS[missile.creatureType];
+      const isGuardian = missile.creatureType === 'guardian';
+      const baseSize = isGuardian ? 10 : 5;
+      const size = baseSize + (missile.health > 1 ? 2 : 0);
       
       ctx.strokeStyle = `${color}60`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = isGuardian ? 3 : 2;
       ctx.beginPath();
       ctx.moveTo(missile.start.x, missile.start.y);
       ctx.lineTo(missile.position.x, missile.position.y);
       ctx.stroke();
       
       ctx.fillStyle = color;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = isGuardian ? 20 : 12;
       ctx.shadowColor = color;
       ctx.beginPath();
-      ctx.arc(missile.position.x, missile.position.y, 5, 0, Math.PI * 2);
+      ctx.arc(missile.position.x, missile.position.y, size, 0, Math.PI * 2);
       ctx.fill();
+      
+      if (missile.health > 1) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${missile.health}`, missile.position.x, missile.position.y + 3);
+      }
+      
       ctx.shadowBlur = 0;
     });
     
@@ -1386,33 +1478,63 @@ export default function GuardianDefense() {
                 <div className="bg-black/40 rounded-xl p-5 border border-white/10">
                   <div className="flex items-center gap-2 mb-3">
                     <Zap className="w-5 h-5 text-yellow-400" />
-                    <h3 className="font-bold text-white text-lg">Missile Types</h3>
+                    <h3 className="font-bold text-white text-lg">Creature Types</h3>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm text-center">
+                  <div className="grid grid-cols-4 gap-3 text-sm text-center">
                     <div>
-                      <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center">
-                        <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-500/50"></div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00FFFF20', border: '2px solid #00FFFF' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#00FFFF', boxShadow: '0 0 8px #00FFFF' }}></div>
                       </div>
-                      <p className="text-green-400 font-bold">Green</p>
-                      <p className="text-xs text-gray-500">+150 pts</p>
+                      <p className="text-[10px] font-bold" style={{ color: '#00FFFF' }}>Based</p>
+                      <p className="text-[8px] text-gray-500">10 pts</p>
                     </div>
                     <div>
-                      <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center">
-                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E0E0FF20', border: '2px solid #E0E0FF' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#E0E0FF', boxShadow: '0 0 8px #E0E0FF' }}></div>
                       </div>
-                      <p className="text-red-400 font-bold">Red</p>
-                      <p className="text-xs text-gray-500">+200 pts</p>
+                      <p className="text-[10px] font-bold" style={{ color: '#E0E0FF' }}>Crystal</p>
+                      <p className="text-[8px] text-gray-500">15 pts</p>
                     </div>
                     <div>
-                      <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-yellow-500/20 border-2 border-yellow-500 flex items-center justify-center">
-                        <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-lg shadow-yellow-500/50"></div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#4B008220', border: '2px solid #4B0082' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4B0082', boxShadow: '0 0 8px #4B0082' }}></div>
                       </div>
-                      <p className="text-yellow-400 font-bold">Yellow</p>
-                      <p className="text-xs text-gray-500">+250 pts</p>
+                      <p className="text-[10px] font-bold" style={{ color: '#9B59B6' }}>Midnight</p>
+                      <p className="text-[8px] text-gray-500">20 pts</p>
+                    </div>
+                    <div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF69B420', border: '2px solid #FF69B4' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FF69B4', boxShadow: '0 0 8px #FF69B4' }}></div>
+                      </div>
+                      <p className="text-[10px] font-bold" style={{ color: '#FF69B4' }}>Jelly</p>
+                      <p className="text-[8px] text-gray-500">15 pts • 2HP</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm text-center mt-3">
+                    <div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD70020', border: '2px solid #FFD700' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FFD700', boxShadow: '0 0 8px #FFD700' }}></div>
+                      </div>
+                      <p className="text-[10px] font-bold" style={{ color: '#FFD700' }}>Golden</p>
+                      <p className="text-[8px] text-gray-500">50 pts • Fast!</p>
+                    </div>
+                    <div>
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFF0F520', border: '2px solid #FFF0F5' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FFF0F5', boxShadow: '0 0 8px #FFF0F5' }}></div>
+                      </div>
+                      <p className="text-[10px] font-bold" style={{ color: '#FFF0F5' }}>Pearl</p>
+                      <p className="text-[8px] text-gray-500">25 pts • 2HP</p>
+                    </div>
+                    <div>
+                      <div className="w-10 h-10 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF00FF20', border: '3px solid #FF00FF' }}>
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF00FF', boxShadow: '0 0 12px #FF00FF' }}></div>
+                      </div>
+                      <p className="text-[10px] font-bold" style={{ color: '#FF00FF' }}>GUARDIAN</p>
+                      <p className="text-[8px] text-gray-500">200 pts • BOSS</p>
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-3 text-center">
-                    Chain reactions: +50 bonus per chained missile!
+                    Chain reactions: +5 bonus per chained creature!
                   </p>
                 </div>
 
