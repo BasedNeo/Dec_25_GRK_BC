@@ -1,0 +1,181 @@
+AUTONOMOUS TASK: TEST, REFINE AND IMPROVE ALL GAMES
+
+I'm stepping away. Your job is to thoroughly test, refine, and improve all games/arcade features in this dApp. Work autonomously and make improvements.
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL RULES - READ FIRST:
+═══════════════════════════════════════════════════════════════════
+
+1. DO NOT touch wallet connection code
+2. DO NOT touch mobile layout/CSS (it finally works)
+3. DO NOT modify the navbar, header, or navigation
+4. DO NOT change the marketplace buying/selling/offer logic
+5. DO NOT modify any smart contract interaction code
+6. ONLY work on game/arcade components and their immediate dependencies
+7. Test each change before moving to the next
+8. If something breaks, revert it immediately
+
+═══════════════════════════════════════════════════════════════════
+PHASE 1: DISCOVERY - Find All Games
+═══════════════════════════════════════════════════════════════════
+
+Search the codebase and list ALL game-related components:
+- Look in client/src/pages/ for game pages
+- Look in client/src/components/ for game components
+- Look in client/src/games/ if it exists
+- Find the Arcade page and all games it links to
+
+List each game with:
+- File location
+- Game name
+- Current state (working/broken/incomplete)
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2: TEST EACH GAME
+═══════════════════════════════════════════════════════════════════
+
+For each game, check:
+
+1. DOES IT LOAD?
+   - Does the game component render without errors?
+   - Are all assets (images, sounds) loading?
+   - Is there a loading state?
+
+2. DOES IT PLAY?
+   - Can you start the game?
+   - Do controls work (keyboard/touch)?
+   - Does the game logic function correctly?
+   - Can you win/lose?
+
+3. DOES IT LOOK GOOD?
+   - Is the UI polished or rough?
+   - Are animations smooth?
+   - Does it match the app's visual theme?
+   - Does it work on mobile?
+
+4. DOES IT FEEL GOOD?
+   - Is feedback immediate?
+   - Are there sound effects?
+   - Is scoring visible?
+   - Is there a game over state?
+
+═══════════════════════════════════════════════════════════════════
+PHASE 3: FIX BROKEN THINGS
+═══════════════════════════════════════════════════════════════════
+
+For any game that doesn't work:
+- Fix loading errors
+- Fix missing imports
+- Fix broken game logic
+- Fix missing assets (use placeholders if needed)
+
+═══════════════════════════════════════════════════════════════════
+PHASE 4: POLISH AND IMPROVE
+═══════════════════════════════════════════════════════════════════
+
+For each working game, add these if missing:
+
+1. LOADING STATE
+   - Show a loading spinner or skeleton while game loads
+   - Display "Loading..." or game-themed loading message
+
+2. START SCREEN
+   - Game title
+   - Brief instructions
+   - "Start Game" or "Play" button
+   - High score display if applicable
+
+3. GAME UI
+   - Score display (visible during gameplay)
+   - Timer if applicable
+   - Lives/health indicator if applicable
+   - Pause button
+
+4. GAME OVER SCREEN
+   - Final score
+   - "Play Again" button
+   - "Back to Arcade" button
+   - Share score option (optional)
+
+5. VISUAL POLISH
+   - Smooth animations (use CSS transitions or framer-motion)
+   - Hover effects on buttons
+   - Visual feedback for actions (score +10 popups, hit effects)
+   - Match the app's cyan/purple/dark theme
+
+6. SOUND EFFECTS (if not present)
+   - Add simple sound effects for:
+     - Game start
+     - Score/points
+     - Win/success
+     - Lose/fail
+     - Button clicks
+   - Use Web Audio API or simple audio elements
+   - Include mute button
+
+7. MOBILE SUPPORT
+   - Touch controls for mobile
+   - Responsive sizing
+   - Touch-friendly button sizes (min 44x44px)
+
+8. SCORE PERSISTENCE
+   - Save high scores to localStorage
+   - Display personal best
+   - If there's a leaderboard API, integrate it
+
+═══════════════════════════════════════════════════════════════════
+PHASE 5: ARCADE HUB IMPROVEMENTS
+═══════════════════════════════════════════════════════════════════
+
+Improve the main Arcade page:
+
+1. Show all available games as cards
+2. Display game thumbnails/icons
+3. Show brief description for each game
+4. Indicate if game is "New", "Popular", or "Coming Soon"
+5. Show personal high score on each card
+6. Smooth hover animations on game cards
+7. Make sure navigation to/from games works smoothly
+
+═══════════════════════════════════════════════════════════════════
+DESIGN GUIDELINES:
+═══════════════════════════════════════════════════════════════════
+
+Match the existing app aesthetic:
+- Dark background (#0a0a0f or similar)
+- Cyan accents (#00ffff, #0ff)
+- Purple/magenta secondary (#ff00ff, #a855f7)
+- Gradient borders (cyan to purple)
+- Glassmorphism effects (backdrop-blur, semi-transparent backgrounds)
+- Space/galaxy theme
+- Futuristic/tech font styling
+- Glowing effects on important elements
+
+═══════════════════════════════════════════════════════════════════
+WHEN YOU'RE DONE:
+═══════════════════════════════════════════════════════════════════
+
+Provide a summary report:
+
+1. GAMES FOUND:
+   - List of all games discovered
+
+2. GAMES FIXED:
+   - What was broken and how you fixed it
+
+3. GAMES IMPROVED:
+   - What polish/features you added to each
+
+4. STILL NEEDS WORK:
+   - Anything you couldn't fix or needs manual review
+
+5. NEW FEATURES ADDED:
+   - Any new functionality you implemented
+
+6. TESTING STATUS:
+   - Confirm each game loads and plays correctly
+
+═══════════════════════════════════════════════════════════════════
+TIME ESTIMATE: Work on this for up to 30 minutes of changes.
+After that, stop and provide the summary report.
+═══════════════════════════════════════════════════════════════════
