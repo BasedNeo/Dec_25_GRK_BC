@@ -379,7 +379,13 @@ export default function RingGame() {
       }
       
       playSound('perfect');
-      if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
+      if (isMobile && hapticEnabled) {
+        if (state.perfectStreak === 5 || state.perfectStreak === 10 || state.perfectStreak === 15) {
+          haptic.comboMilestone();
+        } else {
+          haptic.perfect();
+        }
+      }
       setTimeFrozen(true);
       setTimeout(() => setTimeFrozen(false), 150);
     } else if (result === 'good') {
@@ -391,7 +397,7 @@ export default function RingGame() {
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER - state.rings[state.rings.length - 1].radius - 20, '#FBBF24', 10));
       state.feedbackText = null;
       playSound('good');
-      if (isMobile && hapticEnabled) haptic.light();
+      if (isMobile && hapticEnabled) haptic.good();
     } else {
       state.combo = 0;
       state.perfectStreak = 0;
@@ -399,11 +405,12 @@ export default function RingGame() {
       state.feedbackText = null;
       state.particles.push(...createParticles(BASE_CENTER, BASE_CENTER, '#EF4444', 12));
       playSound('miss');
-      if (isMobile && hapticEnabled) haptic.heavy();
+      if (isMobile && hapticEnabled) haptic.miss();
       
       if (state.lives <= 0) {
         state.gameOver = true;
         playSound('gameover');
+        if (isMobile && hapticEnabled) haptic.gameOver();
         return;
       }
     }
@@ -416,12 +423,15 @@ export default function RingGame() {
       // Realm transition banners
       if (state.level === 6) {
         setShowLevelBanner('REALM: ADEPT');
+        if (isMobile && hapticEnabled) haptic.levelUp();
         setTimeout(() => setShowLevelBanner(null), 2000);
       } else if (state.level === 11) {
         setShowLevelBanner('REALM: MASTER');
+        if (isMobile && hapticEnabled) haptic.levelUp();
         setTimeout(() => setShowLevelBanner(null), 2000);
       } else if (state.level === 16) {
         setShowLevelBanner('REALM: TRANSCENDENT');
+        if (isMobile && hapticEnabled) haptic.levelUp();
         setTimeout(() => setShowLevelBanner(null), 2000);
       }
     }

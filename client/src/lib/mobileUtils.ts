@@ -8,11 +8,34 @@ export const mobileSettings = {
 };
 
 export const haptic = {
+  // Generic patterns
   light: () => navigator.vibrate?.(10),
   medium: () => navigator.vibrate?.(25),
   heavy: () => navigator.vibrate?.(50),
   success: () => navigator.vibrate?.([30, 10, 30]),
   error: () => navigator.vibrate?.([50, 30, 50]),
+  
+  // Space Shooter / Creature Command patterns
+  shoot: () => navigator.vibrate?.(10),
+  hitEnemy: () => navigator.vibrate?.(20),
+  getHit: () => navigator.vibrate?.(100),
+  powerUp: () => navigator.vibrate?.([50, 30, 50]),
+  gameOver: () => navigator.vibrate?.([100, 50, 100, 50, 200]),
+  
+  // Ring Alignment patterns
+  perfect: () => navigator.vibrate?.(30),
+  good: () => navigator.vibrate?.(15),
+  miss: () => navigator.vibrate?.([50, 20, 50]),
+  levelUp: () => navigator.vibrate?.([30, 30, 30, 30]),
+  
+  // Cyber Breach patterns
+  cardFlip: () => navigator.vibrate?.(10),
+  matchFound: () => navigator.vibrate?.([20, 20, 20]),
+  noMatch: () => navigator.vibrate?.(50),
+  breachComplete: () => navigator.vibrate?.([50, 50, 100]),
+  
+  // Combo milestones
+  comboMilestone: () => navigator.vibrate?.([30, 20, 30, 20, 50]),
 };
 
 export const getScaledCoordinates = (

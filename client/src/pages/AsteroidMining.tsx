@@ -415,7 +415,7 @@ export default function AsteroidMining() {
       state.bullets.push({ x: centerX, y: state.player.y, speed: BULLET_SPEED });
     }
     playSound('shoot');
-    if (isMobile && hapticEnabled) haptic.light();
+    if (isMobile && hapticEnabled) haptic.shoot();
   }, [playSound]);
 
   const update = useCallback(() => {
@@ -492,7 +492,7 @@ export default function AsteroidMining() {
             state.scorePopups.push({ x: width / 2, y: height / 2, text: `NUKE +${nukePoints}!`, life: 1.5, color: '#EF4444' });
           }
           playSound('explosion');
-          if (isMobile && hapticEnabled) haptic.heavy();
+          if (isMobile && hapticEnabled) haptic.powerUp();
         } else if (pu.type === 'extralife') { 
           state.lives = Math.min(5, state.lives + 1); 
         }
@@ -501,7 +501,7 @@ export default function AsteroidMining() {
         state.scorePopups.push({ x: pu.x + 10, y: pu.y, text: powerUpLabel, life: 1.2, color: POWERUP_COLORS[pu.type] });
         state.powerUps.splice(i, 1);
         playSound('powerup');
-        if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
+        if (isMobile && hapticEnabled) haptic.powerUp();
       }
     }
 
@@ -527,8 +527,12 @@ export default function AsteroidMining() {
           state.particles.push(...createParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, currentShip.colors.primary, 20));
           state.enemies.splice(i, 1);
           playSound('playerhit');
-          if (isMobile && hapticEnabled) haptic.heavy();
-          if (state.lives <= 0) { state.gameOver = true; playSound('gameover'); }
+          if (isMobile && hapticEnabled) haptic.getHit();
+          if (state.lives <= 0) { 
+            state.gameOver = true; 
+            playSound('gameover');
+            if (isMobile && hapticEnabled) haptic.gameOver();
+          }
         }
         continue;
       }
@@ -572,7 +576,13 @@ export default function AsteroidMining() {
             spawnPowerUp(state, enemy.x + enemy.width / 2, enemy.y);
             state.enemies.splice(i, 1);
             playSound('hit');
-            if (isMobile && hapticEnabled) haptic.light();
+            if (isMobile && hapticEnabled) {
+              if (state.combo === 10 || state.combo === 25 || state.combo === 50) {
+                haptic.comboMilestone();
+              } else {
+                haptic.hitEnemy();
+              }
+            }
             if (state.enemiesDestroyed % 15 === 0) state.wave++;
           } else {
             state.particles.push(...createParticles(bullet.x, bullet.y, '#FFFFFF', 4));

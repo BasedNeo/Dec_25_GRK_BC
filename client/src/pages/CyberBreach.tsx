@@ -273,6 +273,7 @@ export default function CyberBreach() {
         if (t <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
           playSound('gameover');
+          if (isMobile && hapticEnabled) haptic.gameOver();
           setGamePhase('gameover');
           return 0;
         }
@@ -297,7 +298,7 @@ export default function CyberBreach() {
     if (flippedCards.length >= 2) return;
 
     playSound('flip');
-    if (isMobile && hapticEnabled) haptic.light();
+    if (isMobile && hapticEnabled) haptic.cardFlip();
 
     const newCards = cards.map(c => c.id === cardId ? { ...c, isFlipped: true } : c);
     setCards(newCards);
@@ -313,7 +314,7 @@ export default function CyberBreach() {
       if (first.symbol === second.symbol) {
         setTimeout(() => {
           playSound('match');
-          if (isMobile && hapticEnabled) haptic.medium?.() || haptic.light();
+          if (isMobile && hapticEnabled) haptic.matchFound();
           
           const matchedCards = newCards.map(c => 
             c.symbol === first.symbol ? { ...c, isMatched: true } : c
@@ -364,6 +365,7 @@ export default function CyberBreach() {
               }, 1500);
             } else {
               playSound('victory');
+              if (isMobile && hapticEnabled) haptic.breachComplete();
               setShowAccessGranted(true);
               setTimeout(() => {
                 setShowAccessGranted(false);
@@ -376,7 +378,7 @@ export default function CyberBreach() {
       } else {
         setTimeout(() => {
           playSound('nomatch');
-          if (isMobile && hapticEnabled) haptic.heavy();
+          if (isMobile && hapticEnabled) haptic.noMatch();
           
           // Reset chain on mismatch
           setChain(0);
