@@ -333,6 +333,8 @@ export default function GuardianDefense() {
   const lastTimeRef = useRef<number>(0);
   const lastFireTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const soundTimeoutsRef = useRef<number[]>([]);
+  const activeOscillatorsRef = useRef<OscillatorNode[]>([]);
   const gameStartTimeRef = useRef<number>(Date.now());
 
   const [gameStarted, setGameStarted] = useState(false);
@@ -433,6 +435,23 @@ export default function GuardianDefense() {
     };
   }, [settings.soundEnabled]);
 
+  const stopAllSounds = useCallback(() => {
+    // Clear all pending sound timeouts
+    soundTimeoutsRef.current.forEach(id => clearTimeout(id));
+    soundTimeoutsRef.current = [];
+    
+    // Stop all active oscillators
+    activeOscillatorsRef.current.forEach(osc => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (e) {
+        // Oscillator may have already stopped
+      }
+    });
+    activeOscillatorsRef.current = [];
+  }, []);
+
   const playSound = useCallback((type: 'launch' | 'explosion' | 'chain' | 'hit' | 'wave' | 'death' | 'victory') => {
     if (!settings.soundEnabled || !audioContextRef.current) return;
     try {
@@ -450,6 +469,17 @@ export default function GuardianDefense() {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + duration);
+        
+        // Track oscillator for cleanup
+        activeOscillatorsRef.current.push(osc);
+        osc.onended = () => {
+          activeOscillatorsRef.current = activeOscillatorsRef.current.filter(o => o !== osc);
+        };
+      };
+
+      const scheduleSound = (fn: () => void, delay: number) => {
+        const id = window.setTimeout(fn, delay);
+        soundTimeoutsRef.current.push(id);
       };
 
       switch (type) {
@@ -461,14 +491,14 @@ export default function GuardianDefense() {
           break;
         case 'chain':
           createOsc(400, 0.15);
-          setTimeout(() => createOsc(600, 0.15), 50);
+          scheduleSound(() => createOsc(600, 0.15), 50);
           break;
         case 'hit':
           createOsc(80, 0.4, 'sawtooth');
           break;
         case 'wave':
           [300, 400, 500, 600].forEach((f, i) => {
-            setTimeout(() => createOsc(f, 0.2), i * 80);
+            scheduleSound(() => createOsc(f, 0.2), i * 80);
           });
           break;
         case 'death':
@@ -476,7 +506,7 @@ export default function GuardianDefense() {
           break;
         case 'victory':
           [400, 500, 600, 800, 1000].forEach((f, i) => {
-            setTimeout(() => createOsc(f, 0.25), i * 100);
+            scheduleSound(() => createOsc(f, 0.25), i * 100);
           });
           break;
       }
@@ -1290,15 +1320,27 @@ export default function GuardianDefense() {
     if (gameLoopRef.current) {
       cancelAnimationFrame(gameLoopRef.current);
     }
+    stopAllSounds();
     setShowVictory(false);
     startGame();
-  }, [startGame]);
+  }, [startGame, stopAllSounds]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (gameLoopRef.current) {
         cancelAnimationFrame(gameLoopRef.current);
       }
+      // Clear all sound timeouts and stop oscillators
+      soundTimeoutsRef.current.forEach(id => clearTimeout(id));
+      soundTimeoutsRef.current = [];
+      activeOscillatorsRef.current.forEach(osc => {
+        try {
+          osc.stop();
+          osc.disconnect();
+        } catch (e) {}
+      });
+      activeOscillatorsRef.current = [];
     };
   }, []);
 

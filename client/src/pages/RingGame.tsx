@@ -123,6 +123,9 @@ export default function RingGame() {
   const gameStateRef = useRef<GameState | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTapTimeRef = useRef<number>(0);
+  const bgAnimationRef = useRef<number | null>(null);
+  const timeFrozenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const levelBannerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [canvasSize, setCanvasSize] = useState(BASE_CANVAS_SIZE);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
@@ -170,7 +173,6 @@ export default function RingGame() {
       });
     }
     
-    let animId: number;
     const animate = () => {
       ctx.fillStyle = '#050510';
       ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -199,13 +201,24 @@ export default function RingGame() {
         ctx.globalAlpha = 1;
       });
       
-      animId = requestAnimationFrame(animate);
+      bgAnimationRef.current = requestAnimationFrame(animate);
     };
     animate();
     
     return () => {
-      cancelAnimationFrame(animId);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
       window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
+      if (timeFrozenTimeoutRef.current) clearTimeout(timeFrozenTimeoutRef.current);
+      if (levelBannerTimeoutRef.current) clearTimeout(levelBannerTimeoutRef.current);
+      audioContextRef.current?.close();
     };
   }, []);
 
@@ -389,7 +402,7 @@ export default function RingGame() {
         }
       }
       setTimeFrozen(true);
-      setTimeout(() => setTimeFrozen(false), 150);
+      timeFrozenTimeoutRef.current = setTimeout(() => setTimeFrozen(false), 150);
     } else if (result === 'good') {
       state.combo++;
       // Good keeps the combo but resets perfect streak
@@ -426,15 +439,15 @@ export default function RingGame() {
       if (state.level === 6) {
         setShowLevelBanner('REALM: ADEPT');
         if (isMobile && hapticEnabled) haptic.levelUp();
-        setTimeout(() => setShowLevelBanner(null), 2000);
+        levelBannerTimeoutRef.current = setTimeout(() => setShowLevelBanner(null), 2000);
       } else if (state.level === 11) {
         setShowLevelBanner('REALM: MASTER');
         if (isMobile && hapticEnabled) haptic.levelUp();
-        setTimeout(() => setShowLevelBanner(null), 2000);
+        levelBannerTimeoutRef.current = setTimeout(() => setShowLevelBanner(null), 2000);
       } else if (state.level === 16) {
         setShowLevelBanner('REALM: TRANSCENDENT');
         if (isMobile && hapticEnabled) haptic.levelUp();
-        setTimeout(() => setShowLevelBanner(null), 2000);
+        levelBannerTimeoutRef.current = setTimeout(() => setShowLevelBanner(null), 2000);
       }
     }
   }, [checkAlignment, createParticles, playSound, hapticEnabled]);

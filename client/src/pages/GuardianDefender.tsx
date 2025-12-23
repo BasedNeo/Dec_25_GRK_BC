@@ -90,6 +90,8 @@ export function GuardianDefender() {
   const stateRef = useRef<GameState | null>(null);
   const inputRef = useRef({ left: false, right: false, up: false, down: false, shoot: false });
   const shipImageRef = useRef<HTMLImageElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [phase, setPhase] = useState<'gate' | 'menu' | 'playing' | 'ended'>('gate');
   const [displayScore, setDisplayScore] = useState(0);
   const [displayLives, setDisplayLives] = useState(3);
@@ -101,8 +103,24 @@ export function GuardianDefender() {
   const { flags } = useFeatureFlags();
 
   useEffect(() => {
-    const timer = setTimeout(() => setGameLoading(false), 800);
-    return () => clearTimeout(timer);
+    loadingTimerRef.current = setTimeout(() => setGameLoading(false), 800);
+    return () => {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    };
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+    };
   }, []);
 
   if (!flags.gameEnabled) {
@@ -202,14 +220,20 @@ export function GuardianDefender() {
       if (state.phase === 'gameOver' || state.phase === 'complete') {
         submitScore(state.score, state.wave);
         setPhase('ended');
+        animationFrameRef.current = null;
         return;
       }
 
-      animId = requestAnimationFrame(loop);
+      animationFrameRef.current = requestAnimationFrame(loop);
     };
 
-    animId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animId);
+    animationFrameRef.current = requestAnimationFrame(loop);
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
   }, [phase, canvasSize, isHolder, submitScore]);
 
   const landerCheatRef = useRef<{ lastL: number; count: number }>({ lastL: 0, count: 0 });

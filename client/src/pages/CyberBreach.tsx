@@ -73,6 +73,14 @@ export default function CyberBreach() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const bgAnimationRef = useRef<number | null>(null);
+  const typeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const matchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const levelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const speedBonusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lightningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const accessGrantedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const introTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [cards, setCards] = useState<GameCard[]>([]);
@@ -148,7 +156,6 @@ export default function CyberBreach() {
       });
     }
     
-    let animId: number;
     const animate = () => {
       ctx.fillStyle = '#020208';
       ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -180,13 +187,29 @@ export default function CyberBreach() {
         ctx.shadowBlur = 0;
       });
       
-      animId = requestAnimationFrame(animate);
+      bgAnimationRef.current = requestAnimationFrame(animate);
     };
     animate();
     
     return () => {
-      cancelAnimationFrame(animId);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
       window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
+      if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+      if (matchTimeoutRef.current) clearTimeout(matchTimeoutRef.current);
+      if (levelTimeoutRef.current) clearTimeout(levelTimeoutRef.current);
+      if (speedBonusTimeoutRef.current) clearTimeout(speedBonusTimeoutRef.current);
+      if (lightningTimeoutRef.current) clearTimeout(lightningTimeoutRef.current);
+      if (accessGrantedTimeoutRef.current) clearTimeout(accessGrantedTimeoutRef.current);
+      if (introTimeoutRef.current) clearTimeout(introTimeoutRef.current);
+      audioContextRef.current?.close();
     };
   }, []);
 
@@ -316,7 +339,7 @@ export default function CyberBreach() {
       const [first, second] = nowFlipped;
       
       if (first.symbol === second.symbol) {
-        setTimeout(() => {
+        matchTimeoutRef.current = setTimeout(() => {
           playSound('match');
           if (isMobile && hapticEnabled) haptic.matchFound();
           
@@ -339,7 +362,7 @@ export default function CyberBreach() {
               const speedPts = 25 + newChain * 5;
               setSpeedBonus(`SPEED BONUS +${speedPts}`);
               setScore(s => s + speedPts);
-              setTimeout(() => setSpeedBonus(null), 1000);
+              speedBonusTimeoutRef.current = setTimeout(() => setSpeedBonus(null), 1000);
             }
             
             return newChain;
@@ -363,11 +386,11 @@ export default function CyberBreach() {
               setShowLightningBreach(true);
               setScore(s => s + 500);
               if (isMobile && hapticEnabled) haptic.breachComplete();
-              setTimeout(() => setShowLightningBreach(false), 1500);
+              lightningTimeoutRef.current = setTimeout(() => setShowLightningBreach(false), 1500);
             }
             
             if (level < 3) {
-              setTimeout(() => {
+              levelTimeoutRef.current = setTimeout(() => {
                 setLevel(l => l + 1);
                 const nextConfig = LEVEL_CONFIGS[Math.min(level, LEVEL_CONFIGS.length - 1)];
                 setCards(createCards(level + 1));
@@ -382,7 +405,7 @@ export default function CyberBreach() {
               playSound('match');
               if (isMobile && hapticEnabled) haptic.breachComplete();
               setShowAccessGranted(true);
-              setTimeout(() => {
+              accessGrantedTimeoutRef.current = setTimeout(() => {
                 setShowAccessGranted(false);
                 setGamePhase('gameover');
               }, 2000);
@@ -391,7 +414,7 @@ export default function CyberBreach() {
           setIsChecking(false);
         }, 400);
       } else {
-        setTimeout(() => {
+        matchTimeoutRef.current = setTimeout(() => {
           playSound('nomatch');
           if (isMobile && hapticEnabled) haptic.noMatch();
           
@@ -448,13 +471,17 @@ export default function CyberBreach() {
     
     const introMessage = 'INITIATING BREACH...';
     let i = 0;
-    const typeInterval = setInterval(() => {
+    if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+    typeIntervalRef.current = setInterval(() => {
       if (i < introMessage.length) {
         setIntroText(introMessage.slice(0, i + 1));
         i++;
       } else {
-        clearInterval(typeInterval);
-        setTimeout(() => {
+        if (typeIntervalRef.current) {
+          clearInterval(typeIntervalRef.current);
+          typeIntervalRef.current = null;
+        }
+        introTimeoutRef.current = setTimeout(() => {
           setShowIntro(false);
           startTimer();
         }, 500);

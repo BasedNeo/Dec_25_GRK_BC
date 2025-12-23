@@ -470,6 +470,11 @@ export default function GuardianSolitaire() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const elapsedTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const particleCleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const doubleClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [currentGlow, setCurrentGlow] = useState(0);
 
   useEffect(() => {
@@ -485,7 +490,7 @@ export default function GuardianSolitaire() {
   useEffect(() => {
     if (!gameStarted || gameWon || !address || !startTime) return;
 
-    const timeoutId = setTimeout(() => {
+    autoSaveTimeoutRef.current = setTimeout(() => {
       const state: GameState = {
         deck,
         waste,
@@ -498,7 +503,9 @@ export default function GuardianSolitaire() {
       GameStorageManager.saveSave('guardian-solitaire', address, state);
     }, 500);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
   }, [deck, waste, foundations, tableau, moves, gameStarted, gameWon, address, startTime, invalidAttempts]);
 
   useEffect(() => {
@@ -611,19 +618,34 @@ export default function GuardianSolitaire() {
     
     setParticles(prev => [...prev, ...newParticles]);
     
-    setTimeout(() => {
+    particleCleanupTimeoutRef.current = setTimeout(() => {
       setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
     }, 1000);
   }, [settings.particleIntensity, prefersReducedMotion]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+      if (elapsedTimeIntervalRef.current) clearInterval(elapsedTimeIntervalRef.current);
+      if (particleCleanupTimeoutRef.current) clearTimeout(particleCleanupTimeoutRef.current);
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+      if (doubleClickTimeoutRef.current) clearTimeout(doubleClickTimeoutRef.current);
+      audioContextRef.current?.close();
+    };
+  }, []);
+
   useEffect(() => {
     if (!gameStarted || gameWon || !startTime) return;
     
-    const interval = setInterval(() => {
+    elapsedTimeIntervalRef.current = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (elapsedTimeIntervalRef.current) clearInterval(elapsedTimeIntervalRef.current);
+    };
   }, [gameStarted, gameWon, startTime]);
 
   useEffect(() => {
@@ -929,7 +951,7 @@ export default function GuardianSolitaire() {
     for (let i = 0; i < 4; i++) {
       if (canPlaceOnFoundation(card, i)) {
         setSelectedCard({ card, from, index });
-        setTimeout(() => moveToFoundation(i), 0);
+        doubleClickTimeoutRef.current = setTimeout(() => moveToFoundation(i), 0);
         return;
       }
     }
@@ -984,7 +1006,7 @@ export default function GuardianSolitaire() {
       return;
     }
     setShowHint(true);
-    setTimeout(() => setShowHint(false), 2000);
+    hintTimeoutRef.current = setTimeout(() => setShowHint(false), 2000);
     trackEvent('game_action', 'Solitaire', 'Hint Used');
   }, [findValidMoves, toast]);
 

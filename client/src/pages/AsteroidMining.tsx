@@ -150,6 +150,11 @@ export default function AsteroidMining() {
   const touchRef = useRef<{ left: boolean; right: boolean; shoot: boolean }>({ left: false, right: false, shoot: false });
   const audioContextRef = useRef<AudioContext | null>(null);
   const starsRef = useRef<{ x: number; y: number; speed: number; brightness: number }[]>([]);
+  const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const typeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const introTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const waveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bgAnimationRef = useRef<number | null>(null);
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [score, setScore] = useState(0);
@@ -205,7 +210,6 @@ export default function AsteroidMining() {
       }
     });
     
-    let animId: number;
     const animate = () => {
       ctx.fillStyle = '#030308';
       ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -230,13 +234,26 @@ export default function AsteroidMining() {
         });
       });
       
-      animId = requestAnimationFrame(animate);
+      bgAnimationRef.current = requestAnimationFrame(animate);
     };
     animate();
     
     return () => {
-      cancelAnimationFrame(animId);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
       window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+      if (bgAnimationRef.current) cancelAnimationFrame(bgAnimationRef.current);
+      if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+      if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+      if (introTimeoutRef.current) clearTimeout(introTimeoutRef.current);
+      if (waveTimeoutRef.current) clearTimeout(waveTimeoutRef.current);
+      audioContextRef.current?.close();
     };
   }, []);
 
@@ -868,7 +885,7 @@ export default function AsteroidMining() {
 
   useEffect(() => {
     if (gamePhase !== 'playing') return;
-    const spawnInterval = setInterval(() => {
+    spawnIntervalRef.current = setInterval(() => {
       const state = gameStateRef.current;
       if (state && !state.gameOver) {
         const spawnCount = Math.min(1 + Math.floor(state.wave / 3), 3);
@@ -877,8 +894,14 @@ export default function AsteroidMining() {
     }, 1200);
     gameLoopRef.current = requestAnimationFrame(gameLoop);
     return () => {
-      clearInterval(spawnInterval);
-      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+      if (spawnIntervalRef.current) {
+        clearInterval(spawnIntervalRef.current);
+        spawnIntervalRef.current = null;
+      }
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
     };
   }, [gamePhase, gameLoop, spawnEnemy]);
 
@@ -986,16 +1009,20 @@ export default function AsteroidMining() {
     
     const introMessage = 'LAUNCHING MISSION...';
     let i = 0;
-    const typeInterval = setInterval(() => {
+    if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+    typeIntervalRef.current = setInterval(() => {
       if (i < introMessage.length) {
         setIntroText(introMessage.slice(0, i + 1));
         i++;
       } else {
-        clearInterval(typeInterval);
-        setTimeout(() => {
+        if (typeIntervalRef.current) {
+          clearInterval(typeIntervalRef.current);
+          typeIntervalRef.current = null;
+        }
+        introTimeoutRef.current = setTimeout(() => {
           setShowIntro(false);
           setWaveAnnouncement(1);
-          setTimeout(() => setWaveAnnouncement(null), 1500);
+          waveTimeoutRef.current = setTimeout(() => setWaveAnnouncement(null), 1500);
         }, 400);
       }
     }, 60);
