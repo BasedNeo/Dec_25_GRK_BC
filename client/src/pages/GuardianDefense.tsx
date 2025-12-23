@@ -1447,7 +1447,7 @@ export default function GuardianDefense() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-4 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-hidden pt-16" ref={containerRef}>
+      <section className="py-4 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-y-auto pt-16 pb-24" ref={containerRef}>
       <div className="max-w-4xl mx-auto px-4">
         
         <GameHUD
@@ -1492,6 +1492,18 @@ export default function GuardianDefense() {
         
         <div className="text-center mt-4 text-gray-500 text-xs">
           Tap above the ground to fire • Protect all installations
+        </div>
+        
+        <div className="flex justify-center gap-4 mt-6 pb-8">
+          <Button
+            variant="outline"
+            onClick={() => setLocation('/arcade')}
+            className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+            data-testid="button-back-arcade"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Back to Arcade
+          </Button>
         </div>
       </div>
     </section>

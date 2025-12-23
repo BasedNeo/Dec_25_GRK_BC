@@ -371,7 +371,7 @@ export default function BasedArcade() {
   };
 
   return (
-    <section className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] relative overflow-hidden">
+    <section className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] relative overflow-y-auto pb-24">
       <div className="fixed inset-0 pointer-events-none">
         {[...Array(80)].map((_, i) => (
           <motion.div

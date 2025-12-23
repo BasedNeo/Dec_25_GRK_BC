@@ -1502,7 +1502,7 @@ export default function AsteroidMining() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden pt-16">
+      <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-y-auto pt-16 pb-24">
       <div className="max-w-4xl mx-auto px-4">
         
         <div className="mb-4">

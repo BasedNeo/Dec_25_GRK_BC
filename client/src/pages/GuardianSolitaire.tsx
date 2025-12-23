@@ -1180,7 +1180,7 @@ export default function GuardianSolitaire() {
     return (
       <>
         <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-        <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-hidden pt-16">
+        <section className="py-8 min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-black relative overflow-y-auto pt-16 pb-24">
         <div className="absolute top-4 left-4 z-20">
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
             <Shield className="w-4 h-4 text-cyan-400" />
@@ -1596,7 +1596,7 @@ export default function GuardianSolitaire() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-hidden pt-16">
+      <section className="py-6 min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black relative overflow-y-auto pt-16 pb-24">
       <div className="fixed inset-0 pointer-events-none opacity-30">
         {[...Array(50)].map((_, i) => (
           <motion.div

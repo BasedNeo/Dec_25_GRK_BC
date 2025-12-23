@@ -1010,10 +1010,10 @@ export default function CyberBreach() {
   }
   
   return (
-    <div className="min-h-screen max-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 overflow-y-auto flex flex-col pb-24">
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
       
-      <div className="flex-1 container mx-auto px-4 py-2 flex flex-col" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+      <div className="flex-1 container mx-auto px-4 py-2 flex flex-col">
         <div className="flex items-center justify-between mb-2 flex-shrink-0">
           <Button
             variant="ghost"

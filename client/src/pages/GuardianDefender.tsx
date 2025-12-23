@@ -313,7 +313,7 @@ export function GuardianDefender() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020]"
+        className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] overflow-y-auto pb-24"
         style={{ transform: `translate(${screenShake.x}px, ${screenShake.y}px)` }}
       >
         <div className="absolute top-4 left-4 z-20">
