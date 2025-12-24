@@ -111,6 +111,7 @@ export const routeImports = {
   AsteroidMining: () => import('@/pages/AsteroidMining'),
   CyberBreach: () => import('@/pages/CyberBreach'),
   RingGame: () => import('@/pages/RingGame'),
+  RiddleQuestPage: () => import('@/pages/RiddleQuestPage'),
   BasedArcade: () => import('@/pages/BasedArcade'),
   TransactionHistory: () => import('@/pages/TransactionHistory'),
   Collections: () => import('@/pages/Collections'),

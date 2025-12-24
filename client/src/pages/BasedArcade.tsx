@@ -10,7 +10,7 @@ import {
   Gamepad2, Trophy, Lock, Unlock, Star, Sparkles, 
   Home, Zap, Clock, Target, ChevronRight, Crown, Medal, Award, CheckCircle2
 } from 'lucide-react';
-import { getEnabledGames, GameConfig } from '@/lib/gameRegistry';
+import { getArcadeGames, GameConfig } from '@/lib/gameRegistry';
 import { GameStorageManager } from '@/lib/gameStorage';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
@@ -337,7 +337,7 @@ export default function BasedArcade() {
   const [, navigate] = useLocation();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const games = useMemo(() => getEnabledGames(), []);
+  const games = useMemo(() => getArcadeGames(), []);
   const [gameStats, setGameStats] = useState<Record<string, { playsToday: number; personalBest: number }>>({});
 
   const { data: nftBalance } = useReadContract({
@@ -372,8 +372,56 @@ export default function BasedArcade() {
   }, [games, address]);
 
   const handlePlay = (game: GameConfig) => {
+    if (!isHolder) return;
     navigate(game.path);
   };
+
+  if (isConnected && !isHolder) {
+    return (
+      <section className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] relative overflow-hidden">
+        <Navbar activeTab="game" onTabChange={() => navigate('/')} isConnected={isConnected} />
+        
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <motion.div 
+            className="text-center p-8 max-w-lg"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="w-28 h-28 mx-auto mb-8 bg-cyan-500/20 rounded-full flex items-center justify-center border-2 border-cyan-500/50 shadow-[0_0_40px_rgba(0,255,255,0.3)]">
+              <Lock className="w-14 h-14 text-cyan-400" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-orbitron font-bold text-white mb-4">
+              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                Own a Guardian NFT to Play
+              </span>
+            </h2>
+            <p className="text-gray-400 mb-8 text-lg">
+              The Arcade is exclusive to Guardian NFT holders. Mint or purchase a Guardian to unlock all games.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                onClick={() => navigate('/#mint')}
+                className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-black font-orbitron font-bold px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(0,255,255,0.3)]"
+                data-testid="button-go-mint"
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                Mint a Guardian
+              </Button>
+              <Button 
+                onClick={() => navigate('/')}
+                variant="outline"
+                className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 px-8 py-4 rounded-xl"
+                data-testid="button-back-home"
+              >
+                <Home className="w-5 h-5 mr-2" />
+                Back to Command Center
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] relative overflow-y-auto pb-24">

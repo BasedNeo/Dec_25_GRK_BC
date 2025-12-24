@@ -74,14 +74,6 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'purple'
     },
     { 
-      id: 'riddle', 
-      label: t('hub.riddleLabel', 'Riddle Quest'), 
-      icon: Brain, 
-      description: t('hub.riddleDesc', 'Solve riddles, unlock the galaxy'),
-      color: 'from-cyan-400 to-purple-500',
-      glow: 'cyan'
-    },
-    { 
       id: 'saga-guide', 
       label: t('hub.sagaGuideLabel', 'Saga Guide'), 
       icon: Sparkles, 

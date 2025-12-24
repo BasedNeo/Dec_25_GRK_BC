@@ -1,0 +1,76 @@
+Iterate the existing Based Command App — keep 100% of the current cyberpunk neon design, layout, colors, fonts, animations, header, hero, lore, timeline, features grid, footer, and all tabs/features (Mint, Gallery, Voting, Collection, Pool, Universe, Saga Guide) completely intact. Do NOT rebuild or change any existing elements, tabs, or functionality outside the Arcade section.
+Update the Arcade section (assumed existing game hub, accessible via a button or tab) with the following changes, ensuring no disruption to the app’s core functionality:
+
+Remove Riddle Quest from Header and Burger Menu:
+Delete any reference to "Riddle Quest" in the header navigation or hamburger menu. Ensure it is only accessible within the Arcade.
+
+Hide Specific Games:
+Hide the following games from the Arcade UI without deleting their code (preserve for future refinement):
+Guardians Solitaire
+Asteroid Mining
+Ring Game
+
+Implement hiding by adding a hidden=true flag to their respective game components or wrapping them in a conditional render (e.g., if (!hidden) { renderGame() }), ensuring no runtime errors or broken dependencies.
+
+Update Arcade Game List:
+Reorder and limit the visible games to the following three, listed as the only playable options:
+Riddle Quest (first option, top position)
+Creature Command (second option)
+Retro Defender (third option, last position)
+
+Each game card should maintain the current cyberpunk neon style (cyan borders, neon titles, hover glow) and include a brief description:
+Riddle Quest: "Solve cosmic riddles to unlock the Based Universe. 2 plays/day."
+Creature Command: "Lead your Creatures in battle. 10 plays/day."
+Retro Defender: "Defend the galaxy retro-style. 10 plays/day."
+
+
+NFT Ownership Requirement:
+Require a connected wallet holding at least one Guardians NFT to access and play games in the Arcade.
+Check ownership via balanceOf(walletAddress, tokenId) on VITE_NFT_CONTRACT (use Ethers.js).
+If no NFT owned: Display "Own a Guardian NFT to play" (cyan popup, dismissible) and lock Arcade UI.
+
+Daily Play Limits (Reset Every 24 Hours):
+Implement a 24-hour play limit per game, resetting at 00:00 UTC daily (tracked via localStorage or Replit DB with timestamp).
+Limits:
+Riddle Quest: 2 plays/day
+Creature Command: 10 plays/day
+Retro Defender: 10 plays/day
+
+On limit reached: Show "Play limit reached — try again tomorrow" (cyan message, 10s cooldown) with remaining time counter (e.g., "Resets in 23:45").
+Use a simple counter per wallet address: increment on play, reset if timestamp > 24h old.
+
+Riddle Quest Game Mechanics (Detailed Buildout):
+Header: "Riddle Quest" (neon cyan, bold).
+Intro: "Embark on a cosmic journey solving riddles. 2 plays/day."
+Gameplay: Display one riddle from a pre-defined list of 33 (see below), cycled randomly per play.
+Input: Text field (cyan border, max 100 chars) for answer submission.
+Feedback: Correct = confetti + "Passage unlocked!" + 10 points; Wrong = "Try again" + hint after 2 fails.
+Levels: Progress bar (0-100% per play, 50% per correct answer).
+End: After 2 plays, lock with limit message.
+
+Pre-Defined 33 Riddles (JS const array, 11 levels of 3):
+Level 1: "I am the token mined from rare ore..." (based / $based)
+Level 2: "How many Brain-Planets exist..." (1024)
+Level 3: "Who is the official X handle..." (@getbasedai)
+[Continue with all 33 from previous message, e.g., Level 4: "How many total NFTs..." (3732), up to Level 11: "The number of Creature broods..." (7)]
+
+Creature Command Game Mechanics (Placeholder with Limit):
+Header: "Creature Command" (neon cyan).
+Intro: "Lead your Creatures in epic battles. 10 plays/day."
+Gameplay: Placeholder — display a static battle scene with 3 Creature icons (user to provide assets). On click, simulate victory (confetti, +5 points).
+Limit: Lock after 10 plays with "Limit reached" message.
+
+Retro Defender Game Mechanics (Placeholder with Limit):
+Header: "Retro Defender" (neon cyan).
+Intro: "Defend the galaxy retro-style. 10 plays/day."
+Gameplay: Placeholder — show a pixelated ship (user asset) with FUD enemies. Click to "shoot" (confetti, +5 points).
+Limit: Lock after 10 plays with "Limit reached" message.
+
+General Arcade Polish:
+Add a "Play Count" display per game (e.g., "2/2 plays left" for Riddle Quest).
+Use localStorage to track play counts and reset timestamps.
+Mobile: Stacked game cards, touch-friendly buttons, full-screen modals.
+Loading: Spinner "Loading Arcade..." on entry.
+
+
+Secure: Read-only NFT checks, no server calls. No errors; test with connected wallet (0 NFTs → locked, 1 NFT → playable with limits).

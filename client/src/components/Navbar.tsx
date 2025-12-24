@@ -146,7 +146,6 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     { id: 'universe', label: t('nav.universe', 'Universe') },
     { id: 'pool', label: t('nav.pool', 'Pool') },
     { id: 'stats', label: t('nav.stats', 'Stats') },
-    { id: 'riddle', label: t('nav.riddle', 'Riddle Quest') },
     { id: 'saga-guide', label: t('nav.sagaGuide', 'Saga Guide') },
     { id: 'voting', label: t('nav.voting', 'Voting') }, 
     { id: 'activity', label: t('nav.activity', 'Activity') },

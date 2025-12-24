@@ -1,10 +1,10 @@
 import { LucideIcon } from 'lucide-react';
-import { Target, Spade, Shield, Rocket, Zap, Circle } from 'lucide-react';
+import { Target, Spade, Shield, Rocket, Zap, Circle, Brain } from 'lucide-react';
 
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach' | 'ring-game';
+export type GameType = 'riddle-quest' | 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach' | 'ring-game';
 
 /**
  * Game difficulty levels
@@ -75,6 +75,7 @@ export interface GameConfig {
   nftRequired: boolean;
   minPlayDuration: number; // seconds, for bot protection
   thumbnail?: string; // for arcade hub
+  hidden?: boolean; // Hide from arcade UI but preserve code
 }
 
 /**
@@ -82,6 +83,35 @@ export interface GameConfig {
  * Add new games here - single source of truth
  */
 export const GAME_REGISTRY: Record<GameType, GameConfig> = {
+  'riddle-quest': {
+    id: 'riddle-quest',
+    name: 'Riddle Quest',
+    description: 'Solve cosmic riddles to unlock the Based Universe. 2 plays/day.',
+    path: '/games/riddle-quest',
+    icon: Brain,
+    iconColor: 'text-cyan-400',
+    thumbnailGradient: 'from-cyan-400 to-purple-600',
+    category: 'puzzle',
+    difficulty: 'medium',
+    averagePlayTime: 300,
+    maxPlaysPerDay: 2,
+    enabled: true,
+    scoring: {
+      maxScore: 10000,
+      goodScore: 2000,
+      greatScore: 5000,
+      legendaryScore: 8000,
+    },
+    features: {
+      hasTimer: false,
+      hasMoves: false,
+      hasLives: false,
+      hasCombo: false,
+    },
+    nftRequired: true,
+    minPlayDuration: 30,
+  },
+  
   'guardian-defense': {
     id: 'guardian-defense',
     name: 'Creature Command',
@@ -138,6 +168,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: false,
     minPlayDuration: 120,
+    hidden: true,
   },
   
   'space-defender': {
@@ -194,6 +225,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: true,
     minPlayDuration: 90,
+    hidden: true,
   },
   
   'cyber-breach': {
@@ -223,6 +255,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: true,
     minPlayDuration: 60,
+    hidden: true,
   },
   
   'ring-game': {
@@ -251,6 +284,7 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     },
     nftRequired: false,
     minPlayDuration: 30,
+    hidden: true,
   },
 };
 
@@ -273,10 +307,20 @@ export function getAllGames(): GameConfig[] {
 }
 
 /**
- * Get only enabled games (ready to play)
+ * Get only enabled games (ready to play, not hidden)
  */
 export function getEnabledGames(): GameConfig[] {
-  return Object.values(GAME_REGISTRY).filter(g => g.enabled);
+  return Object.values(GAME_REGISTRY).filter(g => g.enabled && !g.hidden);
+}
+
+/**
+ * Get visible arcade games in the correct order (Riddle Quest, Creature Command, Retro Defender)
+ */
+export function getArcadeGames(): GameConfig[] {
+  const order: GameType[] = ['riddle-quest', 'guardian-defense', 'space-defender'];
+  return order
+    .map(id => GAME_REGISTRY[id])
+    .filter(g => g && g.enabled && !g.hidden);
 }
 
 /**
@@ -392,6 +436,7 @@ export const ECONOMY_CONFIG = {
   
   // Per-game base weights (tuned for fair cross-game comparison)
   GAME_WEIGHTS: {
+    'riddle-quest': 1.15,        // Puzzle - knowledge-based
     'guardian-defense': 1.0,     // Action - medium complexity
     'guardian-solitaire': 1.1,   // Strategy - skill-based
     'space-defender': 1.0,       // Action - classic
