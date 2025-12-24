@@ -13,6 +13,7 @@ import {
   Rocket,
   Lock,
   Brain,
+  MessageSquare,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useLocation } from "wouter";
@@ -79,6 +80,14 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       description: t('hub.riddleDesc', 'Solve riddles, unlock the galaxy'),
       color: 'from-cyan-400 to-purple-500',
       glow: 'cyan'
+    },
+    { 
+      id: 'saga-guide', 
+      label: t('hub.sagaGuideLabel', 'Saga Guide'), 
+      icon: Sparkles, 
+      description: t('hub.sagaGuideDesc', 'Speak with the Oracle'),
+      color: 'from-purple-400 to-pink-500',
+      glow: 'purple'
     },
     { 
       id: 'games', 
