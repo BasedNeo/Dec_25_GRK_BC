@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { AdminInbox } from "@/components/AdminInbox";
 import { UserStats } from "@/components/UserStats";
+import { RiddleQuest } from "@/components/RiddleQuest";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { analytics } from '@/lib/analytics';
@@ -29,7 +30,7 @@ export default function Home() {
   // Initialize tab from URL hash (e.g., /#mint -> "mint")
   const getTabFromHash = () => {
     const hash = window.location.hash.slice(1); // Remove the #
-    const validTabs = ['hub', 'mint', 'gallery', 'escrow', 'universe', 'pool', 'stats', 'voting', 'activity'];
+    const validTabs = ['hub', 'mint', 'gallery', 'escrow', 'universe', 'pool', 'stats', 'riddle', 'voting', 'activity'];
     return validTabs.includes(hash) ? hash : 'hub';
   };
   
@@ -205,6 +206,21 @@ export default function Home() {
             >
               <ErrorBoundary feature="Stats" isolate={true}>
                 <UserStats />
+              </ErrorBoundary>
+            </motion.div>
+          )}
+
+          {activeTab === "riddle" && (
+            <motion.div
+              key="riddle"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="pt-8"
+            >
+              <ErrorBoundary feature="Riddle Quest" isolate={true}>
+                <RiddleQuest />
               </ErrorBoundary>
             </motion.div>
           )}

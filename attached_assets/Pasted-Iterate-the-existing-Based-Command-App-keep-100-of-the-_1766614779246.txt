@@ -1,0 +1,43 @@
+Iterate the existing Based Command App — keep 100% of the current cyberpunk neon design, parallax backgrounds, layout, colors, fonts, animations, header, tabs, hero, lore, timeline, features grid, footer, and all existing functionality completely intact. Do NOT rebuild, change, or remove any existing elements, tabs, or features — only add the new "User Stats" tab as a standalone gamification dashboard to enhance user engagement and stickiness.
+Add a new tab called "User Stats" (place it after Pool in the tab bar) as a highly engaging, gamified user dashboard that tracks and visualizes progress to encourage daily returns, community loyalty, and FOMO. Make it wallet-gated — show "Connect wallet to view your stats and level up" overlay if not connected. Use Replit DB or localStorage for user data logging (non-sensitive, anonymous wallet-based).
+User Stats tab (cyberpunk neon style, mobile-responsive with stacked cards and swipe-friendly elements, desktop grid for infographics):
+
+Header Section (full-width, centered, with subtle neon glow animation on load):
+Main Heading: "Your Guardian Journey" (large neon cyan, bold monospace, 3rem desktop / 2rem mobile, letter-spacing 0.05em).
+Subheading: "Track your progress, earn badges, and rise through the ranks. Stay Based." (purple glow, italic, 1.25rem desktop / 1rem mobile).
+
+Level Display (prominent cyan-bordered card below header, with progress bar and badge icon):
+Show current level (e.g., "Guardian Officer") with on-brand badge image (cyan neon shield/galaxy icon).
+Progress bar to next level (cyan fill, 80% width, smooth animation on update).
+Level requirements tooltip on hover/tap: "Own 4+ NFTs, vote on 2+ proposals, visit all pages, submit story feedback" (white text, cyan border).
+Levels list (collapsible accordion below, vertical on mobile):
+Greenhorn Guardian (owns at least one NFT) — Badge: Neon cyan rocket icon
+Cadet Guardian (voted on at least 1 proposal) — Badge: Cyan ballot icon with glow
+Working Class Guardian (visited 50% of app pages) — Badge: Neon mining drill
+Guardian Officer (holds at least 4 NFTs, voted on at least 2 proposals, visited all app pages, gave story chapter feedback) — Badge: Cyan shield with stars
+Guardian Lieutenant (holds at least 8 NFTs, visited all pages) — Badge: Neon map compass
+Guardian Squad Leader (gave story feedback + voted on 5+ proposals) — Badge: Cyan open book with galaxy quill
+Guardian Captain (holds at least one of each type: Based Frogs, Based Guardians, Based Creatures; voted on 2+ proposals, visited all pages, gave story feedback) — Badge: Three united icons (frog, guardian, creature) in cyan halo
+Guardian Commander (holds 10+ NFTs, voted on 10+ proposals, completed all story feedback, top 10% in page visits) — Badge: Golden neon crown with cosmic orb
+
+
+Tracked Metrics Infographics (responsive 2-column grid on desktop, stacked cards on mobile, cyan neon borders with glow hover):
+Proposals Voted On: Infographic bar chart (cyan bars) showing votes cast (live from DAO contract events or local log). "You've voted on X proposals — keep shaping the saga!" (progress to next level milestone).
+NFT Holdings: Total owned + pie chart breakdown (cyan slices: "Based Frogs: Y | Based Guardians: Z | Based Creatures: W" — live from wallet balanceOf and metadata "Character Type").
+App Page Visits: "Pages Explored: A / B" (e.g., 5/7 — total non-admin pages: Mint, Gallery, Voting, Collection, Pool, Universe, Stats). Use cosmic map infographic with glowing cyan dots for visited pages (log visits via GA events or localStorage).
+Storytelling Input: "Chapter Ideas Submitted: Yes/No" (live log from Saga tab form — badge unlock on Yes). Infographic: Checkmark icon (cyan neon if Yes).
+
+Gamification & Rewards (bottom section, scrollable grid):
+Badges grid (8 custom badges, unlock with confetti animation and points bonus).
+Leaderboard card: "Top Guardians" (top 10 by points, your rank highlighted, anonymous wallet hashes).
+Daily Streak: "Streak: Z Days" (fire icon if >3, +50 points/day bonus).
+
+UX/Commercial Polish:
+Level-up animation: Confetti + "Level Up! You've become a Cadet Guardian" overlay.
+Share button: "Share Your Stats" (X/Discord with dynamic text, e.g., "Just leveled up to Guardian Officer! #BasedGuardians").
+Mobile: Full-screen cards, touch hover effects, voice input prioritized.
+Loading: Spinner "Loading your journey...".
+Disclaimer: "Stats are estimates; based on wallet activity."
+
+
+Secure: Log data anonymously (no personal info). No errors; test with mock wallet (2 votes, 4 NFTs, all pages visited, story feedback).

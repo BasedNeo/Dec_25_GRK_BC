@@ -12,6 +12,7 @@ import {
   Trophy,
   Rocket,
   Lock,
+  Brain,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useLocation } from "wouter";
@@ -70,6 +71,14 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       description: t('hub.statsDesc', 'Your Guardian journey'),
       color: 'from-purple-500 to-pink-500',
       glow: 'purple'
+    },
+    { 
+      id: 'riddle', 
+      label: t('hub.riddleLabel', 'Riddle Quest'), 
+      icon: Brain, 
+      description: t('hub.riddleDesc', 'Solve riddles, unlock the galaxy'),
+      color: 'from-cyan-400 to-purple-500',
+      glow: 'cyan'
     },
     { 
       id: 'games', 
