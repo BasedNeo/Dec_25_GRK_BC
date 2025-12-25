@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, Rocket, Shield, Crown, Star, Sparkles, 
   Trophy, Flame, Share2, ChevronRight, Lock, Check,
-  X, Lightbulb, Zap, Target, Award, Users, Bot, MessageCircle, Loader2
+  X, Lightbulb, Zap, Target, Award, Users, Bot, MessageCircle, Loader2,
+  Calendar, Scroll
 } from 'lucide-react';
 import MindWarpStrategist from '@/assets/mind-warp-strategist.png';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { triggerConfetti } from '@/lib/dynamicImports';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 import { 
@@ -24,6 +26,8 @@ import {
   getOracleHint,
   resetOracleSession
 } from '@/lib/oracleClient';
+import { RiddleLeaderboard } from '@/components/RiddleLeaderboard';
+import { useDailyRiddles, useDailyProgress, useSubmitRiddleAttempt, useRiddleStats } from '@/hooks/useRiddleQuest';
 
 const RIDDLES = [
   { level: 1, question: "I am the token mined from rare ore, powering the entire galaxy. What am I?", answers: ["based", "$based", "basedai"], hint: "The native token of the ecosystem" },
@@ -138,6 +142,11 @@ export function RiddleQuest() {
   const [isShaking, setIsShaking] = useState(false);
   const [leaderboard, setLeaderboard] = useState<Array<{ address: string; points: number; level: number }>>([]);
   
+  // Game Mode State (campaign vs daily)
+  const [gameMode, setGameMode] = useState<'campaign' | 'daily'>('campaign');
+  const [dailyRiddleIndex, setDailyRiddleIndex] = useState(0);
+  const [dailyStartTime, setDailyStartTime] = useState<number | null>(null);
+  
   // Oracle Mode State
   const [oracleMode, setOracleMode] = useState(false);
   const [oracleRiddle, setOracleRiddle] = useState<string | null>(null);
@@ -145,6 +154,12 @@ export function RiddleQuest() {
   const [oracleLoading, setOracleLoading] = useState(false);
   const [oracleConversation, setOracleConversation] = useState<Array<{ role: string; content: string }>>([]);
   const [oracleInteractionsLeft, setOracleInteractionsLeft] = useState(3);
+  
+  // Daily Challenge Hooks
+  const { data: dailySet, isLoading: dailyLoading } = useDailyRiddles();
+  const { data: dailyProgress } = useDailyProgress(address);
+  const { data: riddleStats } = useRiddleStats(address);
+  const submitAttempt = useSubmitRiddleAttempt();
 
   useEffect(() => {
     if (address) {
@@ -412,6 +427,69 @@ export function RiddleQuest() {
 
   const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   
+  const startDailyChallenge = () => {
+    setGameMode('daily');
+    setDailyRiddleIndex(0);
+    setDailyStartTime(Date.now());
+    setGameState('playing');
+    setAnswer('');
+    setFeedback(null);
+    setShowHint(false);
+  };
+  
+  const currentDailyRiddle = dailySet?.riddles?.[dailyRiddleIndex];
+  const isDailyRiddleSolved = useMemo(() => {
+    if (!currentDailyRiddle || !dailyProgress) return false;
+    return dailyProgress.attempts.some(a => a.riddleEntryId === currentDailyRiddle.id && a.solved);
+  }, [currentDailyRiddle, dailyProgress]);
+  
+  const handleDailySubmit = async () => {
+    if (!currentDailyRiddle || !address || isDailyRiddleSolved) return;
+    
+    const solveTimeMs = dailyStartTime ? Date.now() - dailyStartTime : undefined;
+    
+    try {
+      const result = await submitAttempt.mutateAsync({
+        riddleEntryId: currentDailyRiddle.id,
+        answer: answer.trim(),
+        solveTimeMs,
+        isOracle: currentDailyRiddle.isOracle
+      });
+      
+      if (result.isCorrect) {
+        setFeedback('correct');
+        triggerConfetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: currentDailyRiddle.isOracle 
+            ? ['#a855f7', '#d946ef', '#ffffff']
+            : ['#00ffff', '#bf00ff', '#ffffff']
+        });
+        
+        setTimeout(() => {
+          setFeedback(null);
+          setAnswer('');
+          if (dailyRiddleIndex < (dailySet?.riddleCount || 5) - 1) {
+            setDailyRiddleIndex(prev => prev + 1);
+            setDailyStartTime(Date.now());
+          } else {
+            setGameState('game_complete');
+          }
+        }, 1500);
+      } else {
+        setFeedback('wrong');
+        setIsShaking(true);
+        setTimeout(() => {
+          setFeedback(null);
+          setIsShaking(false);
+        }, 600);
+      }
+    } catch (error) {
+      console.error('[RiddleQuest] Daily submit error:', error);
+    }
+  };
+  
   const toggleOracleMode = () => {
     const newMode = !oracleMode;
     setOracleMode(newMode);
@@ -574,54 +652,136 @@ export function RiddleQuest() {
             </motion.div>
           )}
           
-          {/* Oracle Mode Toggle */}
+          {/* Game Mode Tabs */}
           <motion.div
             className="mb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.65 }}
           >
-            <div className="inline-flex items-center gap-4 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
-              <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
-              <span className="text-sm font-mono text-gray-300">Guardian Oracle Mode</span>
-              <Switch
-                checked={oracleMode}
-                onCheckedChange={toggleOracleMode}
-                className="data-[state=checked]:bg-purple-500"
-                data-testid="switch-oracle-mode"
-              />
-              {oracleMode && (
-                <span className="text-xs text-purple-400 font-mono">
-                  {oracleInteractionsLeft} uses left
-                </span>
-              )}
-            </div>
-            {oracleMode && (
-              <p className="text-xs text-purple-300/60 mt-2">
-                AI-powered dynamic riddles • More challenging • +50% bonus points
-              </p>
-            )}
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7 }}
-          >
-            <Button
-              onClick={startQuest}
-              className="group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-xl px-12 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all transform hover:scale-105"
-              data-testid="button-begin-quest"
-            >
-              <motion.span
-                animate={{ opacity: [1, 0.7, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="flex items-center gap-3"
-              >
-                {progress && progress.currentLevel > 1 ? 'Continue Quest' : 'Begin Quest'}
-                <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-              </motion.span>
-            </Button>
+            <Tabs defaultValue="campaign" className="w-full max-w-lg mx-auto">
+              <TabsList className="grid w-full grid-cols-2 bg-black/50 border border-cyan-500/30">
+                <TabsTrigger 
+                  value="campaign" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/30 data-[state=active]:to-purple-500/30 data-[state=active]:text-cyan-400"
+                  data-testid="tab-campaign"
+                >
+                  <Scroll className="w-4 h-4 mr-2" />
+                  Campaign
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="daily"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/30 data-[state=active]:to-cyan-500/30 data-[state=active]:text-purple-400"
+                  data-testid="tab-daily"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Daily Challenge
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="campaign" className="mt-6">
+                {/* Oracle Mode Toggle */}
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-4 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
+                    <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
+                    <span className="text-sm font-mono text-gray-300">Guardian Oracle Mode</span>
+                    <Switch
+                      checked={oracleMode}
+                      onCheckedChange={toggleOracleMode}
+                      className="data-[state=checked]:bg-purple-500"
+                      data-testid="switch-oracle-mode"
+                    />
+                    {oracleMode && (
+                      <span className="text-xs text-purple-400 font-mono">
+                        {oracleInteractionsLeft} uses left
+                      </span>
+                    )}
+                  </div>
+                  {oracleMode && (
+                    <p className="text-xs text-purple-300/60 mt-2">
+                      AI-powered dynamic riddles • More challenging • +50% bonus points
+                    </p>
+                  )}
+                </div>
+                
+                <Button
+                  onClick={startQuest}
+                  className="group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-xl px-12 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all transform hover:scale-105"
+                  data-testid="button-begin-quest"
+                >
+                  <motion.span
+                    animate={{ opacity: [1, 0.7, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="flex items-center gap-3"
+                  >
+                    {progress && progress.currentLevel > 1 ? 'Continue Quest' : 'Begin Quest'}
+                    <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </motion.span>
+                </Button>
+              </TabsContent>
+              
+              <TabsContent value="daily" className="mt-6">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-cyan-500/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-gray-400">Today's Progress</span>
+                      <span className="text-lg font-bold text-purple-400">
+                        {dailyProgress?.solved || 0} / {dailySet?.riddleCount || 5}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={((dailyProgress?.solved || 0) / (dailySet?.riddleCount || 5)) * 100} 
+                      className="h-2 bg-black/30"
+                    />
+                    {dailySet?.generatedViaOracle && (
+                      <div className="flex items-center gap-2 mt-3 text-xs text-purple-300">
+                        <Bot className="w-3 h-3" />
+                        <span>Oracle-generated riddles (+50% points)</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {riddleStats?.stats && (
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="p-3 rounded-lg bg-black/30 border border-cyan-500/20">
+                        <div className="text-lg font-bold text-cyan-400">{riddleStats.stats.totalSolves}</div>
+                        <div className="text-[10px] text-gray-500 uppercase">Total Solved</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-black/30 border border-purple-500/20">
+                        <div className="text-lg font-bold text-purple-400">{riddleStats.stats.points}</div>
+                        <div className="text-[10px] text-gray-500 uppercase">Points</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-black/30 border border-orange-500/20">
+                        <div className="text-lg font-bold text-orange-400">{riddleStats.stats.currentStreak}</div>
+                        <div className="text-[10px] text-gray-500 uppercase">Streak</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Button
+                    onClick={startDailyChallenge}
+                    disabled={dailyLoading || (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5)}
+                    className="w-full group bg-gradient-to-r from-purple-500 via-fuchsia-500 to-cyan-500 text-white font-orbitron font-bold text-lg px-8 py-5 rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_50px_rgba(168,85,247,0.6)] transition-all disabled:opacity-50"
+                    data-testid="button-start-daily"
+                  >
+                    {dailyLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5) ? (
+                      <span className="flex items-center gap-2">
+                        <Check className="w-5 h-5" />
+                        All Completed!
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5" />
+                        Start Daily Challenge
+                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </motion.div>
           
           <motion.div 
@@ -641,6 +801,18 @@ export function RiddleQuest() {
             <div className="text-center">
               <p className="text-2xl font-bold text-amber-400">{BADGES_DATA.length}</p>
               <p className="text-xs text-gray-500 uppercase tracking-wider">Badges</p>
+            </div>
+          </motion.div>
+          
+          {/* Leaderboard Section */}
+          <motion.div
+            className="mt-12 max-w-md mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1 }}
+          >
+            <div className="p-4 rounded-xl border border-cyan-500/20 bg-black/30 backdrop-blur-sm">
+              <RiddleLeaderboard compact limit={5} />
             </div>
           </motion.div>
         </motion.div>
@@ -941,8 +1113,201 @@ export function RiddleQuest() {
             </motion.div>
           )}
           
+          {/* Daily Challenge Mode Display */}
+          {gameMode === 'daily' && currentDailyRiddle && (
+            <motion.div
+              key={`daily-${dailyRiddleIndex}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="relative">
+                <div className={`absolute -inset-1 rounded-2xl blur-lg opacity-60 animate-pulse ${
+                  currentDailyRiddle.isOracle 
+                    ? 'bg-gradient-to-r from-purple-500/50 via-fuchsia-500/50 to-purple-500/50'
+                    : 'bg-gradient-to-r from-cyan-500/50 via-purple-500/50 to-cyan-500/50'
+                }`} />
+                
+                <Card 
+                  className={`relative bg-gradient-to-b ${
+                    currentDailyRiddle.isOracle ? 'from-purple-900/30' : 'from-gray-900/95'
+                  } to-black/95 border-0 p-6 md:p-8 rounded-2xl overflow-hidden ${isShaking ? 'animate-[shake_0.1s_ease-in-out_infinite]' : ''}`}
+                  style={{
+                    boxShadow: feedback === 'correct' 
+                      ? '0 0 60px rgba(0,255,255,0.5), inset 0 0 40px rgba(0,255,255,0.1)' 
+                      : feedback === 'wrong'
+                      ? '0 0 60px rgba(255,0,0,0.5), inset 0 0 40px rgba(255,0,0,0.1)'
+                      : currentDailyRiddle.isOracle
+                      ? '0 0 40px rgba(168,85,247,0.25), inset 0 0 30px rgba(168,85,247,0.05)'
+                      : '0 0 40px rgba(0,255,255,0.25), inset 0 0 30px rgba(0,255,255,0.05)'
+                  }}
+                >
+                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
+                    currentDailyRiddle.isOracle 
+                      ? 'from-purple-500 via-fuchsia-500 to-purple-500' 
+                      : 'from-cyan-500 via-purple-500 to-cyan-500'
+                  }`} />
+                  
+                  <div className="flex items-center justify-between mb-6 relative">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className={`absolute -inset-1 rounded-full blur-md opacity-70 animate-pulse ${
+                          currentDailyRiddle.isOracle ? 'bg-gradient-to-r from-purple-500 to-fuchsia-500' : 'bg-gradient-to-r from-cyan-500 to-purple-500'
+                        }`} />
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center relative border-2 shadow-lg ${
+                          currentDailyRiddle.isOracle 
+                            ? 'bg-gradient-to-br from-purple-500/30 to-fuchsia-500/30 border-purple-500/50' 
+                            : 'bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-cyan-500/50'
+                        }`}>
+                          <Calendar className={`w-6 h-6 ${currentDailyRiddle.isOracle ? 'text-purple-300' : 'text-cyan-300'}`} />
+                        </div>
+                      </div>
+                      <div>
+                        <p className={`text-xs font-mono uppercase tracking-wider ${currentDailyRiddle.isOracle ? 'text-purple-400' : 'text-cyan-400'}`}>
+                          Daily Challenge
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={`font-mono text-xs ${
+                            currentDailyRiddle.isOracle 
+                              ? 'border-purple-500/50 text-fuchsia-400 bg-purple-500/10'
+                              : 'border-cyan-500/50 text-purple-400 bg-purple-500/10'
+                          }`}>
+                            {dailyRiddleIndex + 1} / {dailySet?.riddleCount || 5}
+                          </Badge>
+                          {currentDailyRiddle.isOracle && (
+                            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/50 text-[10px]">
+                              <Bot className="w-3 h-3 mr-1" />
+                              Oracle
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Difficulty</p>
+                      <p className={`font-bold capitalize ${
+                        currentDailyRiddle.difficulty === 'hard' ? 'text-red-400' :
+                        currentDailyRiddle.difficulty === 'medium' ? 'text-yellow-400' :
+                        'text-green-400'
+                      }`}>{currentDailyRiddle.difficulty}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-8 py-4 relative">
+                    <p className="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
+                      "{currentDailyRiddle.question}"
+                    </p>
+                  </div>
+                  
+                  <AnimatePresence>
+                    {showHint && currentDailyRiddle.hint && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-amber-400" />
+                          <span className="text-amber-400 text-sm">Hint: {currentDailyRiddle.hint}</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="flex gap-3">
+                    <Input
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !submitAttempt.isPending && handleDailySubmit()}
+                      placeholder="Enter your answer..."
+                      className={`flex-1 bg-black/40 text-white placeholder:text-gray-500 ${
+                        currentDailyRiddle.isOracle 
+                          ? 'border-purple-500/30 focus:border-purple-400 focus:ring-purple-400/20'
+                          : 'border-cyan-500/30 focus:border-cyan-400 focus:ring-cyan-400/20'
+                      }`}
+                      data-testid="input-daily-answer"
+                      disabled={submitAttempt.isPending || isDailyRiddleSolved}
+                    />
+                    <Button
+                      onClick={handleDailySubmit}
+                      disabled={!answer.trim() || submitAttempt.isPending || isDailyRiddleSolved}
+                      className={`font-bold px-6 disabled:opacity-50 ${
+                        currentDailyRiddle.isOracle
+                          ? 'bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
+                          : 'bg-gradient-to-r from-cyan-500 to-purple-500 text-black shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)]'
+                      }`}
+                      data-testid="button-submit-daily"
+                    >
+                      {submitAttempt.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : isDailyRiddleSolved ? <Check className="w-5 h-5" /> : 'Submit'}
+                    </Button>
+                  </div>
+                  
+                  {currentDailyRiddle.hint && !showHint && !isDailyRiddleSolved && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        onClick={() => setShowHint(true)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-amber-400/60 hover:text-amber-400 hover:bg-amber-500/10"
+                        data-testid="button-daily-hint"
+                      >
+                        <Lightbulb className="w-4 h-4 mr-2" />
+                        Show Hint
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <AnimatePresence>
+                    {feedback === 'correct' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-4 p-4 rounded-lg bg-cyan-500/20 border border-cyan-500/50 flex items-center gap-3"
+                      >
+                        <Check className="w-6 h-6 text-cyan-400" />
+                        <span className="text-cyan-400 font-bold">Correct! Points earned!</span>
+                      </motion.div>
+                    )}
+                    
+                    {feedback === 'wrong' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-4 p-4 rounded-lg bg-red-500/20 border border-red-500/50 flex items-center gap-3"
+                      >
+                        <X className="w-6 h-6 text-red-400" />
+                        <span className="text-red-400">Not quite right. Try again!</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              </div>
+              
+              {/* Back to Menu Button */}
+              <div className="mt-6 flex justify-center">
+                <Button
+                  onClick={() => {
+                    setGameState('hero');
+                    setGameMode('campaign');
+                    setAnswer('');
+                    setFeedback(null);
+                  }}
+                  variant="outline"
+                  className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  data-testid="button-back-daily"
+                >
+                  Back to Menu
+                </Button>
+              </div>
+            </motion.div>
+          )}
+          
           {/* Standard Mode Riddle Display */}
-          {!oracleMode && currentRiddle && (
+          {gameMode === 'campaign' && !oracleMode && currentRiddle && (
             <motion.div
               key={`${progress?.currentLevel}-${progress?.currentRiddle}`}
               initial={{ opacity: 0, y: 20 }}
