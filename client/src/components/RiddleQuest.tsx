@@ -7,6 +7,7 @@ import {
   Trophy, Flame, Share2, ChevronRight, Lock, Check,
   X, Lightbulb, Zap, Target, Award, Users
 } from 'lucide-react';
+import MindWarpStrategist from '@/assets/mind-warp-strategist.png';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -607,11 +608,18 @@ export function RiddleQuest() {
                   
                   <div className="flex items-center justify-between mb-6 relative">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(0,255,255,0.3)]">
-                        <Brain className="w-5 h-5 text-white" />
+                      <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full blur-md opacity-70 animate-pulse" />
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 p-0.5 relative border-2 border-cyan-500/50 shadow-[0_0_25px_rgba(0,255,255,0.4)]">
+                          <img 
+                            src={MindWarpStrategist} 
+                            alt="Mind Warp Strategist" 
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        </div>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Mystery</p>
+                        <p className="text-xs text-cyan-400 font-mono uppercase tracking-wider">Mind Warp Strategist</p>
                         <Badge variant="outline" className="border-purple-500/50 text-purple-400 bg-purple-500/10 font-mono text-xs">
                           {(progress?.currentRiddle || 0) + 1} / {currentLevelRiddles.length}
                         </Badge>
