@@ -18,7 +18,15 @@ import {
   Home, Loader2, Trophy, Zap, Target, Star, Crosshair
 } from 'lucide-react';
 
-type CreatureType = 'based' | 'crystal' | 'midnight' | 'jelly' | 'golden' | 'pearlescent' | 'guardian';
+import creatureUltraBased from '@/assets/creature-ultra-based.png';
+import creaturePearlescent from '@/assets/creature-pearlescent.png';
+import creatureGolden from '@/assets/creature-golden.png';
+import creatureBased from '@/assets/creature-based.png';
+import creatureMidnight from '@/assets/creature-midnight.png';
+import creatureJelly from '@/assets/creature-jelly.png';
+import creatureCrystal from '@/assets/creature-crystal.png';
+
+type CreatureType = 'ultra-based' | 'based' | 'crystal' | 'midnight' | 'jelly' | 'golden' | 'pearlescent' | 'guardian';
 
 interface Vector2D {
   x: number;
@@ -172,6 +180,7 @@ const CITY_POSITIONS = [
 ];
 
 const CREATURE_COLORS: Record<CreatureType, string> = {
+  'ultra-based': '#9333EA',
   based: '#00FFFF',
   crystal: '#E0E0FF',
   midnight: '#4B0082',
@@ -182,6 +191,7 @@ const CREATURE_COLORS: Record<CreatureType, string> = {
 };
 
 const CREATURE_POINTS: Record<CreatureType, number> = {
+  'ultra-based': 100,
   based: 10,
   crystal: 15,
   midnight: 20,
@@ -192,6 +202,7 @@ const CREATURE_POINTS: Record<CreatureType, number> = {
 };
 
 const CREATURE_HEALTH: Record<CreatureType, number> = {
+  'ultra-based': 2,
   based: 1,
   crystal: 1,
   midnight: 1,
@@ -202,6 +213,7 @@ const CREATURE_HEALTH: Record<CreatureType, number> = {
 };
 
 const CREATURE_SPEEDS: Record<CreatureType, number> = {
+  'ultra-based': 0.7,
   based: 1,
   crystal: 1.2,
   midnight: 1.5,
@@ -212,13 +224,25 @@ const CREATURE_SPEEDS: Record<CreatureType, number> = {
 };
 
 const CREATURE_NAMES: Record<CreatureType, string> = {
+  'ultra-based': 'Ultra Based',
   based: 'Based Creature',
   crystal: 'Crystal Creature',
   midnight: 'Midnight Creature',
-  jelly: 'Jelly Creature',
+  jelly: 'Sentient Jelly',
   golden: 'Golden Creature',
   pearlescent: 'Pearlescent Creature',
   guardian: 'Guardian',
+};
+
+const CREATURE_IMAGES: Record<CreatureType, string> = {
+  'ultra-based': creatureUltraBased,
+  based: creatureBased,
+  crystal: creatureCrystal,
+  midnight: creatureMidnight,
+  jelly: creatureJelly,
+  golden: creatureGolden,
+  pearlescent: creaturePearlescent,
+  guardian: creatureUltraBased,
 };
 
 const MISSILES_PER_BATTERY = 4;
@@ -288,16 +312,18 @@ const getCreatureForWave = (wave: number, forceGuardian: boolean = false): Creat
   }
   if (wave <= 9) {
     if (r < 0.15) return 'based';
-    if (r < 0.3) return 'crystal';
+    if (r < 0.30) return 'crystal';
     if (r < 0.45) return 'midnight';
-    if (r < 0.6) return 'jelly';
+    if (r < 0.60) return 'jelly';
     if (r < 0.75) return 'golden';
-    return 'pearlescent';
+    if (r < 0.92) return 'pearlescent';
+    return 'ultra-based';
   }
+  if (r < 0.08) return 'ultra-based';
   if (r < 0.25) return 'golden';
-  if (r < 0.45) return 'pearlescent';
-  if (r < 0.60) return 'midnight';
-  if (r < 0.75) return 'jelly';
+  if (r < 0.40) return 'pearlescent';
+  if (r < 0.55) return 'midnight';
+  if (r < 0.72) return 'jelly';
   if (r < 0.88) return 'crystal';
   return 'based';
 };
@@ -1472,19 +1498,48 @@ export default function GuardianDefense() {
             <Card className="p-8 bg-black/70 border-purple-500/30 backdrop-blur-lg">
               <div className="space-y-6">
                 
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-2">
                   <motion.div
                     animate={{ 
                       boxShadow: [
-                        '0 0 20px rgba(139, 92, 246, 0.3)',
-                        '0 0 40px rgba(6, 182, 212, 0.4)',
-                        '0 0 20px rgba(139, 92, 246, 0.3)',
-                      ]
+                        '0 0 20px rgba(0, 255, 255, 0.3)',
+                        '0 0 40px rgba(147, 51, 234, 0.5)',
+                        '0 0 20px rgba(0, 255, 255, 0.3)',
+                      ],
+                      y: [0, -5, 0],
                     }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-28 h-28 bg-gradient-to-br from-purple-600/30 to-cyan-600/30 rounded-full flex items-center justify-center border-2 border-purple-500/50"
+                    className="w-20 h-20 bg-gradient-to-br from-cyan-900/40 to-cyan-600/20 rounded-xl flex items-center justify-center border-2 border-cyan-500/50"
                   >
-                    <Crosshair className="w-14 h-14 text-cyan-400" />
+                    <img src={creatureBased} alt="Based" className="w-14 h-14 object-contain drop-shadow-[0_0_12px_#00FFFF]" />
+                  </motion.div>
+                  <motion.div
+                    animate={{ 
+                      boxShadow: [
+                        '0 0 25px rgba(147, 51, 234, 0.4)',
+                        '0 0 50px rgba(255, 0, 255, 0.5)',
+                        '0 0 25px rgba(147, 51, 234, 0.4)',
+                      ],
+                      y: [0, -8, 0],
+                    }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                    className="w-24 h-24 bg-gradient-to-br from-purple-900/40 to-fuchsia-600/20 rounded-xl flex items-center justify-center border-2 border-purple-500/50"
+                  >
+                    <img src={creatureUltraBased} alt="Ultra Based" className="w-18 h-18 object-contain drop-shadow-[0_0_15px_#9333EA]" />
+                  </motion.div>
+                  <motion.div
+                    animate={{ 
+                      boxShadow: [
+                        '0 0 20px rgba(255, 215, 0, 0.3)',
+                        '0 0 40px rgba(255, 215, 0, 0.5)',
+                        '0 0 20px rgba(255, 215, 0, 0.3)',
+                      ],
+                      y: [0, -5, 0],
+                    }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                    className="w-20 h-20 bg-gradient-to-br from-yellow-900/40 to-yellow-600/20 rounded-xl flex items-center justify-center border-2 border-yellow-500/50"
+                  >
+                    <img src={creatureGolden} alt="Golden" className="w-14 h-14 object-contain drop-shadow-[0_0_12px_#FFD700]" />
                   </motion.div>
                 </div>
 
@@ -1518,64 +1573,79 @@ export default function GuardianDefense() {
                 </div>
 
                 <div className="bg-black/40 rounded-xl p-5 border border-white/10">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <Zap className="w-5 h-5 text-yellow-400" />
                     <h3 className="font-bold text-white text-lg">Creature Types</h3>
                   </div>
-                  <div className="grid grid-cols-4 gap-3 text-sm text-center">
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00FFFF20', border: '2px solid #00FFFF' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#00FFFF', boxShadow: '0 0 8px #00FFFF' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#00FFFF' }}>Based</p>
+                  <div className="grid grid-cols-4 gap-2 text-sm text-center">
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-cyan-900/30 to-cyan-600/10 rounded-lg p-2 border border-cyan-500/30"
+                    >
+                      <img src={creatureBased} alt="Based Creature" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#00FFFF]" />
+                      <p className="text-[10px] font-bold text-cyan-400">Based</p>
                       <p className="text-[8px] text-gray-500">10 pts</p>
-                    </div>
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E0E0FF20', border: '2px solid #E0E0FF' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#E0E0FF', boxShadow: '0 0 8px #E0E0FF' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#E0E0FF' }}>Crystal</p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-slate-900/30 to-slate-600/10 rounded-lg p-2 border border-slate-400/30"
+                    >
+                      <img src={creatureCrystal} alt="Crystal Creature" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#E0E0FF]" />
+                      <p className="text-[10px] font-bold text-slate-200">Crystal</p>
                       <p className="text-[8px] text-gray-500">15 pts</p>
-                    </div>
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#4B008220', border: '2px solid #4B0082' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4B0082', boxShadow: '0 0 8px #4B0082' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#9B59B6' }}>Midnight</p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-indigo-900/30 to-purple-900/10 rounded-lg p-2 border border-purple-500/30"
+                    >
+                      <img src={creatureMidnight} alt="Midnight Creature" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#4B0082]" />
+                      <p className="text-[10px] font-bold text-purple-400">Midnight</p>
                       <p className="text-[8px] text-gray-500">20 pts</p>
-                    </div>
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF69B420', border: '2px solid #FF69B4' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FF69B4', boxShadow: '0 0 8px #FF69B4' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#FF69B4' }}>Jelly</p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-pink-900/30 to-pink-600/10 rounded-lg p-2 border border-pink-400/30"
+                    >
+                      <img src={creatureJelly} alt="Sentient Jelly" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#FF69B4]" />
+                      <p className="text-[10px] font-bold text-pink-400">Jelly</p>
                       <p className="text-[8px] text-gray-500">15 pts • 2HP</p>
-                    </div>
+                    </motion.div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-sm text-center mt-3">
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD70020', border: '2px solid #FFD700' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FFD700', boxShadow: '0 0 8px #FFD700' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#FFD700' }}>Golden</p>
+                  <div className="grid grid-cols-4 gap-2 text-sm text-center mt-2">
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-yellow-900/30 to-yellow-600/10 rounded-lg p-2 border border-yellow-500/30"
+                    >
+                      <img src={creatureGolden} alt="Golden Creature" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#FFD700]" />
+                      <p className="text-[10px] font-bold text-yellow-400">Golden</p>
                       <p className="text-[8px] text-gray-500">50 pts • Fast!</p>
-                    </div>
-                    <div>
-                      <div className="w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFF0F520', border: '2px solid #FFF0F5' }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FFF0F5', boxShadow: '0 0 8px #FFF0F5' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#FFF0F5' }}>Pearl</p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-rose-900/30 to-rose-600/10 rounded-lg p-2 border border-rose-300/30"
+                    >
+                      <img src={creaturePearlescent} alt="Pearlescent Creature" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_8px_#FFF0F5]" />
+                      <p className="text-[10px] font-bold text-rose-200">Pearl</p>
                       <p className="text-[8px] text-gray-500">25 pts • 2HP</p>
-                    </div>
-                    <div>
-                      <div className="w-10 h-10 mx-auto mb-1 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF00FF20', border: '3px solid #FF00FF' }}>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF00FF', boxShadow: '0 0 12px #FF00FF' }}></div>
-                      </div>
-                      <p className="text-[10px] font-bold" style={{ color: '#FF00FF' }}>GUARDIAN</p>
-                      <p className="text-[8px] text-gray-500">200 pts • BOSS</p>
-                    </div>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="bg-gradient-to-br from-purple-900/40 to-violet-600/20 rounded-lg p-2 border border-purple-400/40"
+                    >
+                      <img src={creatureUltraBased} alt="Ultra Based" className="w-10 h-10 mx-auto mb-1 object-contain drop-shadow-[0_0_10px_#9333EA]" />
+                      <p className="text-[10px] font-bold text-purple-400">Ultra Based</p>
+                      <p className="text-[8px] text-gray-500">100 pts • 2HP</p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ scale: 1.08 }}
+                      className="bg-gradient-to-br from-fuchsia-900/50 to-pink-600/30 rounded-lg p-2 border-2 border-fuchsia-500/50"
+                    >
+                      <img src={creatureUltraBased} alt="Guardian Boss" className="w-11 h-11 mx-auto mb-1 object-contain drop-shadow-[0_0_12px_#FF00FF]" />
+                      <p className="text-[10px] font-bold text-fuchsia-400">GUARDIAN</p>
+                      <p className="text-[8px] text-gray-400">200 pts • BOSS</p>
+                    </motion.div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-3 text-center">
+                  <p className="text-xs text-gray-400 mt-4 text-center">
                     Chain reactions: +5 bonus per chained creature!
                   </p>
                 </div>
