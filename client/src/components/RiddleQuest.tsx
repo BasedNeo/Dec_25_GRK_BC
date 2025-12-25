@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, Rocket, Shield, Crown, Star, Sparkles, 
   Trophy, Flame, Share2, ChevronRight, Lock, Check,
-  X, Lightbulb, Zap, Target, Award, Users
+  X, Lightbulb, Zap, Target, Award, Users, Bot, MessageCircle, Loader2
 } from 'lucide-react';
 import MindWarpStrategist from '@/assets/mind-warp-strategist.png';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,17 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { triggerConfetti } from '@/lib/dynamicImports';
+import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
+import { 
+  canUseOracle, 
+  getOracleInteractionsRemaining, 
+  generateOracleRiddle, 
+  evaluateOracleAnswer, 
+  getOracleHint,
+  resetOracleSession
+} from '@/lib/oracleClient';
 
 const RIDDLES = [
   { level: 1, question: "I am the token mined from rare ore, powering the entire galaxy. What am I?", answers: ["based", "$based", "basedai"], hint: "The native token of the ecosystem" },
@@ -117,6 +127,9 @@ const updateLeaderboard = (address: string, points: number, level: number) => {
 export function RiddleQuest() {
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { balance: nftBalance } = useOwnedNFTs();
+  const isNftHolder = useMemo(() => nftBalance > 0, [nftBalance]);
+  
   const [gameState, setGameState] = useState<'hero' | 'playing' | 'level_complete' | 'game_complete'>('hero');
   const [progress, setProgress] = useState<QuestProgress | null>(null);
   const [answer, setAnswer] = useState('');
@@ -124,6 +137,14 @@ export function RiddleQuest() {
   const [showHint, setShowHint] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [leaderboard, setLeaderboard] = useState<Array<{ address: string; points: number; level: number }>>([]);
+  
+  // Oracle Mode State
+  const [oracleMode, setOracleMode] = useState(false);
+  const [oracleRiddle, setOracleRiddle] = useState<string | null>(null);
+  const [oracleResponse, setOracleResponse] = useState<string | null>(null);
+  const [oracleLoading, setOracleLoading] = useState(false);
+  const [oracleConversation, setOracleConversation] = useState<Array<{ role: string; content: string }>>([]);
+  const [oracleInteractionsLeft, setOracleInteractionsLeft] = useState(3);
 
   useEffect(() => {
     if (address) {
@@ -149,9 +170,15 @@ export function RiddleQuest() {
         saveProgress(address, storedProgress);
       }
       setProgress(storedProgress);
+      setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
     }
     setLeaderboard(getLeaderboard());
   }, [address]);
+
+  // Update oracle interactions remaining when mode or NFT holder status changes
+  useEffect(() => {
+    setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
+  }, [oracleMode, isNftHolder]);
 
   const currentLevelRiddles = RIDDLES.filter(r => r.level === (progress?.currentLevel || 1));
   const currentRiddle = currentLevelRiddles[progress?.currentRiddle || 0];
@@ -232,14 +259,149 @@ export function RiddleQuest() {
     }
   }, [answer, currentRiddle, progress, address, currentLevelRiddles.length]);
 
-  const startQuest = () => {
+  const startQuest = async () => {
     setGameState('playing');
+    if (oracleMode && canUseOracle(isNftHolder)) {
+      await fetchOracleRiddle();
+    }
   };
 
-  const continueToNextLevel = () => {
+  const continueToNextLevel = async () => {
     setGameState('playing');
     setAnswer('');
     setShowHint(false);
+    setOracleRiddle(null);
+    setOracleResponse(null);
+    setOracleConversation([]);
+    if (oracleMode && canUseOracle(isNftHolder)) {
+      await fetchOracleRiddle();
+    }
+  };
+
+  const fetchOracleRiddle = async () => {
+    if (!progress) return;
+    setOracleLoading(true);
+    setOracleResponse(null);
+    
+    const difficulty = progress.currentLevel <= 3 ? 'easy' : progress.currentLevel <= 7 ? 'medium' : 'hard';
+    const result = await generateOracleRiddle(progress.currentLevel, difficulty, isNftHolder);
+    
+    setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
+    
+    if (result.success && result.message) {
+      setOracleRiddle(result.message);
+      setOracleConversation([{ role: 'assistant', content: result.message }]);
+    } else {
+      // Fallback: disable Oracle mode and reset state - static riddle will render automatically
+      setOracleMode(false);
+      setOracleRiddle(null);
+      setOracleConversation([]);
+      setOracleResponse(null);
+      console.log('[RiddleQuest] Oracle unavailable, falling back to static riddles');
+    }
+    setOracleLoading(false);
+  };
+
+  const handleOracleAnswer = async () => {
+    if (!oracleRiddle || !answer.trim()) return;
+    setOracleLoading(true);
+    
+    const result = await evaluateOracleAnswer(oracleRiddle, answer, oracleConversation, isNftHolder);
+    setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
+    
+    if (result.success) {
+      setOracleResponse(result.message);
+      setOracleConversation(prev => [...prev, 
+        { role: 'user', content: answer },
+        { role: 'assistant', content: result.message }
+      ]);
+      
+      if (result.isCorrect) {
+        setFeedback('correct');
+        triggerConfetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: ['#00ffff', '#bf00ff', '#ffffff']
+        });
+        
+        if (progress && address) {
+          const pointsEarned = 150 + (progress.streak > 3 ? 25 : 0);
+          const newProgress = { ...progress, points: progress.points + pointsEarned };
+          
+          const isLastRiddleInLevel = (progress.currentRiddle || 0) >= currentLevelRiddles.length - 1;
+          
+          if (isLastRiddleInLevel) {
+            if (!newProgress.completedLevels.includes(progress.currentLevel)) {
+              newProgress.completedLevels.push(progress.currentLevel);
+            }
+            
+            const badge = BADGES_DATA.find(b => b.levelReq === progress.currentLevel);
+            if (badge && !newProgress.unlockedBadges.includes(badge.id)) {
+              newProgress.unlockedBadges.push(badge.id);
+            }
+            
+            if (progress.currentLevel >= totalLevels) {
+              setGameState('game_complete');
+            } else {
+              setGameState('level_complete');
+            }
+            
+            newProgress.currentLevel = Math.min(progress.currentLevel + 1, totalLevels);
+            newProgress.currentRiddle = 0;
+          } else {
+            newProgress.currentRiddle = (progress.currentRiddle || 0) + 1;
+          }
+          
+          newProgress.failedAttempts = 0;
+          saveProgress(address, newProgress);
+          updateLeaderboard(address, newProgress.points, newProgress.currentLevel);
+          setProgress(newProgress);
+          setLeaderboard(getLeaderboard());
+          
+          setTimeout(() => {
+            setFeedback(null);
+            setAnswer('');
+            setOracleRiddle(null);
+            setOracleResponse(null);
+            setOracleConversation([]);
+          }, 2000);
+        }
+      } else {
+        setFeedback('wrong');
+        setIsShaking(true);
+        setTimeout(() => {
+          setFeedback(null);
+          setIsShaking(false);
+        }, 600);
+      }
+    } else {
+      // API error - fallback to static riddles
+      if (result.fallback) {
+        setOracleMode(false);
+        setOracleRiddle(null);
+        setOracleConversation([]);
+        setOracleResponse(null);
+        setAnswer('');
+        console.log('[RiddleQuest] Oracle evaluation failed, falling back to static riddles');
+      }
+    }
+    setOracleLoading(false);
+  };
+
+  const handleOracleHint = async () => {
+    if (!oracleRiddle) return;
+    setOracleLoading(true);
+    
+    const result = await getOracleHint(oracleRiddle, oracleConversation, isNftHolder);
+    setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
+    
+    if (result.success) {
+      setOracleResponse(result.message);
+      setOracleConversation(prev => [...prev, { role: 'assistant', content: result.message }]);
+      setShowHint(true);
+    }
+    setOracleLoading(false);
   };
 
   const shareProgress = () => {
@@ -249,6 +411,16 @@ export function RiddleQuest() {
   };
 
   const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  
+  const toggleOracleMode = () => {
+    const newMode = !oracleMode;
+    setOracleMode(newMode);
+    if (!newMode) {
+      setOracleRiddle(null);
+      setOracleResponse(null);
+      setOracleConversation([]);
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -401,6 +573,35 @@ export function RiddleQuest() {
               </p>
             </motion.div>
           )}
+          
+          {/* Oracle Mode Toggle */}
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.65 }}
+          >
+            <div className="inline-flex items-center gap-4 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
+              <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
+              <span className="text-sm font-mono text-gray-300">Guardian Oracle Mode</span>
+              <Switch
+                checked={oracleMode}
+                onCheckedChange={toggleOracleMode}
+                className="data-[state=checked]:bg-purple-500"
+                data-testid="switch-oracle-mode"
+              />
+              {oracleMode && (
+                <span className="text-xs text-purple-400 font-mono">
+                  {oracleInteractionsLeft} uses left
+                </span>
+              )}
+            </div>
+            {oracleMode && (
+              <p className="text-xs text-purple-300/60 mt-2">
+                AI-powered dynamic riddles • More challenging • +50% bonus points
+              </p>
+            )}
+          </motion.div>
           
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -571,8 +772,177 @@ export function RiddleQuest() {
       </div>
       
       <div className="max-w-2xl mx-auto pt-20 relative z-10">
+        {/* Oracle Loading State */}
+        {oracleMode && oracleLoading && (
+          <motion.div
+            className="flex flex-col items-center justify-center py-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-purple-500/30 rounded-full blur-xl animate-pulse" />
+              <Bot className="w-16 h-16 text-purple-400 relative z-10 animate-bounce" />
+            </div>
+            <p className="mt-6 text-purple-300 font-mono text-sm animate-pulse">
+              The Oracle contemplates your fate...
+            </p>
+          </motion.div>
+        )}
+        
         <AnimatePresence mode="wait">
-          {currentRiddle && (
+          {/* Oracle Mode Riddle Display */}
+          {oracleMode && oracleRiddle && !oracleLoading && (
+            <motion.div
+              key="oracle-riddle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/50 via-cyan-500/50 to-purple-500/50 rounded-2xl blur-lg opacity-60 animate-pulse" />
+                
+                <Card 
+                  className={`relative bg-gradient-to-b from-purple-900/30 to-black/95 border-0 p-6 md:p-8 rounded-2xl overflow-hidden ${isShaking ? 'animate-[shake_0.1s_ease-in-out_infinite]' : ''}`}
+                  style={{
+                    boxShadow: feedback === 'correct' 
+                      ? '0 0 60px rgba(0,255,255,0.5), inset 0 0 40px rgba(0,255,255,0.1)' 
+                      : feedback === 'wrong'
+                      ? '0 0 60px rgba(255,0,0,0.5), inset 0 0 40px rgba(255,0,0,0.1)'
+                      : '0 0 40px rgba(191,0,255,0.25), inset 0 0 30px rgba(191,0,255,0.05)'
+                  }}
+                >
+                  <style>{`
+                    @keyframes shake {
+                      0%, 100% { transform: translateX(0); }
+                      25% { transform: translateX(-5px); }
+                      75% { transform: translateX(5px); }
+                    }
+                  `}</style>
+                  
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-cyan-500 to-purple-500" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
+                  
+                  <div className="flex items-center justify-between mb-6 relative">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full blur-md opacity-70 animate-pulse" />
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 flex items-center justify-center relative border-2 border-purple-500/50 shadow-[0_0_25px_rgba(191,0,255,0.4)]">
+                          <Bot className="w-6 h-6 text-purple-300" />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-purple-400 font-mono uppercase tracking-wider">Guardian Oracle</p>
+                        <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
+                          {oracleInteractionsLeft} uses remaining
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Level</p>
+                      <p className="text-purple-400 font-orbitron font-bold">{progress?.currentLevel || 1}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-6 py-4 relative">
+                    <p className="text-lg md:text-xl text-gray-200 font-medium leading-relaxed text-center italic">
+                      {oracleRiddle}
+                    </p>
+                  </div>
+                  
+                  {/* Oracle Response Display */}
+                  <AnimatePresence>
+                    {oracleResponse && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className={`mb-4 p-4 rounded-lg border ${
+                          feedback === 'correct' 
+                            ? 'bg-cyan-500/10 border-cyan-500/30' 
+                            : 'bg-purple-500/10 border-purple-500/30'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <MessageCircle className={`w-5 h-5 mt-0.5 ${feedback === 'correct' ? 'text-cyan-400' : 'text-purple-400'}`} />
+                          <p className={`text-sm ${feedback === 'correct' ? 'text-cyan-300' : 'text-purple-300'}`}>
+                            {oracleResponse}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="flex gap-3">
+                    <Input
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !oracleLoading && handleOracleAnswer()}
+                      placeholder="Speak your answer to the Oracle..."
+                      className="flex-1 bg-black/40 border-purple-500/30 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20"
+                      data-testid="input-oracle-answer"
+                      disabled={oracleLoading}
+                    />
+                    <Button
+                      onClick={handleOracleAnswer}
+                      disabled={!answer.trim() || oracleLoading}
+                      className="bg-gradient-to-r from-purple-500 to-cyan-500 text-black font-bold px-6 disabled:opacity-50 shadow-[0_0_20px_rgba(191,0,255,0.3)] hover:shadow-[0_0_30px_rgba(191,0,255,0.5)]"
+                      data-testid="button-submit-oracle"
+                    >
+                      {oracleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit'}
+                    </Button>
+                  </div>
+                  
+                  {/* Oracle Hint Button */}
+                  {oracleInteractionsLeft > 0 && !showHint && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        onClick={handleOracleHint}
+                        variant="ghost"
+                        size="sm"
+                        className="text-purple-400/60 hover:text-purple-400 hover:bg-purple-500/10"
+                        disabled={oracleLoading}
+                        data-testid="button-oracle-hint"
+                      >
+                        <Lightbulb className="w-4 h-4 mr-2" />
+                        Request Oracle Guidance
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Feedback Display */}
+                  <AnimatePresence>
+                    {feedback === 'correct' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-4 p-4 rounded-lg bg-cyan-500/20 border border-cyan-500/50 flex items-center gap-3"
+                      >
+                        <Check className="w-6 h-6 text-cyan-400" />
+                        <span className="text-cyan-400 font-bold">The Oracle acknowledges your wisdom! +{150 + ((progress?.streak || 0) > 3 ? 25 : 0)} points</span>
+                      </motion.div>
+                    )}
+                    
+                    {feedback === 'wrong' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-4 p-4 rounded-lg bg-red-500/20 border border-red-500/50 flex items-center gap-3"
+                      >
+                        <X className="w-6 h-6 text-red-400" />
+                        <span className="text-red-400">The Oracle awaits a different answer...</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+          
+          {/* Standard Mode Riddle Display */}
+          {!oracleMode && currentRiddle && (
             <motion.div
               key={`${progress?.currentLevel}-${progress?.currentRiddle}`}
               initial={{ opacity: 0, y: 20 }}

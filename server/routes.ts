@@ -30,6 +30,7 @@ import { NonceManager } from './lib/nonceManager';
 import { OriginValidator } from './lib/originValidator';
 import { CSRFProtection } from './lib/csrfProtection';
 import { getActivityData, getCacheStatus } from './lib/activityCache';
+import { callOracle, generateRiddlePrompt, evaluateAnswerPrompt, getHintPrompt } from './lib/oracleService';
 // STRIPPED FOR LAUNCH: Enterprise security features
 // import { EncryptionService } from './lib/encryption';
 // import { EncryptedStorageService } from './lib/encryptedStorage';
@@ -1074,6 +1075,65 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Game] Error fetching player stats:", error);
       return res.status(500).json({ error: "Failed to fetch player stats" });
+    }
+  });
+
+  // Guardian Oracle API Endpoint for Riddle Quest
+  app.post("/api/oracle", gameLimiter, async (req, res) => {
+    try {
+      const { action, level, difficulty, riddle, userAnswer, messages } = req.body;
+
+      if (!action || !['generate_riddle', 'evaluate_answer', 'get_hint'].includes(action)) {
+        return res.status(400).json({ error: "Invalid action" });
+      }
+
+      let promptMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+      if (action === 'generate_riddle') {
+        const lvl = typeof level === 'number' ? level : 1;
+        const diff = typeof difficulty === 'string' ? difficulty : 'medium';
+        const prompt = generateRiddlePrompt(lvl, diff);
+        promptMessages = [{ role: 'user', content: prompt }];
+      } else if (action === 'evaluate_answer') {
+        if (!riddle || !userAnswer) {
+          return res.status(400).json({ error: "riddle and userAnswer required" });
+        }
+        const prompt = evaluateAnswerPrompt(riddle, userAnswer);
+        promptMessages = Array.isArray(messages) ? [...messages.slice(-6), { role: 'user', content: prompt }] : [{ role: 'user', content: prompt }];
+      } else if (action === 'get_hint') {
+        if (!riddle) {
+          return res.status(400).json({ error: "riddle required" });
+        }
+        const prompt = getHintPrompt(riddle);
+        promptMessages = Array.isArray(messages) ? [...messages.slice(-6), { role: 'user', content: prompt }] : [{ role: 'user', content: prompt }];
+      }
+
+      const result = await callOracle(promptMessages, action as any);
+      
+      if (!result.success) {
+        console.warn(`[Oracle] API call failed: ${result.error}`);
+        return res.status(503).json({
+          success: false,
+          fallback: true,
+          message: result.message,
+          error: result.error
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: result.message,
+        isCorrect: result.isCorrect,
+        riddleGenerated: result.riddleGenerated
+      });
+    } catch (error) {
+      console.error("[Oracle] Endpoint error:", error);
+      return res.status(500).json({
+        success: false,
+        fallback: true,
+        message: "The Oracle retreats into the ether...",
+        error: "INTERNAL_ERROR"
+      });
     }
   });
 
