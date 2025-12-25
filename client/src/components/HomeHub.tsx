@@ -74,14 +74,6 @@ export function HomeHub({ onNavigate, onOpenAdmin }: HomeHubProps) {
       glow: 'purple'
     },
     { 
-      id: 'saga-guide', 
-      label: t('hub.sagaGuideLabel', 'Saga Guide'), 
-      icon: Sparkles, 
-      description: t('hub.sagaGuideDesc', 'Speak with the Oracle'),
-      color: 'from-purple-400 to-pink-500',
-      glow: 'purple'
-    },
-    { 
       id: 'games', 
       label: t('hub.gameLabel', 'Arcade'), 
       icon: Rocket, 

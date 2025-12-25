@@ -194,7 +194,7 @@ function GameCard({ game, isLocked, isConnected, playsToday, personalBest, onPla
     >
       <div className={`absolute -inset-1 bg-gradient-to-r ${game.thumbnailGradient} rounded-2xl blur-lg opacity-0 group-hover:opacity-70 transition-all duration-500`} />
       
-      <Card className="relative bg-gradient-to-b from-gray-900 to-black border-0 rounded-2xl overflow-hidden shadow-2xl h-full">
+      <Card className="relative bg-gradient-to-b from-gray-900 to-black border-0 rounded-2xl overflow-hidden shadow-2xl h-full min-h-[420px] flex flex-col">
         <div className={`relative h-44 bg-gradient-to-br ${game.thumbnailGradient} overflow-hidden`}>
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
           
@@ -258,23 +258,25 @@ function GameCard({ game, isLocked, isConnected, playsToday, personalBest, onPla
           </motion.div>
         </div>
         
-        <div className="relative p-5">
-          <h3 className="text-xl font-orbitron font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
-            {game.name}
-          </h3>
-          
-          <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed min-h-[40px]">
-            {game.description}
-          </p>
+        <div className="relative p-5 flex flex-col flex-1 justify-between">
+          <div>
+            <h3 className="text-xl font-orbitron font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
+              {game.name}
+            </h3>
+            
+            <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed min-h-[40px]">
+              {game.description}
+            </p>
 
-          {personalBest > 0 && (
-            <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl">
-              <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-yellow-400 font-mono text-sm font-bold">
-                {personalBest.toLocaleString()} pts
-              </span>
-            </div>
-          )}
+            {personalBest > 0 && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl">
+                <Trophy className="w-4 h-4 text-yellow-400" />
+                <span className="text-yellow-400 font-mono text-sm font-bold">
+                  {personalBest.toLocaleString()} pts
+                </span>
+              </div>
+            )}
+          </div>
 
           <motion.div
             whileHover={{ scale: 1.02 }}

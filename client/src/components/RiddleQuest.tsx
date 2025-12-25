@@ -530,30 +530,40 @@ export function RiddleQuest() {
     <div className="min-h-[calc(100vh-5rem)] px-4 py-6 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,255,0.03)_0%,transparent_70%)]" />
       
-      <div className="fixed top-20 left-0 right-0 z-40 bg-black/80 backdrop-blur-xl border-b border-cyan-500/20">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 font-mono">
-              Level {progress?.currentLevel || 1}/{totalLevels}
-            </Badge>
-            <div className="hidden sm:block w-32">
-              <Progress 
-                value={((progress?.currentRiddle || 0) / currentLevelRiddles.length) * 100} 
-                className="h-2 bg-gray-800"
-              />
+      <div className="fixed top-20 left-0 right-0 z-40 bg-gradient-to-b from-black/95 via-black/90 to-transparent backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.15)]">
+            <div className="flex items-center gap-3 sm:gap-6">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 rounded-lg border border-cyan-500/40">
+                <Brain className="w-4 h-4 text-cyan-400" />
+                <span className="text-cyan-400 font-orbitron font-bold text-sm">
+                  LVL {progress?.currentLevel || 1}
+                </span>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 flex-1 max-w-[200px]">
+                <span className="text-xs text-gray-500 font-mono">{(progress?.currentRiddle || 0) + 1}/{currentLevelRiddles.length}</span>
+                <div className="flex-1 h-2 bg-black/60 rounded-full overflow-hidden border border-cyan-500/30">
+                  <motion.div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-purple-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((progress?.currentRiddle || 0) / currentLevelRiddles.length) * 100}%` }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span className="text-white font-mono">{progress?.points || 0}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Flame className={`w-4 h-4 ${(progress?.streak || 0) > 3 ? 'text-orange-400 animate-pulse' : 'text-gray-500'}`} />
-              <span className={`font-mono ${(progress?.streak || 0) > 3 ? 'text-orange-400' : 'text-gray-400'}`}>
-                {progress?.streak || 0}d
-              </span>
+            
+            <div className="flex items-center gap-3 sm:gap-5">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/60 rounded-lg border border-amber-500/40">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-amber-400 font-mono font-bold text-sm">{progress?.points || 0}</span>
+              </div>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 bg-black/60 rounded-lg border ${(progress?.streak || 0) > 3 ? 'border-orange-500/50' : 'border-gray-700/50'}`}>
+                <Flame className={`w-4 h-4 ${(progress?.streak || 0) > 3 ? 'text-orange-400 animate-pulse' : 'text-gray-500'}`} />
+                <span className={`font-mono font-bold text-sm ${(progress?.streak || 0) > 3 ? 'text-orange-400' : 'text-gray-400'}`}>
+                  {progress?.streak || 0}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -569,38 +579,55 @@ export function RiddleQuest() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4 }}
             >
-              <Card 
-                className={`bg-black/60 border-cyan-500/30 p-6 md:p-8 backdrop-blur-sm relative overflow-hidden ${isShaking ? 'animate-[shake_0.1s_ease-in-out_infinite]' : ''}`}
-                style={{
-                  boxShadow: feedback === 'correct' 
-                    ? '0 0 40px rgba(0,255,255,0.4), inset 0 0 30px rgba(0,255,255,0.1)' 
-                    : feedback === 'wrong'
-                    ? '0 0 40px rgba(255,0,0,0.4), inset 0 0 30px rgba(255,0,0,0.1)'
-                    : '0 0 30px rgba(0,255,255,0.2)'
-                }}
-              >
-                <style>{`
-                  @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    25% { transform: translateX(-5px); }
-                    75% { transform: translateX(5px); }
-                  }
-                `}</style>
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/50 via-purple-500/50 to-cyan-500/50 rounded-2xl blur-lg opacity-60 animate-pulse" />
                 
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
-                
-                <div className="flex items-center justify-between mb-6">
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-400">
-                    Riddle {(progress?.currentRiddle || 0) + 1} of {currentLevelRiddles.length}
-                  </Badge>
-                  <Brain className="w-6 h-6 text-cyan-400" />
-                </div>
-                
-                <div className="mb-8">
-                  <p className="text-xl md:text-2xl text-white font-medium leading-relaxed">
-                    {currentRiddle.question}
-                  </p>
-                </div>
+                <Card 
+                  className={`relative bg-gradient-to-b from-gray-900/95 to-black/95 border-0 p-6 md:p-8 rounded-2xl overflow-hidden ${isShaking ? 'animate-[shake_0.1s_ease-in-out_infinite]' : ''}`}
+                  style={{
+                    boxShadow: feedback === 'correct' 
+                      ? '0 0 60px rgba(0,255,255,0.5), inset 0 0 40px rgba(0,255,255,0.1)' 
+                      : feedback === 'wrong'
+                      ? '0 0 60px rgba(255,0,0,0.5), inset 0 0 40px rgba(255,0,0,0.1)'
+                      : '0 0 40px rgba(0,255,255,0.25), inset 0 0 30px rgba(0,255,255,0.05)'
+                  }}
+                >
+                  <style>{`
+                    @keyframes shake {
+                      0%, 100% { transform: translateX(0); }
+                      25% { transform: translateX(-5px); }
+                      75% { transform: translateX(5px); }
+                    }
+                  `}</style>
+                  
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+                  <div className="absolute top-0 left-0 w-20 h-20 bg-cyan-500/10 rounded-br-full pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-20 h-20 bg-purple-500/10 rounded-tl-full pointer-events-none" />
+                  
+                  <div className="flex items-center justify-between mb-6 relative">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+                        <Brain className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Mystery</p>
+                        <Badge variant="outline" className="border-purple-500/50 text-purple-400 bg-purple-500/10 font-mono text-xs">
+                          {(progress?.currentRiddle || 0) + 1} / {currentLevelRiddles.length}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Level</p>
+                      <p className="text-cyan-400 font-orbitron font-bold">{progress?.currentLevel || 1}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-8 py-4 relative">
+                    <p className="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
+                      "{currentRiddle.question}"
+                    </p>
+                  </div>
                 
                 <AnimatePresence>
                   {showHint && (
@@ -662,7 +689,8 @@ export function RiddleQuest() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </Card>
+                </Card>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
