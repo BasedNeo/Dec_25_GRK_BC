@@ -428,3 +428,90 @@ export const adminAuthAttempts = pgTable('admin_auth_attempts', {
 });
 
 export type AdminAuthAttempt = typeof adminAuthAttempts.$inferSelect;
+
+// ============================================
+// RIDDLE QUEST LEADERBOARD & DAILY CHALLENGES
+// ============================================
+
+// Riddle Quest Leaderboard - persistent scores per wallet
+export const riddleLeaderboard = pgTable('riddle_leaderboard', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull().unique(),
+  totalSolves: integer('total_solves').default(0).notNull(),
+  dailySolves: integer('daily_solves').default(0).notNull(),
+  bestTimeMs: integer('best_time_ms'),
+  totalTimeMs: bigint('total_time_ms', { mode: 'number' }).default(0),
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  level: integer('level').default(1).notNull(),
+  points: integer('points').default(0).notNull(),
+  lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertRiddleLeaderboardSchema = createInsertSchema(riddleLeaderboard).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRiddleLeaderboard = z.infer<typeof insertRiddleLeaderboardSchema>;
+export type RiddleLeaderboard = typeof riddleLeaderboard.$inferSelect;
+
+// Daily Riddle Sets - one set generated per UTC day
+export const riddleDailySets = pgTable('riddle_daily_sets', {
+  id: serial('id').primaryKey(),
+  dateKey: varchar('date_key', { length: 10 }).notNull().unique(),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+  generatedViaOracle: boolean('generated_via_oracle').default(false),
+  riddleCount: integer('riddle_count').default(5).notNull(),
+});
+
+export const insertRiddleDailySetSchema = createInsertSchema(riddleDailySets).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export type InsertRiddleDailySet = z.infer<typeof insertRiddleDailySetSchema>;
+export type RiddleDailySet = typeof riddleDailySets.$inferSelect;
+
+// Daily Riddle Entries - individual riddles within a daily set
+export const riddleDailyEntries = pgTable('riddle_daily_entries', {
+  id: serial('id').primaryKey(),
+  setId: integer('set_id').notNull(),
+  riddleIndex: integer('riddle_index').notNull(),
+  question: text('question').notNull(),
+  answers: text('answers').notNull(),
+  hint: text('hint'),
+  difficulty: varchar('difficulty', { length: 10 }).default('medium'),
+  theme: varchar('theme', { length: 50 }),
+  isOracle: boolean('is_oracle').default(false),
+});
+
+export const insertRiddleDailyEntrySchema = createInsertSchema(riddleDailyEntries).omit({
+  id: true,
+});
+
+export type InsertRiddleDailyEntry = z.infer<typeof insertRiddleDailyEntrySchema>;
+export type RiddleDailyEntry = typeof riddleDailyEntries.$inferSelect;
+
+// Riddle Attempts - track each user's solve attempts
+export const riddleAttempts = pgTable('riddle_attempts', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  riddleEntryId: integer('riddle_entry_id').notNull(),
+  dateKey: varchar('date_key', { length: 10 }).notNull(),
+  attemptCount: integer('attempt_count').default(1).notNull(),
+  solved: boolean('solved').default(false),
+  solveTimeMs: integer('solve_time_ms'),
+  pointsEarned: integer('points_earned').default(0),
+  attemptedAt: timestamp('attempted_at').defaultNow().notNull(),
+  solvedAt: timestamp('solved_at'),
+});
+
+export const insertRiddleAttemptSchema = createInsertSchema(riddleAttempts).omit({
+  id: true,
+  attemptedAt: true,
+});
+
+export type InsertRiddleAttempt = z.infer<typeof insertRiddleAttemptSchema>;
+export type RiddleAttempt = typeof riddleAttempts.$inferSelect;

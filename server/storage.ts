@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -31,6 +31,24 @@ export interface IStorage {
   getAdminNonce(walletAddress: string): Promise<AdminNonce | undefined>;
   deleteAdminNonce(walletAddress: string): Promise<void>;
   cleanupExpiredNonces(): Promise<void>;
+  
+  // Riddle Quest Leaderboard
+  getRiddleLeaderboard(limit?: number): Promise<RiddleLeaderboard[]>;
+  getRiddleLeaderboardEntry(walletAddress: string): Promise<RiddleLeaderboard | undefined>;
+  upsertRiddleLeaderboardEntry(data: InsertRiddleLeaderboard): Promise<RiddleLeaderboard>;
+  updateRiddleLeaderboardStats(walletAddress: string, points: number, solved: boolean, timeMs?: number): Promise<RiddleLeaderboard | undefined>;
+  
+  // Daily Challenges
+  getDailySet(dateKey: string): Promise<RiddleDailySet | undefined>;
+  createDailySet(data: InsertRiddleDailySet): Promise<RiddleDailySet>;
+  getDailyEntries(setId: number): Promise<RiddleDailyEntry[]>;
+  createDailyEntry(data: InsertRiddleDailyEntry): Promise<RiddleDailyEntry>;
+  
+  // Riddle Attempts
+  getRiddleAttempt(walletAddress: string, riddleEntryId: number): Promise<RiddleAttempt | undefined>;
+  createRiddleAttempt(data: InsertRiddleAttempt): Promise<RiddleAttempt>;
+  updateRiddleAttempt(id: number, solved: boolean, solveTimeMs: number, pointsEarned: number): Promise<RiddleAttempt | undefined>;
+  getUserDailyProgress(walletAddress: string, dateKey: string): Promise<RiddleAttempt[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -658,6 +676,175 @@ export class DatabaseStorage implements IStorage {
     .groupBy(transactionReceipts.transactionType);
     
     return stats;
+  }
+
+  // ============================================
+  // RIDDLE QUEST LEADERBOARD METHODS
+  // ============================================
+
+  async getRiddleLeaderboard(limit: number = 100): Promise<RiddleLeaderboard[]> {
+    return db.select()
+      .from(riddleLeaderboard)
+      .orderBy(desc(riddleLeaderboard.points))
+      .limit(limit);
+  }
+
+  async getRiddleLeaderboardEntry(walletAddress: string): Promise<RiddleLeaderboard | undefined> {
+    const [entry] = await db.select()
+      .from(riddleLeaderboard)
+      .where(eq(riddleLeaderboard.walletAddress, walletAddress.toLowerCase()));
+    return entry;
+  }
+
+  async upsertRiddleLeaderboardEntry(data: InsertRiddleLeaderboard): Promise<RiddleLeaderboard> {
+    const normalizedData = { ...data, walletAddress: data.walletAddress.toLowerCase() };
+    const existing = await this.getRiddleLeaderboardEntry(normalizedData.walletAddress);
+    
+    if (existing) {
+      const [updated] = await db.update(riddleLeaderboard)
+        .set({
+          ...normalizedData,
+          lastActiveAt: new Date()
+        })
+        .where(eq(riddleLeaderboard.walletAddress, normalizedData.walletAddress))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db.insert(riddleLeaderboard)
+      .values(normalizedData)
+      .returning();
+    return created;
+  }
+
+  async updateRiddleLeaderboardStats(
+    walletAddress: string, 
+    points: number, 
+    solved: boolean, 
+    timeMs?: number
+  ): Promise<RiddleLeaderboard | undefined> {
+    const normalized = walletAddress.toLowerCase();
+    let entry = await this.getRiddleLeaderboardEntry(normalized);
+    
+    if (!entry) {
+      entry = await this.upsertRiddleLeaderboardEntry({
+        walletAddress: normalized,
+        totalSolves: 0,
+        dailySolves: 0,
+        points: 0,
+        level: 1,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveAt: new Date()
+      });
+    }
+    
+    const updates: Partial<RiddleLeaderboard> = {
+      points: (entry.points || 0) + points,
+      lastActiveAt: new Date()
+    };
+    
+    if (solved) {
+      updates.totalSolves = (entry.totalSolves || 0) + 1;
+      updates.dailySolves = (entry.dailySolves || 0) + 1;
+      
+      if (timeMs) {
+        updates.totalTimeMs = (entry.totalTimeMs || 0) + timeMs;
+        if (!entry.bestTimeMs || timeMs < entry.bestTimeMs) {
+          updates.bestTimeMs = timeMs;
+        }
+      }
+    }
+    
+    const [updated] = await db.update(riddleLeaderboard)
+      .set(updates)
+      .where(eq(riddleLeaderboard.walletAddress, normalized))
+      .returning();
+    
+    return updated;
+  }
+
+  // ============================================
+  // DAILY CHALLENGES METHODS
+  // ============================================
+
+  async getDailySet(dateKey: string): Promise<RiddleDailySet | undefined> {
+    const [set] = await db.select()
+      .from(riddleDailySets)
+      .where(eq(riddleDailySets.dateKey, dateKey));
+    return set;
+  }
+
+  async createDailySet(data: InsertRiddleDailySet): Promise<RiddleDailySet> {
+    const [set] = await db.insert(riddleDailySets)
+      .values(data)
+      .returning();
+    return set;
+  }
+
+  async getDailyEntries(setId: number): Promise<RiddleDailyEntry[]> {
+    return db.select()
+      .from(riddleDailyEntries)
+      .where(eq(riddleDailyEntries.setId, setId))
+      .orderBy(riddleDailyEntries.riddleIndex);
+  }
+
+  async createDailyEntry(data: InsertRiddleDailyEntry): Promise<RiddleDailyEntry> {
+    const [entry] = await db.insert(riddleDailyEntries)
+      .values(data)
+      .returning();
+    return entry;
+  }
+
+  // ============================================
+  // RIDDLE ATTEMPTS METHODS
+  // ============================================
+
+  async getRiddleAttempt(walletAddress: string, riddleEntryId: number): Promise<RiddleAttempt | undefined> {
+    const [attempt] = await db.select()
+      .from(riddleAttempts)
+      .where(and(
+        eq(riddleAttempts.walletAddress, walletAddress.toLowerCase()),
+        eq(riddleAttempts.riddleEntryId, riddleEntryId)
+      ));
+    return attempt;
+  }
+
+  async createRiddleAttempt(data: InsertRiddleAttempt): Promise<RiddleAttempt> {
+    const [attempt] = await db.insert(riddleAttempts)
+      .values({
+        ...data,
+        walletAddress: data.walletAddress.toLowerCase()
+      })
+      .returning();
+    return attempt;
+  }
+
+  async updateRiddleAttempt(
+    id: number, 
+    solved: boolean, 
+    solveTimeMs: number, 
+    pointsEarned: number
+  ): Promise<RiddleAttempt | undefined> {
+    const [updated] = await db.update(riddleAttempts)
+      .set({
+        solved,
+        solveTimeMs,
+        pointsEarned,
+        solvedAt: solved ? new Date() : undefined
+      })
+      .where(eq(riddleAttempts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getUserDailyProgress(walletAddress: string, dateKey: string): Promise<RiddleAttempt[]> {
+    return db.select()
+      .from(riddleAttempts)
+      .where(and(
+        eq(riddleAttempts.walletAddress, walletAddress.toLowerCase()),
+        eq(riddleAttempts.dateKey, dateKey)
+      ));
   }
 }
 
