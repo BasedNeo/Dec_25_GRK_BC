@@ -145,6 +145,114 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// Static riddle pool for fallback when Oracle is unavailable
+const STATIC_RIDDLE_POOL = [
+  { question: "I am the key to fortunes untold, but myself I am never gold. What am I?", answers: "knowledge|wisdom", hint: "It's more valuable than treasure", difficulty: "medium", theme: "crypto" },
+  { question: "In the chain I'm born, through nodes I'm sworn, validated by many, trusted by any. What am I?", answers: "block|blockchain block", hint: "A building block of trust", difficulty: "medium", theme: "blockchain" },
+  { question: "I guard your vault with no key or lock, through math alone I stop the clock. What am I?", answers: "cryptography|encryption", hint: "Ancient art made digital", difficulty: "hard", theme: "security" },
+  { question: "Many hold me but never touch, spend me freely though worth so much. What am I?", answers: "token|cryptocurrency|crypto", hint: "Digital but valuable", difficulty: "easy", theme: "crypto" },
+  { question: "I am the bridge between two shores, connecting chains through digital doors. What am I?", answers: "bridge|cross-chain bridge", hint: "I help assets travel", difficulty: "medium", theme: "defi" },
+  { question: "Born from nothing yet worth everything, created by solving but never unsettling. What am I?", answers: "bitcoin|btc", hint: "The first of its kind", difficulty: "easy", theme: "crypto" },
+  { question: "I am the guardian of private ways, securing secrets for endless days. What am I?", answers: "private key|seed phrase", hint: "Never share me", difficulty: "medium", theme: "security" },
+  { question: "In layers I grow, each one more secure, smart in my contracts, my code is pure. What am I?", answers: "ethereum|eth|smart contract", hint: "Layer by layer, contract by contract", difficulty: "hard", theme: "blockchain" },
+  { question: "I pool together, I yield rewards, liquidity's guardian, decentralized hoards. What am I?", answers: "liquidity pool|amm|dex", hint: "Where tokens swim together", difficulty: "hard", theme: "defi" },
+  { question: "Though I am digital, I am unique, verifiable ownership for those who seek. What am I?", answers: "nft|non-fungible token", hint: "One of a kind in pixels", difficulty: "easy", theme: "nft" },
+  { question: "I am the consensus that all must find, Byzantine generals of the digital kind. What am I?", answers: "consensus|consensus mechanism|proof", hint: "We must all agree", difficulty: "hard", theme: "blockchain" },
+  { question: "Staked and locked yet earning still, securing networks by guardian will. What am I?", answers: "staking|validator|stake", hint: "Lock to earn", difficulty: "medium", theme: "defi" },
+  { question: "I am the address where treasures hide, alphanumeric secrets held inside. What am I?", answers: "wallet address|public address|wallet", hint: "Your crypto mailbox", difficulty: "easy", theme: "crypto" },
+  { question: "From chaos I bring order anew, hashing all data into something true. What am I?", answers: "hash|hash function|hashing", hint: "Digital fingerprint", difficulty: "medium", theme: "security" },
+  { question: "I govern the DAO with vote and voice, community power through collective choice. What am I?", answers: "governance token|governance|vote", hint: "Democracy in code", difficulty: "medium", theme: "dao" }
+];
+
+async function generateDailyRiddleSet(dateKey: string) {
+  console.log(`[RiddleQuest] Generating daily set for ${dateKey}`);
+  
+  let useOracle = false;
+  let oracleRiddles: Array<{question: string; answers: string; hint: string; difficulty: string; theme: string}> = [];
+  
+  try {
+    const testResult = await callOracle([{ role: 'user', content: 'Generate a single crypto-themed riddle' }], 'generate_riddle');
+    useOracle = testResult.success;
+  } catch (e) {
+    console.warn('[RiddleQuest] Oracle unavailable, using static riddles');
+  }
+  
+  const set = await storage.createDailySet({
+    dateKey,
+    generatedViaOracle: useOracle,
+    riddleCount: 5
+  });
+  
+  if (useOracle) {
+    for (let i = 0; i < 5; i++) {
+      try {
+        const difficulties = ['easy', 'medium', 'medium', 'hard', 'hard'];
+        const result = await callOracle(
+          [{ role: 'user', content: generateRiddlePrompt(i + 1, difficulties[i]) }],
+          'generate_riddle'
+        );
+        
+        if (result.success && result.riddleGenerated) {
+          oracleRiddles.push({
+            question: result.message || `Oracle Riddle ${i + 1}`,
+            answers: extractAnswersFromOracle(result.message || ''),
+            hint: 'Consult the Oracle for guidance',
+            difficulty: difficulties[i],
+            theme: 'oracle'
+          });
+        }
+      } catch (e) {
+        console.warn(`[RiddleQuest] Failed to generate oracle riddle ${i + 1}`);
+      }
+    }
+  }
+  
+  const riddlesToUse = oracleRiddles.length >= 5 ? oracleRiddles : shuffleArray([...STATIC_RIDDLE_POOL]).slice(0, 5);
+  const isOracleMode = oracleRiddles.length >= 5;
+  
+  for (let i = 0; i < riddlesToUse.length; i++) {
+    const r = riddlesToUse[i];
+    await storage.createDailyEntry({
+      setId: set.id,
+      riddleIndex: i,
+      question: r.question,
+      answers: r.answers,
+      hint: r.hint || undefined,
+      difficulty: r.difficulty,
+      theme: r.theme || undefined,
+      isOracle: isOracleMode
+    });
+  }
+  
+  console.log(`[RiddleQuest] Created daily set ${set.id} with ${riddlesToUse.length} riddles (oracle: ${isOracleMode})`);
+  return set;
+}
+
+function extractAnswersFromOracle(message: string): string {
+  const lower = message.toLowerCase();
+  const answerPatterns = [
+    /answer[:\s]+["']?([^"'\n]+)["']?/i,
+    /solution[:\s]+["']?([^"'\n]+)["']?/i,
+    /it is[:\s]+["']?([^"'\n.]+)["']?/i
+  ];
+  
+  for (const pattern of answerPatterns) {
+    const match = lower.match(pattern);
+    if (match) return match[1].trim();
+  }
+  
+  return 'oracle|wisdom';
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -1134,6 +1242,167 @@ export async function registerRoutes(
         message: "The Oracle retreats into the ether...",
         error: "INTERNAL_ERROR"
       });
+    }
+  });
+
+  // ============================================
+  // RIDDLE QUEST LEADERBOARD & DAILY CHALLENGES
+  // ============================================
+
+  // Get riddle quest leaderboard
+  app.get("/api/riddle-quest/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const leaderboard = await storage.getRiddleLeaderboard(limit);
+      return res.json(leaderboard);
+    } catch (error) {
+      console.error("[RiddleQuest] Error fetching leaderboard:", error);
+      return res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Get player's riddle stats
+  app.get("/api/riddle-quest/stats/:wallet", async (req, res) => {
+    try {
+      const entry = await storage.getRiddleLeaderboardEntry(req.params.wallet);
+      if (!entry) {
+        return res.json({ exists: false, stats: null });
+      }
+      return res.json({ exists: true, stats: entry });
+    } catch (error) {
+      console.error("[RiddleQuest] Error fetching stats:", error);
+      return res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get today's daily challenge set
+  app.get("/api/riddle-quest/daily", async (req, res) => {
+    try {
+      const dateKey = new Date().toISOString().slice(0, 10);
+      let set = await storage.getDailySet(dateKey);
+      
+      if (!set) {
+        set = await generateDailyRiddleSet(dateKey);
+      }
+      
+      const entries = await storage.getDailyEntries(set.id);
+      
+      return res.json({
+        dateKey,
+        setId: set.id,
+        generatedViaOracle: set.generatedViaOracle,
+        riddleCount: entries.length,
+        riddles: entries.map(e => ({
+          id: e.id,
+          index: e.riddleIndex,
+          question: e.question,
+          hint: e.hint,
+          difficulty: e.difficulty,
+          theme: e.theme,
+          isOracle: e.isOracle
+        }))
+      });
+    } catch (error) {
+      console.error("[RiddleQuest] Error fetching daily set:", error);
+      return res.status(500).json({ error: "Failed to fetch daily challenges" });
+    }
+  });
+
+  // Get user's progress on today's daily challenges
+  app.get("/api/riddle-quest/daily/progress/:wallet", async (req, res) => {
+    try {
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const progress = await storage.getUserDailyProgress(req.params.wallet, dateKey);
+      return res.json({
+        dateKey,
+        attempts: progress,
+        solved: progress.filter(a => a.solved).length,
+        total: progress.length
+      });
+    } catch (error) {
+      console.error("[RiddleQuest] Error fetching progress:", error);
+      return res.status(500).json({ error: "Failed to fetch progress" });
+    }
+  });
+
+  // Submit an answer for a daily riddle
+  app.post("/api/riddle-quest/attempt", gameLimiter, async (req, res) => {
+    try {
+      const { walletAddress, riddleEntryId, answer, solveTimeMs, isOracle } = req.body;
+      
+      if (!walletAddress || !riddleEntryId || !answer) {
+        return res.status(400).json({ error: "walletAddress, riddleEntryId, and answer required" });
+      }
+      
+      const dateKey = new Date().toISOString().slice(0, 10);
+      
+      const existingAttempt = await storage.getRiddleAttempt(walletAddress, riddleEntryId);
+      if (existingAttempt?.solved) {
+        return res.json({
+          success: true,
+          alreadySolved: true,
+          message: "You've already solved this riddle!"
+        });
+      }
+      
+      const entries = await storage.getDailyEntries(
+        (await storage.getDailySet(dateKey))?.id || 0
+      );
+      const entry = entries.find(e => e.id === riddleEntryId);
+      
+      if (!entry) {
+        return res.status(404).json({ error: "Riddle not found" });
+      }
+      
+      const acceptedAnswers = entry.answers.toLowerCase().split('|').map(a => a.trim());
+      const isCorrect = acceptedAnswers.some(a => 
+        answer.toLowerCase().trim().includes(a) || 
+        a.includes(answer.toLowerCase().trim())
+      );
+      
+      const basePoints = isOracle ? 150 : 100;
+      const timeBonus = solveTimeMs && solveTimeMs < 30000 ? 50 : (solveTimeMs && solveTimeMs < 60000 ? 25 : 0);
+      const pointsEarned = isCorrect ? basePoints + timeBonus : 0;
+      
+      if (existingAttempt) {
+        await storage.updateRiddleAttempt(
+          existingAttempt.id,
+          isCorrect,
+          solveTimeMs || 0,
+          pointsEarned
+        );
+      } else {
+        await storage.createRiddleAttempt({
+          walletAddress,
+          riddleEntryId,
+          dateKey,
+          attemptCount: 1,
+          solved: isCorrect,
+          solveTimeMs: isCorrect ? solveTimeMs : undefined,
+          pointsEarned
+        });
+      }
+      
+      if (isCorrect) {
+        await storage.updateRiddleLeaderboardStats(
+          walletAddress,
+          pointsEarned,
+          true,
+          solveTimeMs
+        );
+      }
+      
+      return res.json({
+        success: true,
+        isCorrect,
+        pointsEarned,
+        message: isCorrect 
+          ? "Correct! The Oracle acknowledges your wisdom." 
+          : "Not quite right. The Oracle awaits your next attempt..."
+      });
+    } catch (error) {
+      console.error("[RiddleQuest] Error processing attempt:", error);
+      return res.status(500).json({ error: "Failed to process attempt" });
     }
   });
 
