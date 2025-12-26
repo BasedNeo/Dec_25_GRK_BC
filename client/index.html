@@ -136,8 +136,9 @@
       }, 30000);
     </script>
     <script>
-      // Clear service worker cache before loading app
-      if ('serviceWorker' in navigator) {
+      // Clear service worker cache only once per session
+      if ('serviceWorker' in navigator && !sessionStorage.getItem('sw_cleared')) {
+        sessionStorage.setItem('sw_cleared', 'true');
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for (let registration of registrations) {
             registration.unregister();
@@ -148,7 +149,7 @@
             caches.delete(name);
           }
         }).then(function() {
-          console.log('All caches cleared');
+          console.log('Service worker caches cleared');
         });
       }
     </script>

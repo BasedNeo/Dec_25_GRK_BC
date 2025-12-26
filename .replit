@@ -51,3 +51,5 @@ integrations = ["github:1.0.0"]
 
 [userenv.shared]
 VITE_WALLET_CONNECT_ID = "25a4673950aaa1276b2fa76417ef9633"
+VITE_HMR_TIMEOUT = "120000"
+CHOKIDAR_USEPOLLING = "true"
