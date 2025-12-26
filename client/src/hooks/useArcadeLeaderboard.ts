@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export interface LeaderboardEntry {
-  initials: string;
+  displayName: string;
   score: number;
   game: string;
   date: string;
+  // Legacy support for old entries
+  initials?: string;
 }
 
 export interface DailyChallenge {
@@ -49,14 +51,22 @@ function getTodayString(): string {
 function getLeaderboard(): LeaderboardEntry[] {
   try {
     const data = localStorage.getItem(LEADERBOARD_KEY);
+    let entries: LeaderboardEntry[] = [];
+    
     if (data) {
-      return JSON.parse(data);
+      entries = JSON.parse(data);
+    } else {
+      const oldData = localStorage.getItem('arcade_leaderboard');
+      if (oldData) {
+        entries = JSON.parse(oldData);
+      }
     }
-    const oldData = localStorage.getItem('arcade_leaderboard');
-    if (oldData) {
-      return JSON.parse(oldData);
-    }
-    return [];
+    
+    // Migrate legacy entries: if entry has initials but no displayName, use initials as displayName
+    return entries.map(entry => ({
+      ...entry,
+      displayName: entry.displayName || entry.initials || 'Guardian'
+    }));
   } catch {
     return [];
   }
@@ -150,20 +160,19 @@ export function useArcadeLeaderboard() {
     setLeaderboard(getLeaderboard());
   }, []);
 
-  const saveInitials = useCallback((initials: string) => {
-    const formatted = initials.toUpperCase().slice(0, 3);
-    localStorage.setItem(PLAYER_INITIALS_KEY, formatted);
-    setPlayerInitials(formatted);
-    return formatted;
+  const saveInitials = useCallback((displayName: string) => {
+    localStorage.setItem(PLAYER_INITIALS_KEY, displayName);
+    setPlayerInitials(displayName);
+    return displayName;
   }, []);
 
-  const submitScore = useCallback((game: string, score: number, initials?: string) => {
-    const playerName = initials || playerInitials || 'AAA';
+  const submitScore = useCallback((game: string, score: number, playerDisplayName?: string) => {
+    const displayName = playerDisplayName || playerInitials || 'Guardian';
     const today = getTodayString();
     
     const entries = getLeaderboard();
     const newEntry: LeaderboardEntry = {
-      initials: playerName.toUpperCase().slice(0, 3),
+      displayName,
       score,
       game,
       date: today,
@@ -177,7 +186,7 @@ export function useArcadeLeaderboard() {
     const gameEntries = savedEntries
       .filter(e => e.game === game)
       .sort((a, b) => b.score - a.score);
-    const rank = gameEntries.findIndex(e => e.score === score && e.initials === newEntry.initials && e.date === today) + 1;
+    const rank = gameEntries.findIndex(e => e.score === score && e.displayName === newEntry.displayName && e.date === today) + 1;
     
     const stats = getPersonalStats();
     stats.totalGamesPlayed += 1;

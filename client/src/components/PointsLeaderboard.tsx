@@ -10,6 +10,7 @@ interface LeaderboardEntry {
   totalEarned: number;
   brainXLocked: number;
   brainXUnlocked: number;
+  customName?: string | null;
 }
 
 interface PointsLeaderboardProps {
@@ -43,11 +44,15 @@ export function PointsLeaderboard({
     return <span className="w-5 h-5 flex items-center justify-center text-gray-500 font-mono text-sm">{rank}</span>;
   };
 
-  const formatAddress = (addr: string) => {
-    if (addr.startsWith('anon:')) {
-      return `Guest ${addr.slice(-6)}`;
+  const formatPlayerName = (entry: LeaderboardEntry) => {
+    if (entry.customName) {
+      const suffix = entry.walletAddress.slice(-4).toUpperCase();
+      return `${entry.customName}#${suffix}`;
     }
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    if (entry.walletAddress.startsWith('anon:')) {
+      return `Guest ${entry.walletAddress.slice(-6)}`;
+    }
+    return `${entry.walletAddress.slice(0, 6)}...${entry.walletAddress.slice(-4)}`;
   };
 
   const isCurrentUser = (addr: string) => {
@@ -114,11 +119,11 @@ export function PointsLeaderboard({
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className={`font-mono text-sm truncate ${isCurrentUser(entry.walletAddress) ? 'text-cyan-400' : 'text-gray-300'}`}>
-                  {formatAddress(entry.walletAddress)}
+                <span className={`text-sm truncate ${isCurrentUser(entry.walletAddress) ? 'text-cyan-400 font-bold' : 'text-gray-300'}`}>
+                  {formatPlayerName(entry)}
                 </span>
                 {isCurrentUser(entry.walletAddress) && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">YOU</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded flex-shrink-0">YOU</span>
                 )}
               </div>
             </div>

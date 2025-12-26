@@ -33,7 +33,7 @@ export interface IStorage {
   cleanupExpiredNonces(): Promise<void>;
   
   // Riddle Quest Leaderboard
-  getRiddleLeaderboard(limit?: number): Promise<RiddleLeaderboard[]>;
+  getRiddleLeaderboard(limit?: number): Promise<(RiddleLeaderboard & { customName?: string | null })[]>;
   getRiddleLeaderboardEntry(walletAddress: string): Promise<RiddleLeaderboard | undefined>;
   upsertRiddleLeaderboardEntry(data: InsertRiddleLeaderboard): Promise<RiddleLeaderboard>;
   updateRiddleLeaderboardStats(walletAddress: string, points: number, solved: boolean, timeMs?: number): Promise<RiddleLeaderboard | undefined>;
@@ -70,6 +70,9 @@ export interface IStorage {
   createPointsSnapshot(data: InsertPointsSnapshot): Promise<PointsSnapshot>;
   getPointsSnapshot(snapshotDate: string): Promise<PointsSnapshot | undefined>;
   getAllPointsSummaries(): Promise<PointsSummary[]>;
+  
+  // Points Leaderboard (with custom names from guardian profiles)
+  getPointsLeaderboard(limit?: number): Promise<(PointsSummary & { customName?: string | null })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -703,11 +706,30 @@ export class DatabaseStorage implements IStorage {
   // RIDDLE QUEST LEADERBOARD METHODS
   // ============================================
 
-  async getRiddleLeaderboard(limit: number = 100): Promise<RiddleLeaderboard[]> {
-    return db.select()
+  async getRiddleLeaderboard(limit: number = 100): Promise<(RiddleLeaderboard & { customName?: string | null })[]> {
+    const results = await db.select({
+      id: riddleLeaderboard.id,
+      walletAddress: riddleLeaderboard.walletAddress,
+      totalSolves: riddleLeaderboard.totalSolves,
+      dailySolves: riddleLeaderboard.dailySolves,
+      bestTimeMs: riddleLeaderboard.bestTimeMs,
+      totalTimeMs: riddleLeaderboard.totalTimeMs,
+      currentStreak: riddleLeaderboard.currentStreak,
+      longestStreak: riddleLeaderboard.longestStreak,
+      level: riddleLeaderboard.level,
+      points: riddleLeaderboard.points,
+      lastActiveAt: riddleLeaderboard.lastActiveAt,
+      createdAt: riddleLeaderboard.createdAt,
+      customName: guardianProfiles.customName,
+    })
       .from(riddleLeaderboard)
+      .leftJoin(
+        guardianProfiles, 
+        sql`LOWER(${guardianProfiles.walletAddress}) = LOWER(${riddleLeaderboard.walletAddress})`
+      )
       .orderBy(desc(riddleLeaderboard.points))
       .limit(limit);
+    return results;
   }
 
   async getRiddleLeaderboardEntry(walletAddress: string): Promise<RiddleLeaderboard | undefined> {
@@ -1209,11 +1231,29 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getPointsLeaderboard(limit: number = 20): Promise<PointsSummary[]> {
-    return db.select()
+  async getPointsLeaderboard(limit: number = 20): Promise<(PointsSummary & { customName?: string | null })[]> {
+    const results = await db.select({
+      id: pointsSummary.id,
+      walletAddress: pointsSummary.walletAddress,
+      totalEarned: pointsSummary.totalEarned,
+      todayEarned: pointsSummary.todayEarned,
+      dailyDate: pointsSummary.dailyDate,
+      brainXLocked: pointsSummary.brainXLocked,
+      brainXUnlocked: pointsSummary.brainXUnlocked,
+      vestingStartDate: pointsSummary.vestingStartDate,
+      vestingEndDate: pointsSummary.vestingEndDate,
+      updatedAt: pointsSummary.updatedAt,
+      createdAt: pointsSummary.createdAt,
+      customName: guardianProfiles.customName,
+    })
       .from(pointsSummary)
+      .leftJoin(
+        guardianProfiles, 
+        sql`LOWER(${guardianProfiles.walletAddress}) = LOWER(${pointsSummary.walletAddress})`
+      )
       .orderBy(desc(pointsSummary.totalEarned))
       .limit(limit);
+    return results;
   }
 
   // Points Vesting History

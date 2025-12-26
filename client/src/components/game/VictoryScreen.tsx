@@ -152,13 +152,12 @@ export function VictoryScreen({
   // Auto-save score on mount using wallet name
   useEffect(() => {
     if (!hasAutoSaved && displayName) {
-      // Use first 3 chars of display name as "initials" for leaderboard compatibility
-      const initials = displayName.replace('#', '').slice(0, 3).toUpperCase();
-      saveInitials(initials);
-      const result = submitScore(gameType, score, initials);
+      // Save full display name to leaderboard
+      saveInitials(displayName);
+      const result = submitScore(gameType, score, displayName);
       setLeaderboardRank(result.rank);
       setHasAutoSaved(true);
-      onInitialsSubmit?.(initials, result.rank);
+      onInitialsSubmit?.(displayName, result.rank);
     }
   }, [displayName, hasAutoSaved, gameType, score, saveInitials, submitScore, onInitialsSubmit]);
   

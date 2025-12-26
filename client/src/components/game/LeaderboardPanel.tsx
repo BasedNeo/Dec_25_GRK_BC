@@ -126,7 +126,7 @@ function LeaderboardList({ entries, compact }: { entries: LeaderboardEntry[]; co
     <div className="divide-y divide-white/5">
       {entries.map((entry, index) => (
         <motion.div
-          key={`${entry.initials}-${entry.score}-${index}`}
+          key={`${entry.displayName || entry.initials}-${entry.score}-${index}`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.05 }}
@@ -136,18 +136,18 @@ function LeaderboardList({ entries, compact }: { entries: LeaderboardEntry[]; co
             {getRankIcon(index)}
           </div>
           
-          <div className="flex-1 flex items-center gap-2">
-            <span className="font-mono font-bold text-cyan-400 text-lg tracking-wider">
-              {entry.initials}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <span className="font-bold text-cyan-400 text-base tracking-wide truncate">
+              {entry.displayName || entry.initials || 'Guardian'}
             </span>
             {!compact && (
-              <span className={`text-xs ${GAME_COLORS[entry.game] || 'text-gray-400'}`}>
+              <span className={`text-xs flex-shrink-0 ${GAME_COLORS[entry.game] || 'text-gray-400'}`}>
                 {GAME_NAMES[entry.game] || entry.game}
               </span>
             )}
           </div>
           
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             <span className="font-mono font-bold text-white text-lg" style={{ textShadow: index < 3 ? '0 0 10px rgba(255,255,0,0.3)' : 'none' }}>
               {entry.score.toLocaleString()}
             </span>

@@ -14,6 +14,7 @@ export interface RiddleLeaderboardEntry {
   points: number;
   lastActiveAt: string;
   createdAt: string;
+  customName?: string | null;
 }
 
 export interface DailyRiddle {

@@ -3312,7 +3312,8 @@ export async function registerRoutes(
         walletAddress: entry.walletAddress,
         totalEarned: entry.totalEarned,
         brainXLocked: entry.brainXLocked,
-        brainXUnlocked: entry.brainXUnlocked
+        brainXUnlocked: entry.brainXUnlocked,
+        customName: entry.customName
       })));
     } catch (error) {
       console.error('Get points leaderboard failed:', error);

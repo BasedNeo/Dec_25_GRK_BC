@@ -18,8 +18,12 @@ function formatTime(ms: number | null): string {
   return `${minutes}m ${remainingSec}s`;
 }
 
-function shortenAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+function formatPlayerName(entry: RiddleLeaderboardEntry): string {
+  if (entry.customName) {
+    const suffix = entry.walletAddress.slice(-4).toUpperCase();
+    return `${entry.customName}#${suffix}`;
+  }
+  return `${entry.walletAddress.slice(0, 6)}...${entry.walletAddress.slice(-4)}`;
 }
 
 function getRankIcon(rank: number) {
@@ -64,11 +68,11 @@ function LeaderboardRow({ entry, rank, isCurrentUser }: {
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`font-mono text-sm ${isCurrentUser ? 'text-cyan-400' : 'text-gray-300'}`}>
-            {shortenAddress(entry.walletAddress)}
+          <span className={`text-sm truncate ${isCurrentUser ? 'text-cyan-400 font-bold' : 'text-gray-300'}`}>
+            {formatPlayerName(entry)}
           </span>
           {isCurrentUser && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded uppercase">You</span>
+            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded uppercase flex-shrink-0">You</span>
           )}
         </div>
         
