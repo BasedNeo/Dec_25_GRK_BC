@@ -955,6 +955,8 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getBrainXPoints(normalizedAddress);
     
     const DAILY_CAP = 500;
+    const LOCK_DURATION_MS = 365 * 24 * 60 * 60 * 1000;
+    const newLockExpiry = new Date(Date.now() + LOCK_DURATION_MS);
     
     if (existing) {
       const isNewDay = existing.lastEarnedDate !== today;
@@ -964,13 +966,17 @@ export class DatabaseStorage implements IStorage {
       
       if (actualPoints <= 0) return existing;
       
+      const lockExpiresAt = existing.lockExpiresAt 
+        ? new Date(Math.max(existing.lockExpiresAt.getTime(), newLockExpiry.getTime()))
+        : newLockExpiry;
+      
       const [updated] = await db.update(brainXPoints)
         .set({
           totalPoints: existing.totalPoints + actualPoints,
           lockedPoints: existing.lockedPoints + actualPoints,
           pointsEarnedToday: isNewDay ? actualPoints : currentDayPoints + actualPoints,
           lastEarnedDate: today,
-          lockExpiresAt: existing.lockExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          lockExpiresAt,
           updatedAt: new Date()
         })
         .where(eq(brainXPoints.id, existing.id))
@@ -987,7 +993,7 @@ export class DatabaseStorage implements IStorage {
         unlockedPoints: 0,
         pointsEarnedToday: actualPoints,
         lastEarnedDate: today,
-        lockExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        lockExpiresAt: newLockExpiry,
       })
       .returning();
     return result;

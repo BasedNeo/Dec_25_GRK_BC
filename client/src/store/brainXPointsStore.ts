@@ -9,6 +9,7 @@ interface BrainXPointsState {
   lockedPoints: number;
   unlockedPoints: number;
   pointsEarnedToday: number;
+  pendingPoints: number;
   lastEarnedDate: string | null;
   lockExpiresAt: Date | null;
   connectedWallet: string | null;
@@ -33,6 +34,7 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
       lockedPoints: 0,
       unlockedPoints: 0,
       pointsEarnedToday: 0,
+      pendingPoints: 0,
       lastEarnedDate: null,
       lockExpiresAt: null,
       connectedWallet: null,
@@ -43,7 +45,7 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
         const today = getTodayKey();
         
         if (state.lastEarnedDate !== today) {
-          set({ pointsEarnedToday: 0, lastEarnedDate: today });
+          set({ pointsEarnedToday: 0, pendingPoints: 0, lastEarnedDate: today });
         }
         
         const currentState = get();
@@ -53,12 +55,13 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
         if (actualPoints <= 0) return 0;
         
         const now = new Date();
-        const lockExpiry = currentState.lockExpiresAt || new Date(now.getTime() + LOCK_DURATION_DAYS * 24 * 60 * 60 * 1000);
+        const lockExpiry = new Date(now.getTime() + LOCK_DURATION_DAYS * 24 * 60 * 60 * 1000);
         
         set({
           totalPoints: currentState.totalPoints + actualPoints,
           lockedPoints: currentState.lockedPoints + actualPoints,
           pointsEarnedToday: currentState.pointsEarnedToday + actualPoints,
+          pendingPoints: currentState.pendingPoints + actualPoints,
           lastEarnedDate: today,
           lockExpiresAt: lockExpiry,
         });
@@ -141,8 +144,10 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
       syncToDB: async () => {
         const state = get();
         if (!state.connectedWallet || state.isSyncing) return;
+        if (state.pendingPoints <= 0) return;
         
-        set({ isSyncing: true });
+        const pointsToSync = state.pendingPoints;
+        set({ isSyncing: true, pendingPoints: 0 });
         
         try {
           const response = await fetch('/api/brainx-points', {
@@ -150,14 +155,17 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               walletAddress: state.connectedWallet,
-              points: state.pointsEarnedToday,
+              points: pointsToSync,
             }),
           });
           
-          if (!response.ok) throw new Error('Failed to sync brainX points');
+          if (!response.ok) {
+            set({ pendingPoints: get().pendingPoints + pointsToSync });
+            throw new Error('Failed to sync brainX points');
+          }
           
           set({ isSyncing: false });
-          console.log('[BrainXPoints] Synced to DB');
+          console.log('[BrainXPoints] Synced', pointsToSync, 'points to DB');
         } catch (error) {
           console.error('[BrainXPoints] Failed to sync to DB:', error);
           set({ isSyncing: false });
@@ -171,6 +179,7 @@ export const useBrainXPointsStore = create<BrainXPointsState>()(
         lockedPoints: state.lockedPoints,
         unlockedPoints: state.unlockedPoints,
         pointsEarnedToday: state.pointsEarnedToday,
+        pendingPoints: state.pendingPoints,
         lastEarnedDate: state.lastEarnedDate,
         lockExpiresAt: state.lockExpiresAt,
       }),
