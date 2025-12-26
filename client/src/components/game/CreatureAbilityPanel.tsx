@@ -173,7 +173,7 @@ export function CreatureAbilityPanel() {
               {selectedIsMaxed ? (
                 '✓ MAXED OUT'
               ) : selectedLevel === 0 ? (
-                'Unlock Level 1 (Free)'
+                `Unlock Level 1 (${selectedNextCost} pts)`
               ) : selectedCanUpgrade ? (
                 <>
                   Upgrade to Level {selectedLevel + 1} ({selectedNextCost} pts)
@@ -187,7 +187,7 @@ export function CreatureAbilityPanel() {
           </div>
           
           <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-gray-800">
-            <span>Earn 10 pts base + combo bonus per wave</span>
+            <span>Earn 20 pts base + 50 pts per stage</span>
             <span className="text-cyan-400">Session: +{sessionPoints} pts</span>
           </div>
         </CardContent>

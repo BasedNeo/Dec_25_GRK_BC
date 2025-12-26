@@ -4,6 +4,7 @@ import {
   AbilityId, 
   ABILITY_DEFINITIONS, 
   POINTS_PER_WAVE,
+  POINTS_PER_LAIR,
   COMBO_BONUS_MULTIPLIER,
   STARTING_POINTS,
   getAbilityModifier,
@@ -32,6 +33,7 @@ interface CreatureAbilitiesState {
   lastSyncError: string | null;
   
   earnPoints: (wavesCleared: number, comboBonus?: number) => void;
+  earnLairPoints: () => void;
   upgradeAbility: (abilityId: AbilityId) => boolean;
   setSelectedAbility: (abilityId: AbilityId | null) => void;
   resetForNewGame: () => void;
@@ -110,6 +112,18 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
         }
       },
       
+      earnLairPoints: () => {
+        set((state) => ({
+          totalPoints: state.totalPoints + POINTS_PER_LAIR,
+          sessionPoints: state.sessionPoints + POINTS_PER_LAIR,
+        }));
+        
+        const state = get();
+        if (state.connectedWallet) {
+          get().syncToDB();
+        }
+      },
+      
       upgradeAbility: (abilityId: AbilityId) => {
         const state = get();
         const definition = ABILITY_DEFINITIONS[abilityId];
@@ -180,7 +194,8 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
             mergedLevels[key] = Math.max(mergedLevels[key], dbLevels[key]);
           });
           
-          const mergedPoints = Math.max(localState.totalPoints, data.totalPoints);
+          // Grant legacy players the starting bonus if they have less than it
+          const mergedPoints = Math.max(localState.totalPoints, data.totalPoints, STARTING_POINTS);
           
           set({
             abilityLevels: mergedLevels,
@@ -271,10 +286,19 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
     }),
     {
       name: 'creature-abilities-storage',
+      version: 1,
       partialize: (state) => ({
         abilityLevels: state.abilityLevels,
         totalPoints: state.totalPoints,
       }),
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as { abilityLevels: Record<AbilityId, number>; totalPoints: number };
+        // v0 -> v1: Grant legacy players the starting bonus
+        if (version === 0 && state.totalPoints < STARTING_POINTS) {
+          return { ...state, totalPoints: STARTING_POINTS };
+        }
+        return state;
+      },
     }
   )
 );

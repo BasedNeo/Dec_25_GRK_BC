@@ -109,45 +109,46 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
 
 export const ABILITY_LEVEL_EFFECTS: Record<AbilityId, AbilityLevelEffect[]> = {
   piercing_bubbles: [
-    { level: 1, description: 'Piercing: destroy 2 extra missiles', modifier: 2 },
-    { level: 2, description: 'Piercing: destroy 4 extra missiles', modifier: 4 },
-    { level: 3, description: 'Piercing: destroy 6 extra missiles', modifier: 6 },
+    { level: 1, description: 'Piercing: destroy 1 extra missile', modifier: 1 },
+    { level: 2, description: 'Piercing: destroy 2 extra missiles', modifier: 2 },
+    { level: 3, description: 'Piercing: destroy 4 extra missiles', modifier: 4 },
   ],
   shield_bubbles: [
     { level: 1, description: 'Shield: 15% damage reduction', modifier: 0.15 },
-    { level: 2, description: 'Shield: 30% damage reduction', modifier: 0.30 },
-    { level: 3, description: 'Shield: 50% damage reduction', modifier: 0.50 },
+    { level: 2, description: 'Shield: 25% damage reduction', modifier: 0.25 },
+    { level: 3, description: 'Shield: 40% damage reduction', modifier: 0.40 },
   ],
   rapid_fire: [
-    { level: 1, description: 'Rapid Fire: 20% faster reload', modifier: 0.20 },
-    { level: 2, description: 'Rapid Fire: 40% faster reload', modifier: 0.40 },
-    { level: 3, description: 'Rapid Fire: 60% faster reload', modifier: 0.60 },
+    { level: 1, description: 'Rapid Fire: 15% faster reload', modifier: 0.15 },
+    { level: 2, description: 'Rapid Fire: 30% faster reload', modifier: 0.30 },
+    { level: 3, description: 'Rapid Fire: 50% faster reload', modifier: 0.50 },
   ],
   explosive_radius: [
-    { level: 1, description: 'Explosive: +25% blast radius', modifier: 1.25 },
-    { level: 2, description: 'Explosive: +50% blast radius', modifier: 1.50 },
-    { level: 3, description: 'Explosive: +100% blast radius', modifier: 2.00 },
+    { level: 1, description: 'Explosive: +20% blast radius', modifier: 1.20 },
+    { level: 2, description: 'Explosive: +40% blast radius', modifier: 1.40 },
+    { level: 3, description: 'Explosive: +75% blast radius', modifier: 1.75 },
   ],
   slow_field: [
-    { level: 1, description: 'Slow Field: 20% enemy slow', modifier: 0.20 },
-    { level: 2, description: 'Slow Field: 35% enemy slow', modifier: 0.35 },
-    { level: 3, description: 'Slow Field: 50% enemy slow', modifier: 0.50 },
+    { level: 1, description: 'Slow Field: 15% enemy slow', modifier: 0.15 },
+    { level: 2, description: 'Slow Field: 30% enemy slow', modifier: 0.30 },
+    { level: 3, description: 'Slow Field: 45% enemy slow', modifier: 0.45 },
   ],
   multi_bubble: [
-    { level: 1, description: 'Multi-Shot: 25% chance for 2 missiles', modifier: 0.25 },
-    { level: 2, description: 'Multi-Shot: 40% chance for 2 missiles', modifier: 0.40 },
-    { level: 3, description: 'Multi-Shot: 60% chance for 3 missiles', modifier: 0.60 },
+    { level: 1, description: 'Multi-Shot: 20% chance for 2 missiles', modifier: 0.20 },
+    { level: 2, description: 'Multi-Shot: 35% chance for 2 missiles', modifier: 0.35 },
+    { level: 3, description: 'Multi-Shot: 50% chance for 2 missiles', modifier: 0.50 },
   ],
   regen_burst: [
-    { level: 1, description: 'Regen: 10% lair restore on wave clear', modifier: 0.10 },
-    { level: 2, description: 'Regen: 20% lair restore on wave clear', modifier: 0.20 },
-    { level: 3, description: 'Regen: 35% lair restore on wave clear', modifier: 0.35 },
+    { level: 1, description: 'Regen: 8% lair restore on wave clear', modifier: 0.08 },
+    { level: 2, description: 'Regen: 15% lair restore on wave clear', modifier: 0.15 },
+    { level: 3, description: 'Regen: 25% lair restore on wave clear', modifier: 0.25 },
   ],
 };
 
-export const POINTS_PER_WAVE = 10;
+export const POINTS_PER_WAVE = 20;
+export const POINTS_PER_LAIR = 50;
 export const COMBO_BONUS_MULTIPLIER = 5;
-export const STARTING_POINTS = 0;
+export const STARTING_POINTS = 50;
 
 export function getUpgradeCost(currentLevel: number): number {
   if (currentLevel === 0) return 100;

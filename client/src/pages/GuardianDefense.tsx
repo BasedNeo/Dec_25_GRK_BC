@@ -396,7 +396,7 @@ export default function GuardianDefense() {
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
   
   const abilityModifiers = useAbilityModifiers();
-  const { earnPoints, resetForNewGame: resetAbilityPoints, hydrateFromDB, setConnectedWallet } = useCreatureAbilitiesStore();
+  const { earnPoints, earnLairPoints, resetForNewGame: resetAbilityPoints, hydrateFromDB, setConnectedWallet } = useCreatureAbilitiesStore();
   const { 
     incrementSurvives, 
     updateProgress, 
@@ -1078,7 +1078,7 @@ export default function GuardianDefense() {
       const perfectBonus = perfectDefense ? 5 : 0;
       state.score += waveBonus + perfectBonus;
       
-      const basePoints = 10;
+      const basePoints = 20;
       const comboPoints = Math.floor(chainBonus / 2);
       earnPoints(1, comboPoints);
       createScorePopup(`+${basePoints + comboPoints * 5} PTS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
@@ -1108,6 +1108,12 @@ export default function GuardianDefense() {
       const victoryMessage = isStageComplete 
         ? STAGE_VICTORY_MESSAGES[state.currentStage - 1] 
         : WAVE_VICTORY_MESSAGES[(state.stageWave - 1) % WAVE_VICTORY_MESSAGES.length] || "Well defended!";
+      
+      // Award bonus points for completing a stage (only if cities survived)
+      if (isStageComplete && savedCities > 0) {
+        earnLairPoints();
+        createScorePopup('+50 STAGE BONUS', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90, '#9333ea', true);
+      }
       
       const completeToast = toast({
         title: perfectDefense 
@@ -1142,7 +1148,7 @@ export default function GuardianDefense() {
         }
       }, isStageComplete ? 3000 : 1500);
     }
-  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
+  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnPoints, earnLairPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
