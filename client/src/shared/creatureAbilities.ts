@@ -25,7 +25,7 @@ export interface AbilityLevelEffect {
   modifier: number;
 }
 
-export const UPGRADE_COSTS = [0, 100, 200];
+export const UPGRADE_COSTS = [100, 250, 500];
 
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   piercing_bubbles: {
@@ -109,39 +109,39 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
 
 export const ABILITY_LEVEL_EFFECTS: Record<AbilityId, AbilityLevelEffect[]> = {
   piercing_bubbles: [
-    { level: 1, description: 'Destroy 1 extra missile', modifier: 1 },
-    { level: 2, description: 'Destroy 2 extra missiles', modifier: 2 },
-    { level: 3, description: 'Destroy 3 extra missiles', modifier: 3 },
+    { level: 1, description: 'Piercing: destroy 2 extra missiles', modifier: 2 },
+    { level: 2, description: 'Piercing: destroy 4 extra missiles', modifier: 4 },
+    { level: 3, description: 'Piercing: destroy 6 extra missiles', modifier: 6 },
   ],
   shield_bubbles: [
-    { level: 1, description: '10% damage reduction', modifier: 0.10 },
-    { level: 2, description: '20% damage reduction', modifier: 0.20 },
-    { level: 3, description: '30% damage reduction', modifier: 0.30 },
+    { level: 1, description: 'Shield: 15% damage reduction', modifier: 0.15 },
+    { level: 2, description: 'Shield: 30% damage reduction', modifier: 0.30 },
+    { level: 3, description: 'Shield: 50% damage reduction', modifier: 0.50 },
   ],
   rapid_fire: [
-    { level: 1, description: '15% faster reload', modifier: 0.15 },
-    { level: 2, description: '30% faster reload', modifier: 0.30 },
-    { level: 3, description: '50% faster reload', modifier: 0.50 },
+    { level: 1, description: 'Rapid Fire: 20% faster reload', modifier: 0.20 },
+    { level: 2, description: 'Rapid Fire: 40% faster reload', modifier: 0.40 },
+    { level: 3, description: 'Rapid Fire: 60% faster reload', modifier: 0.60 },
   ],
   explosive_radius: [
-    { level: 1, description: '+15% explosion radius', modifier: 1.15 },
-    { level: 2, description: '+30% explosion radius', modifier: 1.30 },
-    { level: 3, description: '+50% explosion radius', modifier: 1.50 },
+    { level: 1, description: 'Explosive: +25% blast radius', modifier: 1.25 },
+    { level: 2, description: 'Explosive: +50% blast radius', modifier: 1.50 },
+    { level: 3, description: 'Explosive: +100% blast radius', modifier: 2.00 },
   ],
   slow_field: [
-    { level: 1, description: '15% enemy slow', modifier: 0.15 },
-    { level: 2, description: '25% enemy slow', modifier: 0.25 },
-    { level: 3, description: '40% enemy slow', modifier: 0.40 },
+    { level: 1, description: 'Slow Field: 20% enemy slow', modifier: 0.20 },
+    { level: 2, description: 'Slow Field: 35% enemy slow', modifier: 0.35 },
+    { level: 3, description: 'Slow Field: 50% enemy slow', modifier: 0.50 },
   ],
   multi_bubble: [
-    { level: 1, description: '20% chance for 2 missiles', modifier: 0.20 },
-    { level: 2, description: '35% chance for 2 missiles', modifier: 0.35 },
-    { level: 3, description: '50% chance for 2 missiles', modifier: 0.50 },
+    { level: 1, description: 'Multi-Shot: 25% chance for 2 missiles', modifier: 0.25 },
+    { level: 2, description: 'Multi-Shot: 40% chance for 2 missiles', modifier: 0.40 },
+    { level: 3, description: 'Multi-Shot: 60% chance for 3 missiles', modifier: 0.60 },
   ],
   regen_burst: [
-    { level: 1, description: '5% regen chance on wave clear', modifier: 0.05 },
-    { level: 2, description: '10% regen chance on wave clear', modifier: 0.10 },
-    { level: 3, description: '20% regen chance on wave clear', modifier: 0.20 },
+    { level: 1, description: 'Regen: 10% lair restore on wave clear', modifier: 0.10 },
+    { level: 2, description: 'Regen: 20% lair restore on wave clear', modifier: 0.20 },
+    { level: 3, description: 'Regen: 35% lair restore on wave clear', modifier: 0.35 },
   ],
 };
 
@@ -150,9 +150,9 @@ export const COMBO_BONUS_MULTIPLIER = 5;
 export const STARTING_POINTS = 0;
 
 export function getUpgradeCost(currentLevel: number): number {
-  if (currentLevel === 0) return 0;
-  if (currentLevel === 1) return 100;
-  if (currentLevel === 2) return 200;
+  if (currentLevel === 0) return 100;
+  if (currentLevel === 1) return 250;
+  if (currentLevel === 2) return 500;
   return 0;
 }
 
