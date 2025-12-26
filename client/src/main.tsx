@@ -141,22 +141,30 @@ if ('serviceWorker' in navigator) {
   }
 }
 
-// HMR error handler - suppress excessive reconnection logs in development
+// HMR handler - suppress reloads and excessive reconnection logs
 if (import.meta.hot) {
+  import.meta.hot.accept();
+  
+  import.meta.hot.on('vite:beforeUpdate', () => {
+    console.log('[HMR] Update detected, preserving state');
+  });
+  
+  import.meta.hot.on('vite:beforeFullReload', () => {
+    console.log('[HMR] Full reload suppressed');
+    throw new Error('HMR_RELOAD_SUPPRESSED');
+  });
+  
   let hmrErrorCount = 0;
-  const HMR_ERROR_THRESHOLD = 5;
+  const HMR_ERROR_THRESHOLD = 3;
   
   import.meta.hot.on('vite:ws-disconnect', () => {
     hmrErrorCount++;
-    if (hmrErrorCount === HMR_ERROR_THRESHOLD) {
-      console.log('[HMR] Connection unstable, suppressing further logs');
+    if (hmrErrorCount >= HMR_ERROR_THRESHOLD) {
+      return;
     }
   });
   
   import.meta.hot.on('vite:ws-connect', () => {
-    if (hmrErrorCount >= HMR_ERROR_THRESHOLD) {
-      console.log('[HMR] Connection restored');
-    }
     hmrErrorCount = 0;
   });
 }
