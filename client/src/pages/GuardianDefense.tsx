@@ -356,7 +356,7 @@ export default function GuardianDefense() {
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
   
   const abilityModifiers = useAbilityModifiers();
-  const { earnPoints, resetForNewGame: resetAbilityPoints } = useCreatureAbilitiesStore();
+  const { earnPoints, resetForNewGame: resetAbilityPoints, hydrateFromDB, setConnectedWallet } = useCreatureAbilitiesStore();
 
   const gameConfig = useMemo(() => getGameConfig('guardian-defense'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -437,6 +437,15 @@ export default function GuardianDefense() {
     setStats(loadedStats);
     setPlaysToday(loadedStats.gamesPlayed % gameConfig.maxPlaysPerDay);
   }, [address, gameConfig.maxPlaysPerDay]);
+
+  useEffect(() => {
+    if (address && isConnected) {
+      hydrateFromDB(address);
+      setConnectedWallet(address);
+    } else {
+      setConnectedWallet(null);
+    }
+  }, [address, isConnected, hydrateFromDB, setConnectedWallet]);
 
   useEffect(() => {
     GameStorageManager.saveSettings('guardian-defense', settings);
