@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -49,6 +49,10 @@ export interface IStorage {
   createRiddleAttempt(data: InsertRiddleAttempt): Promise<RiddleAttempt>;
   updateRiddleAttempt(id: number, solved: boolean, solveTimeMs: number, pointsEarned: number): Promise<RiddleAttempt | undefined>;
   getUserDailyProgress(walletAddress: string, dateKey: string): Promise<RiddleAttempt[]>;
+  
+  // Creature Command Progress
+  getCreatureProgress(walletAddress: string): Promise<CreatureProgress | undefined>;
+  upsertCreatureProgress(data: InsertCreatureProgress): Promise<CreatureProgress>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -845,6 +849,42 @@ export class DatabaseStorage implements IStorage {
         eq(riddleAttempts.walletAddress, walletAddress.toLowerCase()),
         eq(riddleAttempts.dateKey, dateKey)
       ));
+  }
+
+  // ============================================
+  // CREATURE COMMAND PROGRESS METHODS
+  // ============================================
+
+  async getCreatureProgress(walletAddress: string): Promise<CreatureProgress | undefined> {
+    const [progress] = await db.select()
+      .from(creatureProgress)
+      .where(eq(creatureProgress.walletAddress, walletAddress.toLowerCase()));
+    return progress;
+  }
+
+  async upsertCreatureProgress(data: InsertCreatureProgress): Promise<CreatureProgress> {
+    const normalizedAddress = data.walletAddress.toLowerCase();
+    const [result] = await db.insert(creatureProgress)
+      .values({
+        ...data,
+        walletAddress: normalizedAddress
+      })
+      .onConflictDoUpdate({
+        target: creatureProgress.walletAddress,
+        set: {
+          totalPoints: data.totalPoints,
+          piercingLevel: data.piercingLevel,
+          shieldLevel: data.shieldLevel,
+          rapidFireLevel: data.rapidFireLevel,
+          explosiveLevel: data.explosiveLevel,
+          slowFieldLevel: data.slowFieldLevel,
+          multiBubbleLevel: data.multiBubbleLevel,
+          regenBurstLevel: data.regenBurstLevel,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return result;
   }
 }
 
