@@ -149,7 +149,7 @@ export function useGameScoresLocal() {
     if (!address || score <= 0) return;
 
     // Validate score submission
-    const validation = validateScoreSubmission(gameType, score, duration);
+    const validation = validateScoreSubmission(gameType, score);
     if (!validation.valid) {
       console.warn('[GameScores] Invalid score submission:', validation.reason);
     }

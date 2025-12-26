@@ -1,0 +1,42 @@
+Review RiddleQuestPage.tsx, RiddleGame.tsx, riddle/* components, and server/routes.ts. Audit current chatbot integration (OpenRouter allenai/olmo-3.1-32b-think:free with OPENROUTER_API_KEY from secrets).
+
+Current issues:
+- Exact answer required (e.g., "$Based" only — no "Is it Based?" or variations).
+- No question/hint responses (predetermined clues only).
+- Mobile UI complicated (tabs, buttons cramped, hard to tap).
+
+Fix and optimize for progressive, mobile-first experience:
+
+1. **Chatbot Integration (Free OpenRouter)**:
+   - Ensure /api/riddle/* routes call OpenRouter with system prompt:
+     "You are Guardian Oracle. Evaluate answers semantically (accept 'Based', 'Is it Based?', '$Based', etc.). For questions/hints: Give lore-themed hint. Concise responses."
+   - Limit: 3 interactions/session (sessionStorage 'oracleQuestions').
+   - Fallback: Static riddles if API error/rate limit.
+   - Params: max_tokens=150, temperature=0.6.
+
+2. **Flexible Answers/Questions**:
+   - API parses user input: If question ("hint?"), return hint. If answer, validate semantically.
+   - Accept variations (e.g., synonyms, casual phrasing) via chatbot.
+   - UI: Single input field for answer/question, "Submit" button.
+
+3. **Mobile-Optimized UI** (Simplify):
+   - Single tab view (Campaign/Daily toggle button, not tabs).
+   - Large input field (full width), prominent Submit button.
+   - Progress: Simple bar (1/5 riddles), stats below.
+   - Portrait-first: Stack vertically, touch-friendly (48px min buttons).
+   - Dark cyberpunk theme, neon accents.
+
+4. **Game Flow**:
+   - Continue from Level 2 (550 points, streak).
+   - Campaign: Sequential riddles.
+   - Daily: 5 riddles, streak bonus.
+   - Points: 10/riddle, 50/challenge complete.
+
+Preserve points economy (Ore Points only).
+
+Plan first:
+- List files/lines to modify.
+- Test cases: Semantic answer ("Is it Based?"), question ("hint?"), mobile taps.
+- Performance: 60 FPS, <2s load.
+
+Approve, implement step-by-step. Test full campaign/daily on mobile emulator, confirm chatbot flexibility, no exact-match.

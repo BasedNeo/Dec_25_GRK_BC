@@ -73,7 +73,6 @@ export interface GameConfig {
   
   // Access control
   nftRequired: boolean;
-  minPlayDuration: number; // seconds, for bot protection
   thumbnail?: string; // for arcade hub
   hidden?: boolean; // Hide from arcade UI but preserve code
 }
@@ -109,7 +108,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: false,
     },
     nftRequired: true,
-    minPlayDuration: 30,
   },
   
   'guardian-defense': {
@@ -138,7 +136,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: true,
     },
     nftRequired: true,
-    minPlayDuration: 60,
   },
   
   'guardian-solitaire': {
@@ -167,7 +164,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: true,
     },
     nftRequired: false,
-    minPlayDuration: 120,
     hidden: true,
   },
   
@@ -196,7 +192,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: false,
     },
     nftRequired: true,
-    minPlayDuration: 60,
   },
   
   'asteroid-mining': {
@@ -224,7 +219,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: true,
     },
     nftRequired: true,
-    minPlayDuration: 90,
     hidden: true,
   },
   
@@ -254,7 +248,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: false,
     },
     nftRequired: true,
-    minPlayDuration: 60,
     hidden: true,
   },
   
@@ -283,7 +276,6 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
       hasCombo: true,
     },
     nftRequired: false,
-    minPlayDuration: 30,
     hidden: true,
   },
 };
@@ -514,18 +506,13 @@ export function calculateEcosystemPoints(
 /**
  * Validate score submission for anti-exploitation
  * Returns true if the score appears legitimate
+ * Note: Minimum play duration checks removed - daily caps handle balance
  */
 export function validateScoreSubmission(
   gameId: GameType,
   rawScore: number,
-  playDuration: number, // seconds
 ): { valid: boolean; reason?: string } {
   const config = getGameConfig(gameId);
-  
-  // Check minimum play duration
-  if (playDuration < config.minPlayDuration) {
-    return { valid: false, reason: `Minimum play time is ${config.minPlayDuration} seconds` };
-  }
   
   // Check maximum score
   if (rawScore > config.scoring.maxScore * 1.1) { // 10% tolerance for bonuses
@@ -535,14 +522,6 @@ export function validateScoreSubmission(
   // Check negative scores
   if (rawScore < 0) {
     return { valid: false, reason: 'Invalid score' };
-  }
-  
-  // Check score rate (points per second) - flag impossibly fast scoring
-  const maxPointsPerSecond = config.scoring.maxScore / config.minPlayDuration;
-  const actualPointsPerSecond = rawScore / playDuration;
-  
-  if (actualPointsPerSecond > maxPointsPerSecond * 2) {
-    return { valid: false, reason: 'Score rate exceeds possible maximum' };
   }
   
   return { valid: true };
