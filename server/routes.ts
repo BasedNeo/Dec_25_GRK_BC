@@ -52,6 +52,24 @@ import path from "path";
 
 const execAsync = promisify(exec);
 
+// API timeout wrapper - prevents cascade failures from slow operations
+const API_TIMEOUT_MS = 5000;
+
+async function withTimeout<T>(promise: Promise<T>, fallback: T, timeoutMs = API_TIMEOUT_MS): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => 
+    setTimeout(() => reject(new Error('API_TIMEOUT')), timeoutMs)
+  );
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'API_TIMEOUT') {
+      console.warn('[API] Operation timed out, returning fallback');
+      return fallback;
+    }
+    throw error;
+  }
+}
+
 const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN_placeholder_key_for_development';

@@ -141,6 +141,26 @@ if ('serviceWorker' in navigator) {
   }
 }
 
+// HMR error handler - suppress excessive reconnection logs in development
+if (import.meta.hot) {
+  let hmrErrorCount = 0;
+  const HMR_ERROR_THRESHOLD = 5;
+  
+  import.meta.hot.on('vite:ws-disconnect', () => {
+    hmrErrorCount++;
+    if (hmrErrorCount === HMR_ERROR_THRESHOLD) {
+      console.log('[HMR] Connection unstable, suppressing further logs');
+    }
+  });
+  
+  import.meta.hot.on('vite:ws-connect', () => {
+    if (hmrErrorCount >= HMR_ERROR_THRESHOLD) {
+      console.log('[HMR] Connection restored');
+    }
+    hmrErrorCount = 0;
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <App />
