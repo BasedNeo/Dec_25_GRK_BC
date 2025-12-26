@@ -11,6 +11,7 @@ import { useGameAccess } from '@/hooks/useGameAccess';
 import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager, GameStats, GameSettings as BaseGameSettings } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
+import { CC_COLORS, CC_EFFECTS, CC_LAIR_DESIGNS, pulseValue, hexToRgba } from '@/lib/creatureCommandStyles';
 import { GameHUD } from '@/components/game/GameHUD';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import {
@@ -992,21 +993,77 @@ export default function GuardianDefense() {
     }
     
     const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    skyGradient.addColorStop(0, '#0a0a1a');
-    skyGradient.addColorStop(0.3, '#1a103a');
-    skyGradient.addColorStop(0.6, '#2d1b4e');
-    skyGradient.addColorStop(1, '#1e1b3a');
+    skyGradient.addColorStop(0, CC_COLORS.background.voidGradientEnd);
+    skyGradient.addColorStop(0.2, '#050012');
+    skyGradient.addColorStop(0.5, CC_COLORS.background.voidGradientStart);
+    skyGradient.addColorStop(0.8, '#120028');
+    skyGradient.addColorStop(1, '#0a0018');
     ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     
     const time = state.gameTime / 1000;
+    
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    const nebulaGradient1 = ctx.createRadialGradient(CANVAS_WIDTH * 0.3, 100, 0, CANVAS_WIDTH * 0.3, 100, 200);
+    nebulaGradient1.addColorStop(0, 'rgba(139, 92, 246, 0.3)');
+    nebulaGradient1.addColorStop(0.5, 'rgba(59, 130, 246, 0.15)');
+    nebulaGradient1.addColorStop(1, 'transparent');
+    ctx.fillStyle = nebulaGradient1;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT * 0.6);
+    
+    const nebulaGradient2 = ctx.createRadialGradient(CANVAS_WIDTH * 0.7, 180, 0, CANVAS_WIDTH * 0.7, 180, 150);
+    nebulaGradient2.addColorStop(0, 'rgba(168, 85, 247, 0.25)');
+    nebulaGradient2.addColorStop(0.6, 'rgba(79, 70, 229, 0.1)');
+    nebulaGradient2.addColorStop(1, 'transparent');
+    ctx.fillStyle = nebulaGradient2;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT * 0.5);
+    ctx.restore();
+    
+    ctx.save();
+    ctx.strokeStyle = CC_COLORS.background.grid;
+    ctx.lineWidth = CC_EFFECTS.gridLineWidth;
+    for (let x = 0; x < CANVAS_WIDTH; x += CC_EFFECTS.gridSpacing) {
+      const xOffset = (time * 5) % CC_EFFECTS.gridSpacing;
+      ctx.beginPath();
+      ctx.moveTo(x - xOffset, 0);
+      ctx.lineTo(x - xOffset, GROUND_Y);
+      ctx.stroke();
+    }
+    for (let y = 0; y < GROUND_Y; y += CC_EFFECTS.gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(CANVAS_WIDTH, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
     state.backgroundStars.forEach(star => {
-      const twinkle = Math.sin(time * 2 + star.twinkleOffset) * 0.3 + 0.7;
-      const layerAlpha = 0.4 + star.layer * 0.2;
-      ctx.fillStyle = `rgba(255, 255, 255, ${twinkle * layerAlpha})`;
+      const twinkle = Math.sin(time * 2.5 + star.twinkleOffset) * 0.4 + 0.6;
+      const layerAlpha = 0.3 + star.layer * 0.25;
+      const starBrightness = twinkle * layerAlpha;
+      
+      const starColors = ['rgba(255, 255, 255,', 'rgba(200, 220, 255,', 'rgba(255, 200, 200,'];
+      const colorIndex = Math.floor(star.twinkleOffset * 3) % 3;
+      ctx.fillStyle = `${starColors[colorIndex]} ${starBrightness})`;
+      
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
       ctx.fill();
+      
+      if (star.layer === 2 && twinkle > 0.8) {
+        ctx.save();
+        ctx.globalAlpha = (twinkle - 0.8) * 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(star.x - 3, star.y);
+        ctx.lineTo(star.x + 3, star.y);
+        ctx.moveTo(star.x, star.y - 3);
+        ctx.lineTo(star.x, star.y + 3);
+        ctx.stroke();
+        ctx.restore();
+      }
     });
     
     state.shootingStars.forEach(star => {
@@ -1016,11 +1073,13 @@ export default function GuardianDefense() {
         star.x - Math.cos(star.angle) * star.length,
         star.y - Math.sin(star.angle) * star.length
       );
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+      gradient.addColorStop(0, `rgba(0, 255, 255, ${alpha})`);
+      gradient.addColorStop(0.3, `rgba(168, 85, 247, ${alpha * 0.6})`);
       gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
       
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(star.x, star.y);
       ctx.lineTo(
@@ -1028,18 +1087,24 @@ export default function GuardianDefense() {
         star.y - Math.sin(star.angle) * star.length
       );
       ctx.stroke();
+      
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
+      ctx.fill();
     });
     
     const mountainLayers = [
-      { baseY: GROUND_Y - 40, color1: '#1a0a30', color2: '#2d1050', peaks: 12, height: 60 },
-      { baseY: GROUND_Y - 20, color1: '#2a1040', color2: '#3d1560', peaks: 8, height: 45 },
-      { baseY: GROUND_Y, color1: '#3a1550', color2: '#4d1a70', peaks: 6, height: 30 },
+      { baseY: GROUND_Y - 50, color1: '#0a0520', color2: '#1a0840', peaks: 14, height: 70, glowColor: 'rgba(139, 92, 246, 0.1)' },
+      { baseY: GROUND_Y - 25, color1: '#150a30', color2: '#251550', peaks: 10, height: 50, glowColor: 'rgba(79, 70, 229, 0.08)' },
+      { baseY: GROUND_Y - 5, color1: '#1a0a35', color2: '#2a1560', peaks: 7, height: 35, glowColor: 'rgba(168, 85, 247, 0.06)' },
     ];
     
-    mountainLayers.forEach(layer => {
+    mountainLayers.forEach((layer, layerIndex) => {
       const gradient = ctx.createLinearGradient(0, layer.baseY - layer.height, 0, GROUND_Y);
       gradient.addColorStop(0, layer.color2);
-      gradient.addColorStop(1, layer.color1);
+      gradient.addColorStop(0.7, layer.color1);
+      gradient.addColorStop(1, '#050010');
       
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -1047,211 +1112,529 @@ export default function GuardianDefense() {
       
       for (let i = 0; i <= layer.peaks; i++) {
         const x = (CANVAS_WIDTH / layer.peaks) * i;
-        const peakY = layer.baseY - layer.height + Math.sin(i * 1.3 + time * 0.02) * 10;
+        const peakY = layer.baseY - layer.height + Math.sin(i * 1.5 + layerIndex * 0.5) * 15;
         ctx.lineTo(x, peakY);
       }
       
       ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.closePath();
       ctx.fill();
+      
+      ctx.strokeStyle = layer.glowColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= layer.peaks; i++) {
+        const x = (CANVAS_WIDTH / layer.peaks) * i;
+        const peakY = layer.baseY - layer.height + Math.sin(i * 1.5 + layerIndex * 0.5) * 15;
+        if (i === 0) ctx.moveTo(x, peakY);
+        else ctx.lineTo(x, peakY);
+      }
+      ctx.stroke();
     });
     
     const groundGradient = ctx.createLinearGradient(0, GROUND_Y, 0, CANVAS_HEIGHT);
-    groundGradient.addColorStop(0, '#1a1a2e');
-    groundGradient.addColorStop(1, '#0f0f1a');
+    groundGradient.addColorStop(0, '#0a0a1a');
+    groundGradient.addColorStop(0.3, '#080815');
+    groundGradient.addColorStop(1, '#050508');
     ctx.fillStyle = groundGradient;
     ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
     
-    ctx.strokeStyle = '#3b82f6';
+    ctx.save();
+    const groundLineGradient = ctx.createLinearGradient(0, GROUND_Y, CANVAS_WIDTH, GROUND_Y);
+    groundLineGradient.addColorStop(0, 'rgba(0, 255, 255, 0.1)');
+    groundLineGradient.addColorStop(0.3, 'rgba(0, 255, 255, 0.8)');
+    groundLineGradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.9)');
+    groundLineGradient.addColorStop(0.7, 'rgba(0, 255, 255, 0.8)');
+    groundLineGradient.addColorStop(1, 'rgba(0, 255, 255, 0.1)');
+    ctx.strokeStyle = groundLineGradient;
     ctx.lineWidth = 2;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ffff';
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y);
     ctx.lineTo(CANVAS_WIDTH, GROUND_Y);
     ctx.stroke();
+    ctx.restore();
     
     state.cities.forEach(city => {
       if (!city.active) return;
       
-      const buildingHeight = 30;
-      const buildingWidth = 35;
+      const lairDesign = CC_LAIR_DESIGNS[city.name] || { shape: 'tower', accent: '#00ffff', pattern: 'angular' };
+      const buildingHeight = 45;
+      const buildingWidth = 40;
+      const baseX = city.position.x - buildingWidth / 2;
+      const baseY = city.position.y - buildingHeight;
+      const glowPulse = pulseValue(time * 1000, 0.4, 0.8, CC_EFFECTS.glowPulseSpeed);
       
-      ctx.fillStyle = '#1e40af';
-      ctx.fillRect(
-        city.position.x - buildingWidth / 2,
-        city.position.y - buildingHeight,
-        buildingWidth,
-        buildingHeight
-      );
+      ctx.save();
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = lairDesign.accent;
       
-      ctx.strokeStyle = '#60a5fa';
+      const towerGradient = ctx.createLinearGradient(baseX, baseY, baseX, city.position.y);
+      towerGradient.addColorStop(0, '#1a1a3a');
+      towerGradient.addColorStop(0.3, '#252550');
+      towerGradient.addColorStop(0.7, '#1e1e40');
+      towerGradient.addColorStop(1, '#151530');
+      
+      ctx.fillStyle = towerGradient;
+      ctx.beginPath();
+      if (lairDesign.shape === 'pyramid') {
+        ctx.moveTo(city.position.x, baseY - 10);
+        ctx.lineTo(baseX + buildingWidth + 5, city.position.y);
+        ctx.lineTo(baseX - 5, city.position.y);
+        ctx.closePath();
+      } else if (lairDesign.shape === 'spiral') {
+        ctx.moveTo(baseX, city.position.y);
+        ctx.lineTo(baseX + 5, baseY + 10);
+        ctx.quadraticCurveTo(city.position.x, baseY - 15, baseX + buildingWidth - 5, baseY + 10);
+        ctx.lineTo(baseX + buildingWidth, city.position.y);
+        ctx.closePath();
+      } else if (lairDesign.shape === 'fortress') {
+        ctx.moveTo(baseX - 5, city.position.y);
+        ctx.lineTo(baseX - 5, baseY + 5);
+        ctx.lineTo(baseX + 5, baseY);
+        ctx.lineTo(baseX + 15, baseY + 5);
+        ctx.lineTo(city.position.x, baseY - 5);
+        ctx.lineTo(baseX + buildingWidth - 15, baseY + 5);
+        ctx.lineTo(baseX + buildingWidth - 5, baseY);
+        ctx.lineTo(baseX + buildingWidth + 5, baseY + 5);
+        ctx.lineTo(baseX + buildingWidth + 5, city.position.y);
+        ctx.closePath();
+      } else {
+        ctx.moveTo(baseX, city.position.y);
+        ctx.lineTo(baseX, baseY + 8);
+        ctx.lineTo(baseX + 8, baseY);
+        ctx.lineTo(baseX + buildingWidth - 8, baseY);
+        ctx.lineTo(baseX + buildingWidth, baseY + 8);
+        ctx.lineTo(baseX + buildingWidth, city.position.y);
+        ctx.closePath();
+      }
+      ctx.fill();
+      
+      ctx.strokeStyle = lairDesign.accent;
       ctx.lineWidth = 2;
-      ctx.strokeRect(
-        city.position.x - buildingWidth / 2,
-        city.position.y - buildingHeight,
-        buildingWidth,
-        buildingHeight
-      );
+      ctx.stroke();
       
-      ctx.fillStyle = '#fbbf24';
+      ctx.strokeStyle = `${lairDesign.accent}40`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {
+        const lineY = baseY + 10 + i * 10;
+        ctx.beginPath();
+        ctx.moveTo(baseX + 5, lineY);
+        ctx.lineTo(baseX + buildingWidth - 5, lineY);
+        ctx.stroke();
+      }
+      
       for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 2; col++) {
-          const windowOn = Math.sin(time * 3 + row + col + city.position.x) > -0.3;
+          const windowOn = Math.sin(time * 4 + row * 2 + col + city.position.x * 0.1) > -0.2;
           if (windowOn) {
-            ctx.fillRect(
-              city.position.x - 10 + col * 14,
-              city.position.y - buildingHeight + 6 + row * 9,
-              5, 5
-            );
+            const windowX = city.position.x - 8 + col * 16;
+            const windowY = baseY + 12 + row * 11;
+            
+            ctx.fillStyle = `rgba(0, 255, 255, ${0.3 + glowPulse * 0.4})`;
+            ctx.fillRect(windowX - 1, windowY - 1, 7, 7);
+            
+            ctx.fillStyle = lairDesign.accent;
+            ctx.fillRect(windowX, windowY, 5, 5);
           }
         }
       }
       
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '8px monospace';
+      const healthGlow = ctx.createRadialGradient(
+        city.position.x, city.position.y - buildingHeight / 2, 0,
+        city.position.x, city.position.y - buildingHeight / 2, buildingWidth
+      );
+      healthGlow.addColorStop(0, `${lairDesign.accent}${Math.floor(glowPulse * 40).toString(16).padStart(2, '0')}`);
+      healthGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = healthGlow;
+      ctx.fillRect(baseX - 10, baseY - 10, buildingWidth + 20, buildingHeight + 20);
+      
+      ctx.restore();
+      
+      ctx.fillStyle = lairDesign.accent;
+      ctx.font = 'bold 7px Orbitron, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(city.name, city.position.x, city.position.y + 12);
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = lairDesign.accent;
+      ctx.fillText(city.name, city.position.x, city.position.y + 14);
+      ctx.shadowBlur = 0;
     });
     
     state.batteries.forEach((battery, i) => {
-      ctx.fillStyle = '#1e3a5f';
+      const batteryPulse = pulseValue(time * 1000, 0.7, 1.0, CC_EFFECTS.glowPulseSpeed * 1.5);
+      
+      ctx.save();
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00ffff';
+      
+      const batteryGradient = ctx.createLinearGradient(
+        battery.position.x, battery.position.y - 25,
+        battery.position.x, battery.position.y
+      );
+      batteryGradient.addColorStop(0, '#1e3a5f');
+      batteryGradient.addColorStop(0.5, '#2a4a70');
+      batteryGradient.addColorStop(1, '#152535');
+      
+      ctx.fillStyle = batteryGradient;
       ctx.beginPath();
-      ctx.moveTo(battery.position.x - 25, battery.position.y);
-      ctx.lineTo(battery.position.x - 15, battery.position.y - 20);
-      ctx.lineTo(battery.position.x + 15, battery.position.y - 20);
-      ctx.lineTo(battery.position.x + 25, battery.position.y);
+      ctx.moveTo(battery.position.x - 28, battery.position.y);
+      ctx.lineTo(battery.position.x - 18, battery.position.y - 25);
+      ctx.lineTo(battery.position.x + 18, battery.position.y - 25);
+      ctx.lineTo(battery.position.x + 28, battery.position.y);
       ctx.closePath();
       ctx.fill();
       
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = `rgba(0, 255, 255, ${batteryPulse})`;
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      ctx.fillStyle = '#60a5fa';
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(battery.position.x, battery.position.y - 12, 6, 0, Math.PI * 2);
+      ctx.moveTo(battery.position.x - 10, battery.position.y - 5);
+      ctx.lineTo(battery.position.x + 10, battery.position.y - 5);
+      ctx.moveTo(battery.position.x - 8, battery.position.y - 10);
+      ctx.lineTo(battery.position.x + 8, battery.position.y - 10);
+      ctx.stroke();
+      
+      const turretGlow = ctx.createRadialGradient(
+        battery.position.x, battery.position.y - 15, 0,
+        battery.position.x, battery.position.y - 15, 10
+      );
+      turretGlow.addColorStop(0, '#ffffff');
+      turretGlow.addColorStop(0.3, '#00ffff');
+      turretGlow.addColorStop(0.7, 'rgba(0, 255, 255, 0.5)');
+      turretGlow.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = turretGlow;
+      ctx.beginPath();
+      ctx.arc(battery.position.x, battery.position.y - 15, 10, 0, Math.PI * 2);
       ctx.fill();
       
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '8px monospace';
-      ctx.fillText(['ALPHA', 'BETA', 'GAMMA'][i], battery.position.x, battery.position.y + 12);
+      ctx.fillStyle = '#00ffff';
+      ctx.beginPath();
+      ctx.arc(battery.position.x, battery.position.y - 15, 5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+      
+      ctx.fillStyle = '#00ffff';
+      ctx.font = 'bold 7px Orbitron, monospace';
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 3;
+      ctx.shadowColor = '#00ffff';
+      ctx.fillText(['ALPHA', 'BETA', 'GAMMA'][i], battery.position.x, battery.position.y + 14);
+      ctx.shadowBlur = 0;
     });
     
     state.enemyMissiles.forEach(missile => {
       if (!missile.active) return;
       
-      const color = CREATURE_COLORS[missile.creatureType];
+      const creatureStyle = CC_COLORS.creatures[missile.creatureType] || CC_COLORS.creatures['based'];
       const isGuardian = missile.creatureType === 'guardian';
-      const baseSize = isGuardian ? 10 : 5;
-      const size = baseSize + (missile.health > 1 ? 2 : 0);
+      const baseSize = isGuardian ? 12 : 6;
+      const size = baseSize + (missile.health > 1 ? 3 : 0);
+      const pulseScale = 1 + Math.sin(time * 8) * 0.1;
       
-      ctx.strokeStyle = `${color}60`;
-      ctx.lineWidth = isGuardian ? 3 : 2;
+      const trailGradient = ctx.createLinearGradient(
+        missile.start.x, missile.start.y,
+        missile.position.x, missile.position.y
+      );
+      trailGradient.addColorStop(0, 'transparent');
+      trailGradient.addColorStop(0.5, creatureStyle.trail);
+      trailGradient.addColorStop(1, creatureStyle.glow);
+      
+      ctx.strokeStyle = trailGradient;
+      ctx.lineWidth = isGuardian ? 4 : 2.5;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(missile.start.x, missile.start.y);
       ctx.lineTo(missile.position.x, missile.position.y);
       ctx.stroke();
       
-      ctx.fillStyle = color;
-      ctx.shadowBlur = isGuardian ? 20 : 12;
-      ctx.shadowColor = color;
+      for (let i = 0; i < 3; i++) {
+        const sparkProgress = ((time * 2 + i * 0.3) % 1);
+        const sparkX = lerp(missile.start.x, missile.position.x, sparkProgress);
+        const sparkY = lerp(missile.start.y, missile.position.y, sparkProgress);
+        const sparkAlpha = 1 - sparkProgress;
+        ctx.fillStyle = `rgba(255, 200, 100, ${sparkAlpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(sparkX + (Math.random() - 0.5) * 4, sparkY + (Math.random() - 0.5) * 4, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      ctx.save();
+      ctx.shadowBlur = isGuardian ? 25 : 15;
+      ctx.shadowColor = creatureStyle.core;
+      
+      const missileGradient = ctx.createRadialGradient(
+        missile.position.x, missile.position.y, 0,
+        missile.position.x, missile.position.y, size * pulseScale
+      );
+      missileGradient.addColorStop(0, '#ffffff');
+      missileGradient.addColorStop(0.3, creatureStyle.core);
+      missileGradient.addColorStop(0.7, creatureStyle.glow);
+      missileGradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = missileGradient;
       ctx.beginPath();
-      ctx.arc(missile.position.x, missile.position.y, size, 0, Math.PI * 2);
+      ctx.arc(missile.position.x, missile.position.y, size * pulseScale * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = creatureStyle.core;
+      ctx.beginPath();
+      ctx.arc(missile.position.x, missile.position.y, size * pulseScale, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.beginPath();
+      ctx.arc(missile.position.x - size * 0.3, missile.position.y - size * 0.3, size * 0.25, 0, Math.PI * 2);
       ctx.fill();
       
       if (missile.health > 1) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 8px monospace';
+        ctx.font = 'bold 9px Orbitron, monospace';
         ctx.textAlign = 'center';
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#000000';
         ctx.fillText(`${missile.health}`, missile.position.x, missile.position.y + 3);
       }
-      
-      ctx.shadowBlur = 0;
+      ctx.restore();
     });
     
     state.defensiveMissiles.forEach(missile => {
-      ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
-      ctx.lineWidth = 2;
+      const trailGradient = ctx.createLinearGradient(
+        missile.start.x, missile.start.y,
+        missile.position.x, missile.position.y
+      );
+      trailGradient.addColorStop(0, 'transparent');
+      trailGradient.addColorStop(0.4, CC_COLORS.missiles.playerTrail);
+      trailGradient.addColorStop(1, CC_COLORS.missiles.playerGlow);
+      
+      ctx.strokeStyle = trailGradient;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(missile.start.x, missile.start.y);
       ctx.lineTo(missile.position.x, missile.position.y);
       ctx.stroke();
       
-      ctx.fillStyle = '#60a5fa';
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#60a5fa';
+      ctx.save();
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = CC_COLORS.missiles.playerCore;
+      
+      const playerMissileGradient = ctx.createRadialGradient(
+        missile.position.x, missile.position.y, 0,
+        missile.position.x, missile.position.y, 8
+      );
+      playerMissileGradient.addColorStop(0, '#ffffff');
+      playerMissileGradient.addColorStop(0.4, CC_COLORS.missiles.playerCore);
+      playerMissileGradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = playerMissileGradient;
+      ctx.beginPath();
+      ctx.arc(missile.position.x, missile.position.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = CC_COLORS.missiles.playerCore;
       ctx.beginPath();
       ctx.arc(missile.position.x, missile.position.y, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.restore();
     });
     
     state.explosions.forEach(explosion => {
-      const color = explosion.isPlayer ? '#60a5fa' : '#ef4444';
       const alpha = Math.min(1, explosion.lifetime / 0.6);
+      const lifeRatio = explosion.lifetime / explosion.maxLifetime;
       
-      const gradient = ctx.createRadialGradient(
-        explosion.position.x, explosion.position.y, 0,
-        explosion.position.x, explosion.position.y, explosion.radius
-      );
-      gradient.addColorStop(0, `${color}${Math.floor(alpha * 180).toString(16).padStart(2, '0')}`);
-      gradient.addColorStop(0.5, `${color}${Math.floor(alpha * 100).toString(16).padStart(2, '0')}`);
-      gradient.addColorStop(1, `${color}00`);
-      
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(explosion.position.x, explosion.position.y, explosion.radius, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.strokeStyle = `${color}${Math.floor(alpha * 200).toString(16).padStart(2, '0')}`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(explosion.position.x, explosion.position.y, explosion.radius, 0, Math.PI * 2);
-      ctx.stroke();
+      if (explosion.isPlayer) {
+        ctx.save();
+        
+        for (let ring = 0; ring < CC_EFFECTS.explosionRipples; ring++) {
+          const ringDelay = ring * CC_EFFECTS.explosionRippleDelay;
+          const ringProgress = Math.max(0, 1 - lifeRatio - ringDelay);
+          if (ringProgress <= 0) continue;
+          
+          const ringRadius = explosion.radius * (0.6 + ring * 0.3) * ringProgress;
+          const ringAlpha = alpha * (1 - ringProgress) * 0.5;
+          
+          ctx.strokeStyle = `rgba(0, 255, 255, ${ringAlpha})`;
+          ctx.lineWidth = 2 - ring * 0.5;
+          ctx.beginPath();
+          ctx.arc(explosion.position.x, explosion.position.y, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = CC_COLORS.explosions.coreBlue;
+        
+        const outerGlow = ctx.createRadialGradient(
+          explosion.position.x, explosion.position.y, 0,
+          explosion.position.x, explosion.position.y, explosion.radius * 1.3
+        );
+        outerGlow.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
+        outerGlow.addColorStop(0.2, `rgba(0, 255, 255, ${alpha * 0.7})`);
+        outerGlow.addColorStop(0.5, `rgba(168, 85, 247, ${alpha * 0.4})`);
+        outerGlow.addColorStop(0.8, `rgba(139, 92, 246, ${alpha * 0.2})`);
+        outerGlow.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = outerGlow;
+        ctx.beginPath();
+        ctx.arc(explosion.position.x, explosion.position.y, explosion.radius * 1.3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        const innerGlow = ctx.createRadialGradient(
+          explosion.position.x, explosion.position.y, 0,
+          explosion.position.x, explosion.position.y, explosion.radius * 0.6
+        );
+        innerGlow.addColorStop(0, CC_COLORS.explosions.flareWhite);
+        innerGlow.addColorStop(0.5, `rgba(0, 255, 255, ${alpha})`);
+        innerGlow.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = innerGlow;
+        ctx.beginPath();
+        ctx.arc(explosion.position.x, explosion.position.y, explosion.radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (lifeRatio > 0.7) {
+          const flareAlpha = (lifeRatio - 0.7) / 0.3;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${flareAlpha * 0.8})`;
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI / 4) * i + time * 2;
+            const length = explosion.radius * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(explosion.position.x, explosion.position.y);
+            ctx.lineTo(
+              explosion.position.x + Math.cos(angle) * length,
+              explosion.position.y + Math.sin(angle) * length
+            );
+            ctx.stroke();
+          }
+        }
+        
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff4444';
+        
+        const enemyGlow = ctx.createRadialGradient(
+          explosion.position.x, explosion.position.y, 0,
+          explosion.position.x, explosion.position.y, explosion.radius
+        );
+        enemyGlow.addColorStop(0, `rgba(255, 100, 50, ${alpha})`);
+        enemyGlow.addColorStop(0.4, `rgba(255, 50, 50, ${alpha * 0.6})`);
+        enemyGlow.addColorStop(0.8, `rgba(200, 0, 0, ${alpha * 0.3})`);
+        enemyGlow.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = enemyGlow;
+        ctx.beginPath();
+        ctx.arc(explosion.position.x, explosion.position.y, explosion.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = `rgba(255, 100, 50, ${alpha * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(explosion.position.x, explosion.position.y, explosion.radius * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.restore();
+      }
     });
     
     state.particles.forEach(particle => {
       const alpha = Math.min(1, particle.lifetime * 2);
-      ctx.fillStyle = `${particle.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+      
+      ctx.save();
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = particle.color;
+      
+      const particleGradient = ctx.createRadialGradient(
+        particle.position.x, particle.position.y, 0,
+        particle.position.x, particle.position.y, particle.size * alpha * 2
+      );
+      particleGradient.addColorStop(0, particle.color);
+      particleGradient.addColorStop(0.5, `${particle.color}80`);
+      particleGradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = particleGradient;
       ctx.beginPath();
-      ctx.arc(particle.position.x, particle.position.y, particle.size * alpha, 0, Math.PI * 2);
+      ctx.arc(particle.position.x, particle.position.y, particle.size * alpha * 2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     });
     
     state.scorePopups.forEach(popup => {
       const alpha = Math.min(1, popup.lifetime * 2);
-      const scale = popup.isSpecial ? 1.3 : 1;
+      const scale = popup.isSpecial ? 1.4 : 1;
+      const bounceY = popup.isSpecial ? Math.sin(popup.lifetime * 10) * 3 : 0;
+      
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.font = `bold ${Math.floor(14 * scale)}px Orbitron, monospace`;
       ctx.textAlign = 'center';
-      ctx.fillStyle = popup.color;
-      ctx.shadowBlur = 8;
+      
+      ctx.shadowBlur = popup.isSpecial ? 15 : 8;
       ctx.shadowColor = popup.color;
-      ctx.fillText(popup.text, popup.x, popup.y);
+      
+      if (popup.isSpecial) {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.strokeText(popup.text, popup.x, popup.y + bounceY);
+      }
+      
+      ctx.fillStyle = popup.color;
+      ctx.fillText(popup.text, popup.x, popup.y + bounceY);
       ctx.restore();
     });
     
+    ctx.save();
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ffff';
     ctx.fillStyle = '#00ffff';
-    ctx.font = 'bold 12px Orbitron, monospace';
+    ctx.font = 'bold 13px Orbitron, monospace';
     ctx.textAlign = 'center';
     ctx.fillText('CREATURE COMMAND CENTER', CANVAS_WIDTH / 2, GROUND_Y + 28);
     
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '9px monospace';
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = '#a855f7';
+    ctx.fillStyle = '#a855f7';
+    ctx.font = '9px Orbitron, monospace';
     ctx.fillText('BASED CREATURES • LEGENDARY DEFENDERS', CANVAS_WIDTH / 2, GROUND_Y + 42);
+    ctx.restore();
     
     if (state.waveTransition && !gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillStyle = 'rgba(0, 0, 20, 0.7)';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
+      const transitionPulse = pulseValue(time * 1000, 0.8, 1.0, 0.01);
+      
+      ctx.save();
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#10b981';
       ctx.fillStyle = '#10b981';
-      ctx.font = 'bold 28px Orbitron, sans-serif';
+      ctx.font = 'bold 32px Orbitron, sans-serif';
       ctx.textAlign = 'center';
+      ctx.globalAlpha = transitionPulse;
       ctx.fillText(`WAVE ${state.wave} COMPLETE`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
       
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '14px monospace';
-      ctx.fillText('Preparing next wave...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00ffff';
+      ctx.fillStyle = '#00ffff';
+      ctx.font = '14px Orbitron, monospace';
+      ctx.globalAlpha = 0.8;
+      ctx.fillText('Preparing next wave...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 25);
+      
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(CANVAS_WIDTH / 2 - 120, CANVAS_HEIGHT / 2 + 40);
+      ctx.lineTo(CANVAS_WIDTH / 2 + 120, CANVAS_HEIGHT / 2 + 40);
+      ctx.stroke();
+      
+      ctx.restore();
     }
     
     ctx.restore();
