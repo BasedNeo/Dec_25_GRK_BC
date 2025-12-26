@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { triggerConfetti } from '@/lib/dynamicImports';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 import { 
@@ -654,136 +653,131 @@ export function RiddleQuest() {
             </motion.div>
           )}
           
-          {/* Game Mode Tabs */}
+          {/* Mobile-First Game Mode Toggle */}
           <motion.div
-            className="mb-8"
+            className="mb-8 w-full max-w-md mx-auto px-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.65 }}
           >
-            <Tabs defaultValue="campaign" className="w-full max-w-lg mx-auto">
-              <TabsList className="grid w-full grid-cols-2 bg-black/50 border border-cyan-500/30">
-                <TabsTrigger 
-                  value="campaign" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/30 data-[state=active]:to-purple-500/30 data-[state=active]:text-cyan-400"
-                  data-testid="tab-campaign"
+            {/* Simple Toggle Button */}
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex rounded-xl bg-black/50 border border-cyan-500/30 p-1">
+                <button
+                  onClick={() => setGameMode('campaign')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-mono text-sm transition-all min-h-[48px] ${
+                    gameMode === 'campaign' 
+                      ? 'bg-gradient-to-r from-cyan-500/30 to-purple-500/30 text-cyan-400' 
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  data-testid="toggle-campaign"
                 >
-                  <Scroll className="w-4 h-4 mr-2" />
+                  <Scroll className="w-4 h-4" />
                   Campaign
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="daily"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/30 data-[state=active]:to-cyan-500/30 data-[state=active]:text-purple-400"
-                  data-testid="tab-daily"
+                </button>
+                <button
+                  onClick={() => setGameMode('daily')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-mono text-sm transition-all min-h-[48px] ${
+                    gameMode === 'daily' 
+                      ? 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-purple-400' 
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  data-testid="toggle-daily"
                 >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Daily Challenge
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="campaign" className="mt-6">
-                {/* Oracle Mode Toggle */}
-                <div className="mb-6">
-                  <div className="inline-flex items-center gap-4 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
-                    <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
-                    <span className="text-sm font-mono text-gray-300">Guardian Oracle Mode</span>
-                    <Switch
-                      checked={oracleMode}
-                      onCheckedChange={toggleOracleMode}
-                      className="data-[state=checked]:bg-purple-500"
-                      data-testid="switch-oracle-mode"
-                    />
-                    {oracleMode && (
-                      <span className="text-xs text-purple-400 font-mono">
-                        {oracleInteractionsLeft} uses left
-                      </span>
-                    )}
-                  </div>
-                  {oracleMode && (
-                    <p className="text-xs text-purple-300/60 mt-2">
-                      AI-powered dynamic riddles • More challenging • +50% bonus points
-                    </p>
-                  )}
-                </div>
-                
+                  <Calendar className="w-4 h-4" />
+                  Daily
+                </button>
+              </div>
+            </div>
+
+            {/* Campaign Mode Content */}
+            {gameMode === 'campaign' && (
+              <div className="space-y-6">
                 <Button
                   onClick={startQuest}
-                  className="group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-xl px-12 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all transform hover:scale-105"
+                  className="w-full group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-lg px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all min-h-[56px]"
                   data-testid="button-begin-quest"
                 >
-                  <motion.span
-                    animate={{ opacity: [1, 0.7, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="flex items-center gap-3"
-                  >
+                  <span className="flex items-center justify-center gap-3">
                     {progress && progress.currentLevel > 1 ? 'Continue Quest' : 'Begin Quest'}
                     <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                  </motion.span>
+                  </span>
                 </Button>
-              </TabsContent>
-              
-              <TabsContent value="daily" className="mt-6">
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-cyan-500/10">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm text-gray-400">Today's Progress</span>
-                      <span className="text-lg font-bold text-purple-400">
-                        {dailyProgress?.solved || 0} / {dailySet?.riddleCount || 5}
-                      </span>
-                    </div>
-                    <Progress 
-                      value={((dailyProgress?.solved || 0) / (dailySet?.riddleCount || 5)) * 100} 
-                      className="h-2 bg-black/30"
-                    />
-                    {dailySet?.generatedViaOracle && (
-                      <div className="flex items-center gap-2 mt-3 text-xs text-purple-300">
-                        <Bot className="w-3 h-3" />
-                        <span>Oracle-generated riddles (+50% points)</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {riddleStats?.stats && (
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="p-3 rounded-lg bg-black/30 border border-cyan-500/20">
-                        <div className="text-lg font-bold text-cyan-400">{riddleStats.stats.totalSolves}</div>
-                        <div className="text-[10px] text-gray-500 uppercase">Total Solved</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-black/30 border border-purple-500/20">
-                        <div className="text-lg font-bold text-purple-400">{riddleStats.stats.points}</div>
-                        <div className="text-[10px] text-gray-500 uppercase">Points</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-black/30 border border-orange-500/20">
-                        <div className="text-lg font-bold text-orange-400">{riddleStats.stats.currentStreak}</div>
-                        <div className="text-[10px] text-gray-500 uppercase">Streak</div>
-                      </div>
-                    </div>
+                
+                {/* Oracle Toggle - Compact */}
+                <div className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-black/30 border border-purple-500/20">
+                  <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
+                  <span className="text-sm text-gray-400">Oracle Mode</span>
+                  <Switch
+                    checked={oracleMode}
+                    onCheckedChange={toggleOracleMode}
+                    className="data-[state=checked]:bg-purple-500"
+                    data-testid="switch-oracle-mode"
+                  />
+                  {oracleMode && (
+                    <span className="text-xs text-purple-400">{oracleInteractionsLeft} left</span>
                   )}
-                  
-                  <Button
-                    onClick={startDailyChallenge}
-                    disabled={dailyLoading || (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5)}
-                    className="w-full group bg-gradient-to-r from-purple-500 via-fuchsia-500 to-cyan-500 text-white font-orbitron font-bold text-lg px-8 py-5 rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_50px_rgba(168,85,247,0.6)] transition-all disabled:opacity-50"
-                    data-testid="button-start-daily"
-                  >
-                    {dailyLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5) ? (
-                      <span className="flex items-center gap-2">
-                        <Check className="w-5 h-5" />
-                        All Completed!
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5" />
-                        Start Daily Challenge
-                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </span>
-                    )}
-                  </Button>
                 </div>
-              </TabsContent>
-            </Tabs>
+              </div>
+            )}
+
+            {/* Daily Mode Content */}
+            {gameMode === 'daily' && (
+              <div className="space-y-4">
+                {/* Progress Bar */}
+                <div className="p-4 rounded-xl border border-purple-500/30 bg-black/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-400">Today's Progress</span>
+                    <span className="text-lg font-bold text-purple-400">
+                      {dailyProgress?.solved || 0} / {dailySet?.riddleCount || 5}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={((dailyProgress?.solved || 0) / (dailySet?.riddleCount || 5)) * 100} 
+                    className="h-3 bg-black/50"
+                  />
+                </div>
+                
+                {/* Stats Row */}
+                {riddleStats?.stats && (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded-lg bg-black/30 border border-cyan-500/20">
+                      <div className="text-lg font-bold text-cyan-400">{riddleStats.stats.totalSolves}</div>
+                      <div className="text-[10px] text-gray-500">Solved</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-black/30 border border-purple-500/20">
+                      <div className="text-lg font-bold text-purple-400">{riddleStats.stats.points}</div>
+                      <div className="text-[10px] text-gray-500">Points</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-black/30 border border-orange-500/20">
+                      <div className="text-lg font-bold text-orange-400">{riddleStats.stats.currentStreak}</div>
+                      <div className="text-[10px] text-gray-500">Streak</div>
+                    </div>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={startDailyChallenge}
+                  disabled={dailyLoading || (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5)}
+                  className="w-full bg-gradient-to-r from-purple-500 via-fuchsia-500 to-cyan-500 text-white font-orbitron font-bold text-lg px-8 py-6 rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all disabled:opacity-50 min-h-[56px]"
+                  data-testid="button-start-daily"
+                >
+                  {dailyLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (dailyProgress?.solved || 0) >= (dailySet?.riddleCount || 5) ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Check className="w-5 h-5" />
+                      All Completed!
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-3">
+                      Start Daily Challenge
+                      <ChevronRight className="w-5 h-5" />
+                    </span>
+                  )}
+                </Button>
+              </div>
+            )}
           </motion.div>
           
           <motion.div 
@@ -1064,23 +1058,23 @@ export function RiddleQuest() {
                     )}
                   </AnimatePresence>
                   
-                  <div className="flex gap-3">
+                  <div className="space-y-3">
                     <Input
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !oracleLoading && handleOracleAnswer()}
-                      placeholder="Speak your answer to the Oracle..."
-                      className="flex-1 bg-black/40 border-purple-500/30 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20"
+                      placeholder="Type your answer or ask for a hint..."
+                      className="w-full h-14 text-lg bg-black/40 border-purple-500/30 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20 rounded-xl px-4"
                       data-testid="input-oracle-answer"
                       disabled={oracleLoading}
                     />
                     <Button
                       onClick={handleOracleAnswer}
                       disabled={!answer.trim() || oracleLoading}
-                      className="bg-gradient-to-r from-purple-500 to-cyan-500 text-black font-bold px-6 disabled:opacity-50 shadow-[0_0_20px_rgba(191,0,255,0.3)] hover:shadow-[0_0_30px_rgba(191,0,255,0.5)]"
+                      className="w-full h-14 bg-gradient-to-r from-purple-500 to-cyan-500 text-black font-bold text-lg disabled:opacity-50 shadow-[0_0_20px_rgba(191,0,255,0.3)] hover:shadow-[0_0_30px_rgba(191,0,255,0.5)] rounded-xl"
                       data-testid="button-submit-oracle"
                     >
-                      {oracleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit'}
+                      {oracleLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Answer'}
                     </Button>
                   </div>
                   
@@ -1239,13 +1233,13 @@ export function RiddleQuest() {
                     )}
                   </AnimatePresence>
                   
-                  <div className="flex gap-3">
+                  <div className="space-y-3">
                     <Input
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !submitAttempt.isPending && handleDailySubmit()}
-                      placeholder="Enter your answer..."
-                      className={`flex-1 bg-black/40 text-white placeholder:text-gray-500 ${
+                      placeholder="Type your answer..."
+                      className={`w-full h-14 text-lg bg-black/40 text-white placeholder:text-gray-500 rounded-xl px-4 ${
                         currentDailyRiddle.isOracle 
                           ? 'border-purple-500/30 focus:border-purple-400 focus:ring-purple-400/20'
                           : 'border-cyan-500/30 focus:border-cyan-400 focus:ring-cyan-400/20'
@@ -1256,7 +1250,7 @@ export function RiddleQuest() {
                     <Button
                       onClick={handleDailySubmit}
                       disabled={!answer.trim() || submitAttempt.isPending || isDailyRiddleSolved}
-                      className={`font-bold px-6 disabled:opacity-50 ${
+                      className={`w-full h-14 font-bold text-lg disabled:opacity-50 rounded-xl ${
                         currentDailyRiddle.isOracle
                           ? 'bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
                           : 'bg-gradient-to-r from-cyan-500 to-purple-500 text-black shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)]'
@@ -1415,22 +1409,22 @@ export function RiddleQuest() {
                   )}
                 </AnimatePresence>
                 
-                <div className="flex gap-3">
+                <div className="space-y-3">
                   <Input
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                    placeholder="Enter your answer..."
-                    className="flex-1 bg-black/40 border-cyan-500/30 text-white placeholder:text-gray-500 focus:border-cyan-400 focus:ring-cyan-400/20"
+                    placeholder="Type your answer..."
+                    className="w-full h-14 text-lg bg-black/40 border-cyan-500/30 text-white placeholder:text-gray-500 focus:border-cyan-400 focus:ring-cyan-400/20 rounded-xl px-4"
                     data-testid="input-riddle-answer"
                   />
                   <Button
                     onClick={checkAnswer}
                     disabled={!answer.trim()}
-                    className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold px-6 disabled:opacity-50 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)]"
+                    className="w-full h-14 bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold text-lg disabled:opacity-50 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] rounded-xl"
                     data-testid="button-submit-riddle"
                   >
-                    Submit
+                    Submit Answer
                   </Button>
                 </div>
                 

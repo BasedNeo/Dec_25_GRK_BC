@@ -1374,10 +1374,26 @@ export async function registerRoutes(
       }
       
       const acceptedAnswers = entry.answers.toLowerCase().split('|').map(a => a.trim());
-      const isCorrect = acceptedAnswers.some(a => 
-        answer.toLowerCase().trim().includes(a) || 
-        a.includes(answer.toLowerCase().trim())
-      );
+      
+      const normalizeForMatch = (input: string): string => {
+        return input
+          .toLowerCase()
+          .replace(/^(is it|it's|i think|maybe|the answer is|it is|could it be|i believe|my answer is)\s*/i, '')
+          .replace(/[?!.,;:'"$@#%^&*(){}[\]<>\/\\|`~]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+      
+      const userNormalized = normalizeForMatch(answer);
+      
+      const isCorrect = acceptedAnswers.some(expectedAnswer => {
+        const expectedNormalized = normalizeForMatch(expectedAnswer);
+        return userNormalized === expectedNormalized ||
+          userNormalized.includes(expectedNormalized) ||
+          expectedNormalized.includes(userNormalized) ||
+          (userNormalized.length > 2 && expectedNormalized.startsWith(userNormalized)) ||
+          (expectedNormalized.length > 2 && userNormalized.startsWith(expectedNormalized));
+      });
       
       const basePoints = isOracle ? 150 : 100;
       const timeBonus = solveTimeMs && solveTimeMs < 30000 ? 50 : (solveTimeMs && solveTimeMs < 60000 ? 25 : 0);

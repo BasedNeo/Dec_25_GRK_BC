@@ -1,6 +1,6 @@
 /**
  * Guardian Oracle Client
- * Client-side service for Oracle API with session limits and fallback
+ * Client-side service for Oracle API with session limits, fallback, and question detection
  */
 
 const ORACLE_SESSION_KEY = 'oracleQuestions';
@@ -13,6 +13,7 @@ interface OracleResponse {
   isCorrect?: boolean;
   riddleGenerated?: boolean;
   fallback?: boolean;
+  isHintRequest?: boolean;
   error?: string;
 }
 
@@ -20,6 +21,27 @@ interface OracleSession {
   interactions: number;
   startedAt: number;
   lastResetDate: string;
+}
+
+const QUESTION_PATTERNS = [
+  /^(what|who|where|when|why|how|which|is it|can you|could you|tell me|give me)/i,
+  /\?$/,
+  /hint/i,
+  /help/i,
+  /clue/i,
+];
+
+export function isQuestionOrHintRequest(input: string): boolean {
+  const trimmed = input.trim();
+  return QUESTION_PATTERNS.some(pattern => pattern.test(trimmed));
+}
+
+export function normalizeAnswer(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/^(is it|it's|i think|maybe|the answer is|it is)\s*/i, '')
+    .replace(/[?!.,;:'"]/g, '')
+    .trim();
 }
 
 function getSessionKey(): string {
