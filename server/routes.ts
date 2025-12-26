@@ -3320,6 +3320,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/points/vesting-history/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      
+      const history = await storage.getVestingHistory(walletAddress);
+      
+      res.json(history.map(entry => ({
+        id: entry.id,
+        pointsEarned: entry.pointsEarned,
+        pointsVested: entry.pointsVested,
+        brainXConverted: entry.brainXConverted,
+        vestingType: entry.vestingType,
+        vestedAt: entry.vestedAt,
+        lockExpiresAt: entry.lockExpiresAt
+      })));
+    } catch (error) {
+      console.error('Get vesting history failed:', error);
+      res.status(500).json({ error: 'Failed to get vesting history' });
+    }
+  });
+
+  app.get('/api/points/snapshots', async (_req, res) => {
+    try {
+      const { pointsBackupService } = await import('./lib/pointsBackupService');
+      const backups = pointsBackupService.listBackups();
+      res.json({ backups });
+    } catch (error) {
+      console.error('List snapshots failed:', error);
+      res.status(500).json({ error: 'Failed to list snapshots' });
+    }
+  });
+
   app.get('/api/ws/stats', async (_req, res) => {
     try {
       const stats = wsManager.getStats();
