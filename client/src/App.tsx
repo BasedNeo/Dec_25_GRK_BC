@@ -254,18 +254,31 @@ export function Router() {
   );
 }
 
+const connectionInitialized = { current: false };
+
 function App() {
   useEffect(() => {
-    try {
-      connectionManager.startAutoCheck(30000);
-      console.log('[App] Connection manager initialized');
-    } catch (error) {
-      console.error('[App] Connection manager failed to initialize:', error);
+    if (!connectionInitialized.current) {
+      try {
+        connectionManager.startAutoCheck(30000);
+        connectionInitialized.current = true;
+        console.log('[App] Connection manager initialized');
+      } catch (error) {
+        console.error('[App] Connection manager failed to initialize:', error);
+      }
+    }
+    
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+      loader.style.transition = 'opacity 0.3s ease-out';
+      loader.style.opacity = '0';
+      setTimeout(() => loader.remove(), 300);
     }
     
     return () => {
       try {
         connectionManager.stopAutoCheck();
+        connectionInitialized.current = false;
       } catch (error) {
         // Ignore cleanup errors
       }
