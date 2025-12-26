@@ -538,3 +538,27 @@ export const insertCreatureProgressSchema = createInsertSchema(creatureProgress)
 
 export type InsertCreatureProgress = z.infer<typeof insertCreatureProgressSchema>;
 export type CreatureProgress = typeof creatureProgress.$inferSelect;
+
+// Daily Challenges - tracks daily survival challenges per wallet
+export const dailyChallenges = pgTable('daily_challenges', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  dateKey: varchar('date_key', { length: 10 }).notNull(),
+  survivesCount: integer('survives_count').default(0).notNull(),
+  challengeCompleted: boolean('challenge_completed').default(false),
+  pointsAwarded: integer('points_awarded').default(0).notNull(),
+  highestStage: integer('highest_stage').default(1).notNull(),
+  highestWave: integer('highest_wave').default(1).notNull(),
+  gamesPlayed: integer('games_played').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('daily_challenges_wallet_date_idx').on(table.walletAddress, table.dateKey),
+]);
+
+export const insertDailyChallengeSchema = createInsertSchema(dailyChallenges).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertDailyChallenge = z.infer<typeof insertDailyChallengeSchema>;
+export type DailyChallenge = typeof dailyChallenges.$inferSelect;
