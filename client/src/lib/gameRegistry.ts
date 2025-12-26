@@ -124,10 +124,10 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     maxPlaysPerDay: 10,
     enabled: true,
     scoring: {
-      maxScore: 50000,
-      goodScore: 8000,
-      greatScore: 25000,
-      legendaryScore: 40000,
+      maxScore: 5000,
+      goodScore: 1500,
+      greatScore: 3000,
+      legendaryScore: 4500,
     },
     features: {
       hasTimer: false,

@@ -137,6 +137,7 @@ interface GameState {
   currentStage: number;
   stageWave: number;
   score: number;
+  wavePointsEarned: number;
   batteries: Battery[];
   cities: City[];
   enemyMissiles: EnemyMissile[];
@@ -161,6 +162,26 @@ interface GameState {
   survivesThisGame: number;
 }
 
+const MAX_GAME_SCORE = 5000;
+
+const addScore = (state: GameState, points: number, isWaveKill: boolean = false): number => {
+  if (isWaveKill && state.wavePointsEarned >= MAX_POINTS_PER_WAVE) {
+    return 0;
+  }
+  
+  const availableRoom = MAX_GAME_SCORE - state.score;
+  let pointsToAdd = Math.min(points, availableRoom);
+  
+  if (isWaveKill) {
+    const waveRoom = MAX_POINTS_PER_WAVE - state.wavePointsEarned;
+    pointsToAdd = Math.min(pointsToAdd, waveRoom);
+    state.wavePointsEarned += pointsToAdd;
+  }
+  
+  state.score += pointsToAdd;
+  return pointsToAdd;
+};
+
 const getShotsForWave = (wave: number): number => {
   if (wave <= 3) return 3;
   if (wave <= 5) return 4;
@@ -175,10 +196,20 @@ const BASE_CANVAS_WIDTH = 640;
 const BASE_CANVAS_HEIGHT = 480;
 const BASE_GROUND_Y = 440;
 
-const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean) => {
+const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean, isFullscreen: boolean = false) => {
+  if (isFullscreen && isMobile) {
+    const width = window.innerWidth;
+    const height = window.innerHeight - 100;
+    return {
+      width: Math.floor(width),
+      height: Math.floor(height),
+      scale: width / BASE_CANVAS_WIDTH
+    };
+  }
+  
   if (isMobile) {
     const width = Math.min(containerWidth, window.innerWidth);
-    const height = Math.min(containerHeight - 120, window.innerHeight - 200);
+    const height = Math.min(containerHeight - 80, window.innerHeight - 150);
     const aspectRatio = BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT;
     
     let finalWidth = width;
@@ -190,8 +221,8 @@ const getCanvasDimensions = (containerWidth: number, containerHeight: number, is
     }
     
     return {
-      width: Math.floor(finalWidth),
-      height: Math.floor(finalHeight),
+      width: Math.floor(Math.max(finalWidth, 320)),
+      height: Math.floor(Math.max(finalHeight, 240)),
       scale: finalWidth / BASE_CANVAS_WIDTH
     };
   }
@@ -233,15 +264,17 @@ const CREATURE_COLORS: Record<CreatureType, string> = {
 };
 
 const CREATURE_POINTS: Record<CreatureType, number> = {
-  'ultra-based': 100,
-  based: 10,
-  crystal: 15,
-  midnight: 20,
-  jelly: 15,
-  golden: 50,
-  pearlescent: 25,
-  guardian: 200,
+  'ultra-based': 10,
+  based: 2,
+  crystal: 3,
+  midnight: 4,
+  jelly: 3,
+  golden: 8,
+  pearlescent: 5,
+  guardian: 20,
 };
+
+const MAX_POINTS_PER_WAVE = 200;
 
 const CREATURE_HEALTH: Record<CreatureType, number> = {
   'ultra-based': 2,
@@ -464,6 +497,7 @@ export default function GuardianDefense() {
   const [canvasScale, setCanvasScale] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [canvasDims, setCanvasDims] = useState({ width: BASE_CANVAS_WIDTH, height: BASE_CANVAS_HEIGHT, scale: 1 });
 
   const [stats, setStats] = useState<GameStats>(() =>
@@ -487,6 +521,7 @@ export default function GuardianDefense() {
     currentStage: 1,
     stageWave: 1,
     score: 0,
+    wavePointsEarned: 0,
     batteries: BATTERY_POSITIONS.map(pos => ({
       missiles: MISSILES_PER_BATTERY,
       maxMissiles: MISSILES_PER_BATTERY,
@@ -560,7 +595,9 @@ export default function GuardianDefense() {
       if (containerRef.current) {
         const containerWidth = containerRef.current.clientWidth - (mobile ? 16 : 32);
         const containerHeight = window.innerHeight;
-        const dims = getCanvasDimensions(containerWidth, containerHeight, mobile);
+        const useFullscreen = mobile && gameStarted && !gameOver;
+        setIsFullscreen(useFullscreen);
+        const dims = getCanvasDimensions(containerWidth, containerHeight, mobile, useFullscreen);
         setCanvasDims(dims);
         setCanvasScale(dims.scale);
       }
@@ -572,7 +609,7 @@ export default function GuardianDefense() {
       window.removeEventListener('resize', updateScale);
       window.removeEventListener('orientationchange', updateScale);
     };
-  }, [gameStarted]);
+  }, [gameStarted, gameOver]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !settings.soundEnabled) return;
@@ -780,6 +817,7 @@ export default function GuardianDefense() {
     state.waveComplete = false;
     state.waveTransition = false;
     state.waveChainBonus = 0;
+    state.wavePointsEarned = 0;
     state.missilesRemaining = config.count;
     state.shotsRemaining = getShotsForWave(globalWave);
     
@@ -796,6 +834,8 @@ export default function GuardianDefense() {
     setTimeout(() => waveToast.dismiss(), 3000);
     
     playSound('wave');
+    
+    const WAVE_START_DELAY = 3500;
     
     for (let i = 0; i < config.count; i++) {
       setTimeout(() => {
@@ -831,7 +871,7 @@ export default function GuardianDefense() {
           active: true,
           health: CREATURE_HEALTH[creatureType],
         });
-      }, i * config.delay + Math.random() * 100);
+      }, WAVE_START_DELAY + i * config.delay + Math.random() * 100);
     }
   }, [toast, playSound, gameOver, endGame]);
 
@@ -945,24 +985,29 @@ export default function GuardianDefense() {
             incrementSurvives(1);
             
             const basePoints = CREATURE_POINTS[missile.creatureType];
-            const chainBonus = state.chainReactions * 5;
+            const chainBonus = Math.min(state.chainReactions, 5);
             const totalPoints = basePoints + chainBonus;
-            state.score += totalPoints;
-            state.waveChainBonus += chainBonus;
-            state.chainReactions++;
+            const actualPoints = addScore(state, totalPoints, true);
             
             createExplosion(missile.position, true, abilityModifiers.explosionRadiusMultiplier);
             
             const creatureName = CREATURE_NAMES[missile.creatureType];
-            if (state.chainReactions > 1) {
-              createScorePopup(`+${totalPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], true);
-              playSound('chain');
-            } else {
-              createScorePopup(`+${totalPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+            if (actualPoints > 0) {
+              const actualChainBonus = Math.max(0, Math.min(chainBonus, actualPoints - basePoints));
+              state.waveChainBonus += actualChainBonus;
+              state.chainReactions++;
+              
+              if (state.chainReactions > 1) {
+                createScorePopup(`+${actualPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], true);
+                playSound('chain');
+              } else {
+                createScorePopup(`+${actualPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+              }
             }
             
             if (checkAndAwardChallenge()) {
-              createScorePopup('🏆 DAILY CHALLENGE COMPLETE! +100 PTS', CANVAS_WIDTH / 2, 100, '#fbbf24', true);
+              addScore(state, 50, false);
+              createScorePopup('🏆 DAILY CHALLENGE! +50', CANVAS_WIDTH / 2, 100, '#fbbf24', true);
               earnPoints(0, 20);
             }
           } else {
@@ -1122,22 +1167,21 @@ export default function GuardianDefense() {
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
-      const waveBonus = state.wave * 1;
-      const chainBonus = state.waveChainBonus;
-      const perfectBonus = perfectDefense ? 5 : 0;
-      state.score += waveBonus + perfectBonus;
+      const waveBonus = Math.min(state.wave * 2, 30);
+      const perfectBonus = perfectDefense ? 15 : 0;
+      const completionBonus = waveBonus + perfectBonus;
+      addScore(state, completionBonus, false);
       
-      const basePoints = 20;
-      const comboPoints = Math.floor(chainBonus / 2);
+      const comboPoints = Math.min(Math.floor(state.waveChainBonus / 3), 15);
       earnPoints(1, comboPoints);
-      createScorePopup(`+${basePoints + comboPoints * 5} PTS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
+      createScorePopup(`+${completionBonus} WAVE BONUS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
       
       if (perfectDefense) {
         createScorePopup('PERFECT DEFENSE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, '#10B981', true);
         createScorePopup(`+${perfectBonus} BONUS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, '#FBBF24', false);
       }
-      if (chainBonus > 0) {
-        createScorePopup(`CHAIN BONUS +${chainBonus}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
+      if (state.waveChainBonus > 0) {
+        createScorePopup(`CHAIN x${state.chainReactions}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
       }
       
       const regenChance = abilityModifiers.regenChance;
@@ -1160,8 +1204,9 @@ export default function GuardianDefense() {
       
       // Award bonus points for completing a stage (only if cities survived)
       if (isStageComplete && savedCities > 0) {
+        addScore(state, 75, false);
         earnLairPoints();
-        createScorePopup('+50 STAGE BONUS', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90, '#9333ea', true);
+        createScorePopup('+75 STAGE BONUS', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90, '#9333ea', true);
       }
       
       const completeToast = toast({
@@ -2346,14 +2391,17 @@ export default function GuardianDefense() {
   
   return (
     <>
-      <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
+      {!isFullscreen && <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />}
       <section 
-        className={`min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative ${isMobile ? 'overflow-hidden pt-14 pb-4' : 'overflow-y-auto pt-16 pb-24 py-4'}`} 
+        className={isFullscreen 
+          ? "fixed inset-0 bg-black z-50 overflow-hidden"
+          : `min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative ${isMobile ? 'overflow-hidden pt-14 pb-4' : 'overflow-y-auto pt-16 pb-24 py-4'}`
+        } 
         ref={containerRef}
       >
-      <div className={`mx-auto ${isMobile ? 'px-2' : 'px-4 max-w-4xl'}`}>
+      <div className={isFullscreen ? 'w-full h-full flex items-center justify-center' : `mx-auto ${isMobile ? 'px-2' : 'px-4 max-w-4xl'}`}>
         
-        {!isMobile && (
+        {!isMobile && !isFullscreen && (
           <GameHUD
             score={state.score}
             extraStats={[
@@ -2365,7 +2413,7 @@ export default function GuardianDefense() {
           />
         )}
         
-        {!isMobile && (
+        {!isMobile && !isFullscreen && (
           <div className="mt-2 bg-black/40 rounded-lg p-3 border border-yellow-500/30">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs font-bold text-yellow-400 flex items-center gap-1">
