@@ -254,14 +254,18 @@ export function Router() {
   );
 }
 
-const connectionInitialized = { current: false };
+declare global {
+  interface Window {
+    __connMgrInitialized?: boolean;
+  }
+}
 
 function App() {
   useEffect(() => {
-    if (!connectionInitialized.current) {
+    if (!window.__connMgrInitialized) {
       try {
         connectionManager.startAutoCheck(30000);
-        connectionInitialized.current = true;
+        window.__connMgrInitialized = true;
         console.log('[App] Connection manager initialized');
       } catch (error) {
         console.error('[App] Connection manager failed to initialize:', error);
@@ -276,12 +280,7 @@ function App() {
     }
     
     return () => {
-      try {
-        connectionManager.stopAutoCheck();
-        connectionInitialized.current = false;
-      } catch (error) {
-        // Ignore cleanup errors
-      }
+      // Connection manager cleanup handled by its own interval management
     };
   }, []);
 
