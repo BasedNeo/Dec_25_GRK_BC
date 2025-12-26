@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { useGamePoints } from '@/hooks/useGamePoints';
+import { logActivity } from '@/hooks/useActivityHistory';
 import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager, GameStats, GameSettings as BaseGameSettings } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
@@ -797,6 +798,17 @@ export default function GuardianDefense() {
       if (economyPoints > 0) {
         earnEconomyPoints('creature-command', won ? 'lairs' : 'wave', economyPoints);
       }
+      
+      // Log activity
+      logActivity({
+        walletAddress: address,
+        eventType: won ? 'game_completed' : 'wave_failed',
+        details: won 
+          ? `Completed Creature Command with ${finalScore} points, cleared ${wavesCleared} waves` 
+          : `Failed at wave ${state.wave} with ${finalScore} points`,
+        pointsEarned: economyPoints,
+        gameType: 'creature_command'
+      });
     } catch (err) {
       console.error('Failed to submit score:', err);
     }

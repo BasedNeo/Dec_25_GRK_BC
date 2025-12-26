@@ -1,6 +1,7 @@
 import * as cron from 'node-cron';
 import { DatabaseBackupService } from '../../script/backup-database';
 import { pointsBackupService } from './pointsBackupService';
+import { activityBackupService } from './activityBackupService';
 
 export class BackupScheduler {
   private static service: DatabaseBackupService;
@@ -52,6 +53,26 @@ export class BackupScheduler {
     });
     
     this.jobs.set('points-snapshot', pointsJob);
+    
+    const activitySnapshotSchedule = process.env.ACTIVITY_SNAPSHOT_SCHEDULE || '0 4 * * *';
+    
+    console.log(`[BACKUP SCHEDULER] Scheduling activity snapshots: ${activitySnapshotSchedule}`);
+    
+    const activityJob = cron.schedule(activitySnapshotSchedule, async () => {
+      console.log('[BACKUP SCHEDULER] Running activity snapshot...');
+      try {
+        const result = await activityBackupService.createDailySnapshot();
+        if (result.success) {
+          console.log(`[BACKUP SCHEDULER] Activity snapshot completed: ${result.filePath}`);
+        } else {
+          console.error(`[BACKUP SCHEDULER] Activity snapshot failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('[BACKUP SCHEDULER] Activity snapshot failed:', error);
+      }
+    });
+    
+    this.jobs.set('activity-snapshot', activityJob);
     this.initialized = true;
     
     console.log('[BACKUP SCHEDULER] Initialized (backups will run on schedule only)');

@@ -30,6 +30,7 @@ import { useDailyRiddles, useDailyProgress, useSubmitRiddleAttempt, useRiddleSta
 import { TypewriterText, MilestoneMap } from '@/components/riddle';
 import { useRiddleMilestoneStore } from '@/store/riddleMilestoneStore';
 import { useGamePoints } from '@/hooks/useGamePoints';
+import { logActivity } from '@/hooks/useActivityHistory';
 
 const RIDDLES = [
   { level: 1, question: "I am the token mined from rare ore, powering the entire galaxy. What am I?", answers: ["based", "$based", "basedai"], hint: "The native token of the ecosystem" },
@@ -475,6 +476,15 @@ export function RiddleQuest() {
         const economyPoints = isLastRiddle ? 50 : 10;
         earnEconomyPoints('riddle-quest', isLastRiddle ? 'challenge' : 'riddle', economyPoints);
         
+        // Log activity
+        logActivity({
+          walletAddress: address,
+          eventType: isLastRiddle ? 'challenge_completed' : 'riddle_solved',
+          details: isLastRiddle ? 'Completed daily riddle challenge' : `Solved daily riddle ${dailyRiddleIndex + 1}`,
+          pointsEarned: economyPoints,
+          gameType: 'riddle_quest'
+        });
+        
         setTimeout(() => {
           setFeedback(null);
           setAnswer('');
@@ -488,6 +498,15 @@ export function RiddleQuest() {
       } else {
         setFeedback('wrong');
         setIsShaking(true);
+        
+        // Log failed attempt
+        logActivity({
+          walletAddress: address,
+          eventType: 'riddle_failed',
+          details: `Failed daily riddle ${dailyRiddleIndex + 1}`,
+          gameType: 'riddle_quest'
+        });
+        
         setTimeout(() => {
           setFeedback(null);
           setIsShaking(false);
