@@ -818,6 +818,7 @@ export default function GuardianDefense() {
     state.waveTransition = false;
     state.waveChainBonus = 0;
     state.wavePointsEarned = 0;
+    state.chainReactions = 0;
     state.missilesRemaining = config.count;
     state.shotsRemaining = getShotsForWave(globalWave);
     
@@ -984,24 +985,36 @@ export default function GuardianDefense() {
             
             incrementSurvives(1);
             
+            // Base creature points + combo bonus (scales with chain)
             const basePoints = CREATURE_POINTS[missile.creatureType];
-            const chainBonus = Math.min(state.chainReactions, 5);
-            const totalPoints = basePoints + chainBonus;
+            const comboBonus = Math.min(state.chainReactions, 5);
+            const totalPoints = basePoints + comboBonus;
             const actualPoints = addScore(state, totalPoints, true);
             
             createExplosion(missile.position, true, abilityModifiers.explosionRadiusMultiplier);
             
             const creatureName = CREATURE_NAMES[missile.creatureType];
             if (actualPoints > 0) {
-              const actualChainBonus = Math.max(0, Math.min(chainBonus, actualPoints - basePoints));
-              state.waveChainBonus += actualChainBonus;
-              state.chainReactions++;
+              // Only increment chain and track combo if we got full points
+              if (actualPoints >= totalPoints) {
+                state.waveChainBonus += comboBonus;
+                state.chainReactions++;
+              } else {
+                // Cap was hit - reset chain
+                state.chainReactions = 0;
+              }
               
-              if (state.chainReactions > 1) {
+              if (comboBonus > 0 && actualPoints >= totalPoints) {
                 createScorePopup(`+${actualPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], true);
                 playSound('chain');
               } else {
-                createScorePopup(`+${actualPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+                createScorePopup(`+${actualPoints}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+              }
+            } else {
+              // No points awarded (cap hit) - reset chain
+              state.chainReactions = 0;
+              if (state.score >= MAX_GAME_SCORE) {
+                stopAllSounds();
               }
             }
             
@@ -1167,21 +1180,31 @@ export default function GuardianDefense() {
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
-      const waveBonus = Math.min(state.wave * 2, 30);
-      const perfectBonus = perfectDefense ? 15 : 0;
+      // Capture combo values before reset for display
+      const finalChainCount = state.chainReactions;
+      const finalWaveCombo = state.waveChainBonus;
+      
+      // Clear combo state at wave end to prevent carry-over
+      state.chainReactions = 0;
+      state.waveChainBonus = 0;
+      
+      // Wave bonus scales: 50 base + (wave * 2), max 100 per wave
+      const waveBonus = Math.min(50 + state.wave * 2, 100);
+      const perfectBonus = perfectDefense ? 25 : 0;
       const completionBonus = waveBonus + perfectBonus;
-      addScore(state, completionBonus, false);
+      const actualWavePoints = addScore(state, completionBonus, false);
       
-      const comboPoints = Math.min(Math.floor(state.waveChainBonus / 3), 15);
+      const comboPoints = Math.min(Math.floor(finalWaveCombo / 3), 15);
       earnPoints(1, comboPoints);
-      createScorePopup(`+${completionBonus} WAVE BONUS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
-      
-      if (perfectDefense) {
-        createScorePopup('PERFECT DEFENSE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, '#10B981', true);
-        createScorePopup(`+${perfectBonus} BONUS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, '#FBBF24', false);
+      if (actualWavePoints > 0) {
+        createScorePopup(`+${actualWavePoints} WAVE CLEAR`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
       }
-      if (state.waveChainBonus > 0) {
-        createScorePopup(`CHAIN x${state.chainReactions}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
+      
+      if (perfectDefense && actualWavePoints >= perfectBonus) {
+        createScorePopup('PERFECT DEFENSE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, '#10B981', true);
+      }
+      if (finalWaveCombo > 0) {
+        createScorePopup(`CHAIN x${finalChainCount}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
       }
       
       const regenChance = abilityModifiers.regenChance;
@@ -1204,9 +1227,11 @@ export default function GuardianDefense() {
       
       // Award bonus points for completing a stage (only if cities survived)
       if (isStageComplete && savedCities > 0) {
-        addScore(state, 75, false);
+        const stagePoints = addScore(state, 50, false);
         earnLairPoints();
-        createScorePopup('+75 STAGE BONUS', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90, '#9333ea', true);
+        if (stagePoints > 0) {
+          createScorePopup(`+${stagePoints} LAIR SECURED`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90, '#9333ea', true);
+        }
       }
       
       const completeToast = toast({

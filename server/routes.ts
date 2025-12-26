@@ -1114,7 +1114,7 @@ export async function registerRoutes(
   
   // Maximum scores per game type (server-side validation, 10% buffer for bonuses)
   const MAX_SCORES: Record<string, number> = {
-    'guardian-defense': 55000,
+    'guardian-defense': 5000,
     'guardian-solitaire': 55000,
     'space-defender': 110000,
     'asteroid-mining': 55000,
