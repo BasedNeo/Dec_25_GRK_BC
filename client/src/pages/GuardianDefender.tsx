@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useGameAccess } from '@/hooks/useGameAccess';
 import { useGameScoresLocal, RANKS } from '@/hooks/useGameScoresLocal';
+import { useGamePoints } from '@/hooks/useGamePoints';
 import { createGame, updateGame, applyInput, spawnWave, updateLander, applyLanderInput, getCanvasSize, GameState } from '@/lib/gameEngine';
 import { render } from '@/lib/gameRenderer';
 import { 
@@ -151,6 +152,7 @@ export function GuardianDefender() {
   const { openConnectModal } = useConnectModal();
   const { access, recordPlay, isHolder, isLoading, cooldown, holderPerks } = useGameAccess();
   const { submitScore, myStats, leaderboard } = useGameScoresLocal();
+  const { earnPoints: earnEconomyPoints } = useGamePoints();
 
   useEffect(() => {
     const resize = () => setCanvasSize(getCanvasSize());
@@ -219,6 +221,17 @@ export function GuardianDefender() {
 
       if (state.phase === 'gameOver' || state.phase === 'complete') {
         submitScore(state.score, state.wave);
+        
+        // Award unified economy points: 20 per pad destroyed + 50 for completing the game
+        const isComplete = state.phase === 'complete';
+        const wavePoints = Math.min(state.wave * 20, 150);
+        const completionBonus = isComplete ? 50 : 0;
+        const economyPoints = wavePoints + completionBonus;
+        
+        if (economyPoints > 0) {
+          earnEconomyPoints('retro-defender', isComplete ? 'task' : 'pad', economyPoints);
+        }
+        
         setPhase('ended');
         animationFrameRef.current = null;
         return;
@@ -234,7 +247,7 @@ export function GuardianDefender() {
         animationFrameRef.current = null;
       }
     };
-  }, [phase, canvasSize, isHolder, submitScore]);
+  }, [phase, canvasSize, isHolder, submitScore, earnEconomyPoints]);
 
   const landerCheatRef = useRef<{ lastL: number; count: number }>({ lastL: 0, count: 0 });
 

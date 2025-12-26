@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Star, Clock, Target, TrendingUp, Play, Home, Share2, 
-  Award, Zap, Trophy, Crown, LucideIcon 
+  Award, Zap, Trophy, Crown, LucideIcon, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,9 @@ import {
   getScorePerformanceTier,
   PerformanceTier 
 } from '@/lib/gameRegistry';
-import { InitialsEntry } from './InitialsEntry';
 import { useArcadeLeaderboard } from '@/hooks/useArcadeLeaderboard';
+import { useGuardianProfile } from '@/hooks/useGuardianProfile';
+import { useAccount } from 'wagmi';
 
 /**
  * Additional stat to display in victory screen
@@ -53,9 +54,12 @@ export interface VictoryScreenProps {
   // Customization
   formatTime?: (seconds: number) => string;
   
-  // Leaderboard integration
+  // Leaderboard integration (auto-save with wallet name, no initials needed)
   showInitialsEntry?: boolean;
   onInitialsSubmit?: (initials: string, rank: number | null) => void;
+  
+  // Wallet name override (optional, auto-detected from profile)
+  walletDisplayName?: string;
 }
 
 /**
@@ -126,29 +130,42 @@ export function VictoryScreen({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   },
   showInitialsEntry = true,
-  onInitialsSubmit
+  onInitialsSubmit,
+  walletDisplayName
 }: VictoryScreenProps) {
   const config = getGameConfig(gameType);
   const tier = getScorePerformanceTier(gameType, score);
   const message = PERFORMANCE_MESSAGES[tier];
   const MessageIcon = message.icon;
-  const { submitScore, playerInitials, saveInitials } = useArcadeLeaderboard();
+  const { submitScore, saveInitials } = useArcadeLeaderboard();
+  const { profile, getDisplayName } = useGuardianProfile();
+  const { address } = useAccount();
   
-  const [showingInitials, setShowingInitials] = useState(showInitialsEntry);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
+  const [hasAutoSaved, setHasAutoSaved] = useState(false);
+  
+  // Get display name: prop override > profile name > wallet suffix > "Guardian"
+  const displayName = walletDisplayName 
+    || getDisplayName() 
+    || (address ? `Guardian#${address.slice(-4).toUpperCase()}` : 'Guardian');
+  
+  // Auto-save score on mount using wallet name
+  useEffect(() => {
+    if (!hasAutoSaved && displayName) {
+      // Use first 3 chars of display name as "initials" for leaderboard compatibility
+      const initials = displayName.replace('#', '').slice(0, 3).toUpperCase();
+      saveInitials(initials);
+      const result = submitScore(gameType, score, initials);
+      setLeaderboardRank(result.rank);
+      setHasAutoSaved(true);
+      onInitialsSubmit?.(initials, result.rank);
+    }
+  }, [displayName, hasAutoSaved, gameType, score, saveInitials, submitScore, onInitialsSubmit]);
   
   // Calculate improvement percentage
   const improvement = personalBest && personalBest > 0
     ? ((score - personalBest) / personalBest) * 100
     : 0;
-  
-  const handleInitialsSubmit = (initials: string) => {
-    saveInitials(initials);
-    const result = submitScore(gameType, score, initials);
-    setLeaderboardRank(result.rank);
-    setShowingInitials(false);
-    onInitialsSubmit?.(initials, result.rank);
-  };
   
   return (
     <AnimatePresence>
@@ -224,23 +241,19 @@ export function VictoryScreen({
               </p>
             )}
             
-            {leaderboardRank && leaderboardRank <= 10 && !showingInitials && (
+            {leaderboardRank && leaderboardRank <= 10 && (
               <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 mt-2" data-testid="leaderboard-rank-badge">
                 🏆 Leaderboard Rank #{leaderboardRank}
               </Badge>
             )}
+            
+            {/* Display saved-as name */}
+            <div className="flex items-center justify-center gap-2 mt-3 text-gray-400 text-sm" data-testid="saved-as">
+              <User className="w-4 h-4" />
+              <span>Saved as: <span className="text-cyan-400 font-medium">{displayName}</span></span>
+            </div>
           </motion.div>
           
-          {showingInitials ? (
-            <div className="mb-6">
-              <InitialsEntry 
-                onSubmit={handleInitialsSubmit}
-                score={score}
-                defaultInitials={playerInitials}
-              />
-            </div>
-          ) : (
-          <>
           {/* Stats Grid */}
           {(time !== undefined || moves !== undefined || extraStats.length > 0) && (
             <div className="grid grid-cols-2 gap-3 mb-6" data-testid="stats-grid">
@@ -340,8 +353,6 @@ export function VictoryScreen({
               Exit
             </Button>
           </div>
-          </>
-          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

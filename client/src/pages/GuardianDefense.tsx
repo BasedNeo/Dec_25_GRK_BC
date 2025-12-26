@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useGameScoresLocal } from '@/hooks/useGameScoresLocal';
 import { useGameAccess } from '@/hooks/useGameAccess';
+import { useGamePoints } from '@/hooks/useGamePoints';
 import { trackEvent } from '@/lib/analytics';
 import { GameStorageManager, GameStats, GameSettings as BaseGameSettings } from '@/lib/gameStorage';
 import { getGameConfig } from '@/lib/gameRegistry';
@@ -427,6 +428,7 @@ export default function GuardianDefense() {
   const [, setLocation] = useLocation();
   const { submitScore } = useGameScoresLocal();
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
+  const { earnPoints: earnEconomyPoints } = useGamePoints();
   
   const abilityModifiers = useAbilityModifiers();
   const { earnPoints, earnLairPoints, resetForNewGame: resetAbilityPoints, hydrateFromDB, setConnectedWallet } = useCreatureAbilitiesStore();
@@ -742,10 +744,20 @@ export default function GuardianDefense() {
       setPlaysToday(prev => prev + 1);
       updateProgress(state.currentStage, state.globalWave);
       trackEvent('game_complete', 'Game', `Guardian Defense - Stage ${state.currentStage} Wave ${state.stageWave} - ${finalScore} pts`);
+      
+      // Award economy points: 10 per wave cleared + 50 if won (lair bonus), max 500/day
+      const wavesCleared = Math.max(0, state.wave - 1);
+      const wavePoints = Math.min(wavesCleared * 10, 200);
+      const winBonus = won ? 50 : 0;
+      const economyPoints = wavePoints + winBonus;
+      
+      if (economyPoints > 0) {
+        earnEconomyPoints('creature-command', won ? 'lairs' : 'wave', economyPoints);
+      }
     } catch (err) {
       console.error('Failed to submit score:', err);
     }
-  }, [address, stats, gameConfig.scoring.maxScore, submitScore, playSound, toast, updateProgress]);
+  }, [address, stats, gameConfig.scoring.maxScore, submitScore, playSound, toast, updateProgress, earnEconomyPoints]);
 
   const spawnWave = useCallback((globalWave: number) => {
     const state = gameStateRef.current;

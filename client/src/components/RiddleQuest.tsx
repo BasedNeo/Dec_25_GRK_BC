@@ -29,6 +29,7 @@ import { RiddleLeaderboard } from '@/components/RiddleLeaderboard';
 import { useDailyRiddles, useDailyProgress, useSubmitRiddleAttempt, useRiddleStats } from '@/hooks/useRiddleQuest';
 import { TypewriterText, MilestoneMap } from '@/components/riddle';
 import { useRiddleMilestoneStore } from '@/store/riddleMilestoneStore';
+import { useGamePoints } from '@/hooks/useGamePoints';
 
 const RIDDLES = [
   { level: 1, question: "I am the token mined from rare ore, powering the entire galaxy. What am I?", answers: ["based", "$based", "basedai"], hint: "The native token of the ecosystem" },
@@ -161,6 +162,7 @@ export function RiddleQuest() {
   const { data: dailyProgress } = useDailyProgress(address);
   const { data: riddleStats } = useRiddleStats(address);
   const submitAttempt = useSubmitRiddleAttempt();
+  const { earnPoints: earnEconomyPoints } = useGamePoints();
 
   useEffect(() => {
     if (address) {
@@ -467,6 +469,11 @@ export function RiddleQuest() {
             ? ['#a855f7', '#d946ef', '#ffffff']
             : ['#00ffff', '#bf00ff', '#ffffff']
         });
+        
+        // Award unified economy points: 10 per riddle, 50 for challenge completion
+        const isLastRiddle = dailyRiddleIndex >= (dailySet?.riddleCount || 5) - 1;
+        const economyPoints = isLastRiddle ? 50 : 10;
+        earnEconomyPoints('riddle-quest', isLastRiddle ? 'challenge' : 'riddle', economyPoints);
         
         setTimeout(() => {
           setFeedback(null);
