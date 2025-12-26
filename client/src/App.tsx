@@ -272,13 +272,6 @@ function App() {
       }
     }
     
-    const loader = document.getElementById('app-loader');
-    if (loader) {
-      loader.style.transition = 'opacity 0.3s ease-out';
-      loader.style.opacity = '0';
-      setTimeout(() => loader.remove(), 300);
-    }
-    
     return () => {
       // Connection manager cleanup handled by its own interval management
     };

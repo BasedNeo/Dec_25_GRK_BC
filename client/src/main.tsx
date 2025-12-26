@@ -37,6 +37,7 @@ window.addEventListener('error', (event) => {
 
 import { createRoot } from "react-dom/client";
 import { ErrorBoundary } from 'react-error-boundary';
+import { Suspense } from 'react';
 import App from "./App";
 import "./index.css";
 import { initAnalytics } from "@/lib/analytics";
@@ -128,26 +129,84 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Service Worker Deregistration - clear stale caches on every load
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(reg => reg.unregister());
-  });
-  
-  if ('caches' in window) {
-    caches.keys().then(names => {
-      names.forEach(name => caches.delete(name));
-    });
+// Root loading fallback for Suspense - prevents white flash
+function RootLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-center">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-cyan-500/30 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-2 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+        </div>
+        <p className="text-white text-xl font-orbitron font-semibold mb-2">Loading...</p>
+        <p className="text-cyan-300/70 text-sm">Connecting to the Giga Brain Galaxy</p>
+      </div>
+    </div>
+  );
+}
+
+// Deregister service workers and clear caches before app mount
+async function deregisterServiceWorkers(): Promise<void> {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(reg => reg.unregister()));
+      console.log('[SW] Deregistered', registrations.length, 'service workers');
+    }
+    
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      if (cacheNames.length > 0) {
+        console.log('[SW] Cleared', cacheNames.length, 'caches');
+      }
+    }
+  } catch (err) {
+    console.warn('[SW] Cleanup failed:', err);
   }
 }
 
-// Suppress Vite HMR warnings in dev
-if (import.meta.hot) {
-  import.meta.hot.on('vite:beforeUpdate', () => false);
+// Remove the HTML loader element
+function removeAppLoader(): void {
+  const loader = document.getElementById('app-loader');
+  if (loader) {
+    loader.style.transition = 'opacity 0.3s ease-out';
+    loader.style.opacity = '0';
+    setTimeout(() => loader.remove(), 300);
+  }
 }
 
-createRoot(document.getElementById("root")!).render(
-  <ErrorBoundary FallbackComponent={ErrorFallback}>
-    <App />
-  </ErrorBoundary>
-);
+// Bootstrap the application
+async function bootstrap(): Promise<void> {
+  // 1. Deregister service workers BEFORE render
+  await deregisterServiceWorkers();
+  
+  // 2. Suppress Vite HMR warnings in dev
+  if (import.meta.hot) {
+    import.meta.hot.on('vite:beforeUpdate', () => false);
+  }
+  
+  // 3. Mount the React app with Suspense wrapper
+  const root = createRoot(document.getElementById("root")!);
+  
+  root.render(
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<RootLoadingFallback />}>
+        <App />
+      </Suspense>
+    </ErrorBoundary>
+  );
+  
+  // 4. Remove HTML loader after React has mounted
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      removeAppLoader();
+    });
+  });
+}
+
+// Start the app
+bootstrap().catch(err => {
+  console.error('[BOOTSTRAP] Failed to start app:', err);
+});
