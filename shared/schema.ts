@@ -515,3 +515,26 @@ export const insertRiddleAttemptSchema = createInsertSchema(riddleAttempts).omit
 
 export type InsertRiddleAttempt = z.infer<typeof insertRiddleAttemptSchema>;
 export type RiddleAttempt = typeof riddleAttempts.$inferSelect;
+
+// Creature Command Progress - stores player ability levels and points
+export const creatureProgress = pgTable('creature_progress', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull().unique(),
+  totalPoints: integer('total_points').default(0).notNull(),
+  piercingLevel: integer('piercing_level').default(0).notNull(),
+  shieldLevel: integer('shield_level').default(0).notNull(),
+  rapidFireLevel: integer('rapid_fire_level').default(0).notNull(),
+  explosiveLevel: integer('explosive_level').default(0).notNull(),
+  slowFieldLevel: integer('slow_field_level').default(0).notNull(),
+  multiBubbleLevel: integer('multi_bubble_level').default(0).notNull(),
+  regenBurstLevel: integer('regen_burst_level').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const insertCreatureProgressSchema = createInsertSchema(creatureProgress).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertCreatureProgress = z.infer<typeof insertCreatureProgressSchema>;
+export type CreatureProgress = typeof creatureProgress.$inferSelect;
