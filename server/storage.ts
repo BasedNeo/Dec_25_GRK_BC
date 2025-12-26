@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -73,6 +73,12 @@ export interface IStorage {
   
   // Points Leaderboard (with custom names from guardian profiles)
   getPointsLeaderboard(limit?: number): Promise<(PointsSummary & { customName?: string | null })[]>;
+  
+  // Activity Logs
+  insertActivityLog(data: InsertActivityLog): Promise<ActivityLog>;
+  getActivityLogs(limit?: number): Promise<ActivityLog[]>;
+  getActivityLogsByWallet(walletAddress: string, limit?: number): Promise<ActivityLog[]>;
+  exportActivityLogsForBackup(): Promise<ActivityLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1287,6 +1293,38 @@ export class DatabaseStorage implements IStorage {
 
   async getAllPointsSummaries(): Promise<PointsSummary[]> {
     return db.select().from(pointsSummary);
+  }
+
+  // Activity Logs
+  async insertActivityLog(data: InsertActivityLog): Promise<ActivityLog> {
+    const [result] = await db.insert(activityLogs).values({
+      ...data,
+      walletAddress: data.walletAddress.toLowerCase()
+    }).returning();
+    return result;
+  }
+
+  async getActivityLogs(limit: number = 100): Promise<ActivityLog[]> {
+    return db.select()
+      .from(activityLogs)
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async getActivityLogsByWallet(walletAddress: string, limit: number = 50): Promise<ActivityLog[]> {
+    return db.select()
+      .from(activityLogs)
+      .where(eq(activityLogs.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async exportActivityLogsForBackup(): Promise<ActivityLog[]> {
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    return db.select()
+      .from(activityLogs)
+      .where(gte(activityLogs.createdAt, thirtyMinutesAgo))
+      .orderBy(desc(activityLogs.createdAt));
   }
 }
 

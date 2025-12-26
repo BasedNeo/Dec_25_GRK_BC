@@ -221,6 +221,28 @@ export const analyticsAggregates = pgTable('analytics_aggregates', {
 
 export type AnalyticsAggregate = typeof analyticsAggregates.$inferSelect;
 
+// Activity Logs Table - Persistent user activity tracking
+export const activityLogs = pgTable('activity_logs', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+  details: text('details'),
+  pointsEarned: integer('points_earned').default(0),
+  gameType: varchar('game_type', { length: 30 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('activity_logs_wallet_idx').on(table.walletAddress),
+  createdAtIdx: index('activity_logs_created_at_idx').on(table.createdAt),
+}));
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+
 export const featureFlags = pgTable('feature_flags', {
   id: serial('id').primaryKey(),
   key: varchar('key', { length: 50 }).notNull().unique(),

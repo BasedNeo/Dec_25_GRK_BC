@@ -3366,5 +3366,67 @@ export async function registerRoutes(
     }
   });
 
+  // Activity Logs - Persistent user activity tracking
+  const activityLogSchema = z.object({
+    walletAddress: z.string().min(1),
+    eventType: z.enum(['riddle_solved', 'riddle_failed', 'wave_survived', 'wave_failed', 'game_completed', 'points_earned', 'level_up', 'challenge_completed']),
+    details: z.string().optional(),
+    pointsEarned: z.number().int().min(0).optional(),
+    gameType: z.enum(['riddle_quest', 'creature_command', 'retro_defender', 'guardian_defense']).optional()
+  });
+
+  app.post('/api/activity/log', gameLimiter, async (req, res) => {
+    try {
+      const parsed = activityLogSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, eventType, details, pointsEarned, gameType } = parsed.data;
+
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const log = await storage.insertActivityLog({
+        walletAddress,
+        eventType,
+        details: details || null,
+        pointsEarned: pointsEarned || 0,
+        gameType: gameType || null
+      });
+
+      // Broadcast to WebSocket subscribers
+      wsManager.broadcastToWallet(walletAddress, {
+        type: 'activity_log',
+        data: log
+      });
+
+      res.json({ success: true, log });
+    } catch (error) {
+      console.error('Insert activity log failed:', error);
+      res.status(500).json({ error: 'Failed to log activity' });
+    }
+  });
+
+  app.get('/api/activity/logs', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const walletAddress = req.query.wallet as string;
+
+      let logs;
+      if (walletAddress && isValidIdentifier(walletAddress)) {
+        logs = await storage.getActivityLogsByWallet(walletAddress, limit);
+      } else {
+        logs = await storage.getActivityLogs(limit);
+      }
+
+      res.json({ logs, count: logs.length });
+    } catch (error) {
+      console.error('Get activity logs failed:', error);
+      res.status(500).json({ error: 'Failed to get activity logs' });
+    }
+  });
+
   return httpServer;
 }
