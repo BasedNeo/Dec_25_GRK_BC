@@ -3,19 +3,20 @@ import { persist } from 'zustand/middleware';
 import { 
   AbilityId, 
   ABILITY_DEFINITIONS, 
-  ABILITY_LEVEL_EFFECTS,
   POINTS_PER_WAVE,
-  STARTING_BASED_BALANCE,
+  COMBO_BONUS_MULTIPLIER,
+  STARTING_POINTS,
   getAbilityModifier,
+  getUpgradeCost,
 } from '@/shared/creatureAbilities';
 
 interface CreatureAbilitiesState {
   abilityLevels: Record<AbilityId, number>;
-  points: number;
-  basedBalance: number;
+  totalPoints: number;
+  sessionPoints: number;
   selectedAbility: AbilityId | null;
   
-  earnPoints: (wavesCleared: number) => void;
+  earnPoints: (wavesCleared: number, comboBonus?: number) => void;
   upgradeAbility: (abilityId: AbilityId) => boolean;
   setSelectedAbility: (abilityId: AbilityId | null) => void;
   resetForNewGame: () => void;
@@ -44,15 +45,17 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
   persist(
     (set, get) => ({
       abilityLevels: { ...initialAbilityLevels },
-      points: 0,
-      basedBalance: STARTING_BASED_BALANCE,
+      totalPoints: STARTING_POINTS,
+      sessionPoints: 0,
       selectedAbility: null,
       
-      earnPoints: (wavesCleared: number) => {
-        const earned = wavesCleared * POINTS_PER_WAVE;
+      earnPoints: (wavesCleared: number, comboBonus: number = 0) => {
+        const basePoints = wavesCleared * POINTS_PER_WAVE;
+        const bonusPoints = comboBonus * COMBO_BONUS_MULTIPLIER;
+        const earned = basePoints + bonusPoints;
         set((state) => ({
-          points: state.points + earned,
-          basedBalance: state.basedBalance + earned,
+          totalPoints: state.totalPoints + earned,
+          sessionPoints: state.sessionPoints + earned,
         }));
       },
       
@@ -65,7 +68,8 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
           return false;
         }
         
-        if (state.basedBalance < definition.costPerLevel) {
+        const cost = getUpgradeCost(currentLevel);
+        if (state.totalPoints < cost) {
           return false;
         }
         
@@ -74,7 +78,7 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
             ...s.abilityLevels,
             [abilityId]: currentLevel + 1,
           },
-          basedBalance: s.basedBalance - definition.costPerLevel,
+          totalPoints: s.totalPoints - cost,
         }));
         
         return true;
@@ -86,15 +90,15 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
       
       resetForNewGame: () => {
         set({
-          points: 0,
+          sessionPoints: 0,
         });
       },
       
       resetAll: () => {
         set({
           abilityLevels: { ...initialAbilityLevels },
-          points: 0,
-          basedBalance: STARTING_BASED_BALANCE,
+          totalPoints: STARTING_POINTS,
+          sessionPoints: 0,
           selectedAbility: null,
         });
       },
@@ -138,7 +142,7 @@ export const useCreatureAbilitiesStore = create<CreatureAbilitiesState>()(
       name: 'creature-abilities-storage',
       partialize: (state) => ({
         abilityLevels: state.abilityLevels,
-        basedBalance: state.basedBalance,
+        totalPoints: state.totalPoints,
       }),
     }
   )

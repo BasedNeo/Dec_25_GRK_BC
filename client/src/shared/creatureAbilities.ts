@@ -25,82 +25,84 @@ export interface AbilityLevelEffect {
   modifier: number;
 }
 
+export const UPGRADE_COSTS = [100, 200, 300];
+
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   piercing_bubbles: {
     id: 'piercing_bubbles',
-    name: 'Piercing Bubbles',
-    creatureNumber: 1,
-    creatureName: 'Neonstrike Hackers',
+    name: 'Crystal Piercing',
+    creatureNumber: 2,
+    creatureName: 'Crystal',
     description: 'Explosions can destroy multiple missiles',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '⚡',
+    costPerLevel: 100,
+    icon: '💎',
     color: '#00ffff',
   },
   shield_bubbles: {
     id: 'shield_bubbles',
-    name: 'Shield Bubbles',
-    creatureNumber: 2,
-    creatureName: 'Duststrike Elites',
+    name: 'Midnight Shield',
+    creatureNumber: 3,
+    creatureName: 'Midnight',
     description: 'Protect adjacent lairs from damage',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '🛡️',
+    costPerLevel: 100,
+    icon: '🌙',
     color: '#a855f7',
   },
   rapid_fire: {
     id: 'rapid_fire',
-    name: 'Rapid Fire',
-    creatureNumber: 3,
-    creatureName: 'Stormchasers',
-    description: 'Faster missile reload speed',
+    name: 'Based Standard',
+    creatureNumber: 1,
+    creatureName: 'Based',
+    description: 'Standard bubble - faster reload',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '🔥',
-    color: '#ef4444',
+    costPerLevel: 100,
+    icon: '🔵',
+    color: '#3b82f6',
   },
   explosive_radius: {
     id: 'explosive_radius',
-    name: 'Explosive Radius',
-    creatureNumber: 4,
-    creatureName: 'Megavolt Titans',
+    name: 'Golden Blast',
+    creatureNumber: 5,
+    creatureName: 'Golden',
     description: 'Larger explosion radius',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '💥',
-    color: '#f97316',
+    costPerLevel: 100,
+    icon: '✨',
+    color: '#f59e0b',
   },
   slow_field: {
     id: 'slow_field',
-    name: 'Slow Field',
-    creatureNumber: 5,
-    creatureName: 'Frostbyte Sentinels',
+    name: 'Jelly Slow',
+    creatureNumber: 4,
+    creatureName: 'Jelly',
     description: 'Slow enemies in explosion radius',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '❄️',
-    color: '#3b82f6',
+    costPerLevel: 100,
+    icon: '🪼',
+    color: '#ec4899',
   },
   multi_bubble: {
     id: 'multi_bubble',
-    name: 'Multi-Bubble',
+    name: 'Pearl Multi-Shot',
     creatureNumber: 6,
-    creatureName: 'Quantum Shifters',
+    creatureName: 'Pearl',
     description: 'Fire multiple missiles at once',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '🎯',
-    color: '#22c55e',
+    costPerLevel: 100,
+    icon: '🦪',
+    color: '#f8fafc',
   },
   regen_burst: {
     id: 'regen_burst',
-    name: 'Regen Burst',
+    name: 'Ultra Based Regen',
     creatureNumber: 7,
-    creatureName: 'Phoenix Guardians',
-    description: 'Restore destroyed lairs',
+    creatureName: 'Ultra Based',
+    description: 'Restore destroyed lairs on wave clear',
     maxLevel: 3,
-    costPerLevel: 20,
-    icon: '💚',
+    costPerLevel: 100,
+    icon: '🌟',
     color: '#10b981',
   },
 };
@@ -144,7 +146,15 @@ export const ABILITY_LEVEL_EFFECTS: Record<AbilityId, AbilityLevelEffect[]> = {
 };
 
 export const POINTS_PER_WAVE = 10;
-export const STARTING_BASED_BALANCE = 100;
+export const COMBO_BONUS_MULTIPLIER = 5;
+export const STARTING_POINTS = 0;
+
+export function getUpgradeCost(currentLevel: number): number {
+  if (currentLevel === 0) return 100;
+  if (currentLevel === 1) return 200;
+  if (currentLevel === 2) return 300;
+  return 0;
+}
 
 export function getAbilityModifier(abilityId: AbilityId, level: number): number {
   if (level <= 0) return 0;

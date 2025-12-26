@@ -985,8 +985,6 @@ export default function GuardianDefense() {
       state.waveActive = false;
       state.waveComplete = true;
       
-      earnPoints(1);
-      
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
@@ -994,6 +992,11 @@ export default function GuardianDefense() {
       const chainBonus = state.waveChainBonus;
       const perfectBonus = perfectDefense ? 5 : 0;
       state.score += waveBonus + perfectBonus;
+      
+      const basePoints = 10;
+      const comboPoints = Math.floor(chainBonus / 2);
+      earnPoints(1, comboPoints);
+      createScorePopup(`+${basePoints + comboPoints * 5} PTS`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
       
       if (perfectDefense) {
         createScorePopup('PERFECT DEFENSE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, '#10B981', true);
