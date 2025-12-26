@@ -28,6 +28,8 @@ import {
 } from '@/lib/oracleClient';
 import { RiddleLeaderboard } from '@/components/RiddleLeaderboard';
 import { useDailyRiddles, useDailyProgress, useSubmitRiddleAttempt, useRiddleStats } from '@/hooks/useRiddleQuest';
+import { TypewriterText, MilestoneMap } from '@/components/riddle';
+import { useRiddleMilestoneStore } from '@/store/riddleMilestoneStore';
 
 const RIDDLES = [
   { level: 1, question: "I am the token mined from rare ore, powering the entire galaxy. What am I?", answers: ["based", "$based", "basedai"], hint: "The native token of the ecosystem" },
@@ -815,6 +817,19 @@ export function RiddleQuest() {
               <RiddleLeaderboard compact limit={5} />
             </div>
           </motion.div>
+          
+          {/* Milestone Journey Map */}
+          <motion.div
+            className="mt-8 max-w-xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.3 }}
+          >
+            <MilestoneMap 
+              currentPoints={riddleStats?.stats?.points || progress?.points || 0}
+              totalSolves={riddleStats?.stats?.totalSolves || progress?.completedLevels?.length || 0}
+            />
+          </motion.div>
         </motion.div>
       </div>
     );
@@ -1018,7 +1033,11 @@ export function RiddleQuest() {
                   
                   <div className="mb-6 py-4 relative">
                     <p className="text-lg md:text-xl text-gray-200 font-medium leading-relaxed text-center italic">
-                      {oracleRiddle}
+                      <TypewriterText 
+                        text={oracleRiddle} 
+                        delay={50}
+                        className="text-gray-200"
+                      />
                     </p>
                   </div>
                   
@@ -1196,7 +1215,11 @@ export function RiddleQuest() {
                   
                   <div className="mb-8 py-4 relative">
                     <p className="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
-                      "{currentDailyRiddle.question}"
+                      "<TypewriterText 
+                        text={currentDailyRiddle.question} 
+                        delay={50}
+                        className="text-white"
+                      />"
                     </p>
                   </div>
                   
@@ -1368,7 +1391,11 @@ export function RiddleQuest() {
                   
                   <div className="mb-8 py-4 relative">
                     <p className="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
-                      "{currentRiddle.question}"
+                      "<TypewriterText 
+                        text={currentRiddle.question} 
+                        delay={50}
+                        className="text-white"
+                      />"
                     </p>
                   </div>
                 
