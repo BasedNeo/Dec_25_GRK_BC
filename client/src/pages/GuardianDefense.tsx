@@ -653,16 +653,28 @@ export default function GuardianDefense() {
     if (!address) return;
     const state = gameStateRef.current;
     
+    // Bot protection: minimum play duration check
+    const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
+    
     const citiesBonus = state.cities.filter(c => c.active).length * 5;
     const accuracyBonus = state.accuracy.shots > 0 
       ? Math.floor((state.accuracy.hits / state.accuracy.shots) * 10)
       : 0;
     const waveBonus = (state.wave - 1) * 2;
     
-    const finalScore = Math.min(
+    let finalScore = Math.min(
       state.score + citiesBonus + accuracyBonus + waveBonus,
       gameConfig.scoring.maxScore
     );
+    
+    if (playDuration < gameConfig.minPlayDuration) {
+      toast({
+        title: "Play Too Fast",
+        description: `Game must be played for at least ${gameConfig.minPlayDuration} seconds for valid score`,
+        variant: "destructive"
+      });
+      finalScore = 0;
+    }
 
     const newStats: GameStats = { ...stats };
     newStats.gamesPlayed++;
@@ -696,7 +708,7 @@ export default function GuardianDefense() {
     } catch (err) {
       console.error('Failed to submit score:', err);
     }
-  }, [address, stats, gameConfig.scoring.maxScore, submitScore, playSound, toast, updateProgress]);
+  }, [address, stats, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, toast, updateProgress]);
 
   const spawnWave = useCallback((globalWave: number) => {
     const state = gameStateRef.current;

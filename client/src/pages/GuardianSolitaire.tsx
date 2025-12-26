@@ -1017,6 +1017,23 @@ export default function GuardianSolitaire() {
 
     const finalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
     
+    // Bot protection: minimum 2 minutes of play
+    const playDuration = (Date.now() - gameStartTimeRef.current) / 1000;
+    if (playDuration < gameConfig.minPlayDuration) {
+      toast({
+        title: "Play Too Fast",
+        description: `Game must be played for at least ${Math.ceil(gameConfig.minPlayDuration / 60)} minutes`,
+        variant: "destructive"
+      });
+      // Clean up state - delete save and reset UI
+      if (address) {
+        GameStorageManager.deleteSave('guardian-solitaire', address);
+      }
+      setGameWon(false);
+      setGameStarted(false);
+      return;
+    }
+
     // Rebalanced scoring (50k cap)
     let score = 0;
     
@@ -1072,7 +1089,7 @@ export default function GuardianSolitaire() {
     setShowVictory(true);
 
     trackEvent('game_complete', 'Solitaire', `Score: ${finalScore}`);
-  }, [startTime, moves, foundations, stats, address, gameConfig.scoring.maxScore, submitScore, playSound, createParticles, toast]);
+  }, [startTime, moves, foundations, stats, address, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, createParticles, toast]);
 
   const startGame = useCallback(async (resume: boolean = false) => {
     if (!access.canPlay) {
