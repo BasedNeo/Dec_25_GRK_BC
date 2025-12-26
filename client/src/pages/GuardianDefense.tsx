@@ -14,6 +14,8 @@ import { getGameConfig } from '@/lib/gameRegistry';
 import { CC_COLORS, CC_EFFECTS, CC_LAIR_DESIGNS, pulseValue, hexToRgba } from '@/lib/creatureCommandStyles';
 import { GameHUD } from '@/components/game/GameHUD';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
+import { CreatureAbilityPanel } from '@/components/game/CreatureAbilityPanel';
+import { useCreatureAbilitiesStore, useAbilityModifiers } from '@/store/creatureAbilitiesStore';
 import {
   Play, Shield, Info, ChevronRight, Volume2, VolumeX,
   Home, Loader2, Trophy, Zap, Target, Star, Crosshair
@@ -352,6 +354,9 @@ export default function GuardianDefense() {
   const [, setLocation] = useLocation();
   const { submitScore } = useGameScoresLocal();
   const { isHolder, isLoading: nftLoading, access, recordPlay } = useGameAccess();
+  
+  const abilityModifiers = useAbilityModifiers();
+  const { earnPoints, resetForNewGame: resetAbilityPoints } = useCreatureAbilitiesStore();
 
   const gameConfig = useMemo(() => getGameConfig('guardian-defense'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -704,7 +709,7 @@ export default function GuardianDefense() {
     }
   }, [toast, playSound, gameOver, endGame]);
 
-  const fireMissile = useCallback((targetX: number, targetY: number) => {
+  const fireMissile = useCallback((targetX: number, targetY: number, multiBubbleChance: number = 0, reloadMultiplier: number = 1) => {
     const state = gameStateRef.current;
     if (gameOver || state.waveTransition) return;
     
@@ -713,7 +718,8 @@ export default function GuardianDefense() {
     }
     
     const now = Date.now();
-    if (now - lastFireTimeRef.current < MIN_FIRE_INTERVAL) return;
+    const effectiveFireInterval = MIN_FIRE_INTERVAL / reloadMultiplier;
+    if (now - lastFireTimeRef.current < effectiveFireInterval) return;
     lastFireTimeRef.current = now;
     
     const sortedBatteries = state.batteries
@@ -735,16 +741,30 @@ export default function GuardianDefense() {
       batteryIndex: index,
     });
     
+    if (multiBubbleChance > 0 && Math.random() < multiBubbleChance && state.shotsRemaining > 0) {
+      const offsetX = (Math.random() - 0.5) * 60;
+      const offsetY = (Math.random() - 0.5) * 40;
+      state.defensiveMissiles.push({
+        id: `dm-${Date.now()}-multi-${Math.random()}`,
+        start: { ...battery.position, y: battery.position.y - 15 },
+        target: { x: targetX + offsetX, y: Math.max(50, targetY + offsetY) },
+        position: { ...battery.position, y: battery.position.y - 15 },
+        progress: 0,
+        batteryIndex: index,
+      });
+    }
+    
     playSound('launch');
   }, [playSound, gameOver]);
 
-  const createExplosion = useCallback((position: Vector2D, isPlayer: boolean) => {
+  const createExplosion = useCallback((position: Vector2D, isPlayer: boolean, radiusMultiplier: number = 1) => {
     const state = gameStateRef.current;
+    const enhancedRadius = EXPLOSION_MAX_RADIUS * radiusMultiplier;
     state.explosions.push({
       id: `ex-${Date.now()}-${Math.random()}`,
       position: { ...position },
       radius: 0,
-      maxRadius: EXPLOSION_MAX_RADIUS,
+      maxRadius: enhancedRadius,
       expanding: true,
       lifetime: EXPLOSION_LIFETIME,
       maxLifetime: EXPLOSION_LIFETIME,
@@ -771,16 +791,25 @@ export default function GuardianDefense() {
 
   const checkCollisions = useCallback(() => {
     const state = gameStateRef.current;
+    const piercingCount = abilityModifiers.piercingCount;
+    const shieldReduction = abilityModifiers.shieldReduction;
+    
+    const explosionHitCounts: Map<string, number> = new Map();
     
     state.explosions.forEach(explosion => {
       if (!explosion.isPlayer) return;
       
+      const currentHits = explosionHitCounts.get(explosion.id) || 0;
+      const maxHits = 1 + piercingCount;
+      
       state.enemyMissiles.forEach(missile => {
         if (!missile.active) return;
+        if (currentHits >= maxHits) return;
         
         const dist = getDistance(explosion.position, missile.position);
         if (dist < explosion.radius + 8) {
           missile.health--;
+          explosionHitCounts.set(explosion.id, (explosionHitCounts.get(explosion.id) || 0) + 1);
           
           if (missile.health <= 0) {
             missile.active = false;
@@ -793,7 +822,7 @@ export default function GuardianDefense() {
             state.waveChainBonus += chainBonus;
             state.chainReactions++;
             
-            createExplosion(missile.position, true);
+            createExplosion(missile.position, true, abilityModifiers.explosionRadiusMultiplier);
             
             const creatureName = CREATURE_NAMES[missile.creatureType];
             if (state.chainReactions > 1) {
@@ -821,6 +850,12 @@ export default function GuardianDefense() {
           if (!city.active) return;
           const dist = getDistance(missile.position, city.position);
           if (dist < 40) {
+            if (shieldReduction > 0 && Math.random() < shieldReduction) {
+              createScorePopup('SHIELDED!', city.position.x, city.position.y - 40, '#a855f7', true);
+              playSound('chain');
+              return;
+            }
+            
             city.active = false;
             state.screenShake = 20;
             playSound('hit');
@@ -843,7 +878,7 @@ export default function GuardianDefense() {
         });
       }
     });
-  }, [createExplosion, createScorePopup, playSound, toast]);
+  }, [createExplosion, createScorePopup, playSound, toast, abilityModifiers.piercingCount, abilityModifiers.shieldReduction, abilityModifiers.explosionRadiusMultiplier]);
 
   const update = useCallback((deltaMs: number) => {
     if (gameOver) return;
@@ -872,16 +907,31 @@ export default function GuardianDefense() {
     
     const arrivedMissiles = state.defensiveMissiles.filter(m => m.progress >= 1);
     arrivedMissiles.forEach(missile => {
-      createExplosion(missile.target, true);
+      createExplosion(missile.target, true, abilityModifiers.explosionRadiusMultiplier);
       state.chainReactions = 0;
     });
     state.defensiveMissiles = state.defensiveMissiles.filter(m => m.progress < 1);
     
+    const slowFieldStrength = abilityModifiers.slowFieldStrength;
+    
     state.enemyMissiles.forEach(missile => {
       if (!missile.active) return;
       
+      let effectiveSpeed = missile.speed;
+      
+      if (slowFieldStrength > 0) {
+        state.explosions.forEach(explosion => {
+          if (explosion.isPlayer) {
+            const dist = getDistance(explosion.position, missile.position);
+            if (dist < explosion.radius * 1.5) {
+              effectiveSpeed *= (1 - slowFieldStrength);
+            }
+          }
+        });
+      }
+      
       const totalDist = getDistance(missile.start, missile.target);
-      const moveAmount = (missile.speed * dt) / totalDist;
+      const moveAmount = (effectiveSpeed * dt) / totalDist;
       missile.progress += moveAmount;
       
       missile.position.x = lerp(missile.start.x, missile.target.x, missile.progress);
@@ -935,6 +985,8 @@ export default function GuardianDefense() {
       state.waveActive = false;
       state.waveComplete = true;
       
+      earnPoints(1);
+      
       const savedCities = state.cities.filter(c => c.active).length;
       const perfectDefense = savedCities === 4;
       
@@ -949,6 +1001,18 @@ export default function GuardianDefense() {
       }
       if (chainBonus > 0) {
         createScorePopup(`CHAIN BONUS +${chainBonus}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30, '#a855f7', true);
+      }
+      
+      const regenChance = abilityModifiers.regenChance;
+      if (regenChance > 0 && savedCities < 4) {
+        const destroyedCities = state.cities.filter(c => !c.active);
+        destroyedCities.forEach(city => {
+          if (Math.random() < regenChance) {
+            city.active = true;
+            createScorePopup(`${city.name} RESTORED!`, city.position.x, city.position.y - 30, '#10b981', true);
+            playSound('chain');
+          }
+        });
       }
       
       const completeToast = toast({
@@ -974,7 +1038,7 @@ export default function GuardianDefense() {
         }
       }, 1500);
     }
-  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame]);
+  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1677,9 +1741,9 @@ export default function GuardianDefense() {
     const y = (clientY - rect.top) / canvasScale;
     
     if (y < GROUND_Y - 30) {
-      fireMissile(x, y);
+      fireMissile(x, y, abilityModifiers.multiBubbleChance, abilityModifiers.reloadSpeedMultiplier);
     }
-  }, [canvasScale, fireMissile, gameOver]);
+  }, [canvasScale, fireMissile, gameOver, abilityModifiers.multiBubbleChance, abilityModifiers.reloadSpeedMultiplier]);
 
   const startGame = useCallback(() => {
     if (!isConnected) {
@@ -1711,6 +1775,7 @@ export default function GuardianDefense() {
 
     gameStateRef.current = initialGameState();
     gameStartTimeRef.current = Date.now();
+    resetAbilityPoints();
     setGameStarted(true);
     setGameOver(false);
     setGameWon(false);
@@ -1723,7 +1788,7 @@ export default function GuardianDefense() {
     }, 100);
     
     trackEvent('game_start', 'Game', 'Guardian Defense');
-  }, [isConnected, isHolder, playsToday, gameConfig.maxPlaysPerDay, initialGameState, gameLoop, spawnWave, toast]);
+  }, [isConnected, isHolder, playsToday, gameConfig.maxPlaysPerDay, initialGameState, gameLoop, spawnWave, toast, resetAbilityPoints]);
 
   const restartGame = useCallback(() => {
     if (gameLoopRef.current) {
@@ -2150,6 +2215,10 @@ export default function GuardianDefense() {
         
         <div className="text-center mt-4 text-gray-500 text-xs">
           Tap above the ground to fire • Protect all installations
+        </div>
+        
+        <div className="mt-4">
+          <CreatureAbilityPanel />
         </div>
         
         <div className="flex justify-center gap-4 mt-6 pb-8">
