@@ -197,33 +197,39 @@ const BASE_CANVAS_HEIGHT = 480;
 const BASE_GROUND_Y = 440;
 
 const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean, isFullscreen: boolean = false) => {
+  const aspectRatio = BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT; // 4:3 = 1.333
+  
   if (isFullscreen && isMobile) {
-    const width = window.innerWidth;
-    const height = window.innerHeight - 100;
+    // Full viewport for mobile fullscreen - maintain aspect ratio
+    const availableWidth = window.innerWidth;
+    const availableHeight = window.innerHeight - 80; // Reserve space for touch controls
+    
+    // Scale to fit within viewport while maintaining aspect ratio
+    const scaleByWidth = availableWidth / BASE_CANVAS_WIDTH;
+    const scaleByHeight = availableHeight / BASE_CANVAS_HEIGHT;
+    const scale = Math.min(scaleByWidth, scaleByHeight);
+    
     return {
-      width: Math.floor(width),
-      height: Math.floor(height),
-      scale: width / BASE_CANVAS_WIDTH
+      width: Math.floor(BASE_CANVAS_WIDTH * scale),
+      height: Math.floor(BASE_CANVAS_HEIGHT * scale),
+      scale
     };
   }
   
   if (isMobile) {
-    const width = Math.min(containerWidth, window.innerWidth);
-    const height = Math.min(containerHeight - 80, window.innerHeight - 150);
-    const aspectRatio = BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT;
+    // Use full viewport dimensions for mobile - maintain aspect ratio
+    const availableWidth = window.innerWidth;
+    const availableHeight = window.innerHeight - 140; // Space for navbar and controls
     
-    let finalWidth = width;
-    let finalHeight = width / aspectRatio;
-    
-    if (finalHeight > height) {
-      finalHeight = height;
-      finalWidth = height * aspectRatio;
-    }
+    // Scale to fit within viewport while maintaining aspect ratio
+    const scaleByWidth = availableWidth / BASE_CANVAS_WIDTH;
+    const scaleByHeight = availableHeight / BASE_CANVAS_HEIGHT;
+    const scale = Math.min(scaleByWidth, scaleByHeight);
     
     return {
-      width: Math.floor(Math.max(finalWidth, 320)),
-      height: Math.floor(Math.max(finalHeight, 240)),
-      scale: finalWidth / BASE_CANVAS_WIDTH
+      width: Math.floor(BASE_CANVAS_WIDTH * scale),
+      height: Math.floor(BASE_CANVAS_HEIGHT * scale),
+      scale
     };
   }
   
@@ -836,7 +842,7 @@ export default function GuardianDefense() {
     
     playSound('wave');
     
-    const WAVE_START_DELAY = 3500;
+    const WAVE_START_DELAY = 3000;
     
     for (let i = 0; i < config.count; i++) {
       setTimeout(() => {
@@ -2566,43 +2572,35 @@ export default function GuardianDefense() {
           </div>
         )}
         
-        {/* Mobile Control Bar - Fixed at bottom */}
+        {/* Mobile Control Bar - Fixed at bottom with large touch targets */}
         {isMobile && (
-          <div className="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-purple-500/30 p-2 z-20">
-            <div className="flex items-center justify-between max-w-md mx-auto gap-2">
+          <div className="fixed bottom-0 left-0 right-0 bg-black/95 border-t-2 border-purple-500/50 p-3 z-20 safe-area-inset-bottom">
+            <div className="flex items-center justify-between max-w-lg mx-auto gap-3">
               <Button
                 onClick={togglePause}
-                className="flex-1 h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+                className="flex-1 h-16 min-h-[64px] bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl shadow-[0_0_20px_rgba(147,51,234,0.4)] text-base active:scale-95 transition-transform"
                 data-testid="button-pause-mobile"
               >
-                {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
               </Button>
               <Button
                 onClick={toggleSound}
-                className={`flex-1 h-12 rounded-xl font-bold ${
+                className={`flex-1 h-16 min-h-[64px] rounded-2xl font-bold text-base active:scale-95 transition-transform ${
                   settings.soundEnabled 
-                    ? 'bg-gradient-to-r from-cyan-600/80 to-teal-600/80 text-white shadow-[0_0_15px_rgba(0,255,255,0.3)]' 
-                    : 'bg-gray-800/80 text-gray-400 border border-gray-600/50'
+                    ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-[0_0_20px_rgba(0,255,255,0.4)]' 
+                    : 'bg-gray-800 text-gray-400 border-2 border-gray-600'
                 }`}
                 data-testid="button-mute-mobile"
               >
-                {settings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                {settings.soundEnabled ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
               </Button>
               <Button
                 onClick={() => setLocation('/games')}
-                className="flex-1 h-12 bg-gradient-to-r from-red-600/60 to-orange-600/60 text-white font-bold rounded-xl"
+                className="flex-1 h-16 min-h-[64px] bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-2xl active:scale-95 transition-transform"
                 data-testid="button-exit-mobile"
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-7 h-7" />
               </Button>
-            </div>
-            {/* Mobile stats strip */}
-            <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-gray-400">
-              <span>Best: {stats.bestScore.toLocaleString()}</span>
-              <span>|</span>
-              <span className={dailyChallengeCompleted ? 'text-green-400' : 'text-yellow-400'}>
-                Daily: {dailySurvives}/{DAILY_CHALLENGE_GOAL}
-              </span>
             </div>
           </div>
         )}
