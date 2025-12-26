@@ -182,6 +182,7 @@ function drawPlayer(
 function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): void {
   const { x, y } = alien.pos;
   const frame = Math.floor(alien.animFrame / 10) % 2;
+  const pulseGlow = 0.5 + 0.5 * Math.sin(time * 0.1);
   
   ctx.save();
   ctx.translate(x + alien.size.x / 2, y + alien.size.y / 2);
@@ -189,63 +190,82 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
   if (alien.state === 'diving') {
     const angle = Math.atan2(alien.vel?.y || 1, alien.vel?.x || 0) - Math.PI / 2;
     ctx.rotate(angle * 0.3);
+    
+    for (let i = 1; i <= 3; i++) {
+      const trailAlpha = 0.15 - i * 0.04;
+      ctx.fillStyle = `rgba(255, 0, 102, ${trailAlpha})`;
+      ctx.beginPath();
+      ctx.arc(0, i * 8, 10 - i * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   
   switch (alien.type) {
     case 'grunt':
-      // FUD text as alien - red text
-      ctx.fillStyle = '#ff0000';
+      ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 8 + pulseGlow * 6;
+      ctx.fillStyle = `hsl(${320 + Math.sin(time * 0.05) * 20}, 100%, 60%)`;
       ctx.font = 'bold 16px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('FUD', 0, 0);
-      // Add subtle glow effect
-      ctx.shadowColor = '#ff0000';
-      ctx.shadowBlur = frame ? 8 : 4;
       ctx.fillText('FUD', 0, 0);
       ctx.shadowBlur = 0;
       break;
       
     case 'bee':
-      // FUD alien sprite - use image
       if (robotChickenElement && robotChickenLoaded) {
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 6 + pulseGlow * 4;
         const imgSize = 40;
         ctx.drawImage(robotChickenElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        ctx.shadowBlur = 0;
       } else {
-        // Fallback: Draw sinister chicken if image not loaded
-        ctx.fillStyle = '#888888';
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#0088aa';
         ctx.beginPath();
         ctx.ellipse(0, 2, 10, 12, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
         ctx.arc(0, -10, 7, 0, Math.PI * 2);
         ctx.fill();
-        // Red glowing eyes
-        ctx.fillStyle = '#ff0000';
-        ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 6;
+        ctx.fillStyle = '#ff0066';
+        ctx.shadowColor = '#ff0066';
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(-3, -11, 2, 0, Math.PI * 2);
-        ctx.arc(3, -11, 2, 0, Math.PI * 2);
+        ctx.arc(-3, -11, 2.5, 0, Math.PI * 2);
+        ctx.arc(3, -11, 2.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
       break;
       
     case 'butterfly':
-      ctx.fillStyle = COLORS.alienPurple;
+      ctx.shadowColor = '#aa00ff';
+      ctx.shadowBlur = 10 + pulseGlow * 5;
+      const wingHue = 280 + Math.sin(time * 0.08) * 30;
+      ctx.fillStyle = `hsl(${wingHue}, 100%, 55%)`;
       ctx.beginPath();
       ctx.ellipse(-10, 0, 8, 12, frame ? 0.5 : 0, 0, Math.PI * 2);
       ctx.ellipse(10, 0, 8, 12, frame ? -0.5 : 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#00ffff';
       ctx.beginPath();
       ctx.ellipse(0, 0, 3, 10, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
       break;
       
     case 'boss':
-      ctx.fillStyle = COLORS.alienRed;
+      ctx.shadowColor = '#ff0066';
+      ctx.shadowBlur = 15 + pulseGlow * 8;
+      const bossGradient = ctx.createLinearGradient(-14, 0, 14, 0);
+      bossGradient.addColorStop(0, '#ff0066');
+      bossGradient.addColorStop(0.5, '#ff00aa');
+      bossGradient.addColorStop(1, '#ff0066');
+      ctx.fillStyle = bossGradient;
       ctx.beginPath();
       ctx.moveTo(0, -14);
       ctx.lineTo(-14, 0);
@@ -254,12 +274,16 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       ctx.lineTo(14, 0);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#fff';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#00ffff';
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(-5, 0, 3, 0, Math.PI * 2);
-      ctx.arc(5, 0, 3, 0, Math.PI * 2);
+      ctx.arc(-5, 0, 3.5, 0, Math.PI * 2);
+      ctx.arc(5, 0, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#000';
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.arc(-5, 0, 1.5, 0, Math.PI * 2);
       ctx.arc(5, 0, 1.5, 0, Math.PI * 2);
@@ -267,18 +291,19 @@ function drawAlien(ctx: CanvasRenderingContext2D, alien: Alien, time: number): v
       break;
       
     case 'galaga':
-      // Use FUD image for galaga aliens - larger and more visible
       if (fudImageElement && fudImageElement.complete) {
+        ctx.shadowColor = '#ff0066';
+        ctx.shadowBlur = 12 + pulseGlow * 8;
         const imgSize = 44;
         ctx.drawImage(fudImageElement, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        ctx.shadowBlur = 0;
       } else {
-        // Fallback: Draw FUD text if image not loaded
-        ctx.fillStyle = '#ff0000';
+        ctx.shadowColor = '#ff0066';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff0066';
         ctx.font = 'bold 22px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 12;
         ctx.fillText('FUD', 0, 0);
         ctx.shadowBlur = 0;
       }
@@ -319,55 +344,71 @@ function drawExplosion(ctx: CanvasRenderingContext2D, exp: Explosion): void {
   const radius = exp.size * (0.3 + progress * 0.7);
   const alpha = 1 - progress;
   
-  // Outer glow ring
-  ctx.shadowColor = '#ff8800';
-  ctx.shadowBlur = 20;
-  ctx.strokeStyle = `rgba(255, 136, 0, ${alpha})`;
+  const hueShift = progress * 60;
+  
+  ctx.shadowColor = `hsl(${340 - hueShift}, 100%, 50%)`;
+  ctx.shadowBlur = 25 + (1 - progress) * 15;
+  ctx.strokeStyle = `hsla(${340 - hueShift}, 100%, 60%, ${alpha})`;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(exp.pos.x, exp.pos.y, radius, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.shadowBlur = 0;
   
-  // Middle glow ring
-  ctx.strokeStyle = `rgba(255, 200, 0, ${alpha * 0.7})`;
+  ctx.shadowColor = '#00ffff';
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = `rgba(0, 255, 255, ${alpha * 0.6})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(exp.pos.x, exp.pos.y, radius * 0.75, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.shadowBlur = 0;
   
-  // Core glow
   const coreGradient = ctx.createRadialGradient(
     exp.pos.x, exp.pos.y, 0,
     exp.pos.x, exp.pos.y, radius * 0.6
   );
-  coreGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
-  coreGradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha * 0.5})`);
-  coreGradient.addColorStop(1, `rgba(255, 136, 0, 0)`);
+  coreGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
+  coreGradient.addColorStop(0.3, `hsla(${300 - hueShift}, 100%, 70%, ${alpha * 0.7})`);
+  coreGradient.addColorStop(0.6, `hsla(${180}, 100%, 50%, ${alpha * 0.4})`);
+  coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = coreGradient;
   ctx.beginPath();
   ctx.arc(exp.pos.x, exp.pos.y, radius * 0.6, 0, Math.PI * 2);
   ctx.fill();
   
-  // Particle sparks with trails
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2 + progress * 3;
-    const dist = radius * (0.5 + progress * 0.6);
-    const sparkAlpha = alpha * (1 - (i % 2) * 0.3);
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 + progress * 4;
+    const dist = radius * (0.4 + progress * 0.8);
+    const sparkAlpha = alpha * (1 - (i % 3) * 0.2);
+    const sparkHue = (i * 30 + hueShift * 2) % 360;
     
-    ctx.shadowColor = '#ffff00';
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = `rgba(255, 220, 0, ${sparkAlpha})`;
+    ctx.shadowColor = `hsl(${sparkHue}, 100%, 60%)`;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = `hsla(${sparkHue}, 100%, 70%, ${sparkAlpha})`;
     ctx.beginPath();
     ctx.arc(
       exp.pos.x + Math.cos(angle) * dist,
       exp.pos.y + Math.sin(angle) * dist,
-      3.5 * (1 - progress),
+      4 * (1 - progress),
       0, Math.PI * 2
     );
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
+  
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + progress * 2;
+    const innerDist = radius * (0.2 + progress * 0.4);
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(
+      exp.pos.x + Math.cos(angle) * innerDist,
+      exp.pos.y + Math.sin(angle) * innerDist,
+      2 * (1 - progress * 0.5),
+      0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
 }
 
 function drawPowerUp(ctx: CanvasRenderingContext2D, pu: PowerUp, time: number): void {

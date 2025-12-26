@@ -81,7 +81,14 @@ function getDifficultyMultiplier(wave: number): number {
   return 1.0;
 }
 
-export function getCanvasSize() {
+export function getCanvasSize(fullscreen = false) {
+  if (fullscreen) {
+    const controlBarHeight = 100;
+    return { 
+      width: window.innerWidth, 
+      height: window.innerHeight - controlBarHeight 
+    };
+  }
   const maxW = Math.min(420, window.innerWidth - 24);
   const maxH = Math.min(640, window.innerHeight - 180);
   return { width: maxW, height: maxH };

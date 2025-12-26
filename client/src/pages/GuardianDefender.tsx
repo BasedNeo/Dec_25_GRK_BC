@@ -15,11 +15,13 @@ import {
   FireIcon, GamepadIcon, LoadingIcon, LevelIcon, ScoreIcon, StarIcon 
 } from '@/game/components/GameIcons';
 import { Navbar } from '@/components/Navbar';
-import { Home, Shield } from 'lucide-react';
+import { Home, Shield, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useLocation } from 'wouter';
 import rocketShip from '@assets/Untitled.png';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { isMobile, haptic } from '@/lib/mobileUtils';
+
+const FULLSCREEN_CONTROL_HEIGHT = 100;
 
 const LoadingScreen = () => (
   <motion.div
@@ -101,7 +103,11 @@ export function GuardianDefender() {
   const [canvasSize, setCanvasSize] = useState({ width: 360, height: 540 });
   const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
   const [gameLoading, setGameLoading] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('retro_defender_muted') === 'true');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { flags } = useFeatureFlags();
+  const isMobileDevice = isMobile;
 
   useEffect(() => {
     loadingTimerRef.current = setTimeout(() => setGameLoading(false), 800);
@@ -155,21 +161,46 @@ export function GuardianDefender() {
   const { earnPoints: earnEconomyPoints } = useGamePoints();
 
   useEffect(() => {
-    const resize = () => setCanvasSize(getCanvasSize());
+    const resize = () => setCanvasSize(getCanvasSize(isFullscreen && isMobileDevice));
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
+  }, [isFullscreen, isMobileDevice]);
+
+  const togglePause = useCallback(() => {
+    if (phase === 'playing') {
+      setIsPaused(prev => !prev);
+      haptic.light();
+    }
+  }, [phase]);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const newVal = !prev;
+      localStorage.setItem('retro_defender_muted', String(newVal));
+      return newVal;
+    });
+    haptic.light();
   }, []);
 
   const startGame = useCallback(async () => {
     if (!access.canPlay) return;
 
     recordPlay();
-    const { width, height } = canvasSize;
-    stateRef.current = createGame(width, height, holderPerks?.extraLife || false);
-    spawnWave(stateRef.current, width);
-    setPhase('playing');
-  }, [access.canPlay, recordPlay, canvasSize, holderPerks]);
+    setIsPaused(false);
+    
+    if (isMobileDevice) {
+      setIsFullscreen(true);
+    }
+    
+    setTimeout(() => {
+      const size = getCanvasSize(isMobileDevice);
+      setCanvasSize(size);
+      stateRef.current = createGame(size.width, size.height, holderPerks?.extraLife || false);
+      spawnWave(stateRef.current, size.width);
+      setPhase('playing');
+    }, 50);
+  }, [access.canPlay, recordPlay, holderPerks, isMobileDevice]);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -206,12 +237,14 @@ export function GuardianDefender() {
         return;
       }
 
-      if (state.phase === 'lander') {
-        applyLanderInput(state, inputRef.current, width);
-        updateLander(state, width, height);
-      } else {
-        applyInput(state, inputRef.current, width);
-        updateGame(state, width, height);
+      if (!isPaused) {
+        if (state.phase === 'lander') {
+          applyLanderInput(state, inputRef.current, width);
+          updateLander(state, width, height);
+        } else {
+          applyInput(state, inputRef.current, width);
+          updateGame(state, width, height);
+        }
       }
       render(ctx, state, width, height, isHolder, shipImageRef.current || undefined);
 
@@ -233,6 +266,7 @@ export function GuardianDefender() {
         }
         
         setPhase('ended');
+        setIsFullscreen(false);
         animationFrameRef.current = null;
         return;
       }
@@ -247,12 +281,20 @@ export function GuardianDefender() {
         animationFrameRef.current = null;
       }
     };
-  }, [phase, canvasSize, isHolder, submitScore, earnEconomyPoints]);
+  }, [phase, canvasSize, isHolder, submitScore, earnEconomyPoints, isPaused]);
 
   const landerCheatRef = useRef<{ lastL: number; count: number }>({ lastL: 0, count: 0 });
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+        togglePause();
+        return;
+      }
+      if (e.key === 'm' || e.key === 'M') {
+        toggleMute();
+        return;
+      }
       if (e.key === 'ArrowLeft' || e.key === 'a') inputRef.current.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd') inputRef.current.right = true;
       if (e.key === 'ArrowUp' || e.key === 'w') inputRef.current.up = true;
@@ -291,7 +333,7 @@ export function GuardianDefender() {
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
-  }, []);
+  }, [canvasSize.width, togglePause, toggleMute]);
 
   useEffect(() => {
     if (phase === 'playing') {
@@ -334,33 +376,49 @@ export function GuardianDefender() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] overflow-y-auto pb-24"
+        className={isFullscreen && isMobileDevice && phase === 'playing'
+          ? "fixed inset-0 bg-black overflow-hidden z-50"
+          : "min-h-screen bg-gradient-to-b from-[#0a0015] via-[#050510] to-[#0a0020] overflow-y-auto pb-24"
+        }
         style={{ transform: `translate(${screenShake.x}px, ${screenShake.y}px)` }}
       >
-        <div className="absolute top-4 left-4 z-20">
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
-            <Shield className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-bold text-cyan-400 font-orbitron">GUARDIAN</span>
-          </div>
-        </div>
-        <Navbar activeTab="game" onTabChange={() => setLocation('/')} isConnected={isConnected} />
+        {!(isFullscreen && isMobileDevice && phase === 'playing') && (
+          <>
+            <div className="absolute top-4 left-4 z-20">
+              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-cyan-500/30">
+                <Shield className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-cyan-400 font-orbitron">GUARDIAN</span>
+              </div>
+            </div>
+            <Navbar activeTab="game" onTabChange={() => setLocation('/')} isConnected={isConnected} />
+          </>
+        )}
       
-      <div className="py-6 px-4">
-        <div className="max-w-md mx-auto mb-4">
-          <button 
-            onClick={() => setLocation('/')}
-            className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
-            data-testid="button-back-home"
-          >
-            <Home size={16} />
-            <span>Back to Command Center</span>
-          </button>
-        </div>
+      <div className={isFullscreen && isMobileDevice && phase === 'playing' ? "p-0" : "py-6 px-4"}>
+        {!(isFullscreen && isMobileDevice && phase === 'playing') && (
+          <div className="max-w-md mx-auto mb-4">
+            <button 
+              onClick={() => setLocation('/')}
+              className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
+              data-testid="button-back-home"
+            >
+              <Home size={16} />
+              <span>Back to Command Center</span>
+            </button>
+          </div>
+        )}
         
-        <Card className="bg-black/90 border-cyan-500/30 backdrop-blur-xl p-5 max-w-md mx-auto relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none" />
+        <Card className={isFullscreen && isMobileDevice && phase === 'playing'
+          ? "bg-transparent border-0 p-0 max-w-none relative"
+          : "bg-black/90 border-cyan-500/30 backdrop-blur-xl p-5 max-w-md mx-auto relative overflow-hidden"
+        }>
+        {!(isFullscreen && isMobileDevice && phase === 'playing') && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none" />
+          </>
+        )}
         
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
@@ -566,10 +624,51 @@ export function GuardianDefender() {
                   ref={canvasRef}
                   width={canvasSize.width}
                   height={canvasSize.height}
-                  className="w-full rounded-xl border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.2)]"
-                  style={{ touchAction: 'none' }}
+                  className={isFullscreen && isMobileDevice 
+                    ? "block border-0" 
+                    : "w-full rounded-xl border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.2)]"
+                  }
+                  style={{ 
+                    touchAction: 'none',
+                    width: isFullscreen && isMobileDevice ? '100vw' : undefined,
+                    height: isFullscreen && isMobileDevice ? `calc(100vh - ${FULLSCREEN_CONTROL_HEIGHT}px)` : undefined,
+                  }}
                   data-testid="canvas-game"
                 />
+                
+                {isPaused && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                    <div className="text-center">
+                      <Pause className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
+                      <p className="text-white font-orbitron text-2xl mb-2">PAUSED</p>
+                      <p className="text-cyan-400/70 text-sm mb-6">Press P or tap Resume</p>
+                      <Button
+                        onClick={togglePause}
+                        className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold px-8 py-3 rounded-xl"
+                        data-testid="button-resume"
+                      >
+                        <Play className="w-5 h-5 mr-2" /> RESUME
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="absolute top-2 right-2 flex gap-2 z-10">
+                  <Button
+                    onClick={togglePause}
+                    className="w-10 h-10 bg-black/60 border border-cyan-500/40 rounded-lg text-cyan-400 hover:bg-cyan-500/20"
+                    data-testid="button-pause"
+                  >
+                    {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                  </Button>
+                  <Button
+                    onClick={toggleMute}
+                    className="w-10 h-10 bg-black/60 border border-purple-500/40 rounded-lg text-purple-400 hover:bg-purple-500/20"
+                    data-testid="button-mute"
+                  >
+                    {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  </Button>
+                </div>
                 
                 {showLanderControls && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl z-10">
@@ -610,47 +709,89 @@ export function GuardianDefender() {
                 
               </div>
 
-              <div className="flex justify-between mt-4 md:hidden">
-                <div className="flex gap-2">
-                  <Button
-                    onTouchStart={touchStart('left')} onTouchEnd={touchEnd('left')}
-                    className="w-16 h-16 bg-cyan-500/10 border-2 border-cyan-500/40 rounded-xl text-cyan-400 active:bg-cyan-500/30 active:scale-95 transition-all"
-                    data-testid="button-touch-left"
-                  >
-                    <ControlLeftIcon size={28} />
-                  </Button>
-                  <Button
-                    onTouchStart={touchStart('right')} onTouchEnd={touchEnd('right')}
-                    className="w-16 h-16 bg-cyan-500/10 border-2 border-cyan-500/40 rounded-xl text-cyan-400 active:bg-cyan-500/30 active:scale-95 transition-all"
-                    data-testid="button-touch-right"
-                  >
-                    <ControlRightIcon size={28} />
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
-                    className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
-                    data-testid="button-touch-up"
-                  >
-                    <ControlUpIcon size={24} />
-                  </Button>
-                  <Button
-                    onTouchStart={touchStart('down')} onTouchEnd={touchEnd('down')}
-                    className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
-                    data-testid="button-touch-down"
-                  >
-                    <ControlUpIcon size={24} className="rotate-180" />
-                  </Button>
-                </div>
-                <Button
-                  onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
-                  className="w-16 h-16 bg-red-500/10 border-2 border-red-500/40 rounded-xl text-red-400 active:bg-red-500/30 active:scale-95 transition-all"
-                  data-testid="button-touch-shoot"
+              {isFullscreen && isMobileDevice ? (
+                <div 
+                  className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-black/80 border-t border-cyan-500/30 px-2 py-2 z-30"
+                  style={{ height: `${FULLSCREEN_CONTROL_HEIGHT}px` }}
                 >
-                  <FireIcon size={28} />
-                </Button>
-              </div>
+                  <div className="flex items-center justify-between h-full max-w-lg mx-auto gap-2">
+                    <div className="flex gap-1.5 flex-1">
+                      <Button
+                        onTouchStart={touchStart('left')} onTouchEnd={touchEnd('left')}
+                        className="flex-1 h-[76px] bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-2 border-cyan-500/50 rounded-xl text-cyan-400 active:bg-cyan-500/40 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,255,255,0.2)]"
+                        data-testid="button-touch-left"
+                      >
+                        <ControlLeftIcon size={36} />
+                      </Button>
+                      <Button
+                        onTouchStart={touchStart('right')} onTouchEnd={touchEnd('right')}
+                        className="flex-1 h-[76px] bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-2 border-cyan-500/50 rounded-xl text-cyan-400 active:bg-cyan-500/40 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,255,255,0.2)]"
+                        data-testid="button-touch-right"
+                      >
+                        <ControlRightIcon size={36} />
+                      </Button>
+                    </div>
+                    
+                    <Button
+                      onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
+                      className="w-20 h-[76px] bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-2 border-purple-500/50 rounded-xl text-purple-400 active:bg-purple-500/40 active:scale-95 transition-all shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                      data-testid="button-touch-up"
+                    >
+                      <ControlUpIcon size={32} />
+                    </Button>
+                    
+                    <Button
+                      onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
+                      className="w-24 h-[76px] bg-gradient-to-br from-red-500/30 to-orange-500/20 border-2 border-red-500/60 rounded-xl text-red-400 active:bg-red-500/50 active:scale-95 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                      data-testid="button-touch-shoot"
+                    >
+                      <FireIcon size={40} />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between mt-4 md:hidden">
+                  <div className="flex gap-2">
+                    <Button
+                      onTouchStart={touchStart('left')} onTouchEnd={touchEnd('left')}
+                      className="w-16 h-16 bg-cyan-500/10 border-2 border-cyan-500/40 rounded-xl text-cyan-400 active:bg-cyan-500/30 active:scale-95 transition-all"
+                      data-testid="button-touch-left"
+                    >
+                      <ControlLeftIcon size={28} />
+                    </Button>
+                    <Button
+                      onTouchStart={touchStart('right')} onTouchEnd={touchEnd('right')}
+                      className="w-16 h-16 bg-cyan-500/10 border-2 border-cyan-500/40 rounded-xl text-cyan-400 active:bg-cyan-500/30 active:scale-95 transition-all"
+                      data-testid="button-touch-right"
+                    >
+                      <ControlRightIcon size={28} />
+                    </Button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
+                      className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
+                      data-testid="button-touch-up"
+                    >
+                      <ControlUpIcon size={24} />
+                    </Button>
+                    <Button
+                      onTouchStart={touchStart('down')} onTouchEnd={touchEnd('down')}
+                      className="w-16 h-12 bg-purple-500/10 border-2 border-purple-500/40 rounded-xl text-purple-400 active:bg-purple-500/30 active:scale-95 transition-all"
+                      data-testid="button-touch-down"
+                    >
+                      <ControlUpIcon size={24} className="rotate-180" />
+                    </Button>
+                  </div>
+                  <Button
+                    onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
+                    className="w-16 h-16 bg-red-500/10 border-2 border-red-500/40 rounded-xl text-red-400 active:bg-red-500/30 active:scale-95 transition-all"
+                    data-testid="button-touch-shoot"
+                  >
+                    <FireIcon size={28} />
+                  </Button>
+                </div>
+              )}
             </>
           )}
 
