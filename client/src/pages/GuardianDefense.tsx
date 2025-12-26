@@ -16,6 +16,7 @@ import { GameHUD } from '@/components/game/GameHUD';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { CreatureAbilityPanel } from '@/components/game/CreatureAbilityPanel';
 import { useCreatureAbilitiesStore, useAbilityModifiers } from '@/store/creatureAbilitiesStore';
+import { useDailyChallengeStore } from '@/store/dailyChallengeStore';
 import {
   Play, Shield, Info, ChevronRight, Volume2, VolumeX,
   Home, Loader2, Trophy, Zap, Target, Star, Crosshair
@@ -131,6 +132,9 @@ interface PowerUp {
 
 interface GameState {
   wave: number;
+  globalWave: number;
+  currentStage: number;
+  stageWave: number;
   score: number;
   batteries: Battery[];
   cities: City[];
@@ -153,6 +157,7 @@ interface GameState {
   missilesRemaining: number;
   shotsRemaining: number;
   activePowerUp: { type: 'rapidfire' | 'shield' | 'bomb'; duration: number } | null;
+  survivesThisGame: number;
 }
 
 const getShotsForWave = (wave: number): number => {
@@ -255,30 +260,65 @@ const EXPLOSION_LIFETIME = 1.8;
 const RELOAD_TIME = 6000;
 const MIN_FIRE_INTERVAL = 200;
 
-const WAVE_CONFIG = [
-  { count: 4, speed: 45, delay: 400, message: "The creatures sense danger!" },
-  { count: 6, speed: 50, delay: 350, message: "The Jaguar roars in defiance!" },
-  { count: 8, speed: 55, delay: 320, message: "Serpent coils for defense!" },
-  { count: 10, speed: 60, delay: 300, message: "Phoenix flames ignite!" },
-  { count: 12, speed: 65, delay: 280, message: "Wolf pack assembles!" },
-  { count: 14, speed: 70, delay: 260, message: "All creatures UNITE!" },
-  { count: 16, speed: 75, delay: 240, message: "The swarm overwhelms!" },
-  { count: 18, speed: 80, delay: 220, message: "Creatures fight as one!" },
-  { count: 20, speed: 85, delay: 200, message: "The final stand begins!" },
-  { count: 28, speed: 95, delay: 150, message: "⚠️ ALPHA SWARM - DEFEND THE LAIRS!" },
+interface StageConfig {
+  name: string;
+  subtitle: string;
+  baseCount: number;
+  baseSpeed: number;
+  baseDelay: number;
+  speedMultiplier: number;
+  countMultiplier: number;
+  color: string;
+}
+
+const STAGE_CONFIG: StageConfig[] = [
+  { name: 'FUD SWARM', subtitle: 'The Fear Begins', baseCount: 4, baseSpeed: 45, baseDelay: 400, speedMultiplier: 1.0, countMultiplier: 1.0, color: '#22c55e' },
+  { name: 'BEAR MARKET', subtitle: 'Markets Crash', baseCount: 8, baseSpeed: 55, baseDelay: 350, speedMultiplier: 1.15, countMultiplier: 1.2, color: '#eab308' },
+  { name: 'LIQUIDATION STORM', subtitle: 'Positions Destroyed', baseCount: 12, baseSpeed: 65, baseDelay: 300, speedMultiplier: 1.3, countMultiplier: 1.4, color: '#f97316' },
+  { name: 'PROTOCOL BREACH', subtitle: 'Security Compromised', baseCount: 16, baseSpeed: 75, baseDelay: 250, speedMultiplier: 1.5, countMultiplier: 1.6, color: '#ef4444' },
+  { name: 'COSMIC PURGE', subtitle: 'The Final Test', baseCount: 20, baseSpeed: 85, baseDelay: 200, speedMultiplier: 1.8, countMultiplier: 2.0, color: '#9333ea' },
 ];
 
-const WAVE_MESSAGES = [
+const WAVES_PER_STAGE = 5;
+const TOTAL_WAVES = STAGE_CONFIG.length * WAVES_PER_STAGE;
+
+const getStageForWave = (globalWave: number): { stage: number; stageWave: number } => {
+  const stage = Math.min(Math.ceil(globalWave / WAVES_PER_STAGE), STAGE_CONFIG.length);
+  const stageWave = ((globalWave - 1) % WAVES_PER_STAGE) + 1;
+  return { stage, stageWave };
+};
+
+const getWaveConfig = (globalWave: number) => {
+  const { stage, stageWave } = getStageForWave(globalWave);
+  const stageConfig = STAGE_CONFIG[stage - 1];
+  
+  const waveMultiplier = 1 + (stageWave - 1) * 0.15;
+  const count = Math.floor(stageConfig.baseCount * stageConfig.countMultiplier * waveMultiplier);
+  const speed = Math.floor(stageConfig.baseSpeed * stageConfig.speedMultiplier * (1 + (stageWave - 1) * 0.05));
+  const delay = Math.max(150, Math.floor(stageConfig.baseDelay * (1 - (stageWave - 1) * 0.1)));
+  
+  const messages = [
+    `${stageConfig.name} - Wave ${stageWave}/5`,
+    stageWave === 5 ? `⚠️ ${stageConfig.name} BOSS WAVE!` : `${stageConfig.subtitle}...`,
+  ];
+  
+  return { count, speed, delay, message: messages[stageWave === 5 ? 1 : 0], stage, stageWave, stageConfig };
+};
+
+const STAGE_VICTORY_MESSAGES = [
+  "FUD defeated! Markets stabilizing...",
+  "Bear market survived! Hope returns!",
+  "Liquidation storm weathered!",
+  "Protocol secured! Network safe!",
+  "COSMIC PURGE COMPLETE - LEGENDARY COMMANDER!",
+];
+
+const WAVE_VICTORY_MESSAGES = [
   "The Neon Jaguar purrs with gratitude!",
   "The Cyber Serpent coils in victory!",
   "Phoenix rises from the ashes!",
   "The Wolf howls in triumph!",
   "All creature lairs are secure!",
-  "The Based Creatures stand strong!",
-  "The sanctuary is defended!",
-  "Creature powers channeled!",
-  "The homeworld is safe!",
-  "LEGENDARY CREATURE COMMANDER!",
 ];
 
 const getDistance = (a: Vector2D, b: Vector2D): number => {
@@ -357,6 +397,17 @@ export default function GuardianDefense() {
   
   const abilityModifiers = useAbilityModifiers();
   const { earnPoints, resetForNewGame: resetAbilityPoints, hydrateFromDB, setConnectedWallet } = useCreatureAbilitiesStore();
+  const { 
+    incrementSurvives, 
+    updateProgress, 
+    incrementGamesPlayed, 
+    checkAndAwardChallenge,
+    hydrateFromDB: hydrateDailyChallenge,
+    setConnectedWallet: setDailyWallet,
+    getProgress: getDailySurvives,
+    getGoal: getDailyGoal,
+    challengeCompleted: dailyChallengeCompleted,
+  } = useDailyChallengeStore();
 
   const gameConfig = useMemo(() => getGameConfig('guardian-defense'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -393,6 +444,9 @@ export default function GuardianDefense() {
 
   const initialGameState = useCallback((): GameState => ({
     wave: 1,
+    globalWave: 1,
+    currentStage: 1,
+    stageWave: 1,
     score: 0,
     batteries: BATTERY_POSITIONS.map(pos => ({
       missiles: MISSILES_PER_BATTERY,
@@ -426,6 +480,7 @@ export default function GuardianDefense() {
     missilesRemaining: 0,
     shotsRemaining: getShotsForWave(1),
     activePowerUp: null,
+    survivesThisGame: 0,
   }), []);
 
   const gameStateRef = useRef<GameState>(initialGameState());
@@ -442,10 +497,13 @@ export default function GuardianDefense() {
     if (address && isConnected) {
       hydrateFromDB(address);
       setConnectedWallet(address);
+      hydrateDailyChallenge(address);
+      setDailyWallet(address);
     } else {
       setConnectedWallet(null);
+      setDailyWallet(null);
     }
-  }, [address, isConnected, hydrateFromDB, setConnectedWallet]);
+  }, [address, isConnected, hydrateFromDB, setConnectedWallet, hydrateDailyChallenge, setDailyWallet]);
 
   useEffect(() => {
     GameStorageManager.saveSettings('guardian-defense', settings);
@@ -644,17 +702,17 @@ export default function GuardianDefense() {
     try {
       submitScore(finalScore, state.wave);
       setPlaysToday(prev => prev + 1);
-      trackEvent('game_complete', 'Game', `Guardian Defense - Wave ${state.wave} - ${finalScore} pts`);
+      updateProgress(state.currentStage, state.globalWave);
+      trackEvent('game_complete', 'Game', `Guardian Defense - Stage ${state.currentStage} Wave ${state.stageWave} - ${finalScore} pts`);
     } catch (err) {
       console.error('Failed to submit score:', err);
     }
-  }, [address, stats, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, toast]);
+  }, [address, stats, gameConfig.scoring.maxScore, gameConfig.minPlayDuration, submitScore, playSound, toast, updateProgress]);
 
-  const spawnWave = useCallback((waveNumber: number) => {
+  const spawnWave = useCallback((globalWave: number) => {
     const state = gameStateRef.current;
-    const config = WAVE_CONFIG[waveNumber - 1];
     
-    if (!config) {
+    if (globalWave > TOTAL_WAVES) {
       setGameWon(true);
       setGameOver(true);
       setShowVictory(true);
@@ -662,17 +720,26 @@ export default function GuardianDefense() {
       return;
     }
     
+    const config = getWaveConfig(globalWave);
+    
+    state.globalWave = globalWave;
+    state.currentStage = config.stage;
+    state.stageWave = config.stageWave;
+    state.wave = globalWave;
     state.waveActive = true;
     state.waveComplete = false;
     state.waveTransition = false;
     state.waveChainBonus = 0;
     state.missilesRemaining = config.count;
-    state.shotsRemaining = getShotsForWave(waveNumber);
+    state.shotsRemaining = getShotsForWave(globalWave);
+    
+    const isBossWave = config.stageWave === 5;
+    const isFinalBoss = globalWave === TOTAL_WAVES;
     
     const waveToast = toast({
-      title: waveNumber === 10 ? "⚠️ FINAL BOSS WAVE" : `WAVE ${waveNumber}`,
+      title: isFinalBoss ? "⚠️ COSMIC PURGE - FINAL BOSS" : isBossWave ? `⚠️ ${config.stageConfig.name} BOSS` : `${config.stageConfig.name} - Wave ${config.stageWave}/5`,
       description: config.message,
-      className: waveNumber === 10 
+      className: isBossWave 
         ? "bg-black/90 border-red-500 text-red-400"
         : "bg-black/90 border-cyan-500/50 text-cyan-400"
     });
@@ -699,8 +766,8 @@ export default function GuardianDefense() {
           target = { x: 50 + Math.random() * (CANVAS_WIDTH - 100), y: GROUND_Y };
         }
         
-        const isGuardianSlot = waveNumber === 10 && (i === 0 || i === 7 || i === 14 || i === 21);
-        const creatureType = getCreatureForWave(waveNumber, isGuardianSlot);
+        const isGuardianSlot = isBossWave && (i === 0 || i === Math.floor(config.count / 3) || i === Math.floor(config.count * 2 / 3));
+        const creatureType = getCreatureForWave(globalWave, isGuardianSlot);
         const speedMultiplier = CREATURE_SPEEDS[creatureType];
         
         state.enemyMissiles.push({
@@ -823,6 +890,9 @@ export default function GuardianDefense() {
           if (missile.health <= 0) {
             missile.active = false;
             state.accuracy.hits++;
+            state.survivesThisGame++;
+            
+            incrementSurvives(1);
             
             const basePoints = CREATURE_POINTS[missile.creatureType];
             const chainBonus = state.chainReactions * 5;
@@ -839,6 +909,11 @@ export default function GuardianDefense() {
               playSound('chain');
             } else {
               createScorePopup(`+${totalPoints} ${creatureName}`, missile.position.x, missile.position.y - 20, CREATURE_COLORS[missile.creatureType], false);
+            }
+            
+            if (checkAndAwardChallenge()) {
+              createScorePopup('🏆 DAILY CHALLENGE COMPLETE! +100 PTS', CANVAS_WIDTH / 2, 100, '#fbbf24', true);
+              earnPoints(0, 20);
             }
           } else {
             playSound('hit');
@@ -887,7 +962,7 @@ export default function GuardianDefense() {
         });
       }
     });
-  }, [createExplosion, createScorePopup, playSound, toast, abilityModifiers.piercingCount, abilityModifiers.shieldReduction, abilityModifiers.explosionRadiusMultiplier]);
+  }, [createExplosion, createScorePopup, playSound, toast, abilityModifiers.piercingCount, abilityModifiers.shieldReduction, abilityModifiers.explosionRadiusMultiplier, incrementSurvives, checkAndAwardChallenge, earnPoints]);
 
   const update = useCallback((deltaMs: number) => {
     if (gameOver) return;
@@ -1027,14 +1102,26 @@ export default function GuardianDefense() {
         });
       }
       
+      const isStageComplete = state.stageWave === 5;
+      const stageConfig = STAGE_CONFIG[state.currentStage - 1];
+      const victoryMessage = isStageComplete 
+        ? STAGE_VICTORY_MESSAGES[state.currentStage - 1] 
+        : WAVE_VICTORY_MESSAGES[(state.stageWave - 1) % WAVE_VICTORY_MESSAGES.length] || "Well defended!";
+      
       const completeToast = toast({
-        title: perfectDefense ? "⭐ PERFECT DEFENSE!" : `Wave ${state.wave} Complete!`,
-        description: WAVE_MESSAGES[state.wave - 1] || "Well defended!",
-        className: "bg-black/90 border-green-500 text-green-400"
+        title: perfectDefense 
+          ? "⭐ PERFECT DEFENSE!" 
+          : isStageComplete 
+            ? `🏆 ${stageConfig.name} COMPLETE!` 
+            : `Wave ${state.stageWave}/5 Complete!`,
+        description: victoryMessage,
+        className: isStageComplete 
+          ? "bg-black/90 border-purple-500 text-purple-400"
+          : "bg-black/90 border-green-500 text-green-400"
       });
       setTimeout(() => completeToast.dismiss(), 3000);
       
-      if (state.wave >= 10) {
+      if (state.globalWave >= TOTAL_WAVES) {
         setGameWon(true);
         setGameOver(true);
         setShowVictory(true);
@@ -1045,10 +1132,14 @@ export default function GuardianDefense() {
       state.waveTransition = true;
       setTimeout(() => {
         if (!gameOver) {
-          state.wave++;
-          spawnWave(state.wave);
+          state.globalWave++;
+          state.wave = state.globalWave;
+          const { stage, stageWave } = getStageForWave(state.globalWave);
+          state.currentStage = stage;
+          state.stageWave = stageWave;
+          spawnWave(state.globalWave);
         }
-      }, 1500);
+      }, isStageComplete ? 3000 : 1500);
     }
   }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
 
@@ -1788,6 +1879,7 @@ export default function GuardianDefense() {
     gameStateRef.current = initialGameState();
     gameStartTimeRef.current = Date.now();
     resetAbilityPoints();
+    incrementGamesPlayed();
     setGameStarted(true);
     setGameOver(false);
     setGameWon(false);
@@ -1800,7 +1892,7 @@ export default function GuardianDefense() {
     }, 100);
     
     trackEvent('game_start', 'Game', 'Guardian Defense');
-  }, [isConnected, isHolder, playsToday, gameConfig.maxPlaysPerDay, initialGameState, gameLoop, spawnWave, toast, resetAbilityPoints]);
+  }, [isConnected, isHolder, playsToday, gameConfig.maxPlaysPerDay, initialGameState, gameLoop, spawnWave, toast, resetAbilityPoints, incrementGamesPlayed]);
 
   const restartGame = useCallback(() => {
     if (gameLoopRef.current) {
