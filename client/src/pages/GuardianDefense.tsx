@@ -22,13 +22,13 @@ import {
   Home, Loader2, Trophy, Zap, Target, Star, Crosshair
 } from 'lucide-react';
 
-import creatureUltraBased from '@/assets/creature-ultra-based.png';
-import creaturePearlescent from '@/assets/creature-pearlescent.png';
-import creatureGolden from '@/assets/creature-golden.png';
-import creatureBased from '@/assets/creature-based.png';
-import creatureMidnight from '@/assets/creature-midnight.png';
-import creatureJelly from '@/assets/creature-jelly.png';
-import creatureCrystal from '@/assets/creature-crystal.png';
+import creatureUltraBased from '@/assets/creature-ultra-based-game.png';
+import creaturePearlescent from '@/assets/creature-pearlescent-game.png';
+import creatureGolden from '@/assets/creature-golden-game.png';
+import creatureBased from '@/assets/creature-based-game.png';
+import creatureMidnight from '@/assets/creature-midnight-game.png';
+import creatureJelly from '@/assets/creature-jelly-game.png';
+import creatureCrystal from '@/assets/creature-crystal-game.png';
 
 type CreatureType = 'ultra-based' | 'based' | 'crystal' | 'midnight' | 'jelly' | 'golden' | 'pearlescent' | 'guardian';
 
@@ -404,10 +404,11 @@ export default function GuardianDefense() {
     checkAndAwardChallenge,
     hydrateFromDB: hydrateDailyChallenge,
     setConnectedWallet: setDailyWallet,
-    getProgress: getDailySurvives,
-    getGoal: getDailyGoal,
+    survivesCount: dailySurvives,
     challengeCompleted: dailyChallengeCompleted,
   } = useDailyChallengeStore();
+  
+  const DAILY_CHALLENGE_GOAL = 50;
 
   const gameConfig = useMemo(() => getGameConfig('guardian-defense'), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -2291,16 +2292,16 @@ export default function GuardianDefense() {
               <Trophy className="w-3 h-3" /> DAILY CHALLENGE
             </span>
             <span className="text-xs text-gray-400">
-              {challengeCompleted ? '✓ COMPLETE' : `${survives}/${DAILY_CHALLENGE_GOAL} survives`}
+              {dailyChallengeCompleted ? '✓ COMPLETE' : `${dailySurvives}/${DAILY_CHALLENGE_GOAL} survives`}
             </span>
           </div>
           <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
             <div 
-              className={`h-full transition-all duration-300 ${challengeCompleted ? 'bg-green-500' : 'bg-yellow-500'}`}
-              style={{ width: `${Math.min(100, (survives / DAILY_CHALLENGE_GOAL) * 100)}%` }}
+              className={`h-full transition-all duration-300 ${dailyChallengeCompleted ? 'bg-green-500' : 'bg-yellow-500'}`}
+              style={{ width: `${Math.min(100, (dailySurvives / DAILY_CHALLENGE_GOAL) * 100)}%` }}
             />
           </div>
-          {challengeCompleted && (
+          {dailyChallengeCompleted && (
             <p className="text-xs text-green-400 text-center mt-1">+100 bonus points awarded!</p>
           )}
         </div>

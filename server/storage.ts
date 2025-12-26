@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -57,6 +57,10 @@ export interface IStorage {
   // Daily Challenges
   getDailyChallenge(walletAddress: string, dateKey: string): Promise<DailyChallenge | undefined>;
   upsertDailyChallenge(data: InsertDailyChallenge): Promise<DailyChallenge>;
+  
+  // BrainX Points
+  getBrainXPoints(walletAddress: string): Promise<BrainXPoints | undefined>;
+  addBrainXPoints(walletAddress: string, points: number): Promise<BrainXPoints>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -929,6 +933,61 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...data,
         walletAddress: normalizedAddress
+      })
+      .returning();
+    return result;
+  }
+
+  // ============================================
+  // BRAINX POINTS METHODS
+  // ============================================
+
+  async getBrainXPoints(walletAddress: string): Promise<BrainXPoints | undefined> {
+    const [points] = await db.select()
+      .from(brainXPoints)
+      .where(eq(brainXPoints.walletAddress, walletAddress.toLowerCase()));
+    return points;
+  }
+
+  async addBrainXPoints(walletAddress: string, points: number): Promise<BrainXPoints> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
+    const existing = await this.getBrainXPoints(normalizedAddress);
+    
+    const DAILY_CAP = 500;
+    
+    if (existing) {
+      const isNewDay = existing.lastEarnedDate !== today;
+      const currentDayPoints = isNewDay ? 0 : existing.pointsEarnedToday;
+      const remainingCap = DAILY_CAP - currentDayPoints;
+      const actualPoints = Math.min(points, remainingCap);
+      
+      if (actualPoints <= 0) return existing;
+      
+      const [updated] = await db.update(brainXPoints)
+        .set({
+          totalPoints: existing.totalPoints + actualPoints,
+          lockedPoints: existing.lockedPoints + actualPoints,
+          pointsEarnedToday: isNewDay ? actualPoints : currentDayPoints + actualPoints,
+          lastEarnedDate: today,
+          lockExpiresAt: existing.lockExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          updatedAt: new Date()
+        })
+        .where(eq(brainXPoints.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const actualPoints = Math.min(points, DAILY_CAP);
+    const [result] = await db.insert(brainXPoints)
+      .values({
+        walletAddress: normalizedAddress,
+        totalPoints: actualPoints,
+        lockedPoints: actualPoints,
+        unlockedPoints: 0,
+        pointsEarnedToday: actualPoints,
+        lastEarnedDate: today,
+        lockExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       })
       .returning();
     return result;

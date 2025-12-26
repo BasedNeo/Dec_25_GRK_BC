@@ -3082,5 +3082,49 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // BRAINX POINTS ROUTES
+  // ============================================
+
+  app.get('/api/brainx-points/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const points = await storage.getBrainXPoints(walletAddress);
+      
+      if (!points) {
+        return res.status(404).json({ error: 'No brainX points found' });
+      }
+
+      res.json(points);
+    } catch (error) {
+      console.error('Get brainX points failed:', error);
+      res.status(500).json({ error: 'Failed to get brainX points' });
+    }
+  });
+
+  app.post('/api/brainx-points', gameLimiter, async (req, res) => {
+    try {
+      const pointsSchema = z.object({
+        walletAddress: z.string().refine(isValidEthAddress, 'Invalid wallet address'),
+        points: z.number().int().min(1).max(500),
+      });
+
+      const parsed = pointsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid points data', details: parsed.error.flatten() });
+      }
+
+      const result = await storage.addBrainXPoints(parsed.data.walletAddress, parsed.data.points);
+      res.json(result);
+    } catch (error) {
+      console.error('Add brainX points failed:', error);
+      res.status(500).json({ error: 'Failed to add brainX points' });
+    }
+  });
+
   return httpServer;
 }

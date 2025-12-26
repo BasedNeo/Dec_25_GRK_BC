@@ -562,3 +562,28 @@ export const insertDailyChallengeSchema = createInsertSchema(dailyChallenges).om
 
 export type InsertDailyChallenge = z.infer<typeof insertDailyChallengeSchema>;
 export type DailyChallenge = typeof dailyChallenges.$inferSelect;
+
+// BrainX Points - tracks locked points with 1-year mock lock, 500/day cap
+export const brainXPoints = pgTable('brainx_points', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  totalPoints: integer('total_points').default(0).notNull(),
+  lockedPoints: integer('locked_points').default(0).notNull(),
+  unlockedPoints: integer('unlocked_points').default(0).notNull(),
+  pointsEarnedToday: integer('points_earned_today').default(0).notNull(),
+  lastEarnedDate: varchar('last_earned_date', { length: 10 }),
+  lockExpiresAt: timestamp('lock_expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('brainx_points_wallet_idx').on(table.walletAddress),
+]);
+
+export const insertBrainXPointsSchema = createInsertSchema(brainXPoints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBrainXPoints = z.infer<typeof insertBrainXPointsSchema>;
+export type BrainXPoints = typeof brainXPoints.$inferSelect;
