@@ -19,7 +19,7 @@ import { useCreatureAbilitiesStore, useAbilityModifiers } from '@/store/creature
 import { useDailyChallengeStore } from '@/store/dailyChallengeStore';
 import {
   Play, Shield, Info, ChevronRight, Volume2, VolumeX,
-  Home, Loader2, Trophy, Zap, Target, Star, Crosshair
+  Home, Loader2, Trophy, Zap, Target, Star, Crosshair, Pause
 } from 'lucide-react';
 
 import creatureUltraBased from '@/assets/creature-ultra-based-game.png';
@@ -170,9 +170,42 @@ const getShotsForWave = (wave: number): number => {
 interface GuardianDefenseSettings extends BaseGameSettings {
 }
 
-const CANVAS_WIDTH = 640;
-const CANVAS_HEIGHT = 480;
-const GROUND_Y = 440;
+const BASE_CANVAS_WIDTH = 640;
+const BASE_CANVAS_HEIGHT = 480;
+const BASE_GROUND_Y = 440;
+
+const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean) => {
+  if (isMobile) {
+    const width = Math.min(containerWidth, window.innerWidth);
+    const height = Math.min(containerHeight - 120, window.innerHeight - 200);
+    const aspectRatio = BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT;
+    
+    let finalWidth = width;
+    let finalHeight = width / aspectRatio;
+    
+    if (finalHeight > height) {
+      finalHeight = height;
+      finalWidth = height * aspectRatio;
+    }
+    
+    return {
+      width: Math.floor(finalWidth),
+      height: Math.floor(finalHeight),
+      scale: finalWidth / BASE_CANVAS_WIDTH
+    };
+  }
+  
+  const scale = Math.min(1, containerWidth / BASE_CANVAS_WIDTH);
+  return {
+    width: BASE_CANVAS_WIDTH,
+    height: BASE_CANVAS_HEIGHT,
+    scale
+  };
+};
+
+const CANVAS_WIDTH = BASE_CANVAS_WIDTH;
+const CANVAS_HEIGHT = BASE_CANVAS_HEIGHT;
+const GROUND_Y = BASE_GROUND_Y;
 
 const BATTERY_POSITIONS = [
   { x: 80, y: GROUND_Y },
@@ -427,6 +460,9 @@ export default function GuardianDefense() {
   const [gameWon, setGameWon] = useState(false);
   const [playsToday, setPlaysToday] = useState(0);
   const [canvasScale, setCanvasScale] = useState(1);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [canvasDims, setCanvasDims] = useState({ width: BASE_CANVAS_WIDTH, height: BASE_CANVAS_HEIGHT, scale: 1 });
 
   const [stats, setStats] = useState<GameStats>(() =>
     address 
@@ -511,16 +547,29 @@ export default function GuardianDefense() {
   }, [settings]);
 
   useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+      setIsMobile(mobile);
+      return mobile;
+    };
+    
     const updateScale = () => {
+      const mobile = checkMobile();
       if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth - 32;
-        const scale = Math.min(1, containerWidth / CANVAS_WIDTH);
-        setCanvasScale(scale);
+        const containerWidth = containerRef.current.clientWidth - (mobile ? 16 : 32);
+        const containerHeight = window.innerHeight;
+        const dims = getCanvasDimensions(containerWidth, containerHeight, mobile);
+        setCanvasDims(dims);
+        setCanvasScale(dims.scale);
       }
     };
     updateScale();
     window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    window.addEventListener('orientationchange', updateScale);
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      window.removeEventListener('orientationchange', updateScale);
+    };
   }, [gameStarted]);
 
   useEffect(() => {
@@ -1802,8 +1851,18 @@ export default function GuardianDefense() {
     ctx.restore();
   }, [gameOver]);
 
+  const isPausedRef = useRef(false);
+  isPausedRef.current = isPaused;
+  
   const gameLoop = useCallback((currentTime: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = currentTime;
+    
+    if (isPausedRef.current) {
+      lastTimeRef.current = currentTime;
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+    
     const deltaTime = Math.min(currentTime - lastTimeRef.current, 50);
     lastTimeRef.current = currentTime;
     
@@ -1815,9 +1874,18 @@ export default function GuardianDefense() {
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     }
   }, [update, render, gameOver]);
+  
+  const togglePause = useCallback(() => {
+    if (gameOver) return;
+    setIsPaused(prev => !prev);
+  }, [gameOver]);
+  
+  const toggleSound = useCallback(() => {
+    setSettings(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }));
+  }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (gameOver) return;
+    if (gameOver || isPausedRef.current) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1879,6 +1947,7 @@ export default function GuardianDefense() {
     setGameOver(false);
     setGameWon(false);
     setShowVictory(false);
+    setIsPaused(false);
     lastTimeRef.current = 0;
     
     setTimeout(() => {
@@ -2266,46 +2335,52 @@ export default function GuardianDefense() {
   return (
     <>
       <Navbar activeTab="arcade" onTabChange={() => {}} isConnected={isConnected} />
-      <section className="py-4 min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative overflow-y-auto pt-16 pb-24" ref={containerRef}>
-      <div className="max-w-4xl mx-auto px-4">
+      <section 
+        className={`min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black relative ${isMobile ? 'overflow-hidden pt-14 pb-4' : 'overflow-y-auto pt-16 pb-24 py-4'}`} 
+        ref={containerRef}
+      >
+      <div className={`mx-auto ${isMobile ? 'px-2' : 'px-4 max-w-4xl'}`}>
         
-        <GameHUD
-          score={state.score}
-          extraStats={[
-            { icon: Zap, label: 'Stage', value: `${state.currentStage}/${STAGE_CONFIG.length}`, color: 'text-purple-400' },
-            { icon: Target, label: 'Wave', value: `${state.stageWave}/${WAVES_PER_STAGE}`, color: 'text-cyan-400' },
-            { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: citiesAlive <= 1 ? 'text-red-400' : 'text-green-400' },
-            { icon: Crosshair, label: 'Shots', value: state.shotsRemaining, color: state.shotsRemaining <= 1 ? 'text-red-400' : 'text-yellow-400' },
-          ]}
-        />
+        {!isMobile && (
+          <GameHUD
+            score={state.score}
+            extraStats={[
+              { icon: Zap, label: 'Stage', value: `${state.currentStage}/${STAGE_CONFIG.length}`, color: 'text-purple-400' },
+              { icon: Target, label: 'Wave', value: `${state.stageWave}/${WAVES_PER_STAGE}`, color: 'text-cyan-400' },
+              { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: citiesAlive <= 1 ? 'text-red-400' : 'text-green-400' },
+              { icon: Crosshair, label: 'Shots', value: state.shotsRemaining, color: state.shotsRemaining <= 1 ? 'text-red-400' : 'text-yellow-400' },
+            ]}
+          />
+        )}
         
-        {/* Daily Challenge Progress */}
-        <div className="mt-2 bg-black/40 rounded-lg p-3 border border-yellow-500/30">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-bold text-yellow-400 flex items-center gap-1">
-              <Trophy className="w-3 h-3" /> DAILY CHALLENGE
-            </span>
-            <span className="text-xs text-gray-400">
-              {dailyChallengeCompleted ? '✓ COMPLETE' : `${dailySurvives}/${DAILY_CHALLENGE_GOAL} survives`}
-            </span>
+        {!isMobile && (
+          <div className="mt-2 bg-black/40 rounded-lg p-3 border border-yellow-500/30">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs font-bold text-yellow-400 flex items-center gap-1">
+                <Trophy className="w-3 h-3" /> DAILY CHALLENGE
+              </span>
+              <span className="text-xs text-gray-400">
+                {dailyChallengeCompleted ? '✓ COMPLETE' : `${dailySurvives}/${DAILY_CHALLENGE_GOAL} survives`}
+              </span>
+            </div>
+            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-300 ${dailyChallengeCompleted ? 'bg-green-500' : 'bg-yellow-500'}`}
+                style={{ width: `${Math.min(100, (dailySurvives / DAILY_CHALLENGE_GOAL) * 100)}%` }}
+              />
+            </div>
+            {dailyChallengeCompleted && (
+              <p className="text-xs text-green-400 text-center mt-1">+100 bonus points awarded!</p>
+            )}
           </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-300 ${dailyChallengeCompleted ? 'bg-green-500' : 'bg-yellow-500'}`}
-              style={{ width: `${Math.min(100, (dailySurvives / DAILY_CHALLENGE_GOAL) * 100)}%` }}
-            />
-          </div>
-          {dailyChallengeCompleted && (
-            <p className="text-xs text-green-400 text-center mt-1">+100 bonus points awarded!</p>
-          )}
-        </div>
+        )}
 
-        <div className="flex justify-center mt-4">
+        <div className={`flex justify-center ${isMobile ? 'mt-1' : 'mt-4'}`}>
           <div 
             className="relative rounded-lg overflow-hidden border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20"
             style={{ 
-              width: CANVAS_WIDTH * canvasScale, 
-              height: CANVAS_HEIGHT * canvasScale 
+              width: isMobile ? canvasDims.width : CANVAS_WIDTH * canvasScale, 
+              height: isMobile ? canvasDims.height : CANVAS_HEIGHT * canvasScale 
             }}
           >
             <canvas
@@ -2316,43 +2391,179 @@ export default function GuardianDefense() {
               onTouchStart={handleCanvasClick}
               className="cursor-crosshair touch-none"
               style={{ 
-                width: CANVAS_WIDTH * canvasScale, 
-                height: CANVAS_HEIGHT * canvasScale 
+                width: isMobile ? canvasDims.width : CANVAS_WIDTH * canvasScale, 
+                height: isMobile ? canvasDims.height : CANVAS_HEIGHT * canvasScale 
               }}
               data-testid="game-canvas"
             />
             
-            <div className="absolute top-2 left-2 text-cyan-400 text-xs font-mono opacity-70">
-              STAGE {state.currentStage} • WAVE {state.stageWave}/{WAVES_PER_STAGE}
-            </div>
-            <div className="absolute top-2 right-2 text-yellow-400 text-xs font-mono opacity-70">
-              {state.score.toLocaleString()} PTS
-            </div>
-            <div className={`absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono ${state.shotsRemaining <= 1 ? 'text-red-400 animate-pulse' : 'text-green-400'}`}>
-              {state.shotsRemaining > 0 ? `🎯 ${state.shotsRemaining}` : '❌ NO SHOTS'}
-            </div>
+            {/* Mobile HUD Overlay */}
+            {isMobile && (
+              <>
+                <div className="absolute top-1 left-1 bg-black/60 rounded px-2 py-1">
+                  <span className="text-yellow-400 text-sm font-bold font-mono">{state.score.toLocaleString()}</span>
+                </div>
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-black/60 rounded px-2 py-1">
+                  <span className={`text-xs font-mono ${state.shotsRemaining <= 1 ? 'text-red-400 animate-pulse' : 'text-green-400'}`}>
+                    {state.shotsRemaining > 0 ? `${state.shotsRemaining}` : '0'}
+                  </span>
+                </div>
+                <div className="absolute bottom-1 left-1 bg-black/60 rounded px-2 py-1">
+                  <span className="text-cyan-400 text-[10px] font-mono">
+                    S{state.currentStage} W{state.stageWave}
+                  </span>
+                </div>
+                <div className="absolute bottom-1 right-1 bg-black/60 rounded px-2 py-1">
+                  <span className={`text-[10px] font-mono ${citiesAlive <= 1 ? 'text-red-400' : 'text-green-400'}`}>
+                    {citiesAlive}/4
+                  </span>
+                </div>
+              </>
+            )}
+            
+            {/* Desktop HUD */}
+            {!isMobile && (
+              <>
+                <div className="absolute top-2 left-2 text-cyan-400 text-xs font-mono opacity-70">
+                  STAGE {state.currentStage} • WAVE {state.stageWave}/{WAVES_PER_STAGE}
+                </div>
+                <div className="absolute top-2 right-2 text-yellow-400 text-xs font-mono opacity-70">
+                  {state.score.toLocaleString()} PTS
+                </div>
+                <div className={`absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono ${state.shotsRemaining <= 1 ? 'text-red-400 animate-pulse' : 'text-green-400'}`}>
+                  {state.shotsRemaining > 0 ? `${state.shotsRemaining}` : '0'}
+                </div>
+              </>
+            )}
+            
+            {/* Pause Overlay */}
+            <AnimatePresence>
+              {isPaused && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-10"
+                >
+                  <div className="text-center">
+                    <h2 className="text-3xl font-bold text-cyan-400 mb-4 font-orbitron">PAUSED</h2>
+                    <p className="text-gray-400 mb-6 text-sm">Tap Resume to continue</p>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        onClick={togglePause}
+                        className="bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold px-8 py-3 text-lg min-h-[56px]"
+                        data-testid="button-resume"
+                      >
+                        <Play className="w-6 h-6 mr-2" />
+                        Resume
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setLocation('/games')}
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10 min-h-[48px]"
+                        data-testid="button-quit"
+                      >
+                        <Home className="w-5 h-5 mr-2" />
+                        Quit to Arcade
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
         
-        <div className="text-center mt-4 text-gray-500 text-xs">
-          Tap above the ground to fire • Protect all installations
-        </div>
+        {/* Mobile Creature Ability Panel */}
+        {isMobile && (
+          <div className="mt-2 px-1">
+            <CreatureAbilityPanel />
+          </div>
+        )}
         
-        <div className="mt-4">
-          <CreatureAbilityPanel />
-        </div>
+        {/* Mobile Control Bar - Fixed at bottom */}
+        {isMobile && (
+          <div className="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-purple-500/30 p-2 z-20">
+            <div className="flex items-center justify-between max-w-md mx-auto gap-2">
+              <Button
+                onClick={togglePause}
+                className="flex-1 h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+                data-testid="button-pause-mobile"
+              >
+                {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+              </Button>
+              <Button
+                onClick={toggleSound}
+                className={`flex-1 h-12 rounded-xl font-bold ${
+                  settings.soundEnabled 
+                    ? 'bg-gradient-to-r from-cyan-600/80 to-teal-600/80 text-white shadow-[0_0_15px_rgba(0,255,255,0.3)]' 
+                    : 'bg-gray-800/80 text-gray-400 border border-gray-600/50'
+                }`}
+                data-testid="button-mute-mobile"
+              >
+                {settings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              </Button>
+              <Button
+                onClick={() => setLocation('/games')}
+                className="flex-1 h-12 bg-gradient-to-r from-red-600/60 to-orange-600/60 text-white font-bold rounded-xl"
+                data-testid="button-exit-mobile"
+              >
+                <Home className="w-5 h-5" />
+              </Button>
+            </div>
+            {/* Mobile stats strip */}
+            <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-gray-400">
+              <span>Best: {stats.bestScore.toLocaleString()}</span>
+              <span>|</span>
+              <span className={dailyChallengeCompleted ? 'text-green-400' : 'text-yellow-400'}>
+                Daily: {dailySurvives}/{DAILY_CHALLENGE_GOAL}
+              </span>
+            </div>
+          </div>
+        )}
         
-        <div className="flex justify-center gap-4 mt-6 pb-8">
-          <Button
-            variant="outline"
-            onClick={() => setLocation('/games')}
-            className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-            data-testid="button-back-arcade"
-          >
-            <Home className="w-4 h-4 mr-2" />
-            Back to Arcade
-          </Button>
-        </div>
+        {/* Desktop instruction and controls */}
+        {!isMobile && (
+          <>
+            <div className="text-center mt-4 text-gray-500 text-xs">
+              Tap above the ground to fire
+            </div>
+            
+            <div className="mt-4">
+              <CreatureAbilityPanel />
+            </div>
+            
+            <div className="flex justify-center gap-4 mt-6 pb-8">
+              <Button
+                onClick={togglePause}
+                variant="outline"
+                className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                data-testid="button-pause-desktop"
+              >
+                {isPaused ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
+                {isPaused ? 'Resume' : 'Pause'}
+              </Button>
+              <Button
+                onClick={toggleSound}
+                variant="outline"
+                className={settings.soundEnabled ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-gray-500/30 text-gray-400 hover:bg-gray-500/10'}
+                data-testid="button-mute-desktop"
+              >
+                {settings.soundEnabled ? <Volume2 className="w-4 h-4 mr-2" /> : <VolumeX className="w-4 h-4 mr-2" />}
+                {settings.soundEnabled ? 'Sound On' : 'Sound Off'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/games')}
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                data-testid="button-back-arcade"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Back to Arcade
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </section>
     </>
