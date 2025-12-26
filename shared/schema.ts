@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, serial, bigint, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, serial, bigint, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -642,3 +642,48 @@ export const insertPointsSummarySchema = createInsertSchema(pointsSummary).omit(
 
 export type InsertPointsSummary = z.infer<typeof insertPointsSummarySchema>;
 export type PointsSummary = typeof pointsSummary.$inferSelect;
+
+// Points Vesting History - append-only ledger of vesting transactions
+export const pointsVesting = pgTable('points_vesting', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  pointsEarned: integer('points_earned').notNull(),
+  pointsVested: integer('points_vested').notNull(),
+  brainXConverted: integer('brainx_converted').default(0).notNull(),
+  vestingType: varchar('vesting_type', { length: 20 }).default('manual').notNull(), // 'manual' | 'auto' | 'snapshot'
+  vestedAt: timestamp('vested_at').defaultNow().notNull(),
+  lockExpiresAt: timestamp('lock_expires_at'),
+  txHash: varchar('tx_hash', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('points_vesting_wallet_idx').on(table.walletAddress),
+  index('points_vesting_date_idx').on(table.vestedAt),
+]);
+
+export const insertPointsVestingSchema = createInsertSchema(pointsVesting).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPointsVesting = z.infer<typeof insertPointsVestingSchema>;
+export type PointsVesting = typeof pointsVesting.$inferSelect;
+
+// Points Snapshots - daily backup records for data integrity
+export const pointsSnapshots = pgTable('points_snapshots', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  snapshotDate: varchar('snapshot_date', { length: 10 }).notNull().unique(), // YYYY-MM-DD format
+  totalWallets: integer('total_wallets').default(0).notNull(),
+  totalPointsEarned: integer('total_points_earned').default(0).notNull(),
+  totalPointsVested: integer('total_points_vested').default(0).notNull(),
+  totalBrainXLocked: integer('total_brainx_locked').default(0).notNull(),
+  fileLocation: text('file_location'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertPointsSnapshotSchema = createInsertSchema(pointsSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPointsSnapshot = z.infer<typeof insertPointsSnapshotSchema>;
+export type PointsSnapshot = typeof pointsSnapshots.$inferSelect;

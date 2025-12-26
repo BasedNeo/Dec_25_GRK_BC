@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -61,6 +61,15 @@ export interface IStorage {
   // BrainX Points
   getBrainXPoints(walletAddress: string): Promise<BrainXPoints | undefined>;
   addBrainXPoints(walletAddress: string, points: number): Promise<BrainXPoints>;
+  
+  // Points Vesting
+  createVestingRecord(data: InsertPointsVesting): Promise<PointsVesting>;
+  getVestingHistory(walletAddress: string): Promise<PointsVesting[]>;
+  
+  // Points Snapshots
+  createPointsSnapshot(data: InsertPointsSnapshot): Promise<PointsSnapshot>;
+  getPointsSnapshot(snapshotDate: string): Promise<PointsSnapshot | undefined>;
+  getAllPointsSummaries(): Promise<PointsSummary[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1183,6 +1192,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pointsSummary.id, summary.id))
       .returning();
 
+    // Record vesting history
+    await db.insert(pointsVesting).values({
+      walletAddress: normalizedAddress,
+      pointsEarned: summary.totalEarned,
+      pointsVested: pointsUsed,
+      brainXConverted: eligibleBrainX,
+      vestingType: 'manual',
+      lockExpiresAt: lockEnd
+    });
+
     return {
       success: true,
       brainXVested: eligibleBrainX,
@@ -1195,6 +1214,39 @@ export class DatabaseStorage implements IStorage {
       .from(pointsSummary)
       .orderBy(desc(pointsSummary.totalEarned))
       .limit(limit);
+  }
+
+  // Points Vesting History
+  async createVestingRecord(data: InsertPointsVesting): Promise<PointsVesting> {
+    const [result] = await db.insert(pointsVesting).values({
+      ...data,
+      walletAddress: data.walletAddress.toLowerCase()
+    }).returning();
+    return result;
+  }
+
+  async getVestingHistory(walletAddress: string): Promise<PointsVesting[]> {
+    return db.select()
+      .from(pointsVesting)
+      .where(eq(pointsVesting.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(pointsVesting.vestedAt));
+  }
+
+  // Points Snapshots for backups
+  async createPointsSnapshot(data: InsertPointsSnapshot): Promise<PointsSnapshot> {
+    const [result] = await db.insert(pointsSnapshots).values(data).returning();
+    return result;
+  }
+
+  async getPointsSnapshot(snapshotDate: string): Promise<PointsSnapshot | undefined> {
+    const [result] = await db.select()
+      .from(pointsSnapshots)
+      .where(eq(pointsSnapshots.snapshotDate, snapshotDate));
+    return result;
+  }
+
+  async getAllPointsSummaries(): Promise<PointsSummary[]> {
+    return db.select().from(pointsSummary);
   }
 }
 
