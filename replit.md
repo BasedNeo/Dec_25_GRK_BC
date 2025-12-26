@@ -159,6 +159,41 @@ Protected folder structure to isolate core commerce and game code:
 - **Matrix Welcome Experience**: Premium typing animation welcome screen for new users and visitors returning after 24+ hours. Features "Wake up, Guardian..." Matrix-style reveal with beta phase messaging, skip functionality, and reduced-motion accessibility support.
 - **In-App Notification Center**: Privacy-focused notification system using localStorage (no browser push notifications). Supports price alerts (configurable threshold 1-20%), new listings, sales, governance proposals, and game events. Features NotificationBell with unread count badge, NotificationDrawer with tabs (All/Unread/Types), per-wallet preferences, and mark-as-read functionality. Maximum 100 notifications per wallet with automatic oldest-first trimming.
 
+### Unified Points Economy System (Dec 2024)
+Real-time points system with WebSocket synchronization for cross-tab updates.
+
+**Points Configuration**:
+- **Global Daily Cap**: 500 points across all games
+- **Riddle Quest**: 10pts/riddle, 50pts/challenge, 500/day per-game cap
+- **Creature Command**: 10pts/wave, 50pts/lairs, 500/day per-game cap
+- **Retro Defender**: 20pts/pad, 50pts/task, 200/day per-game cap
+
+**BrainX Vesting**: 1,000 points = 1 brainX with 1-year lock period
+
+**Color Scheme**:
+- Green: Today's earnings
+- Cyan: Total earned
+- Purple: Locked brainX (vesting)
+- Gold: Unlocked brainX
+
+**Key Files**:
+- `server/lib/websocketManager.ts` - WebSocket server with heartbeat, room-based broadcasting
+- `client/src/hooks/useWebSocket.ts` - Auto-reconnect with exponential backoff (1s, 2s, 4s... up to 30s)
+- `client/src/hooks/useGamePoints.ts` - Points earning, vesting, balance management
+- `client/src/components/PointsDisplay.tsx` - UI with color-coded display and vesting progress
+- `shared/schema.ts` - gamePoints and pointsSummary tables
+
+**API Endpoints**:
+- `GET /api/points/balance/:walletAddress` - Get points balance
+- `POST /api/points/earn` - Earn points (with daily cap enforcement)
+- `POST /api/brainx/vest` - Convert points to locked brainX
+- `GET /api/points/leaderboard` - Get top point earners
+- `GET /api/ws/stats` - WebSocket connection stats
+
+**WebSocket Events**:
+- `points_update` - Real-time points earned notification
+- `vesting_update` - BrainX vesting confirmation
+
 ## External Dependencies
 
 ### Blockchain Services

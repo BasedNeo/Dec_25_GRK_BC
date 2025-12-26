@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -997,6 +997,204 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  // ============================================
+  // GAME POINTS METHODS (Unified Points System)
+  // ============================================
+
+  async getGamePoints(walletAddress: string, game: string): Promise<GamePoints | undefined> {
+    const [points] = await db.select()
+      .from(gamePoints)
+      .where(and(
+        eq(gamePoints.walletAddress, walletAddress.toLowerCase()),
+        eq(gamePoints.game, game)
+      ));
+    return points;
+  }
+
+  async getAllGamePoints(walletAddress: string): Promise<GamePoints[]> {
+    return db.select()
+      .from(gamePoints)
+      .where(eq(gamePoints.walletAddress, walletAddress.toLowerCase()));
+  }
+
+  async earnGamePoints(
+    walletAddress: string,
+    game: string,
+    amount: number,
+    dailyCap: number = 500
+  ): Promise<{ points: GamePoints; earned: number; capped: boolean; globalCapped: boolean }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
+    const GLOBAL_DAILY_CAP = 500;
+
+    const summary = await this.getPointsSummary(normalizedAddress);
+    const summaryIsNewDay = summary && summary.lastActivity.toISOString().split('T')[0] !== today;
+    const currentGlobalDaily = summaryIsNewDay ? 0 : (summary?.dailyEarnedTotal || 0);
+    const globalRemaining = Math.max(0, GLOBAL_DAILY_CAP - currentGlobalDaily);
+
+    if (globalRemaining <= 0) {
+      const existingPoints = await this.getGamePoints(normalizedAddress, game);
+      if (existingPoints) {
+        return { points: existingPoints, earned: 0, capped: true, globalCapped: true };
+      }
+      const [newRecord] = await db.insert(gamePoints)
+        .values({
+          walletAddress: normalizedAddress,
+          game,
+          earned: 0,
+          vested: 0,
+          dailyEarned: 0,
+          weeklyEarned: 0,
+          dailyCap,
+          lastDailyReset: today
+        })
+        .returning();
+      return { points: newRecord, earned: 0, capped: true, globalCapped: true };
+    }
+
+    const existing = await this.getGamePoints(normalizedAddress, game);
+
+    if (existing) {
+      const isNewDay = existing.lastDailyReset !== today;
+      const currentDailyEarned = isNewDay ? 0 : existing.dailyEarned;
+      const gameRemaining = dailyCap - currentDailyEarned;
+      const actualEarned = Math.min(amount, Math.max(0, gameRemaining), globalRemaining);
+      const capped = actualEarned < amount;
+      const globalCapped = actualEarned < amount && globalRemaining <= amount;
+
+      if (actualEarned <= 0) {
+        return { points: existing, earned: 0, capped: true, globalCapped: globalRemaining <= 0 };
+      }
+
+      const [updated] = await db.update(gamePoints)
+        .set({
+          earned: existing.earned + actualEarned,
+          dailyEarned: isNewDay ? actualEarned : currentDailyEarned + actualEarned,
+          lastDailyReset: today,
+          updatedAt: new Date()
+        })
+        .where(eq(gamePoints.id, existing.id))
+        .returning();
+
+      await this.updatePointsSummary(normalizedAddress, actualEarned, today);
+
+      return { points: updated, earned: actualEarned, capped, globalCapped };
+    }
+
+    const actualEarned = Math.min(amount, dailyCap, globalRemaining);
+    const capped = actualEarned < amount;
+    const globalCapped = globalRemaining <= amount;
+
+    const [result] = await db.insert(gamePoints)
+      .values({
+        walletAddress: normalizedAddress,
+        game,
+        earned: actualEarned,
+        vested: 0,
+        dailyEarned: actualEarned,
+        weeklyEarned: actualEarned,
+        dailyCap,
+        lastDailyReset: today
+      })
+      .returning();
+
+    await this.updatePointsSummary(normalizedAddress, actualEarned, today);
+
+    return { points: result, earned: actualEarned, capped, globalCapped };
+  }
+
+  async getPointsSummary(walletAddress: string): Promise<PointsSummary | undefined> {
+    const [summary] = await db.select()
+      .from(pointsSummary)
+      .where(eq(pointsSummary.walletAddress, walletAddress.toLowerCase()));
+    return summary;
+  }
+
+  async updatePointsSummary(walletAddress: string, pointsEarned: number, today: string): Promise<PointsSummary> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getPointsSummary(normalizedAddress);
+    const GLOBAL_DAILY_CAP = 500;
+
+    if (existing) {
+      const isNewDay = existing.lastActivity.toISOString().split('T')[0] !== today;
+      const currentDailyTotal = isNewDay ? 0 : existing.dailyEarnedTotal;
+
+      const [updated] = await db.update(pointsSummary)
+        .set({
+          totalEarned: existing.totalEarned + pointsEarned,
+          dailyEarnedTotal: currentDailyTotal + pointsEarned,
+          lastActivity: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(pointsSummary.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [result] = await db.insert(pointsSummary)
+      .values({
+        walletAddress: normalizedAddress,
+        totalEarned: pointsEarned,
+        totalVested: 0,
+        brainXLocked: 0,
+        brainXUnlocked: 0,
+        dailyEarnedTotal: pointsEarned,
+        globalDailyCap: GLOBAL_DAILY_CAP,
+        lastActivity: new Date()
+      })
+      .returning();
+    return result;
+  }
+
+  async vestPointsToBrainX(walletAddress: string): Promise<{
+    success: boolean;
+    brainXVested?: number;
+    lockEndDate?: Date;
+    error?: string;
+  }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const summary = await this.getPointsSummary(normalizedAddress);
+
+    if (!summary) {
+      return { success: false, error: 'No points found' };
+    }
+
+    const availablePoints = summary.totalEarned - summary.totalVested;
+    const eligibleBrainX = Math.floor(availablePoints / 1000);
+
+    if (eligibleBrainX < 1) {
+      return { success: false, error: 'Need at least 1000 points to vest (you have ' + availablePoints + ')' };
+    }
+
+    const pointsUsed = eligibleBrainX * 1000;
+    const lockEnd = new Date();
+    lockEnd.setFullYear(lockEnd.getFullYear() + 1);
+
+    const [updated] = await db.update(pointsSummary)
+      .set({
+        totalVested: summary.totalVested + pointsUsed,
+        brainXLocked: summary.brainXLocked + eligibleBrainX,
+        vestingStartDate: summary.vestingStartDate || new Date(),
+        vestingEndDate: lockEnd,
+        updatedAt: new Date()
+      })
+      .where(eq(pointsSummary.id, summary.id))
+      .returning();
+
+    return {
+      success: true,
+      brainXVested: eligibleBrainX,
+      lockEndDate: lockEnd
+    };
+  }
+
+  async getPointsLeaderboard(limit: number = 20): Promise<PointsSummary[]> {
+    return db.select()
+      .from(pointsSummary)
+      .orderBy(desc(pointsSummary.totalEarned))
+      .limit(limit);
   }
 }
 

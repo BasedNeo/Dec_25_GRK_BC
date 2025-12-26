@@ -587,3 +587,58 @@ export const insertBrainXPointsSchema = createInsertSchema(brainXPoints).omit({
 
 export type InsertBrainXPoints = z.infer<typeof insertBrainXPointsSchema>;
 export type BrainXPoints = typeof brainXPoints.$inferSelect;
+
+// Game Points - per-game tracking with daily caps and brainX vesting
+export const gamePoints = pgTable('game_points', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  game: varchar('game', { length: 50 }).notNull(),
+  earned: integer('earned').default(0).notNull(),
+  vested: integer('vested').default(0).notNull(),
+  dailyEarned: integer('daily_earned').default(0).notNull(),
+  weeklyEarned: integer('weekly_earned').default(0).notNull(),
+  dailyCap: integer('daily_cap').default(500).notNull(),
+  weeklyCap: integer('weekly_cap').default(3500).notNull(),
+  lastDailyReset: varchar('last_daily_reset', { length: 10 }),
+  lastWeeklyReset: varchar('last_weekly_reset', { length: 10 }),
+  vestingLockEnd: timestamp('vesting_lock_end'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('game_points_wallet_game_idx').on(table.walletAddress, table.game),
+]);
+
+export const insertGamePointsSchema = createInsertSchema(gamePoints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGamePoints = z.infer<typeof insertGamePointsSchema>;
+export type GamePoints = typeof gamePoints.$inferSelect;
+
+// Unified Points Summary - aggregate view for quick lookups
+export const pointsSummary = pgTable('points_summary', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull().unique(),
+  totalEarned: integer('total_earned').default(0).notNull(),
+  totalVested: integer('total_vested').default(0).notNull(),
+  brainXLocked: integer('brainx_locked').default(0).notNull(),
+  brainXUnlocked: integer('brainx_unlocked').default(0).notNull(),
+  dailyEarnedTotal: integer('daily_earned_total').default(0).notNull(),
+  globalDailyCap: integer('global_daily_cap').default(500).notNull(),
+  lastActivity: timestamp('last_activity').defaultNow().notNull(),
+  vestingStartDate: timestamp('vesting_start_date'),
+  vestingEndDate: timestamp('vesting_end_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const insertPointsSummarySchema = createInsertSchema(pointsSummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPointsSummary = z.infer<typeof insertPointsSummarySchema>;
+export type PointsSummary = typeof pointsSummary.$inferSelect;

@@ -7,6 +7,7 @@ import { apiLimiter } from './middleware/rateLimiter';
 import { helmetConfig, corsConfig, sanitizeRequest, secureLogger } from './middleware/security';
 import { encryptSensitiveResponse, decryptSensitiveRequest } from './middleware/encryptedPayload';
 import { performanceMonitor } from './middleware/performanceMonitor';
+import { wsManager } from './lib/websocketManager';
 
 const app = express();
 const httpServer = createServer(app);
@@ -204,10 +205,14 @@ app.use(decryptSensitiveRequest);
     reusePort: true,
   };
 
+  // Initialize WebSocket server for real-time points sync
+  wsManager.initialize(httpServer);
+
   httpServer.listen(serverOptions, () => {
     log(`serving on port ${port}`);
     log(`local: http://localhost:${port}`);
     log(`remote: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+    log(`WebSocket: ws://localhost:${port}/ws`);
   });
 
   // Increase timeouts for remote connections (was causing timeouts)
@@ -218,6 +223,7 @@ app.use(decryptSensitiveRequest);
   // Graceful shutdown
   process.on('SIGTERM', () => {
     log('SIGTERM received, closing server gracefully');
+    wsManager.shutdown();
     httpServer.close(() => {
       log('Server closed');
       process.exit(0);

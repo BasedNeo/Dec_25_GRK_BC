@@ -39,6 +39,7 @@ import { callOracle, generateRiddlePrompt, evaluateAnswerPrompt, getHintPrompt }
 // import { IncidentResponse } from './lib/incidentResponse';
 import { requireAuth, requireSessionAdmin, optionalAuth, AuthRequest } from './middleware/auth';
 import { AdminAuthService } from './lib/adminAuth';
+import { wsManager } from './lib/websocketManager';
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
@@ -3123,6 +3124,174 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Add brainX points failed:', error);
       res.status(500).json({ error: 'Failed to add brainX points' });
+    }
+  });
+
+  // ============================================
+  // UNIFIED GAME POINTS ROUTES
+  // ============================================
+
+  const POINTS_CONFIG = {
+    'riddle-quest': { dailyCap: 500, actions: { riddle: 10, challenge: 50 } },
+    'creature-command': { dailyCap: 500, actions: { wave: 10, lairs: 50 } },
+    'retro-defender': { dailyCap: 200, actions: { pad: 20, task: 50 } }
+  } as const;
+
+  function isValidIdentifier(id: string): boolean {
+    if (!id || typeof id !== 'string') return false;
+    if (id.startsWith('anon:')) {
+      return id.length > 5 && id.length < 100;
+    }
+    return isValidEthAddress(id);
+  }
+
+  app.get('/api/points/balance/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet/session ID' });
+      }
+
+      const summary = await storage.getPointsSummary(walletAddress);
+      const gameBalances = await storage.getAllGamePoints(walletAddress);
+
+      const response = {
+        totalEarned: summary?.totalEarned || 0,
+        totalVested: summary?.totalVested || 0,
+        brainXLocked: summary?.brainXLocked || 0,
+        brainXUnlocked: summary?.brainXUnlocked || 0,
+        dailyEarnedTotal: summary?.dailyEarnedTotal || 0,
+        globalDailyCap: 500,
+        vestingProgress: summary ? ((summary.totalEarned - summary.totalVested) / 10000) * 100 : 0,
+        vestingEndDate: summary?.vestingEndDate || null,
+        games: gameBalances.map(g => ({
+          game: g.game,
+          earned: g.earned,
+          vested: g.vested,
+          dailyEarned: g.dailyEarned,
+          dailyCap: g.dailyCap
+        }))
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error('Get points balance failed:', error);
+      res.status(500).json({ error: 'Failed to get points balance' });
+    }
+  });
+
+  app.post('/api/points/earn', gameLimiter, async (req, res) => {
+    try {
+      const earnSchema = z.object({
+        walletAddress: z.string().refine(isValidIdentifier, 'Invalid wallet/session ID'),
+        game: z.enum(['riddle-quest', 'creature-command', 'retro-defender']),
+        action: z.string().min(1).max(50),
+        amount: z.number().int().min(1).max(100).optional()
+      });
+
+      const parsed = earnSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid points data', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, game, action, amount } = parsed.data;
+      const config = POINTS_CONFIG[game];
+      const pointsAmount = amount ?? (config.actions as any)[action] ?? 10;
+
+      const { points, earned, capped, globalCapped } = await storage.earnGamePoints(
+        walletAddress,
+        game,
+        pointsAmount,
+        config.dailyCap
+      );
+
+      const summary = await storage.getPointsSummary(walletAddress);
+
+      const result = {
+        success: earned > 0,
+        earned,
+        dailyTotal: points.dailyEarned,
+        dailyCap: config.dailyCap,
+        globalDailyTotal: summary?.dailyEarnedTotal || 0,
+        globalDailyCap: 500,
+        capped,
+        globalCapped,
+        totalEarned: summary?.totalEarned || earned,
+        brainXProgress: summary ? ((summary.totalEarned - summary.totalVested) / 10000) * 100 : 0
+      };
+
+      if (earned > 0) {
+        wsManager.broadcastPointsUpdate(walletAddress, {
+          game,
+          earned,
+          dailyTotal: points.dailyEarned,
+          dailyCap: config.dailyCap,
+          totalEarned: result.totalEarned,
+          brainXProgress: result.brainXProgress
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Earn points failed:', error);
+      res.status(500).json({ error: 'Failed to earn points' });
+    }
+  });
+
+  app.post('/api/brainx/vest', gameLimiter, async (req, res) => {
+    try {
+      const vestSchema = z.object({
+        walletAddress: z.string().refine(isValidIdentifier, 'Invalid wallet/session ID')
+      });
+
+      const parsed = vestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const result = await storage.vestPointsToBrainX(parsed.data.walletAddress);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      wsManager.broadcastVestingUpdate(parsed.data.walletAddress, {
+        brainXVested: result.brainXVested!,
+        lockEndDate: result.lockEndDate!,
+        totalBrainX: (await storage.getPointsSummary(parsed.data.walletAddress))?.brainXLocked || 0
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Vest points failed:', error);
+      res.status(500).json({ error: 'Failed to vest points' });
+    }
+  });
+
+  app.get('/api/points/leaderboard', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const leaderboard = await storage.getPointsLeaderboard(Math.min(limit, 50));
+      
+      res.json(leaderboard.map((entry, index) => ({
+        rank: index + 1,
+        walletAddress: entry.walletAddress,
+        totalEarned: entry.totalEarned,
+        brainXLocked: entry.brainXLocked,
+        brainXUnlocked: entry.brainXUnlocked
+      })));
+    } catch (error) {
+      console.error('Get points leaderboard failed:', error);
+      res.status(500).json({ error: 'Failed to get leaderboard' });
+    }
+  });
+
+  app.get('/api/ws/stats', async (_req, res) => {
+    try {
+      const stats = wsManager.getStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get WebSocket stats' });
     }
   });
 
