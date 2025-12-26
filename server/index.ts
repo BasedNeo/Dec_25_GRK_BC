@@ -85,30 +85,33 @@ app.use(decryptSensitiveRequest);
 
   // Fast health check at root - MUST be first for deployment health checks
   // Health checks typically don't send Accept: text/html
-  app.get("/", (req, res, next) => {
-    const acceptHeader = req.headers['accept'] || '';
-    const userAgent = req.headers['user-agent'] || '';
-    
-    // Pure health checkers (no user agent or specific health check agents)
-    const isHealthChecker = !userAgent || 
-      userAgent.includes('HealthChecker') || 
-      userAgent.includes('kube-probe') ||
-      userAgent.includes('GoogleHC');
-    
-    // If request doesn't accept HTML AND is a health checker, respond immediately
-    if (!acceptHeader.includes('text/html') && isHealthChecker) {
-      return res.status(200).send('OK');
-    }
-    
-    // If request doesn't accept HTML but is a browser, show branded page
-    if (!acceptHeader.includes('text/html')) {
-      res.setHeader('Content-Type', 'text/html');
-      return res.status(200).send(brandedLoadingPage);
-    }
-    
-    // Browser requests fall through to static file serving
-    next();
-  });
+  // Skip in development mode to let Vite handle the root route
+  if (process.env.NODE_ENV === 'production') {
+    app.get("/", (req, res, next) => {
+      const acceptHeader = req.headers['accept'] || '';
+      const userAgent = req.headers['user-agent'] || '';
+      
+      // Pure health checkers (no user agent or specific health check agents)
+      const isHealthChecker = !userAgent || 
+        userAgent.includes('HealthChecker') || 
+        userAgent.includes('kube-probe') ||
+        userAgent.includes('GoogleHC');
+      
+      // If request doesn't accept HTML AND is a health checker, respond immediately
+      if (!acceptHeader.includes('text/html') && isHealthChecker) {
+        return res.status(200).send('OK');
+      }
+      
+      // If request doesn't accept HTML but is a browser, show branded page
+      if (!acceptHeader.includes('text/html')) {
+        res.setHeader('Content-Type', 'text/html');
+        return res.status(200).send(brandedLoadingPage);
+      }
+      
+      // Browser requests fall through to static file serving
+      next();
+    });
+  }
 
   // Additional health check endpoints (these stay simple for monitoring)
   app.get("/_health", (_req, res) => {
