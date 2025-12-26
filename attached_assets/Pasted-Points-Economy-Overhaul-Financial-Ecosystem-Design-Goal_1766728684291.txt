@@ -1,0 +1,67 @@
+Points Economy Overhaul: Financial Ecosystem Design
+Goal: A fair, robust, persistent points system where earning aligns with game difficulty/achievement, displayed consistently, and backed up for commercial viability.
+Design Principles (Standard Gaming Methodology)
+
+Balance: Points reflect effort (e.g., harder achievements = higher rewards), avoiding one game dominating (e.g., Riddle Quest vs. Creature Command).
+Persistence: Never lose points—backed by DB, backups, and client-side caching.
+Value Generation: Points vest for brainX (1-year lock), creating long-term incentive without inflation (daily/weekly caps).
+Display Alignment: Unified across leaderboards, in-game, stats, activity pages.
+
+Current State Issues
+
+No centralized points table.
+Inconsistent rewards (e.g., Riddle daily vs. Creature wave).
+No caps or vesting.
+
+Proposed System
+
+Points Table (DB Schema):
+points table in shared/schema.ts:TypeScriptexport const points = pgTable("points", {
+  userId: text("userId").primaryKey(), // Wallet or anon ID
+  game: text("game").notNull(), // e.g., "RiddleQuest", "CreatureCommand"
+  earned: integer("earned").default(0), // Total points
+  vested: integer("vested").default(0), // brainX-eligible
+  lastUpdated: timestamp("lastUpdated", { withTimezone: true }).defaultNow(),
+  dailyCap: integer("dailyCap").default(500), // Anti-inflation
+  weeklyCap: integer("weeklyCap").default(2000),
+});
+Backup: Snapshot daily to .core-backups/points_backup.json.
+
+Earning Logic:
+Riddle Quest: 10 points/riddle, 50 bonus/daily challenge (500/day cap).
+Creature Command: 10 points/wave survive, 50 bonus/all lairs saved (500/day cap).
+Retro Defender: 20 points/pad save, 50 bonus/daily task (200/day cap—lower due to simpler mechanics).
+Achievement Scaling: Advanced (e.g., 10 riddles) = 100 points; Balance via difficulty (e.g., Creature waves harder than Riddle singles).
+Anti-Inflation: Caps enforce fairness; Excess points roll to next period.
+
+Vesting for brainX:
+1,000 points = 1 brainX (mocked).
+Lock: 1 year from earn date.
+Track in vested column, update on login.
+
+Display Alignment:
+Leaderboards: client/src/components/Leaderboard.tsx — Total earned by userId, real-time via WebSockets.
+In-Game: GuardianDefense.tsx, RiddleGame.tsx — Show earned + vested progress.
+Stats Page: client/src/pages/Stats.tsx — Breakdown by game, caps.
+Activity Page: client/src/pages/Activity.tsx — Log earns/vests with timestamps.
+
+
+Implementation
+
+Schema Prompt:textAdd points table to shared/schema.ts (userId, game, earned, vested, lastUpdated, dailyCap, weeklyCap). Add backup to .core-backups/points_backup.json. Plan first, test DB sync.
+Earning Prompt:textUpdate routes.ts and game components. Add point earning: RiddleQuest (10/riddle, 50/challenge, 500/day), CreatureCommand (10/wave, 50/lairs, 500/day), RetroDefender (20/pad, 50/task, 200/day). Use points table. Plan first, test balance.
+Vesting Prompt:textAdd brainX vesting to routes.ts. 1000 points = 1 brainX (1-year lock). Update vested column. Plan first, test vesting mock.
+Display Prompt:textAlign points display. Update Leaderboard.tsx, Stats.tsx, Activity.tsx, game UIs. Use WebSockets for real-time. Plan first, test consistency.
+
+
+Audit Findings and Fixes
+
+Backend: No major bugs; Add above enhancements.
+Arcade: Sync improved with WebSockets.
+Economy: Now fair, persistent, backed up.
+
+Next Steps
+
+Run schema prompt first.
+Test points earning, then vesting/display.
+Push to GitHub after each.

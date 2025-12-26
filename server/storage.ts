@@ -53,6 +53,10 @@ export interface IStorage {
   // Creature Command Progress
   getCreatureProgress(walletAddress: string): Promise<CreatureProgress | undefined>;
   upsertCreatureProgress(data: InsertCreatureProgress): Promise<CreatureProgress>;
+  
+  // Daily Challenges
+  getDailyChallenge(walletAddress: string, dateKey: string): Promise<DailyChallenge | undefined>;
+  upsertDailyChallenge(data: InsertDailyChallenge): Promise<DailyChallenge>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -882,6 +886,49 @@ export class DatabaseStorage implements IStorage {
           regenBurstLevel: data.regenBurstLevel,
           updatedAt: new Date()
         }
+      })
+      .returning();
+    return result;
+  }
+
+  // ============================================
+  // DAILY CHALLENGES METHODS
+  // ============================================
+
+  async getDailyChallenge(walletAddress: string, dateKey: string): Promise<DailyChallenge | undefined> {
+    const [challenge] = await db.select()
+      .from(dailyChallenges)
+      .where(and(
+        eq(dailyChallenges.walletAddress, walletAddress.toLowerCase()),
+        eq(dailyChallenges.dateKey, dateKey)
+      ));
+    return challenge;
+  }
+
+  async upsertDailyChallenge(data: InsertDailyChallenge): Promise<DailyChallenge> {
+    const normalizedAddress = data.walletAddress.toLowerCase();
+    const existing = await this.getDailyChallenge(normalizedAddress, data.dateKey);
+    
+    if (existing) {
+      const [updated] = await db.update(dailyChallenges)
+        .set({
+          survivesCount: data.survivesCount,
+          challengeCompleted: data.challengeCompleted,
+          pointsAwarded: data.pointsAwarded,
+          highestStage: Math.max(existing.highestStage, data.highestStage ?? 1),
+          highestWave: Math.max(existing.highestWave, data.highestWave ?? 1),
+          gamesPlayed: (existing.gamesPlayed || 0) + (data.gamesPlayed ?? 0),
+          updatedAt: new Date()
+        })
+        .where(eq(dailyChallenges.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [result] = await db.insert(dailyChallenges)
+      .values({
+        ...data,
+        walletAddress: normalizedAddress
       })
       .returning();
     return result;

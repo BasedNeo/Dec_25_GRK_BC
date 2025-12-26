@@ -3022,5 +3022,65 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // DAILY CHALLENGE ROUTES
+  // ============================================
+
+  app.get('/api/daily-challenge/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const challenge = await storage.getDailyChallenge(walletAddress, today);
+      
+      if (!challenge) {
+        return res.json({
+          walletAddress: walletAddress.toLowerCase(),
+          dateKey: today,
+          survivesCount: 0,
+          challengeCompleted: false,
+          pointsAwarded: 0,
+          highestStage: 1,
+          highestWave: 1,
+          gamesPlayed: 0,
+        });
+      }
+
+      res.json(challenge);
+    } catch (error) {
+      console.error('Get daily challenge failed:', error);
+      res.status(500).json({ error: 'Failed to get daily challenge' });
+    }
+  });
+
+  app.post('/api/daily-challenge', gameLimiter, async (req, res) => {
+    try {
+      const challengeSchema = z.object({
+        walletAddress: z.string().refine(isValidEthAddress, 'Invalid wallet address'),
+        dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        survivesCount: z.number().int().min(0),
+        challengeCompleted: z.boolean(),
+        pointsAwarded: z.number().int().min(0),
+        highestStage: z.number().int().min(1).max(5),
+        highestWave: z.number().int().min(1).max(25),
+        gamesPlayed: z.number().int().min(0).optional(),
+      });
+
+      const parsed = challengeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid challenge data', details: parsed.error.flatten() });
+      }
+
+      const result = await storage.upsertDailyChallenge(parsed.data);
+      res.json(result);
+    } catch (error) {
+      console.error('Save daily challenge failed:', error);
+      res.status(500).json({ error: 'Failed to save daily challenge' });
+    }
+  });
+
   return httpServer;
 }
