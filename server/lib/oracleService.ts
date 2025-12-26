@@ -74,7 +74,7 @@ export async function callOracle(
       body: JSON.stringify({
         model: MODEL,
         messages: fullMessages,
-        max_tokens: 200,
+        max_tokens: 150,
         temperature: 0.6,
         top_p: 0.9
       }),
