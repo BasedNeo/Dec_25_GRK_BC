@@ -522,11 +522,6 @@ export function validateScoreSubmission(
 ): { valid: boolean; reason?: string } {
   const config = getGameConfig(gameId);
   
-  // Check minimum play duration
-  if (playDuration < config.minPlayDuration) {
-    return { valid: false, reason: `Minimum play time is ${config.minPlayDuration} seconds` };
-  }
-  
   // Check maximum score
   if (rawScore > config.scoring.maxScore * 1.1) { // 10% tolerance for bonuses
     return { valid: false, reason: 'Score exceeds maximum possible' };
@@ -535,14 +530,6 @@ export function validateScoreSubmission(
   // Check negative scores
   if (rawScore < 0) {
     return { valid: false, reason: 'Invalid score' };
-  }
-  
-  // Check score rate (points per second) - flag impossibly fast scoring
-  const maxPointsPerSecond = config.scoring.maxScore / config.minPlayDuration;
-  const actualPointsPerSecond = rawScore / playDuration;
-  
-  if (actualPointsPerSecond > maxPointsPerSecond * 2) {
-    return { valid: false, reason: 'Score rate exceeds possible maximum' };
   }
   
   return { valid: true };
