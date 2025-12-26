@@ -154,8 +154,7 @@ export function useUserNFTs() {
   // Track previous address to detect wallet switches
   const prevAddressRef = useRef<string | undefined>(undefined);
 
-  // DISABLED AUTO-FETCH: Reset state on wallet change or disconnect, don't auto-fetch
-  // This prevents browser freezing when users connect wallet
+  // Auto-fetch NFTs on mount and wallet change
   useEffect(() => {
     // Always reset state when address changes (including wallet switch)
     if (address !== prevAddressRef.current) {
@@ -165,6 +164,11 @@ export function useUserNFTs() {
       setTotalOwned(null);
       setLoading(false);
       prevAddressRef.current = address;
+      
+      // Auto-fetch when wallet is connected
+      if (address && isConnected) {
+        fetchUserNFTs(address);
+      }
     }
     
     // Also reset if not connected
@@ -179,7 +183,7 @@ export function useUserNFTs() {
     return () => {
       setLoading(false);
     };
-  }, [address, isConnected]);
+  }, [address, isConnected, fetchUserNFTs]);
 
   const refetch = useCallback(() => {
     if (address) {

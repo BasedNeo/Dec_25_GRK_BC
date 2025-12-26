@@ -324,7 +324,7 @@ export function NFTGallery({
                            </span>
                            <div className="flex items-center gap-2 mt-2">
                               <span className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-1 rounded">
-                                 {displayNfts.length} Guardians (Chain: {ownedBalance})
+                                 {displayNfts.length} Guardian{displayNfts.length !== 1 ? 's' : ''}
                               </span>
                               <Button
                                  variant="ghost"
@@ -564,34 +564,22 @@ export function NFTGallery({
                       CONNECT TO VIEW
                     </Button>
                 </div>)
-              ) : filterByOwner && isConnected && !nftsHasLoaded && !isLoadingOwned ? (
-                // Manual Load Button - NFTs not yet fetched (prevents browser crash)
-                (<div className="flex flex-col items-center justify-center py-20 border border-dashed border-primary/30 rounded-xl bg-primary/5">
-                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                      <RefreshCw className="w-10 h-10 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-orbitron text-white mb-2">LOAD YOUR NFTs</h3>
-                    <p className="text-muted-foreground mb-4 text-center max-w-md">
-                      Click below to fetch your Based Guardians from the blockchain.
-                    </p>
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-6 max-w-md">
-                      <p className="text-xs text-yellow-400 text-center">
-                        For performance, we'll load up to 20 NFTs. If you own more, we'll show the first 20.
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={refetchOwned}
-                      size="lg"
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 font-orbitron tracking-wider gap-2"
-                      data-testid="button-load-nfts"
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                      LOAD MY NFTs
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-4">
-                      This may take 10-30 seconds depending on how many NFTs you own.
-                    </p>
-                </div>)
+              ) : filterByOwner && isConnected && !nftsHasLoaded ? (
+                // Loading state - NFTs being fetched automatically
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                    <span className="text-sm font-orbitron text-cyan-400">LOADING YOUR NFTs...</span>
+                  </div>
+                  <div className={`grid gap-6 ${
+                    gridCols === 1 ? 'grid-cols-1' : 
+                    gridCols === 2 ? 'grid-cols-1 sm:grid-cols-2' : 
+                    gridCols === 4 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 
+                    'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                  }`}>
+                    <GuardianCardSkeletonGrid count={gridCols === 1 ? 3 : gridCols === 2 ? 4 : 8} />
+                  </div>
+                </div>
               ) : (
                 <>
                   {(filterByOwner ? isLoadingOwned : isLoading) && !displayNfts.length ? (
