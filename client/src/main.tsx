@@ -128,32 +128,16 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Service Worker Management - consolidated and robust
+// Service Worker Deregistration - clear stale caches on every load
 if ('serviceWorker' in navigator) {
-  const clearAllCaches = async () => {
-    try {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map(r => r.unregister()));
-      
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-      }
-      console.log('[SW] All service workers and caches cleared');
-    } catch (e) {
-      // Silently fail
-    }
-  };
-
-  if (import.meta.env.PROD) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(reg => reg.unregister());
+  });
+  
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
     });
-  } else {
-    if (!sessionStorage.getItem('sw_cleared_main')) {
-      sessionStorage.setItem('sw_cleared_main', 'true');
-      clearAllCaches();
-    }
   }
 }
 
