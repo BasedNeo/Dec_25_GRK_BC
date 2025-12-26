@@ -25,7 +25,7 @@ export interface AbilityLevelEffect {
   modifier: number;
 }
 
-export const UPGRADE_COSTS = [100, 200, 300];
+export const UPGRADE_COSTS = [0, 100, 200];
 
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   piercing_bubbles: {
@@ -150,9 +150,9 @@ export const COMBO_BONUS_MULTIPLIER = 5;
 export const STARTING_POINTS = 0;
 
 export function getUpgradeCost(currentLevel: number): number {
-  if (currentLevel === 0) return 100;
-  if (currentLevel === 1) return 200;
-  if (currentLevel === 2) return 300;
+  if (currentLevel === 0) return 0;
+  if (currentLevel === 1) return 100;
+  if (currentLevel === 2) return 200;
   return 0;
 }
 

@@ -172,6 +172,8 @@ export function CreatureAbilityPanel() {
             >
               {selectedIsMaxed ? (
                 '✓ MAXED OUT'
+              ) : selectedLevel === 0 ? (
+                'Unlock Level 1 (Free)'
               ) : selectedCanUpgrade ? (
                 <>
                   Upgrade to Level {selectedLevel + 1} ({selectedNextCost} pts)
