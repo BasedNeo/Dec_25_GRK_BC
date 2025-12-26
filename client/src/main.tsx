@@ -141,32 +141,9 @@ if ('serviceWorker' in navigator) {
   }
 }
 
-// HMR handler - suppress reloads and excessive reconnection logs
+// Suppress Vite HMR warnings in dev
 if (import.meta.hot) {
-  import.meta.hot.accept();
-  
-  import.meta.hot.on('vite:beforeUpdate', () => {
-    console.log('[HMR] Update detected, preserving state');
-  });
-  
-  import.meta.hot.on('vite:beforeFullReload', () => {
-    console.log('[HMR] Full reload suppressed');
-    throw new Error('HMR_RELOAD_SUPPRESSED');
-  });
-  
-  let hmrErrorCount = 0;
-  const HMR_ERROR_THRESHOLD = 3;
-  
-  import.meta.hot.on('vite:ws-disconnect', () => {
-    hmrErrorCount++;
-    if (hmrErrorCount >= HMR_ERROR_THRESHOLD) {
-      return;
-    }
-  });
-  
-  import.meta.hot.on('vite:ws-connect', () => {
-    hmrErrorCount = 0;
-  });
+  import.meta.hot.on('vite:beforeUpdate', () => false);
 }
 
 createRoot(document.getElementById("root")!).render(
