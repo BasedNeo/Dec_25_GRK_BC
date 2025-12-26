@@ -7,7 +7,7 @@ import {
   Rocket, Shield, Crown, Pickaxe, 
   BookOpen, Vote, Map, Lock, CheckCircle,
   Sparkles, Users, Flame, Calendar, TrendingUp,
-  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2, Trophy
+  Star, Award, Compass, Swords, Diamond, Gem, Edit3, Check, X, AlertCircle, Gamepad2, Trophy, Zap
 } from 'lucide-react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useGuardianProfileContext } from './GuardianProfileProvider';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { VestingProgressBar } from '@/components/PointsDisplay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -282,10 +283,12 @@ function GameStatsSection() {
                   </div>
                 )}
                 
-                <div className="text-center text-xs text-white/40">
+                <div className="text-center text-xs text-white/40 mb-4">
                   <Sparkles className="w-3 h-3 inline mr-1" />
                   Race-to-Base Minigame - Full P2E coming Q1 2025
                 </div>
+                
+                <VestingProgressBar className="mt-4" />
               </>
             ) : (
               <div className="text-center py-6">

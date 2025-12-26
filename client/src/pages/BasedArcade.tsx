@@ -15,6 +15,7 @@ import { GameStorageManager } from '@/lib/gameStorage';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Navbar } from '@/components/Navbar';
 import { LeaderboardPanel } from '@/components/game/LeaderboardPanel';
+import { PointsDisplay } from '@/components/PointsDisplay';
 
 interface LeaderboardEntry {
   id: string;
@@ -457,7 +458,7 @@ export default function BasedArcade() {
       <Navbar activeTab="game" onTabChange={() => navigate('/')} isConnected={isConnected} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-4">
           <button 
             onClick={() => navigate('/')}
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
@@ -467,6 +468,10 @@ export default function BasedArcade() {
             <Home size={16} />
             <span>Back to Command Center</span>
           </button>
+        </div>
+
+        <div className="flex justify-center mb-8">
+          <PointsDisplay compact={false} showBreakdown={true} showVesting={true} className="max-w-md w-full" />
         </div>
 
         <motion.div

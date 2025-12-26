@@ -7,6 +7,7 @@ import { Navbar } from '@/components/Navbar';
 import { RiddleQuest } from '@/components/RiddleQuest';
 import { NFT_CONTRACT } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
+import { PointsBadge } from '@/components/PointsDisplay';
 
 const ERC721_ABI = [
   {
@@ -156,7 +157,7 @@ export default function RiddleQuestPage() {
       <Navbar activeTab="game" onTabChange={() => navigate('/')} isConnected={isConnected} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <button 
             onClick={() => navigate('/games')}
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
@@ -165,6 +166,7 @@ export default function RiddleQuestPage() {
             <Home size={16} />
             <span>Back to Arcade</span>
           </button>
+          <PointsBadge />
         </div>
 
         <RiddleQuest />
