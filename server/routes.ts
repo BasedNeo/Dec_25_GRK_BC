@@ -2962,5 +2962,65 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // CREATURE COMMAND PROGRESS ROUTES
+  // ============================================
+
+  app.get('/api/creature-progress/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidEthAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const progress = await storage.getCreatureProgress(walletAddress);
+      if (!progress) {
+        return res.json({
+          walletAddress: walletAddress.toLowerCase(),
+          totalPoints: 0,
+          piercingLevel: 0,
+          shieldLevel: 0,
+          rapidFireLevel: 0,
+          explosiveLevel: 0,
+          slowFieldLevel: 0,
+          multiBubbleLevel: 0,
+          regenBurstLevel: 0,
+        });
+      }
+
+      res.json(progress);
+    } catch (error) {
+      console.error('Get creature progress failed:', error);
+      res.status(500).json({ error: 'Failed to get creature progress' });
+    }
+  });
+
+  app.post('/api/creature-progress', gameLimiter, async (req, res) => {
+    try {
+      const progressSchema = z.object({
+        walletAddress: z.string().refine(isValidEthAddress, 'Invalid wallet address'),
+        totalPoints: z.number().int().min(0),
+        piercingLevel: z.number().int().min(0).max(3),
+        shieldLevel: z.number().int().min(0).max(3),
+        rapidFireLevel: z.number().int().min(0).max(3),
+        explosiveLevel: z.number().int().min(0).max(3),
+        slowFieldLevel: z.number().int().min(0).max(3),
+        multiBubbleLevel: z.number().int().min(0).max(3),
+        regenBurstLevel: z.number().int().min(0).max(3),
+      });
+
+      const parsed = progressSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid progress data', details: parsed.error.flatten() });
+      }
+
+      const result = await storage.upsertCreatureProgress(parsed.data);
+      res.json(result);
+    } catch (error) {
+      console.error('Save creature progress failed:', error);
+      res.status(500).json({ error: 'Failed to save creature progress' });
+    }
+  });
+
   return httpServer;
 }
