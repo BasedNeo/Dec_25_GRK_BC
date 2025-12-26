@@ -75,13 +75,15 @@ export class ActivityBackupService {
         return { success: true, filePath };
       }
       
-      const logs = await storage.getActivityLogs(1000);
+      // Fetch a large number of recent activity logs for daily backup
+      // This captures activity for the past day plus some buffer
+      const logs = await storage.getActivityLogs(50000);
       
       const backupData: ActivityBackupData = {
         snapshotDate: today,
         createdAt: new Date().toISOString(),
         totalLogs: logs.length,
-        logs: logs.map((log: typeof logs[0]) => ({
+        logs: logs.map((log) => ({
           id: log.id,
           walletAddress: log.walletAddress,
           eventType: log.eventType,

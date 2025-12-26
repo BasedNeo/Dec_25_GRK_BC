@@ -221,6 +221,15 @@ export function RiddleQuest() {
       const pointsEarned = 100 + (progress.streak > 3 ? 25 : 0);
       const newProgress = { ...progress, points: progress.points + pointsEarned };
       
+      // Log activity for standard riddle solve
+      logActivity({
+        walletAddress: address,
+        eventType: 'riddle_solved',
+        details: `Solved riddle at level ${progress.currentLevel}`,
+        pointsEarned,
+        gameType: 'riddle_quest'
+      });
+      
       const isLastRiddleInLevel = (progress.currentRiddle || 0) >= currentLevelRiddles.length - 1;
       
       if (isLastRiddleInLevel) {
@@ -265,6 +274,15 @@ export function RiddleQuest() {
     } else {
       setFeedback('wrong');
       setIsShaking(true);
+      
+      // Log activity for failed riddle attempt
+      logActivity({
+        walletAddress: address,
+        eventType: 'riddle_failed',
+        details: `Failed riddle at level ${progress.currentLevel}`,
+        gameType: 'riddle_quest'
+      });
+      
       const newProgress = { ...progress, failedAttempts: progress.failedAttempts + 1 };
       if (newProgress.failedAttempts >= 2) {
         setShowHint(true);
@@ -348,6 +366,15 @@ export function RiddleQuest() {
           const pointsEarned = 150 + (progress.streak > 3 ? 25 : 0);
           const newProgress = { ...progress, points: progress.points + pointsEarned };
           
+          // Log activity for oracle riddle solve
+          logActivity({
+            walletAddress: address,
+            eventType: 'riddle_solved',
+            details: `Solved Oracle riddle at level ${progress.currentLevel}`,
+            pointsEarned,
+            gameType: 'riddle_quest'
+          });
+          
           const isLastRiddleInLevel = (progress.currentRiddle || 0) >= currentLevelRiddles.length - 1;
           
           if (isLastRiddleInLevel) {
@@ -389,6 +416,17 @@ export function RiddleQuest() {
       } else {
         setFeedback('wrong');
         setIsShaking(true);
+        
+        // Log activity for failed oracle riddle attempt
+        if (address) {
+          logActivity({
+            walletAddress: address,
+            eventType: 'riddle_failed',
+            details: `Failed Oracle riddle at level ${progress?.currentLevel || 1}`,
+            gameType: 'riddle_quest'
+          });
+        }
+        
         setTimeout(() => {
           setFeedback(null);
           setIsShaking(false);

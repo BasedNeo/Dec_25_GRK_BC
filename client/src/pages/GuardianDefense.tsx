@@ -1214,6 +1214,18 @@ export default function GuardianDefense() {
       
       const comboPoints = Math.min(Math.floor(finalWaveCombo / 3), 15);
       earnPoints(1, comboPoints);
+      
+      // Log wave survived activity
+      if (address) {
+        logActivity({
+          walletAddress: address,
+          eventType: 'wave_survived',
+          details: `Survived wave ${state.wave} with ${savedCities} cities${perfectDefense ? ' (PERFECT)' : ''}`,
+          pointsEarned: completionBonus,
+          gameType: 'creature_command'
+        });
+      }
+      
       if (actualWavePoints > 0) {
         createScorePopup(`+${actualWavePoints} WAVE CLEAR`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, '#fbbf24', true);
       }
