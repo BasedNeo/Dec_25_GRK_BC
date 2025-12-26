@@ -912,12 +912,12 @@ export class DatabaseStorage implements IStorage {
     if (existing) {
       const [updated] = await db.update(dailyChallenges)
         .set({
-          survivesCount: data.survivesCount,
-          challengeCompleted: data.challengeCompleted,
-          pointsAwarded: data.pointsAwarded,
+          survivesCount: Math.max(existing.survivesCount, data.survivesCount ?? 0),
+          challengeCompleted: existing.challengeCompleted || data.challengeCompleted,
+          pointsAwarded: Math.max(existing.pointsAwarded, data.pointsAwarded ?? 0),
           highestStage: Math.max(existing.highestStage, data.highestStage ?? 1),
           highestWave: Math.max(existing.highestWave, data.highestWave ?? 1),
-          gamesPlayed: (existing.gamesPlayed || 0) + (data.gamesPlayed ?? 0),
+          gamesPlayed: Math.max(existing.gamesPlayed || 0, data.gamesPlayed ?? 0),
           updatedAt: new Date()
         })
         .where(eq(dailyChallenges.id, existing.id))

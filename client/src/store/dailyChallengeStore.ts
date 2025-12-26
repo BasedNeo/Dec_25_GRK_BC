@@ -162,7 +162,7 @@ export const useDailyChallengeStore = create<DailyChallengeState>()(
             pointsAwarded: state.pointsAwarded,
             highestStage: state.highestStage,
             highestWave: state.highestWave,
-            gamesPlayed: 0,
+            gamesPlayed: state.gamesPlayed,
           };
           
           const response = await fetch('/api/daily-challenge', {

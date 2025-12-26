@@ -2277,11 +2277,33 @@ export default function GuardianDefense() {
         <GameHUD
           score={state.score}
           extraStats={[
-            { icon: Zap, label: 'Wave', value: `${state.wave}/10`, color: 'text-purple-400' },
-            { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: 'text-cyan-400' },
+            { icon: Zap, label: 'Stage', value: `${state.currentStage}/${STAGE_CONFIG.length}`, color: 'text-purple-400' },
+            { icon: Target, label: 'Wave', value: `${state.stageWave}/${WAVES_PER_STAGE}`, color: 'text-cyan-400' },
+            { icon: Shield, label: 'Lairs', value: `${citiesAlive}/4`, color: citiesAlive <= 1 ? 'text-red-400' : 'text-green-400' },
             { icon: Crosshair, label: 'Shots', value: state.shotsRemaining, color: state.shotsRemaining <= 1 ? 'text-red-400' : 'text-yellow-400' },
           ]}
         />
+        
+        {/* Daily Challenge Progress */}
+        <div className="mt-2 bg-black/40 rounded-lg p-3 border border-yellow-500/30">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs font-bold text-yellow-400 flex items-center gap-1">
+              <Trophy className="w-3 h-3" /> DAILY CHALLENGE
+            </span>
+            <span className="text-xs text-gray-400">
+              {challengeCompleted ? '✓ COMPLETE' : `${survives}/${DAILY_CHALLENGE_GOAL} survives`}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-300 ${challengeCompleted ? 'bg-green-500' : 'bg-yellow-500'}`}
+              style={{ width: `${Math.min(100, (survives / DAILY_CHALLENGE_GOAL) * 100)}%` }}
+            />
+          </div>
+          {challengeCompleted && (
+            <p className="text-xs text-green-400 text-center mt-1">+100 bonus points awarded!</p>
+          )}
+        </div>
 
         <div className="flex justify-center mt-4">
           <div 
@@ -2306,7 +2328,7 @@ export default function GuardianDefense() {
             />
             
             <div className="absolute top-2 left-2 text-cyan-400 text-xs font-mono opacity-70">
-              WAVE {state.wave}/10
+              STAGE {state.currentStage} • WAVE {state.stageWave}/{WAVES_PER_STAGE}
             </div>
             <div className="absolute top-2 right-2 text-yellow-400 text-xs font-mono opacity-70">
               {state.score.toLocaleString()} PTS
