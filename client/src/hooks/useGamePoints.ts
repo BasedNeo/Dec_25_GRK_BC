@@ -64,6 +64,7 @@ export function useGamePoints() {
   
   useEffect(() => {
     const unsubPoints = on('points_update', (data) => {
+      console.log('[WS] Received points_update:', data);
       setBalance(prev => {
         if (!prev) return prev;
         
@@ -84,6 +85,7 @@ export function useGamePoints() {
     });
     
     const unsubVesting = on('vesting_update', (data) => {
+      console.log('[WS] Received vesting_update:', data);
       setBalance(prev => {
         if (!prev) return prev;
         return {
@@ -94,9 +96,14 @@ export function useGamePoints() {
       });
     });
     
+    const unsubLeaderboard = on('leaderboard_update', (data) => {
+      console.log('[WS] Received leaderboard_update:', data);
+    });
+    
     return () => {
       unsubPoints();
       unsubVesting();
+      unsubLeaderboard();
     };
   }, [on]);
   
