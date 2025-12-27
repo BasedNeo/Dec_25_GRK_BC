@@ -151,6 +151,12 @@ Protected folder structure to isolate core commerce and game code:
 
 ### Feature Specifications
 - **Retro Defender Game**: 5-level space arcade minigame accessible to all users (`/game`). Guardian holders receive perks. Includes lifetime score tracking.
+- **Riddle Quest - Mind Warp Strategist** (Updated Dec 2024): AI-powered riddle experience with chat-based interface.
+  - Character: "Mind Warp Strategist" replaces "Guardian Oracle"
+  - 24-hour quest cooldown: Users can only start 1 Mind Warp Strategist quest per 24 hours (tracked via localStorage)
+  - 3 questions/hints per quest: Natural language hints detected by patterns ("?", "hint", "help", "clue")
+  - Semantic answer validation: Accepts variations like "halving", "the halving", "Is it halving?" as correct
+  - API down handling: Displays "Mind Warp Strategist is scheming..." message and falls back to static riddles
 - **Pool Tracker Enhancements**: Comprehensive display of payment structure, including community treasury and ecosystem revenue breakdowns.
 - **Interactive Lore Explorer**: Discover character backstories, locations, historical events, and factions of the Based Universe.
 - **Lore-Gamification Integration**: Higher game ranks (Star Commander, Fleet Admiral, Based Eternal) require lore discovery progress (25%, 50%, 75% respectively) plus at least 1 game played. Ranks are locked until requirements are met, with UI showing unlock requirements.

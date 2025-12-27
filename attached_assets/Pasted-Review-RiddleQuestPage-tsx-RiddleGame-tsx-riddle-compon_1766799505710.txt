@@ -1,0 +1,36 @@
+Review RiddleQuestPage.tsx, RiddleGame.tsx, riddle/* components, routes.ts, and chatbot integration (OpenRouter with allenai/olmo-3.1-32b-think:free model, using OPENROUTER_API_KEY from secrets).
+
+Current issues:
+- Exact answer required (denies variations, extra words, punctuation).
+- No interactive question/hint responses (fixed clues only).
+- No down handling (game fails if OpenRouter down).
+- UI complicated on mobile (cramped tabs/buttons).
+
+Upgrade to fully chat-based experience with Mind Warp Strategist (Based Guardian NFT character):
+
+- Use ONLY OpenRouter chatbot (endpoint: https://openrouter.ai/api/v1/chat/completions, model: allenai/olmo-3.1-32b-think:free, auth: Bearer $OPENROUTER_API_KEY).
+- System Prompt for Mind Warp Strategist (exact):
+  "You are the Mind Warp Strategist, a cunning Based Guardian NFT character in the cyberpunk universe on BasedAI L1. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, and community governance. Engage in natural conversation: Evaluate user answers semantically (accept close variations, synonyms, extra words/punctuation, or phrasings like 'Is it halving?' for 'halving' — focus on intent, not exact wording). For user questions/clarifications (e.g., 'hint?' or 'what's a clue?'), provide lore-themed hints without spoiling. Responses concise (<150 tokens), mysterious, strategic tone (e.g., 'The grid whispers a secret...'). Never break character or reveal answers directly. Use image of Mind Warp Strategist for avatar."
+
+- Limit: 1 riddle quest per 24 hours (track via localStorage 'lastQuest' timestamp or DB user table).
+- Limited interactions: 3 per quest (questions/clarifications count; answers don't).
+- Semantic Answers: Chatbot validates flexibly (e.g., 'the halving event' accepted).
+- Questions: Treat input as chat — respond to questions as hints.
+- Down Handling: On API error/rate limit, show "Mind Warp Strategist is scheming — riddles baking, return soon" placeholder, fallback to static riddle array.
+
+- Typing Effect: Riddle/question types out character-by-character (50ms delay, blinking cursor CSS).
+
+- UI Optimization (Mobile-First):
+  - Single chat window (full-width input, large submit, scrollable history with Strategist avatar left, user right).
+  - No tabs — toggle button for campaign/daily.
+  - Large, touch-friendly elements (min 60px buttons, auto-focus keyboard).
+
+Preserve points (100/solve, daily cap 500).
+
+Logging: Add console.log for OpenRouter calls/responses to verify.
+
+Plan first: Files/lines (API in routes.ts, chat UI/logic in RiddleGame.tsx, down fallback, typing effect).
+
+Approve, implement step-by-step. Test: Semantic answer accepted, question gets hint, down shows placeholder, typing feels live, 24h limit, mobile UX smooth.
+
+Report results with logs proving chatbot usage (semantic match, dynamic hint).

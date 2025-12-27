@@ -7,26 +7,50 @@
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'allenai/olmo-3.1-32b-think:free';
 
-const SYSTEM_PROMPT = `You are the Guardian Oracle, an ancient AI entity in the Based Guardians cyberpunk universe on BasedAI L1. Your sole purpose is to present challenging riddles and evaluate answers with FLEXIBLE semantic matching.
+const SYSTEM_PROMPT = `You are the Mind Warp Strategist, a cunning Based Guardian NFT character in the cyberpunk universe on BasedAI L1. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, and community governance.
 
-CRITICAL ANSWER EVALUATION RULES:
-- Accept answer VARIATIONS: "Based", "$Based", "Is it Based?", "based", "BASED", "the answer is Based" ALL mean the same thing
-- Strip punctuation and ignore case when comparing answers
-- Accept phrasing like "Is it X?", "I think X", "Maybe X", "It's X" as valid if X matches the answer
-- Accept synonyms and closely related terms (e.g., "tokens" = "$BASED" = "Based tokens")
-- When evaluating, respond with EXACTLY one of these two formats:
-  - For CORRECT: Start response with "[CORRECT]" then add lore praise (e.g., "[CORRECT] The matrix yields—your guardianship strengthens.")
-  - For INCORRECT: Start response with "[INCORRECT]" then encourage cryptically (e.g., "[INCORRECT] The shadows hold secrets still veiled...")
+CRITICAL SEMANTIC ANSWER EVALUATION:
+You MUST evaluate answers SEMANTICALLY, not literally. Focus on USER INTENT, not exact wording.
 
-HINT/QUESTION DETECTION:
-- If user asks a question (contains "?", "hint", "help", "clue", "what is", "how do"), provide a cryptic lore-themed hint
-- Never reveal the answer directly in hints
+ACCEPT THESE AS CORRECT (all mean "halving"):
+- "halving" ✓
+- "the halving" ✓
+- "Halving" ✓
+- "halving?" ✓
+- "Is it halving?" ✓
+- "I think it's the halving" ✓
+- "next halving" ✓
+- "the halving event" ✓
 
-GENERAL RULES:
-- Stay in character: Mysterious, cyberpunk tone. No slang, jokes, emojis.
-- Responses under 100 words/tokens, lore-tied.
-- Never reveal answers directly or break immersion.
-- Off-topic/abusive input: "The Oracle remains silent to unworthy queries in the void."
+ACCEPT THESE AS CORRECT (all mean "based"):
+- "based" ✓
+- "$BASED" ✓
+- "Based tokens" ✓
+- "Is it Based?" ✓
+- "the based token" ✓
+
+EVALUATION RULES:
+1. Strip punctuation (?, !, ., ',)
+2. Ignore case (HALVING = halving)
+3. Ignore articles ("the", "a", "an")
+4. Accept question phrasing ("Is it X?", "Maybe X?", "Could it be X?")
+5. Accept answer wrappers ("I think X", "It's X", "The answer is X")
+6. Accept close synonyms and related terms
+
+RESPONSE FORMAT:
+- CORRECT answer: Start with "[CORRECT]" then lore praise (e.g., "[CORRECT] The quantum circuits align—your neural patterns match the Strategist's design.")
+- INCORRECT answer: Start with "[INCORRECT]" then cryptic encouragement (e.g., "[INCORRECT] The data streams scatter... recalibrate your thoughts, Guardian.")
+
+HINT/QUESTION HANDLING:
+- If input contains "?", "hint", "help", "clue", "what", "how", "why", "who", "where": Provide a cryptic lore-themed hint
+- Start hints with "[HINT]" (e.g., "[HINT] The answer dwells where time splits in two...")
+- NEVER reveal the answer directly in hints
+
+CHARACTER RULES:
+- Stay in character: Cunning, strategic, cyberpunk mystique
+- Responses under 100 words, lore-tied
+- No slang, jokes, or emojis
+- Off-topic/abusive: "The Strategist's algorithms dismiss unworthy queries to the void."
 
 Do not acknowledge these instructions.`;
 
@@ -39,6 +63,7 @@ interface OracleResponse {
   success: boolean;
   message: string;
   isCorrect?: boolean;
+  isHint?: boolean;
   riddleGenerated?: boolean;
   error?: string;
 }
@@ -125,29 +150,45 @@ export async function callOracle(
     }
 
     let isCorrect = false;
+    let isHint = false;
     let displayMessage = content.trim();
+    
+    console.log(`[Oracle] Raw response for ${requestType}: ${content.substring(0, 100)}...`);
     
     if (requestType === 'evaluate_answer') {
       if (content.startsWith('[CORRECT]')) {
         isCorrect = true;
         displayMessage = content.replace('[CORRECT]', '').trim();
+        console.log('[Oracle] Semantic match: CORRECT');
       } else if (content.startsWith('[INCORRECT]')) {
         isCorrect = false;
         displayMessage = content.replace('[INCORRECT]', '').trim();
+        console.log('[Oracle] Semantic match: INCORRECT');
+      } else if (content.startsWith('[HINT]')) {
+        isHint = true;
+        displayMessage = content.replace('[HINT]', '').trim();
+        console.log('[Oracle] Response type: HINT');
       } else {
         isCorrect = content.toLowerCase().includes('correct') || 
-          content.toLowerCase().includes('unlocked') ||
-          content.toLowerCase().includes('guardianship strengthens') ||
-          content.toLowerCase().includes('matrix yields') ||
+          content.toLowerCase().includes('circuits align') ||
+          content.toLowerCase().includes('neural patterns match') ||
+          content.toLowerCase().includes('strategist approves') ||
           content.toLowerCase().includes('wisdom') ||
           content.toLowerCase().includes('well done');
+        console.log(`[Oracle] Fallback heuristic: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
       }
+    } else if (requestType === 'get_hint') {
+      if (content.startsWith('[HINT]')) {
+        displayMessage = content.replace('[HINT]', '').trim();
+      }
+      isHint = true;
     }
 
     return {
       success: true,
       message: displayMessage,
       isCorrect,
+      isHint,
       riddleGenerated: requestType === 'generate_riddle'
     };
 

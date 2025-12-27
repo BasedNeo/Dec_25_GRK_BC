@@ -23,7 +23,13 @@ import {
   generateOracleRiddle, 
   evaluateOracleAnswer, 
   getOracleHint,
-  resetOracleSession
+  resetOracleSession,
+  canStartNewQuest,
+  getTimeUntilNextQuest,
+  markQuestStarted,
+  getQuestionsRemaining,
+  useQuestion,
+  isQuestionOrHintRequest
 } from '@/lib/oracleClient';
 import { RiddleLeaderboard } from '@/components/RiddleLeaderboard';
 import { useDailyRiddles, useDailyProgress, useSubmitRiddleAttempt, useRiddleStats } from '@/hooks/useRiddleQuest';
@@ -150,13 +156,19 @@ export function RiddleQuest() {
   const [dailyRiddleIndex, setDailyRiddleIndex] = useState(0);
   const [dailyStartTime, setDailyStartTime] = useState<number | null>(null);
   
-  // Oracle Mode State
+  // Oracle Mode State - Now Mind Warp Strategist
   const [oracleMode, setOracleMode] = useState(false);
   const [oracleRiddle, setOracleRiddle] = useState<string | null>(null);
   const [oracleResponse, setOracleResponse] = useState<string | null>(null);
   const [oracleLoading, setOracleLoading] = useState(false);
   const [oracleConversation, setOracleConversation] = useState<Array<{ role: string; content: string }>>([]);
   const [oracleInteractionsLeft, setOracleInteractionsLeft] = useState(3);
+  const [questionsRemaining, setQuestionsRemaining] = useState(3);
+  
+  // 24-hour limit and API down state
+  const [canPlayQuest, setCanPlayQuest] = useState(true);
+  const [timeUntilNextQuest, setTimeUntilNextQuest] = useState({ hours: 0, minutes: 0 });
+  const [apiDown, setApiDown] = useState(false);
   
   // Daily Challenge Hooks
   const { data: dailySet, isLoading: dailyLoading } = useDailyRiddles();
@@ -198,6 +210,22 @@ export function RiddleQuest() {
   useEffect(() => {
     setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
   }, [oracleMode, isNftHolder]);
+
+  // Check 24-hour quest limit on mount and update timer
+  useEffect(() => {
+    const checkQuestLimit = () => {
+      const canPlay = canStartNewQuest();
+      setCanPlayQuest(canPlay);
+      if (!canPlay) {
+        setTimeUntilNextQuest(getTimeUntilNextQuest());
+      }
+      setQuestionsRemaining(getQuestionsRemaining());
+    };
+    
+    checkQuestLimit();
+    const interval = setInterval(checkQuestLimit, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   const currentLevelRiddles = RIDDLES.filter(r => r.level === (progress?.currentLevel || 1));
   const currentRiddle = currentLevelRiddles[progress?.currentRiddle || 0];
@@ -297,6 +325,19 @@ export function RiddleQuest() {
   }, [answer, currentRiddle, progress, address, currentLevelRiddles.length]);
 
   const startQuest = async () => {
+    // Enforce 24-hour cooldown for Mind Warp Strategist mode
+    if (oracleMode && !canPlayQuest) {
+      console.log('[RiddleQuest] Quest blocked - 24-hour cooldown active');
+      return;
+    }
+    
+    // Mark quest started for 24-hour limit when using Mind Warp Strategist
+    if (oracleMode) {
+      markQuestStarted();
+      setQuestionsRemaining(3);
+      // Update canPlayQuest state
+      setCanPlayQuest(false);
+    }
     setGameState('playing');
     if (oracleMode && canUseOracle(isNftHolder)) {
       await fetchOracleRiddle();
@@ -319,32 +360,53 @@ export function RiddleQuest() {
     if (!progress) return;
     setOracleLoading(true);
     setOracleResponse(null);
+    setApiDown(false);
     
     const difficulty = progress.currentLevel <= 3 ? 'easy' : progress.currentLevel <= 7 ? 'medium' : 'hard';
+    console.log(`[RiddleQuest] Fetching riddle from Mind Warp Strategist - Level ${progress.currentLevel}, Difficulty: ${difficulty}`);
+    
     const result = await generateOracleRiddle(progress.currentLevel, difficulty, isNftHolder);
     
     setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
     
     if (result.success && result.message) {
+      console.log('[RiddleQuest] Riddle received:', result.message.substring(0, 50) + '...');
       setOracleRiddle(result.message);
       setOracleConversation([{ role: 'assistant', content: result.message }]);
     } else {
-      // Fallback: disable Oracle mode and reset state - static riddle will render automatically
+      // API is down - show message and fallback to static riddles
+      console.log('[RiddleQuest] Mind Warp Strategist unavailable:', result.error);
+      setApiDown(true);
       setOracleMode(false);
       setOracleRiddle(null);
       setOracleConversation([]);
       setOracleResponse(null);
-      console.log('[RiddleQuest] Oracle unavailable, falling back to static riddles');
     }
     setOracleLoading(false);
   };
 
   const handleOracleAnswer = async () => {
     if (!oracleRiddle || !answer.trim()) return;
+    
+    // Check if this is a question/hint request - count against questions limit
+    const isQuestion = isQuestionOrHintRequest(answer);
+    if (isQuestion && questionsRemaining <= 0) {
+      setOracleResponse("You've used all your questions for this quest. Submit your answer!");
+      return;
+    }
+    
     setOracleLoading(true);
+    console.log(`[RiddleQuest] User input: "${answer}" (isQuestion: ${isQuestion})`);
+    
+    // If it's a question, use a question slot
+    if (isQuestion) {
+      const remaining = useQuestion();
+      setQuestionsRemaining(remaining);
+    }
     
     const result = await evaluateOracleAnswer(oracleRiddle, answer, oracleConversation, isNftHolder);
     setOracleInteractionsLeft(getOracleInteractionsRemaining(isNftHolder));
+    console.log(`[RiddleQuest] Oracle response - Success: ${result.success}, Correct: ${result.isCorrect}, Hint: ${result.isHint}`);
     
     if (result.success) {
       setOracleResponse(result.message);
@@ -759,27 +821,40 @@ export function RiddleQuest() {
               <div className="space-y-6">
                 <Button
                   onClick={startQuest}
-                  className="w-full group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-lg px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all min-h-[56px]"
+                  disabled={oracleMode && !canPlayQuest}
+                  className={`w-full group bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 text-black font-orbitron font-bold text-lg px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all min-h-[56px] ${oracleMode && !canPlayQuest ? 'opacity-50 cursor-not-allowed' : ''}`}
                   data-testid="button-begin-quest"
                 >
                   <span className="flex items-center justify-center gap-3">
-                    {progress && progress.currentLevel > 1 ? 'Continue Quest' : 'Begin Quest'}
+                    {oracleMode && !canPlayQuest 
+                      ? 'Quest on Cooldown' 
+                      : (progress && progress.currentLevel > 1 ? 'Continue Quest' : 'Begin Quest')}
                     <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </Button>
                 
-                {/* Oracle Toggle - Compact */}
-                <div className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-black/30 border border-purple-500/20">
-                  <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
-                  <span className="text-sm text-gray-400">Oracle Mode</span>
-                  <Switch
-                    checked={oracleMode}
-                    onCheckedChange={toggleOracleMode}
-                    className="data-[state=checked]:bg-purple-500"
-                    data-testid="switch-oracle-mode"
-                  />
-                  {oracleMode && (
-                    <span className="text-xs text-purple-400">{oracleInteractionsLeft} left</span>
+                {/* Mind Warp Strategist Toggle - With 24h limit */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-black/30 border border-purple-500/20">
+                    <Bot className={`w-5 h-5 ${oracleMode ? 'text-purple-400' : 'text-gray-500'}`} />
+                    <span className="text-sm text-gray-400">Mind Warp Strategist</span>
+                    <Switch
+                      checked={oracleMode}
+                      onCheckedChange={toggleOracleMode}
+                      className="data-[state=checked]:bg-purple-500"
+                      data-testid="switch-oracle-mode"
+                    />
+                    {oracleMode && canPlayQuest && (
+                      <span className="text-xs text-purple-400">{oracleInteractionsLeft} left</span>
+                    )}
+                  </div>
+                  {oracleMode && !canPlayQuest && (
+                    <div className="text-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <p className="text-amber-400 text-sm font-medium">Quest on cooldown</p>
+                      <p className="text-amber-300/70 text-xs">
+                        Next quest in {timeUntilNextQuest.hours}h {timeUntilNextQuest.minutes}m
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1017,6 +1092,23 @@ export function RiddleQuest() {
       </div>
       
       <div className="max-w-2xl mx-auto pt-20 relative z-10">
+        {/* API Down Message */}
+        {apiDown && (
+          <motion.div
+            className="mb-6 p-6 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3">
+              <Brain className="w-8 h-8 text-amber-400 animate-pulse" />
+              <div>
+                <p className="text-amber-400 font-bold">Mind Warp Strategist is scheming...</p>
+                <p className="text-amber-300/70 text-sm">Riddles are baking, return soon. Using static riddles for now.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
         {/* Oracle Loading State */}
         {oracleMode && oracleLoading && (
           <motion.div
@@ -1029,7 +1121,7 @@ export function RiddleQuest() {
               <Bot className="w-16 h-16 text-purple-400 relative z-10 animate-bounce" />
             </div>
             <p className="mt-6 text-purple-300 font-mono text-sm animate-pulse">
-              The Oracle contemplates your fate...
+              The Mind Warp Strategist contemplates your fate...
             </p>
           </motion.div>
         )}
@@ -1077,10 +1169,15 @@ export function RiddleQuest() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-xs text-purple-400 font-mono uppercase tracking-wider">Guardian Oracle</p>
-                        <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
-                          {oracleInteractionsLeft} uses remaining
-                        </Badge>
+                        <p className="text-xs text-purple-400 font-mono uppercase tracking-wider">Mind Warp Strategist</p>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
+                            {oracleInteractionsLeft} uses
+                          </Badge>
+                          <Badge variant="outline" className="border-cyan-500/50 text-purple-400 bg-cyan-500/10 font-mono text-xs">
+                            {questionsRemaining} hints
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">

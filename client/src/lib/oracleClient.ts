@@ -1,16 +1,21 @@
 /**
- * Guardian Oracle Client
- * Client-side service for Oracle API with session limits, fallback, and question detection
+ * Mind Warp Strategist Client
+ * Client-side service for Oracle API with 24h quest limit, interaction limits, and fallback
  */
 
 const ORACLE_SESSION_KEY = 'oracleQuestions';
+const QUEST_LIMIT_KEY = 'riddleQuestLastPlayed';
+const QUESTIONS_LIMIT_KEY = 'riddleQuestQuestionsUsed';
+const MAX_QUESTIONS_PER_QUEST = 3;
 const MAX_ORACLE_INTERACTIONS_PER_SESSION = 3;
 const BONUS_FOR_NFT_HOLDERS = 2;
+const QUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface OracleResponse {
   success: boolean;
   message: string;
   isCorrect?: boolean;
+  isHint?: boolean;
   riddleGenerated?: boolean;
   fallback?: boolean;
   isHintRequest?: boolean;
@@ -96,6 +101,50 @@ export function canUseOracle(isNftHolder: boolean = false): boolean {
 
 export function resetOracleSession(): void {
   resetSession();
+}
+
+// 24-hour quest limit functions
+export function canStartNewQuest(): boolean {
+  const lastPlayed = localStorage.getItem(QUEST_LIMIT_KEY);
+  if (!lastPlayed) return true;
+  
+  const lastPlayedTime = parseInt(lastPlayed, 10);
+  const timeSince = Date.now() - lastPlayedTime;
+  return timeSince >= QUEST_COOLDOWN_MS;
+}
+
+export function getTimeUntilNextQuest(): { hours: number; minutes: number } {
+  const lastPlayed = localStorage.getItem(QUEST_LIMIT_KEY);
+  if (!lastPlayed) return { hours: 0, minutes: 0 };
+  
+  const lastPlayedTime = parseInt(lastPlayed, 10);
+  const timeSince = Date.now() - lastPlayedTime;
+  const remaining = Math.max(0, QUEST_COOLDOWN_MS - timeSince);
+  
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  return { hours, minutes };
+}
+
+export function markQuestStarted(): void {
+  localStorage.setItem(QUEST_LIMIT_KEY, Date.now().toString());
+  localStorage.setItem(QUESTIONS_LIMIT_KEY, '0');
+}
+
+export function getQuestionsRemaining(): number {
+  const used = parseInt(localStorage.getItem(QUESTIONS_LIMIT_KEY) || '0', 10);
+  return Math.max(0, MAX_QUESTIONS_PER_QUEST - used);
+}
+
+export function useQuestion(): number {
+  const used = parseInt(localStorage.getItem(QUESTIONS_LIMIT_KEY) || '0', 10);
+  const newUsed = used + 1;
+  localStorage.setItem(QUESTIONS_LIMIT_KEY, newUsed.toString());
+  return Math.max(0, MAX_QUESTIONS_PER_QUEST - newUsed);
+}
+
+export function resetQuestQuestions(): void {
+  localStorage.setItem(QUESTIONS_LIMIT_KEY, '0');
 }
 
 export async function callOracleAPI(

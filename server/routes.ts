@@ -1205,7 +1205,7 @@ export async function registerRoutes(
     }
   });
 
-  // Guardian Oracle API Endpoint for Riddle Quest
+  // Mind Warp Strategist API Endpoint for Riddle Quest
   app.post("/api/oracle", gameLimiter, async (req, res) => {
     try {
       const { action, level, difficulty, riddle, userAnswer, messages } = req.body;
@@ -1238,11 +1238,11 @@ export async function registerRoutes(
       const result = await callOracle(promptMessages, action as any);
       
       if (!result.success) {
-        console.warn(`[Oracle] API call failed: ${result.error}`);
+        console.warn(`[Mind Warp Strategist] API call failed: ${result.error}`);
         return res.status(503).json({
           success: false,
           fallback: true,
-          message: result.message,
+          message: "Mind Warp Strategist is scheming... Riddles are baking, return soon.",
           error: result.error
         });
       }
@@ -1251,14 +1251,15 @@ export async function registerRoutes(
         success: true,
         message: result.message,
         isCorrect: result.isCorrect,
+        isHint: result.isHint,
         riddleGenerated: result.riddleGenerated
       });
     } catch (error) {
-      console.error("[Oracle] Endpoint error:", error);
+      console.error("[Mind Warp Strategist] Endpoint error:", error);
       return res.status(500).json({
         success: false,
         fallback: true,
-        message: "The Oracle retreats into the ether...",
+        message: "Mind Warp Strategist is scheming... Riddles are baking, return soon.",
         error: "INTERNAL_ERROR"
       });
     }
