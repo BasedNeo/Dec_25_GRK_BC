@@ -112,6 +112,7 @@ export const routeImports = {
   CyberBreach: () => import('@/pages/CyberBreach'),
   RingGame: () => import('@/pages/RingGame'),
   RiddleQuestPage: () => import('@/pages/RiddleQuestPage'),
+  InfinityRace: () => import('@/pages/InfinityRace'),
   BasedArcade: () => import('@/pages/BasedArcade'),
   TransactionHistory: () => import('@/pages/TransactionHistory'),
   Collections: () => import('@/pages/Collections'),

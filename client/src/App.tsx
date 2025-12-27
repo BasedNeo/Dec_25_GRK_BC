@@ -23,6 +23,7 @@ const AsteroidMining = lazyWithRetry(routeImports.AsteroidMining);
 const CyberBreach = lazyWithRetry(routeImports.CyberBreach);
 const RingGame = lazyWithRetry(routeImports.RingGame);
 const RiddleQuestPage = lazyWithRetry(routeImports.RiddleQuestPage);
+const InfinityRace = lazyWithRetry(routeImports.InfinityRace);
 const BasedArcade = lazyWithRetry(routeImports.BasedArcade);
 const TransactionHistory = lazyWithRetry(routeImports.TransactionHistory);
 const Collections = lazyWithRetry(routeImports.Collections);
@@ -209,6 +210,11 @@ export function Router() {
         <Route path="/games/riddle-quest">
           <ErrorBoundary feature="Riddle Quest">
             <RiddleQuestPage />
+          </ErrorBoundary>
+        </Route>
+        <Route path="/games/infinity-race">
+          <ErrorBoundary feature="Infinity Race">
+            <InfinityRace />
           </ErrorBoundary>
         </Route>
         <Route path="/arcade">

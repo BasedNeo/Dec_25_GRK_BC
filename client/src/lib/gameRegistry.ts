@@ -4,7 +4,7 @@ import { Target, Spade, Shield, Rocket, Zap, Circle, Brain } from 'lucide-react'
 /**
  * Unique identifier for each game in the platform
  */
-export type GameType = 'riddle-quest' | 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach' | 'ring-game';
+export type GameType = 'riddle-quest' | 'guardian-defense' | 'guardian-solitaire' | 'space-defender' | 'asteroid-mining' | 'cyber-breach' | 'ring-game' | 'infinity-race';
 
 /**
  * Game difficulty levels
@@ -278,6 +278,33 @@ export const GAME_REGISTRY: Record<GameType, GameConfig> = {
     nftRequired: false,
     hidden: true,
   },
+  
+  'infinity-race': {
+    id: 'infinity-race',
+    name: 'Infinity Race',
+    description: 'Race through procedurally generated tracks! Navigate Perlin noise curves, dodge obstacles, and cross the finish line in 60 seconds.',
+    path: '/games/infinity-race',
+    icon: Rocket,
+    iconColor: 'text-cyan-400',
+    thumbnailGradient: 'from-cyan-500 to-green-500',
+    category: 'action',
+    difficulty: 'medium',
+    averagePlayTime: 60,
+    maxPlaysPerDay: 10,
+    enabled: true,
+    scoring: {
+      maxScore: 10000,
+      goodScore: 3000,
+      greatScore: 6000,
+      legendaryScore: 9000,
+    },
+    features: {
+      hasTimer: true,
+      hasLives: false,
+      hasCombo: false,
+    },
+    nftRequired: false,
+  },
 };
 
 /**
@@ -309,7 +336,7 @@ export function getEnabledGames(): GameConfig[] {
  * Get visible arcade games in the correct order (Riddle Quest, Creature Command, Retro Defender)
  */
 export function getArcadeGames(): GameConfig[] {
-  const order: GameType[] = ['riddle-quest', 'guardian-defense', 'space-defender'];
+  const order: GameType[] = ['riddle-quest', 'guardian-defense', 'space-defender', 'infinity-race'];
   return order
     .map(id => GAME_REGISTRY[id])
     .filter(g => g && g.enabled && !g.hidden);
