@@ -79,7 +79,7 @@ const BADGES_DATA = [
   { id: 'seeker', name: 'Seeker', icon: Target, color: 'green', description: 'Complete Level 3', levelReq: 3 },
   { id: 'scholar', name: 'Scholar', icon: Brain, color: 'blue', description: 'Complete Level 5', levelReq: 5 },
   { id: 'sage', name: 'Sage', icon: Lightbulb, color: 'purple', description: 'Complete Level 7', levelReq: 7 },
-  { id: 'oracle', name: 'Guardian', icon: Star, color: 'amber', description: 'Complete Level 9', levelReq: 9 },
+  { id: 'oracle', name: 'Strategist', icon: Star, color: 'amber', description: 'Complete Level 9', levelReq: 9 },
   { id: 'master', name: 'Riddle Master', icon: Crown, color: 'yellow', description: 'Complete Level 10', levelReq: 10 },
   { id: 'eternal', name: 'Eternal Sage', icon: Sparkles, color: 'pink', description: 'Complete Bonus Level 11', levelReq: 11 },
   { id: 'streak', name: 'Streak Champion', icon: Flame, color: 'orange', description: '7+ day streak', levelReq: 0 },
@@ -428,11 +428,11 @@ export function RiddleQuest() {
           const pointsEarned = 150 + (progress.streak > 3 ? 25 : 0);
           const newProgress = { ...progress, points: progress.points + pointsEarned };
           
-          // Log activity for oracle riddle solve
+          // Log activity for Mind Warp Strategist riddle solve
           logActivity({
             walletAddress: address,
             eventType: 'riddle_solved',
-            details: `Solved Oracle riddle at level ${progress.currentLevel}`,
+            details: `Solved Mind Warp Strategist riddle at level ${progress.currentLevel}`,
             pointsEarned,
             gameType: 'riddle_quest'
           });
@@ -479,12 +479,12 @@ export function RiddleQuest() {
         setFeedback('wrong');
         setIsShaking(true);
         
-        // Log activity for failed oracle riddle attempt
+        // Log activity for failed Mind Warp Strategist riddle attempt
         if (address) {
           logActivity({
             walletAddress: address,
             eventType: 'riddle_failed',
-            details: `Failed Oracle riddle at level ${progress?.currentLevel || 1}`,
+            details: `Failed Strategist riddle at level ${progress?.currentLevel || 1}`,
             gameType: 'riddle_quest'
           });
         }
@@ -1174,9 +1174,14 @@ export function RiddleQuest() {
                       </div>
                       <div>
                         <p className="text-xs text-purple-400 font-mono uppercase tracking-wider">Mind Warp Strategist</p>
-                        <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
-                          {oracleInteractionsLeft} / 3
-                        </Badge>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
+                            {oracleInteractionsLeft} / {isNftHolder ? 5 : 3}
+                          </Badge>
+                          <Badge variant="outline" className="border-cyan-500/50 text-purple-400 bg-cyan-500/10 font-mono text-xs">
+                            {questionsRemaining} / 3 hints
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -1350,8 +1355,8 @@ export function RiddleQuest() {
                           </Badge>
                           {currentDailyRiddle.isOracle && (
                             <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/50 text-[10px]">
-                              <Bot className="w-3 h-3 mr-1" />
-                              Oracle
+                              <img src={MindWarpStrategist} alt="" className="w-3 h-3 mr-1 rounded-full" />
+                              Strategist
                             </Badge>
                           )}
                         </div>
