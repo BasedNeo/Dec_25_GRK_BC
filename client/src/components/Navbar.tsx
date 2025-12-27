@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle, LogOut } from "lucide-react";
+import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle, LogOut, Wallet, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useBlockNumber, useConnect, useSwitchChain, useDisconnect } from "wagmi";
@@ -20,6 +20,39 @@ import { PriceTicker } from "./PriceTicker";
 import Untitled from "@/assets/Untitled.png";
 import { useTranslation } from "react-i18next";
 import { prefetchHandlers } from "@/lib/lazyWithRetry";
+import { isMobileDevice } from "@/lib/wagmi";
+
+// Mobile wallet configuration with deep links
+const MOBILE_WALLETS = [
+  {
+    id: 'metaMask',
+    name: 'MetaMask',
+    color: '#F6851B',
+    icon: '🦊',
+    getDeepLink: (url: string) => `https://metamask.app.link/dapp/${url.replace(/^https?:\/\//, '')}`,
+  },
+  {
+    id: 'rainbow',
+    name: 'Rainbow',
+    color: '#001E59',
+    icon: '🌈',
+    getDeepLink: (url: string) => `rainbow://dapp/${url.replace(/^https?:\/\//, '')}`,
+  },
+  {
+    id: 'coinbase',
+    name: 'Coinbase',
+    color: '#0052FF',
+    icon: '💰',
+    getDeepLink: (url: string) => `https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(url)}`,
+  },
+  {
+    id: 'walletConnect',
+    name: 'WalletConnect',
+    color: '#3B99FC',
+    icon: '🔗',
+    getDeepLink: null, // Uses WalletConnect protocol directly
+  },
+] as const;
 
 interface NavbarProps {
   activeTab: string;
@@ -32,13 +65,90 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
+  const [showMobileWalletPicker, setShowMobileWalletPicker] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   // const { toast } = useToast(); // Using custom toast
   const { address, isConnected: wagmiConnected, chain } = useAccount();
-  const { error: connectError } = useConnect();
+  const { connect, connectors, error: connectError } = useConnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { disconnect } = useDisconnect();
   const isWrongNetwork = wagmiConnected && chain?.id !== CHAIN_ID;
   const queryClient = useQueryClient();
+  const isMobile = isMobileDevice();
+
+  // Handle mobile wallet connection
+  const handleMobileWalletConnect = useCallback((walletId: string) => {
+    setIsConnecting(true);
+    const currentUrl = window.location.href;
+    
+    const wallet = MOBILE_WALLETS.find(w => w.id === walletId);
+    if (!wallet) {
+      showToast("Wallet not supported", "error");
+      setIsConnecting(false);
+      return;
+    }
+
+    // Check if wallet is injected (user has extension/in-app browser)
+    const injectedConnector = connectors.find(c => 
+      c.id === 'injected' || 
+      c.id === 'metaMask' || 
+      c.id === walletId.toLowerCase()
+    );
+
+    // If in wallet's in-app browser, use injected
+    if (injectedConnector && (window as any).ethereum) {
+      connect({ connector: injectedConnector }, {
+        onSuccess: () => {
+          setIsConnecting(false);
+          setShowMobileWalletPicker(false);
+          setIsMobileMenuOpen(false);
+          showToast("Wallet connected!", "success");
+        },
+        onError: (error) => {
+          setIsConnecting(false);
+          if (error.message.includes("User rejected")) {
+            showToast("Connection cancelled", "info");
+          } else {
+            showToast("For mobile, please install the wallet app or try WalletConnect.", "error");
+          }
+        }
+      });
+      return;
+    }
+
+    // For WalletConnect, use the connector directly
+    if (walletId === 'walletConnect') {
+      const wcConnector = connectors.find(c => c.id === 'walletConnect');
+      if (wcConnector) {
+        connect({ connector: wcConnector }, {
+          onSuccess: () => {
+            setIsConnecting(false);
+            setShowMobileWalletPicker(false);
+            setIsMobileMenuOpen(false);
+            showToast("Wallet connected!", "success");
+          },
+          onError: (error) => {
+            setIsConnecting(false);
+            showToast("Connection failed. Please try again.", "error");
+          }
+        });
+      }
+      return;
+    }
+
+    // Open deep link to wallet app
+    if (wallet.getDeepLink) {
+      const deepLink = wallet.getDeepLink(currentUrl);
+      window.location.href = deepLink;
+      
+      // Fall back to WalletConnect after timeout if deep link fails
+      setTimeout(() => {
+        setIsConnecting(false);
+        // If still on page, the deep link didn't work
+        showToast(`If ${wallet.name} didn't open, try WalletConnect instead.`, "info");
+      }, 3000);
+    }
+  }, [connect, connectors]);
   
   // RPC Connection Monitoring
   const { error: blockError, refetch: refetchBlock } = useBlockNumber({ 
@@ -506,6 +616,63 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                       >
                         {(() => {
                           if (!connected) {
+                            // Mobile: Show custom wallet picker
+                            if (isMobile) {
+                              return (
+                                <div className="w-full space-y-3">
+                                  {!showMobileWalletPicker ? (
+                                    <Button 
+                                      onClick={() => setShowMobileWalletPicker(true)} 
+                                      className="w-full h-14 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0 flex items-center justify-center gap-2"
+                                      data-testid="button-mobile-connect-wallet"
+                                    >
+                                      <Wallet size={18} />
+                                      CONNECT WALLET
+                                    </Button>
+                                  ) : (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="w-full space-y-3"
+                                    >
+                                      <p className="text-center text-white/70 text-sm font-rajdhani mb-4">
+                                        Choose your wallet
+                                      </p>
+                                      {MOBILE_WALLETS.map((wallet) => (
+                                        <button
+                                          key={wallet.id}
+                                          onClick={() => handleMobileWalletConnect(wallet.id)}
+                                          disabled={isConnecting}
+                                          className="w-full h-16 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-between px-5 disabled:opacity-50"
+                                          style={{ 
+                                            borderColor: `${wallet.color}40`,
+                                            touchAction: 'manipulation'
+                                          }}
+                                          data-testid={`button-wallet-${wallet.id}`}
+                                        >
+                                          <div className="flex items-center gap-4">
+                                            <span className="text-2xl">{wallet.icon}</span>
+                                            <span className="text-white font-orbitron text-sm tracking-wider">
+                                              {wallet.name}
+                                            </span>
+                                          </div>
+                                          <ExternalLink size={16} className="text-white/40" />
+                                        </button>
+                                      ))}
+                                      <Button
+                                        onClick={() => setShowMobileWalletPicker(false)}
+                                        variant="ghost"
+                                        className="w-full text-white/50 hover:text-white hover:bg-white/5 mt-2"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            
+                            // Desktop: Use standard RainbowKit modal
                             return (
                               <Button 
                                 onClick={openConnectModal} 

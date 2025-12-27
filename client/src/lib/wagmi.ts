@@ -4,8 +4,21 @@ import {
   coinbaseWallet, 
   trustWallet,
   walletConnectWallet,
+  rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
+
+// Mobile detection utility
+export const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Mobile-compatible wallet list (these have mobile apps with deep linking)
+export const MOBILE_COMPATIBLE_WALLETS = ['metaMask', 'rainbow', 'coinbase', 'walletConnect'] as const;
+
+// Extension-only wallets to hide on mobile
+export const EXTENSION_ONLY_WALLETS = ['phantom', 'rabby', 'brave'] as const;
 
 // BasedAI L1 Chain Configuration (Chain ID: 32323)
 const basedL1 = {
@@ -48,12 +61,18 @@ export const config = getDefaultConfig({
   ssr: false,
   wallets: [
     {
-      groupName: 'Popular',
+      groupName: 'Recommended',
       wallets: [
         metaMaskWallet,
-        trustWallet,
+        rainbowWallet,
         coinbaseWallet,
         walletConnectWallet,
+      ],
+    },
+    {
+      groupName: 'More Options',
+      wallets: [
+        trustWallet,
       ],
     },
   ],
