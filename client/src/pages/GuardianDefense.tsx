@@ -17,6 +17,7 @@ import { CC_COLORS, CC_EFFECTS, CC_LAIR_DESIGNS, pulseValue, hexToRgba } from '@
 import { GameHUD } from '@/components/game/GameHUD';
 import { VictoryScreen } from '@/components/game/VictoryScreen';
 import { CreatureAbilityPanel } from '@/components/game/CreatureAbilityPanel';
+import { MobileCreatureAbilityPanel } from '@/components/game/MobileCreatureAbilityPanel';
 import { useCreatureAbilitiesStore, useAbilityModifiers } from '@/store/creatureAbilitiesStore';
 import { useDailyChallengeStore } from '@/store/dailyChallengeStore';
 import {
@@ -197,13 +198,20 @@ const BASE_CANVAS_WIDTH = 640;
 const BASE_CANVAS_HEIGHT = 480;
 const BASE_GROUND_Y = 440;
 
-const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean, isFullscreen: boolean = false) => {
+// Mobile bottom UI heights (control bar + ability panel)
+const MOBILE_CONTROL_BAR_HEIGHT = 88; // Control bar with 60px buttons + padding
+const MOBILE_ABILITY_PANEL_COLLAPSED = 60; // Toggle header (60px min touch target)
+const MOBILE_ABILITY_PANEL_EXPANDED = 332; // Full expanded panel (60px header + 272px content)
+const MOBILE_NAVBAR_HEIGHT = 64; // Top navbar
+
+const getCanvasDimensions = (containerWidth: number, containerHeight: number, isMobile: boolean, isFullscreen: boolean = false, abilityPanelExpanded: boolean = false) => {
   const aspectRatio = BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT; // 4:3 = 1.333
   
   if (isFullscreen && isMobile) {
     // Full viewport for mobile fullscreen - maintain aspect ratio
     const availableWidth = window.innerWidth;
-    const availableHeight = window.innerHeight - 80; // Reserve space for touch controls
+    const bottomUIHeight = MOBILE_CONTROL_BAR_HEIGHT + (abilityPanelExpanded ? MOBILE_ABILITY_PANEL_EXPANDED : MOBILE_ABILITY_PANEL_COLLAPSED);
+    const availableHeight = window.innerHeight - bottomUIHeight;
     
     // Scale to fit within viewport while maintaining aspect ratio
     const scaleByWidth = availableWidth / BASE_CANVAS_WIDTH;
@@ -218,9 +226,10 @@ const getCanvasDimensions = (containerWidth: number, containerHeight: number, is
   }
   
   if (isMobile) {
-    // Use full viewport dimensions for mobile - maintain aspect ratio
+    // Use full viewport dimensions for mobile - reserve space for navbar + bottom UI
     const availableWidth = window.innerWidth;
-    const availableHeight = window.innerHeight - 140; // Space for navbar and controls
+    const bottomUIHeight = MOBILE_CONTROL_BAR_HEIGHT + (abilityPanelExpanded ? MOBILE_ABILITY_PANEL_EXPANDED : MOBILE_ABILITY_PANEL_COLLAPSED);
+    const availableHeight = window.innerHeight - MOBILE_NAVBAR_HEIGHT - bottomUIHeight;
     
     // Scale to fit within viewport while maintaining aspect ratio
     const scaleByWidth = availableWidth / BASE_CANVAS_WIDTH;
@@ -506,6 +515,7 @@ export default function GuardianDefense() {
   const [isMobile, setIsMobile] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [canvasDims, setCanvasDims] = useState({ width: BASE_CANVAS_WIDTH, height: BASE_CANVAS_HEIGHT, scale: 1 });
+  const [abilityPanelExpanded, setAbilityPanelExpanded] = useState(false);
 
   const [stats, setStats] = useState<GameStats>(() =>
     address 
@@ -607,7 +617,7 @@ export default function GuardianDefense() {
         const containerHeight = window.innerHeight;
         const useFullscreen = mobile && gameStarted && !gameOver;
         setIsFullscreen(useFullscreen);
-        const dims = getCanvasDimensions(containerWidth, containerHeight, mobile, useFullscreen);
+        const dims = getCanvasDimensions(containerWidth, containerHeight, mobile, useFullscreen, abilityPanelExpanded);
         setCanvasDims(dims);
         setCanvasScale(dims.scale);
       }
@@ -619,7 +629,7 @@ export default function GuardianDefense() {
       window.removeEventListener('resize', updateScale);
       window.removeEventListener('orientationchange', updateScale);
     };
-  }, [gameStarted, gameOver]);
+  }, [gameStarted, gameOver, abilityPanelExpanded]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !settings.soundEnabled) return;
@@ -2601,42 +2611,44 @@ export default function GuardianDefense() {
           </div>
         </div>
         
-        {/* Mobile Creature Ability Panel */}
+        {/* Mobile Bottom UI - Fixed position with Ability Panel + Control Bar */}
         {isMobile && (
-          <div className="mt-2 px-1">
-            <CreatureAbilityPanel />
-          </div>
-        )}
-        
-        {/* Mobile Control Bar - Fixed at bottom with large touch targets */}
-        {isMobile && (
-          <div className="fixed bottom-0 left-0 right-0 bg-black/95 border-t-2 border-purple-500/50 p-3 z-20 safe-area-inset-bottom">
-            <div className="flex items-center justify-between max-w-lg mx-auto gap-3">
-              <Button
-                onClick={togglePause}
-                className="flex-1 h-16 min-h-[64px] bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl shadow-[0_0_20px_rgba(147,51,234,0.4)] text-base active:scale-95 transition-transform"
-                data-testid="button-pause-mobile"
-              >
-                {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
-              </Button>
-              <Button
-                onClick={toggleSound}
-                className={`flex-1 h-16 min-h-[64px] rounded-2xl font-bold text-base active:scale-95 transition-transform ${
-                  settings.soundEnabled 
-                    ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-[0_0_20px_rgba(0,255,255,0.4)]' 
-                    : 'bg-gray-800 text-gray-400 border-2 border-gray-600'
-                }`}
-                data-testid="button-mute-mobile"
-              >
-                {settings.soundEnabled ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
-              </Button>
-              <Button
-                onClick={() => setLocation('/games')}
-                className="flex-1 h-16 min-h-[64px] bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-2xl active:scale-95 transition-transform"
-                data-testid="button-exit-mobile"
-              >
-                <Home className="w-7 h-7" />
-              </Button>
+          <div className="fixed bottom-0 left-0 right-0 z-20 safe-area-inset-bottom">
+            {/* Collapsible Ability Panel */}
+            <MobileCreatureAbilityPanel 
+              isExpanded={abilityPanelExpanded}
+              onToggle={() => setAbilityPanelExpanded(!abilityPanelExpanded)}
+            />
+            
+            {/* Control Bar - 60px+ touch targets */}
+            <div className="bg-black/95 border-t-2 border-purple-500/50 p-3">
+              <div className="flex items-center justify-between max-w-lg mx-auto gap-3">
+                <Button
+                  onClick={togglePause}
+                  className="flex-1 h-[60px] min-h-[60px] bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl shadow-[0_0_20px_rgba(147,51,234,0.4)] text-base active:scale-95 transition-transform"
+                  data-testid="button-pause-mobile"
+                >
+                  {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
+                </Button>
+                <Button
+                  onClick={toggleSound}
+                  className={`flex-1 h-[60px] min-h-[60px] rounded-2xl font-bold text-base active:scale-95 transition-transform ${
+                    settings.soundEnabled 
+                      ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-[0_0_20px_rgba(0,255,255,0.4)]' 
+                      : 'bg-gray-800 text-gray-400 border-2 border-gray-600'
+                  }`}
+                  data-testid="button-mute-mobile"
+                >
+                  {settings.soundEnabled ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
+                </Button>
+                <Button
+                  onClick={() => setLocation('/games')}
+                  className="flex-1 h-[60px] min-h-[60px] bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-2xl active:scale-95 transition-transform"
+                  data-testid="button-exit-mobile"
+                >
+                  <Home className="w-7 h-7" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
