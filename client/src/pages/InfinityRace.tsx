@@ -104,6 +104,8 @@ export default function InfinityRace() {
   const [betAmount, setBetAmount] = useState(0);
   const [activeRaceId, setActiveRaceId] = useState<string | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
+  const [launchLoading, setLaunchLoading] = useState(false);
+  const [brainXWon, setBrainXWon] = useState(0);
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
   const [selectedCraft, setSelectedCraft] = useState<Craft>(CRAFTS[0]);
   const [timeLeft, setTimeLeft] = useState(RACE_DURATION);
@@ -510,7 +512,11 @@ export default function InfinityRace() {
       }
       
       if (activeRaceId) {
-        completeRace(activeRaceId, raceWon, Math.floor(distance));
+        completeRace(activeRaceId, raceWon, Math.floor(distance)).then((result) => {
+          if (result.brainxAwarded) {
+            setBrainXWon(result.brainxAwarded);
+          }
+        });
       }
     }
   }, [gamePhase, raceWon, address, score, distance, selectedCraft.name, earnPoints, activeRaceId, completeRace]);
@@ -953,19 +959,24 @@ export default function InfinityRace() {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (!hasCraft(selectedCraft.id)) return;
-                    const result = await startRace(selectedCraft.id, betAmount);
-                    if (result.success && result.raceId) {
-                      setActiveRaceId(result.raceId);
-                      setGamePhase('countdown');
+                    if (!hasCraft(selectedCraft.id) || launchLoading) return;
+                    setLaunchLoading(true);
+                    try {
+                      const result = await startRace(selectedCraft.id, betAmount);
+                      if (result.success && result.raceId) {
+                        setActiveRaceId(result.raceId);
+                        setGamePhase('countdown');
+                      }
+                    } finally {
+                      setLaunchLoading(false);
                     }
                   }}
-                  disabled={!hasCraft(selectedCraft.id)}
+                  disabled={!hasCraft(selectedCraft.id) || launchLoading}
                   className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] disabled:opacity-50"
                   data-testid="button-launch"
                 >
                   <Rocket className="w-5 h-5 mr-2" />
-                  Launch
+                  {launchLoading ? 'Launching...' : 'Launch'}
                 </Button>
               </div>
             </div>
@@ -1076,11 +1087,31 @@ export default function InfinityRace() {
                     <span className="text-gray-400">Score:</span>
                     <span className="text-purple-400 font-mono text-lg">{score}</span>
                   </div>
+                  {betAmount > 0 && (
+                    <div className="flex justify-between pt-2 border-t border-gray-700">
+                      <span className="text-gray-400">Bet Result:</span>
+                      {raceWon ? (
+                        <span className="text-green-400 font-mono">
+                          +{brainXWon > 0 ? brainXWon.toLocaleString() : (betAmount * 2).toLocaleString()} BrainX ✓
+                        </span>
+                      ) : (
+                        <span className="text-red-400 font-mono">
+                          -{betAmount.toLocaleString()} Ore
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3">
                   <Button
-                    onClick={() => setGamePhase('select')}
+                    onClick={() => {
+                      setBetAmount(0);
+                      setActiveRaceId(null);
+                      setBrainXWon(0);
+                      refreshState();
+                      setGamePhase('shop');
+                    }}
                     className="w-full font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_20px_rgba(0,255,255,0.3)]"
                     data-testid="button-race-again"
                   >
