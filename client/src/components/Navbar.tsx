@@ -69,15 +69,25 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   // const { toast } = useToast(); // Using custom toast
   const { address, isConnected: wagmiConnected, chain } = useAccount();
-  const { connect, connectors, error: connectError } = useConnect();
+  const { connectAsync, connectors, error: connectError, isPending: isConnectPending } = useConnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { disconnect } = useDisconnect();
   const isWrongNetwork = wagmiConnected && chain?.id !== CHAIN_ID;
   const queryClient = useQueryClient();
   const isMobile = isMobileDevice();
 
+  // Reset mobile wallet picker when connection succeeds
+  useEffect(() => {
+    if (wagmiConnected && showMobileWalletPicker) {
+      setShowMobileWalletPicker(false);
+      setIsMobileMenuOpen(false);
+      setIsConnecting(false);
+      showToast("Wallet connected!", "success");
+    }
+  }, [wagmiConnected, showMobileWalletPicker]);
+
   // Handle mobile wallet connection
-  const handleMobileWalletConnect = useCallback((walletId: string) => {
+  const handleMobileWalletConnect = useCallback(async (walletId: string) => {
     setIsConnecting(true);
     const currentUrl = window.location.href;
     
@@ -97,22 +107,17 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
 
     // If in wallet's in-app browser, use injected
     if (injectedConnector && (window as any).ethereum) {
-      connect({ connector: injectedConnector }, {
-        onSuccess: () => {
-          setIsConnecting(false);
-          setShowMobileWalletPicker(false);
-          setIsMobileMenuOpen(false);
-          showToast("Wallet connected!", "success");
-        },
-        onError: (error) => {
-          setIsConnecting(false);
-          if (error.message.includes("User rejected")) {
-            showToast("Connection cancelled", "info");
-          } else {
-            showToast("For mobile, please install the wallet app or try WalletConnect.", "error");
-          }
+      try {
+        await connectAsync({ connector: injectedConnector });
+        // Success handled by useEffect above
+      } catch (error: any) {
+        setIsConnecting(false);
+        if (error?.message?.includes("User rejected")) {
+          showToast("Connection cancelled", "info");
+        } else {
+          showToast("For mobile, please install the wallet app or try WalletConnect.", "error");
         }
-      });
+      }
       return;
     }
 
@@ -120,18 +125,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
     if (walletId === 'walletConnect') {
       const wcConnector = connectors.find(c => c.id === 'walletConnect');
       if (wcConnector) {
-        connect({ connector: wcConnector }, {
-          onSuccess: () => {
-            setIsConnecting(false);
-            setShowMobileWalletPicker(false);
-            setIsMobileMenuOpen(false);
-            showToast("Wallet connected!", "success");
-          },
-          onError: (error) => {
-            setIsConnecting(false);
-            showToast("Connection failed. Please try again.", "error");
-          }
-        });
+        try {
+          await connectAsync({ connector: wcConnector });
+          // Success handled by useEffect above
+        } catch (error: any) {
+          setIsConnecting(false);
+          showToast("Connection failed. Please try again.", "error");
+        }
       }
       return;
     }
@@ -148,7 +148,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
         showToast(`If ${wallet.name} didn't open, try WalletConnect instead.`, "info");
       }, 3000);
     }
-  }, [connect, connectors]);
+  }, [connectAsync, connectors]);
   
   // RPC Connection Monitoring
   const { error: blockError, refetch: refetchBlock } = useBlockNumber({ 
