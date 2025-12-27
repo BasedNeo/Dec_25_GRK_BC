@@ -776,3 +776,30 @@ export const insertInfinityRaceBetSchema = createInsertSchema(infinityRaceBets).
 
 export type InsertInfinityRaceBet = z.infer<typeof insertInfinityRaceBetSchema>;
 export type InfinityRaceBet = typeof infinityRaceBets.$inferSelect;
+
+// Infinity Race - Player Progress (Gamification)
+export const infinityRaceProgress = pgTable('infinity_race_progress', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull().unique(),
+  totalRaces: integer('total_races').default(0).notNull(),
+  totalWins: integer('total_wins').default(0).notNull(),
+  level: integer('level').default(1).notNull(),
+  statBonus: integer('stat_bonus').default(0).notNull(),
+  achievements: text('achievements').array().default([]).notNull(),
+  unlockedPalettes: text('unlocked_palettes').array().default([]).notNull(),
+  selectedPalette: varchar('selected_palette', { length: 50 }).default('default'),
+  lastRaceAt: timestamp('last_race_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('infinity_progress_wallet_idx').on(table.walletAddress),
+]);
+
+export const insertInfinityRaceProgressSchema = createInsertSchema(infinityRaceProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInfinityRaceProgress = z.infer<typeof insertInfinityRaceProgressSchema>;
+export type InfinityRaceProgress = typeof infinityRaceProgress.$inferSelect;

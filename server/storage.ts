@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -95,6 +95,12 @@ export interface IStorage {
   settleInfinityRaceBet(betId: string, outcome: 'win' | 'loss', distanceReached: number, brainxAwarded: number): Promise<InfinityRaceBet>;
   getInfinityRacesLast24h(walletAddress: string): Promise<number>;
   getInfinityRaceHistory(walletAddress: string, limit?: number): Promise<InfinityRaceBet[]>;
+  
+  // Infinity Race Progress (Gamification)
+  getInfinityRaceProgress(walletAddress: string): Promise<InfinityRaceProgress | undefined>;
+  getOrCreateInfinityRaceProgress(walletAddress: string): Promise<InfinityRaceProgress>;
+  incrementInfinityRaceProgress(walletAddress: string, won: boolean): Promise<{ progress: InfinityRaceProgress; newAchievements: string[]; levelUp: boolean; brainxAwarded: number }>;
+  updateInfinityRacePalette(walletAddress: string, palette: string): Promise<InfinityRaceProgress>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1504,6 +1510,121 @@ export class DatabaseStorage implements IStorage {
       .where(eq(infinityRaceBets.walletAddress, walletAddress.toLowerCase()))
       .orderBy(desc(infinityRaceBets.raceStartedAt))
       .limit(limit);
+  }
+
+  async getInfinityRaceProgress(walletAddress: string): Promise<InfinityRaceProgress | undefined> {
+    const [result] = await db.select()
+      .from(infinityRaceProgress)
+      .where(eq(infinityRaceProgress.walletAddress, walletAddress.toLowerCase()));
+    return result;
+  }
+
+  async getOrCreateInfinityRaceProgress(walletAddress: string): Promise<InfinityRaceProgress> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getInfinityRaceProgress(normalizedAddress);
+    if (existing) return existing;
+    
+    const [result] = await db.insert(infinityRaceProgress).values({
+      walletAddress: normalizedAddress,
+      totalRaces: 0,
+      totalWins: 0,
+      level: 1,
+      statBonus: 0,
+      achievements: [],
+      unlockedPalettes: ['default'],
+      selectedPalette: 'default',
+    }).returning();
+    return result;
+  }
+
+  async incrementInfinityRaceProgress(walletAddress: string, won: boolean): Promise<{ progress: InfinityRaceProgress; newAchievements: string[]; levelUp: boolean; brainxAwarded: number }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const progress = await this.getOrCreateInfinityRaceProgress(normalizedAddress);
+    
+    const newTotalRaces = progress.totalRaces + 1;
+    const newTotalWins = won ? progress.totalWins + 1 : progress.totalWins;
+    const newAchievements: string[] = [];
+    let brainxAwarded = 0;
+    
+    const currentAchievements = [...(progress.achievements || [])];
+    const currentPalettes = [...(progress.unlockedPalettes || ['default'])];
+    
+    if (won && newTotalWins === 1 && !currentAchievements.includes('first_win')) {
+      currentAchievements.push('first_win');
+      newAchievements.push('first_win');
+      brainxAwarded += 50;
+    }
+    
+    if (newTotalRaces === 10 && !currentAchievements.includes('10_races')) {
+      currentAchievements.push('10_races');
+      newAchievements.push('10_races');
+      if (!currentPalettes.includes('neon_cyan')) {
+        currentPalettes.push('neon_cyan', 'neon_pink', 'neon_green', 'neon_orange');
+      }
+    }
+    
+    if (newTotalRaces === 25 && !currentAchievements.includes('25_races')) {
+      currentAchievements.push('25_races');
+      newAchievements.push('25_races');
+      brainxAwarded += 100;
+    }
+    
+    if (newTotalWins === 10 && !currentAchievements.includes('10_wins')) {
+      currentAchievements.push('10_wins');
+      newAchievements.push('10_wins');
+      brainxAwarded += 200;
+    }
+    
+    const oldLevel = progress.level;
+    let newLevel = 1;
+    let newStatBonus = 0;
+    
+    if (newTotalRaces >= 100) { newLevel = 10; newStatBonus = 9; }
+    else if (newTotalRaces >= 75) { newLevel = 9; newStatBonus = 8; }
+    else if (newTotalRaces >= 60) { newLevel = 8; newStatBonus = 7; }
+    else if (newTotalRaces >= 50) { newLevel = 7; newStatBonus = 6; }
+    else if (newTotalRaces >= 40) { newLevel = 6; newStatBonus = 5; }
+    else if (newTotalRaces >= 30) { newLevel = 5; newStatBonus = 4; }
+    else if (newTotalRaces >= 20) { newLevel = 4; newStatBonus = 3; }
+    else if (newTotalRaces >= 15) { newLevel = 3; newStatBonus = 2; }
+    else if (newTotalRaces >= 10) { newLevel = 2; newStatBonus = 1; }
+    
+    const levelUp = newLevel > oldLevel;
+    
+    const [updated] = await db.update(infinityRaceProgress)
+      .set({
+        totalRaces: newTotalRaces,
+        totalWins: newTotalWins,
+        level: newLevel,
+        statBonus: newStatBonus,
+        achievements: currentAchievements,
+        unlockedPalettes: currentPalettes,
+        lastRaceAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(infinityRaceProgress.walletAddress, normalizedAddress))
+      .returning();
+    
+    if (brainxAwarded > 0) {
+      await this.addBrainXPoints(normalizedAddress, brainxAwarded);
+    }
+    
+    return { progress: updated, newAchievements, levelUp, brainxAwarded };
+  }
+
+  async updateInfinityRacePalette(walletAddress: string, palette: string): Promise<InfinityRaceProgress> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const progress = await this.getOrCreateInfinityRaceProgress(normalizedAddress);
+    
+    if (!progress.unlockedPalettes?.includes(palette)) {
+      return progress;
+    }
+    
+    const [updated] = await db.update(infinityRaceProgress)
+      .set({ selectedPalette: palette, updatedAt: new Date() })
+      .where(eq(infinityRaceProgress.walletAddress, normalizedAddress))
+      .returning();
+    return updated;
   }
 }
 
