@@ -3428,5 +3428,393 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // Infinity Race Economy Routes
+  // ============================================
+  
+  const INFINITY_CRAFTS = {
+    neon_fox: { name: 'Neon Fox', tier: 'basic', cost: 100000, nftRequired: 0 },
+    dust_hawk: { name: 'Dust Hawk', tier: 'basic', cost: 100000, nftRequired: 0 },
+    crystal_owl: { name: 'Crystal Owl', tier: 'cooler', cost: 300000, nftRequired: 4 },
+    jelly_wisp: { name: 'Jelly Wisp', tier: 'cooler', cost: 300000, nftRequired: 4 },
+    ultra_falcon: { name: 'Ultra Falcon', tier: 'premium', cost: 500000, nftRequired: 4 }
+  };
+
+  const INFINITY_UPGRADES = {
+    engine: { name: 'Engine', description: '+1 Speed', cost: 100000, maxLevel: 10 },
+    thruster: { name: 'Thruster', description: '+1 Agility', cost: 200000, maxLevel: 10 },
+    shield: { name: 'Shield', description: '+1 Strength', cost: 300000, maxLevel: 10 }
+  };
+
+  const DAILY_RACE_LIMIT = 4;
+  const MAX_BET_ORE = 10000;
+
+  // Get player's full infinity race state
+  app.get('/api/infinity-race/state/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const [ownedCrafts, racesLast24h, activeBet, raceHistory] = await Promise.all([
+        storage.getInfinityCraftOwnership(walletAddress),
+        storage.getInfinityRacesLast24h(walletAddress),
+        storage.getActiveInfinityBet(walletAddress),
+        storage.getInfinityRaceHistory(walletAddress, 10)
+      ]);
+
+      // Get upgrades for each owned craft
+      const craftsWithUpgrades = await Promise.all(
+        ownedCrafts.map(async (craft) => {
+          const upgrades = await storage.getInfinityCraftUpgrades(walletAddress, craft.craftId);
+          return {
+            ...craft,
+            upgrades: upgrades || { engineLevel: 0, thrusterLevel: 0, shieldLevel: 0 }
+          };
+        })
+      );
+
+      res.json({
+        crafts: craftsWithUpgrades,
+        racesToday: racesLast24h,
+        racesRemaining: Math.max(0, DAILY_RACE_LIMIT - racesLast24h),
+        activeBet,
+        raceHistory,
+        craftDefinitions: INFINITY_CRAFTS,
+        upgradeDefinitions: INFINITY_UPGRADES,
+        maxBet: MAX_BET_ORE,
+        dailyLimit: DAILY_RACE_LIMIT
+      });
+    } catch (error) {
+      console.error('Get infinity race state failed:', error);
+      res.status(500).json({ error: 'Failed to get race state' });
+    }
+  });
+
+  // Purchase a craft
+  const purchaseCraftSchema = z.object({
+    walletAddress: z.string(),
+    craftId: z.enum(['neon_fox', 'dust_hawk', 'crystal_owl', 'jelly_wisp', 'ultra_falcon']),
+    nftCount: z.number().optional().default(0)
+  });
+
+  app.post('/api/infinity-race/buy-craft', gameLimiter, async (req, res) => {
+    try {
+      const parsed = purchaseCraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, craftId, nftCount } = parsed.data;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const craftDef = INFINITY_CRAFTS[craftId as keyof typeof INFINITY_CRAFTS];
+      if (!craftDef) {
+        return res.status(400).json({ error: 'Invalid craft ID' });
+      }
+
+      // Check NFT requirement
+      if (craftDef.nftRequired > 0 && nftCount < craftDef.nftRequired) {
+        return res.status(403).json({ 
+          error: 'NFT requirement not met',
+          required: craftDef.nftRequired,
+          owned: nftCount
+        });
+      }
+
+      // Check if already owned
+      const alreadyOwned = await storage.hasInfinityCraft(walletAddress, craftId);
+      if (alreadyOwned) {
+        return res.status(400).json({ error: 'Craft already owned' });
+      }
+
+      // Check Ore Points balance
+      const pointsSummaryData = await storage.getOrCreatePointsSummary(walletAddress);
+      if (!pointsSummaryData || pointsSummaryData.totalEarned < craftDef.cost) {
+        return res.status(400).json({ 
+          error: 'Insufficient Ore Points',
+          required: craftDef.cost,
+          available: pointsSummaryData?.totalEarned || 0
+        });
+      }
+
+      // Deduct Ore Points (update total earned)
+      await storage.deductPoints(walletAddress, craftDef.cost);
+
+      // Purchase the craft
+      const ownership = await storage.purchaseInfinityCraft(walletAddress, craftId, 'purchase');
+
+      // Log activity
+      await storage.insertActivityLog({
+        walletAddress,
+        eventType: 'craft_purchase',
+        details: `Purchased ${craftDef.name} for ${craftDef.cost} Ore`,
+        pointsEarned: -craftDef.cost,
+        gameType: 'infinity_race'
+      });
+
+      res.json({ 
+        success: true, 
+        craft: ownership,
+        pointsDeducted: craftDef.cost 
+      });
+    } catch (error) {
+      console.error('Purchase craft failed:', error);
+      res.status(500).json({ error: 'Failed to purchase craft' });
+    }
+  });
+
+  // Upgrade a craft
+  const upgradeCraftSchema = z.object({
+    walletAddress: z.string(),
+    craftId: z.string(),
+    upgradeType: z.enum(['engine', 'thruster', 'shield'])
+  });
+
+  app.post('/api/infinity-race/upgrade-craft', gameLimiter, async (req, res) => {
+    try {
+      const parsed = upgradeCraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, craftId, upgradeType } = parsed.data;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      // Check ownership
+      const owned = await storage.hasInfinityCraft(walletAddress, craftId);
+      if (!owned) {
+        return res.status(403).json({ error: 'You do not own this craft' });
+      }
+
+      // Get current upgrades
+      const currentUpgrades = await storage.getInfinityCraftUpgrades(walletAddress, craftId);
+      const currentLevel = currentUpgrades ? (currentUpgrades[`${upgradeType}Level` as keyof typeof currentUpgrades] as number || 0) : 0;
+
+      if (currentLevel >= 10) {
+        return res.status(400).json({ error: 'Upgrade already at max level' });
+      }
+
+      const upgradeDef = INFINITY_UPGRADES[upgradeType];
+      const cost = upgradeDef.cost;
+
+      // Check Ore Points balance
+      const pointsSummaryData = await storage.getOrCreatePointsSummary(walletAddress);
+      if (!pointsSummaryData || pointsSummaryData.totalEarned < cost) {
+        return res.status(400).json({ 
+          error: 'Insufficient Ore Points',
+          required: cost,
+          available: pointsSummaryData?.totalEarned || 0
+        });
+      }
+
+      // Deduct Ore Points
+      await storage.deductPoints(walletAddress, cost);
+
+      // Apply upgrade
+      const upgrades = await storage.upgradeInfinityCraft(walletAddress, craftId, upgradeType);
+
+      // Log activity
+      await storage.insertActivityLog({
+        walletAddress,
+        eventType: 'craft_upgrade',
+        details: `Upgraded ${upgradeType} to level ${currentLevel + 1} for ${cost} Ore`,
+        pointsEarned: -cost,
+        gameType: 'infinity_race'
+      });
+
+      res.json({ 
+        success: true, 
+        upgrades,
+        newLevel: currentLevel + 1,
+        pointsDeducted: cost 
+      });
+    } catch (error) {
+      console.error('Upgrade craft failed:', error);
+      res.status(500).json({ error: 'Failed to upgrade craft' });
+    }
+  });
+
+  // Start a race (place bet)
+  const startRaceSchema = z.object({
+    walletAddress: z.string(),
+    craftId: z.string(),
+    betAmountOre: z.number().min(0).max(MAX_BET_ORE)
+  });
+
+  app.post('/api/infinity-race/start', gameLimiter, async (req, res) => {
+    try {
+      const parsed = startRaceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, craftId, betAmountOre } = parsed.data;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      // Check daily race limit
+      const racesToday = await storage.getInfinityRacesLast24h(walletAddress);
+      if (racesToday >= DAILY_RACE_LIMIT) {
+        return res.status(429).json({ 
+          error: 'Daily race limit reached',
+          limit: DAILY_RACE_LIMIT,
+          used: racesToday
+        });
+      }
+
+      // Check for active race
+      const activeBet = await storage.getActiveInfinityBet(walletAddress);
+      if (activeBet) {
+        return res.status(400).json({ error: 'You have an active race. Finish it first.' });
+      }
+
+      // Check craft ownership
+      const owned = await storage.hasInfinityCraft(walletAddress, craftId);
+      if (!owned) {
+        return res.status(403).json({ error: 'You do not own this craft' });
+      }
+
+      // If betting, check and deduct Ore Points
+      if (betAmountOre > 0) {
+        const pointsSummaryData = await storage.getOrCreatePointsSummary(walletAddress);
+        if (!pointsSummaryData || pointsSummaryData.totalEarned < betAmountOre) {
+          return res.status(400).json({ 
+            error: 'Insufficient Ore Points for bet',
+            required: betAmountOre,
+            available: pointsSummaryData?.totalEarned || 0
+          });
+        }
+        await storage.deductPoints(walletAddress, betAmountOre);
+      }
+
+      // Create race bet record
+      const bet = await storage.createInfinityRaceBet({
+        walletAddress,
+        craftId,
+        betAmountOre,
+        betStatus: 'active',
+        outcome: null,
+        brainxAwarded: 0,
+        distanceReached: null
+      });
+
+      res.json({ 
+        success: true, 
+        raceId: bet.id,
+        craftId,
+        betAmountOre,
+        racesRemaining: Math.max(0, DAILY_RACE_LIMIT - racesToday - 1)
+      });
+    } catch (error) {
+      console.error('Start race failed:', error);
+      res.status(500).json({ error: 'Failed to start race' });
+    }
+  });
+
+  // Complete a race (settle bet)
+  const completeRaceSchema = z.object({
+    walletAddress: z.string(),
+    raceId: z.string(),
+    won: z.boolean(),
+    distanceReached: z.number().min(0)
+  });
+
+  app.post('/api/infinity-race/complete', gameLimiter, async (req, res) => {
+    try {
+      const parsed = completeRaceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+      }
+
+      const { walletAddress, raceId, won, distanceReached } = parsed.data;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      // Get the active bet
+      const activeBet = await storage.getActiveInfinityBet(walletAddress);
+      if (!activeBet || activeBet.id !== raceId) {
+        return res.status(400).json({ error: 'No matching active race found' });
+      }
+
+      const outcome = won ? 'win' : 'loss';
+      let brainxAwarded = 0;
+
+      // If won with a bet, award BrainX Credits (2x bet amount)
+      if (won && activeBet.betAmountOre > 0) {
+        brainxAwarded = activeBet.betAmountOre * 2;
+        
+        // Record brainX vesting
+        await storage.createVestingRecord({
+          walletAddress,
+          pointsConverted: activeBet.betAmountOre,
+          brainxReceived: brainxAwarded,
+          lockExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        });
+      }
+
+      // Settle the bet
+      const settledBet = await storage.settleInfinityRaceBet(raceId, outcome, distanceReached, brainxAwarded);
+
+      // Log activity
+      await storage.insertActivityLog({
+        walletAddress,
+        eventType: won ? 'race_won' : 'race_lost',
+        details: won && brainxAwarded > 0 
+          ? `Won race! Earned ${brainxAwarded} BrainX Credits (1yr lock)` 
+          : `Race ${won ? 'completed' : 'lost'}. Distance: ${distanceReached}m`,
+        pointsEarned: 0,
+        gameType: 'infinity_race'
+      });
+
+      // Broadcast to WebSocket
+      wsManager.broadcastToWallet(walletAddress, {
+        type: 'race_complete',
+        data: { 
+          won, 
+          distanceReached, 
+          brainxAwarded,
+          raceId 
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        outcome,
+        distanceReached,
+        brainxAwarded,
+        settledBet
+      });
+    } catch (error) {
+      console.error('Complete race failed:', error);
+      res.status(500).json({ error: 'Failed to complete race' });
+    }
+  });
+
+  // Get race history
+  app.get('/api/infinity-race/history/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const history = await storage.getInfinityRaceHistory(walletAddress, limit);
+
+      res.json({ history, count: history.length });
+    } catch (error) {
+      console.error('Get race history failed:', error);
+      res.status(500).json({ error: 'Failed to get race history' });
+    }
+  });
+
   return httpServer;
 }

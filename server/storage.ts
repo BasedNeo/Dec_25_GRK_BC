@@ -80,6 +80,10 @@ export interface IStorage {
   getActivityLogsByWallet(walletAddress: string, limit?: number): Promise<ActivityLog[]>;
   exportActivityLogsForBackup(): Promise<ActivityLog[]>;
   
+  // Points Management for Economy
+  getOrCreatePointsSummary(walletAddress: string): Promise<PointsSummary>;
+  deductPoints(walletAddress: string, amount: number): Promise<PointsSummary>;
+  
   // Infinity Race Economy
   getInfinityCraftOwnership(walletAddress: string): Promise<InfinityCraftOwnership[]>;
   purchaseInfinityCraft(walletAddress: string, craftId: string, source?: string): Promise<InfinityCraftOwnership>;
@@ -1337,6 +1341,42 @@ export class DatabaseStorage implements IStorage {
       .from(activityLogs)
       .where(gte(activityLogs.createdAt, thirtyMinutesAgo))
       .orderBy(desc(activityLogs.createdAt));
+  }
+
+  // Points Management for Economy
+  async getOrCreatePointsSummary(walletAddress: string): Promise<PointsSummary> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getPointsSummary(normalizedAddress);
+    if (existing) return existing;
+    
+    // Create new summary with 0 points
+    const [result] = await db.insert(pointsSummary).values({
+      walletAddress: normalizedAddress,
+      totalEarned: 0,
+      todayEarned: 0,
+      dailyDate: new Date().toISOString().split('T')[0],
+      totalVested: 0,
+      brainXLocked: 0,
+      brainXUnlocked: 0,
+      dailyEarnedTotal: 0
+    }).returning();
+    return result;
+  }
+
+  async deductPoints(walletAddress: string, amount: number): Promise<PointsSummary> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getOrCreatePointsSummary(normalizedAddress);
+    
+    const newTotal = Math.max(0, existing.totalEarned - amount);
+    
+    const [updated] = await db.update(pointsSummary)
+      .set({
+        totalEarned: newTotal,
+        updatedAt: new Date()
+      })
+      .where(eq(pointsSummary.id, existing.id))
+      .returning();
+    return updated;
   }
 
   // Infinity Race Economy
