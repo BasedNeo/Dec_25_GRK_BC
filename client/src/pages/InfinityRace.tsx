@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import p5 from 'p5';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import { useGuardianProfile } from '@/hooks/useGuardianProfile';
 import { useGamePoints } from '@/hooks/useGamePoints';
 import { logActivity } from '@/hooks/useActivityHistory';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
+import { useInfinityRace } from '@/hooks/useInfinityRace';
 import {
   CRAFT_VISUALS,
   renderBackground,
@@ -29,7 +31,8 @@ import {
   type RenderContext,
 } from '@/game/infinity-race/renderLayers';
 import {
-  Rocket, Play, Home, Trophy, Timer, Shield, Zap, Wind, Target, Star, ChevronLeft
+  Rocket, Play, Home, Trophy, Timer, Shield, Zap, Wind, Target, Star, ChevronLeft,
+  Store, Lock, Coins, ArrowUp, TrendingUp
 } from 'lucide-react';
 
 interface Craft {
@@ -80,8 +83,28 @@ export default function InfinityRace() {
   const { earnPoints } = useGamePoints();
   const { nfts } = useOwnedNFTs();
   const isNftHolder = nfts.length > 0;
+  
+  const infinityRace = useInfinityRace();
+  const { 
+    state: raceState, 
+    oreBalance, 
+    nftCount,
+    buyCraft, 
+    upgradeCraft, 
+    startRace, 
+    completeRace,
+    hasCraft,
+    getCraftUpgrades,
+    canAfford,
+    meetsNftRequirement,
+    loading: economyLoading
+  } = infinityRace;
 
-  const [gamePhase, setGamePhase] = useState<'menu' | 'select' | 'countdown' | 'racing' | 'finished'>('menu');
+  const [gamePhase, setGamePhase] = useState<'menu' | 'shop' | 'select' | 'countdown' | 'racing' | 'finished'>('menu');
+  const [betAmount, setBetAmount] = useState(0);
+  const [activeRaceId, setActiveRaceId] = useState<string | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
   const [selectedCraft, setSelectedCraft] = useState<Craft>(CRAFTS[0]);
   const [timeLeft, setTimeLeft] = useState(RACE_DURATION);
   const [distance, setDistance] = useState(0);
@@ -485,8 +508,12 @@ export default function InfinityRace() {
       } else if (distance > TRACK_LENGTH * 0.5) {
         earnPoints('riddle-quest', 'riddle', 10);
       }
+      
+      if (activeRaceId) {
+        completeRace(activeRaceId, raceWon, Math.floor(distance));
+      }
     }
-  }, [gamePhase, raceWon, address, score, distance, selectedCraft.name, earnPoints]);
+  }, [gamePhase, raceWon, address, score, distance, selectedCraft.name, earnPoints, activeRaceId, completeRace]);
 
   if (!isConnected) {
     return (
@@ -537,12 +564,12 @@ export default function InfinityRace() {
 
                 <div className="space-y-4">
                   <Button
-                    onClick={() => setGamePhase('select')}
+                    onClick={() => setGamePhase('shop')}
                     className="w-full py-6 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] hover:shadow-[0_0_40px_rgba(0,255,255,0.5)] transition-all"
                     data-testid="button-start-race"
                   >
-                    <Play className="w-6 h-6 mr-2" />
-                    Start Race
+                    <Store className="w-6 h-6 mr-2" />
+                    Enter Hangar
                   </Button>
 
                   <Button
@@ -555,8 +582,241 @@ export default function InfinityRace() {
                     Back to Arcade
                   </Button>
                 </div>
+                
+                {raceState && (
+                  <div className="mt-6 pt-4 border-t border-cyan-500/20">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Races Today:</span>
+                      <span className="text-cyan-400 font-mono">{raceState.racesToday}/{raceState.dailyLimit}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-2">
+                      <span className="text-gray-400">Ore Balance:</span>
+                      <span className="text-green-400 font-mono">{oreBalance.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
+          </motion.div>
+        )}
+
+        {gamePhase === 'shop' && (
+          <motion.div
+            key="shop"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="min-h-screen p-4 pt-8 pb-20"
+          >
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl md:text-3xl font-orbitron font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  Craft Hangar
+                </h2>
+                <div className="flex items-center gap-4">
+                  <div className="px-3 py-1.5 bg-green-500/20 rounded-lg border border-green-500/30">
+                    <span className="text-green-400 font-mono text-sm">{oreBalance.toLocaleString()} Ore</span>
+                  </div>
+                  <div className="px-3 py-1.5 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                    <span className="text-purple-400 font-mono text-sm">{nftCount} NFTs</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                {CRAFTS.map((craft) => {
+                  const owned = hasCraft(craft.id);
+                  const craftDef = raceState?.craftDefinitions[craft.id];
+                  const cost = craftDef?.cost || 100000;
+                  const nftReq = craftDef?.nftRequired || 0;
+                  const tier = craftDef?.tier || 'basic';
+                  const upgrades = getCraftUpgrades(craft.id);
+                  const affordable = canAfford(cost);
+                  const hasNfts = meetsNftRequirement(nftReq);
+                  const canBuy = !owned && affordable && hasNfts;
+                  const isLoading = purchaseLoading === craft.id;
+
+                  return (
+                    <Card
+                      key={craft.id}
+                      className={`p-4 transition-all duration-300 relative overflow-hidden ${
+                        owned
+                          ? 'border-2 border-cyan-500/50 bg-gradient-to-br from-black/80 to-cyan-900/10'
+                          : 'border-gray-700 bg-black/60'
+                      }`}
+                      data-testid={`shop-craft-${craft.id}`}
+                    >
+                      {tier === 'premium' && (
+                        <div className="absolute top-0 right-0 px-2 py-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-xs font-bold rounded-bl">
+                          PREMIUM
+                        </div>
+                      )}
+                      {tier === 'cooler' && (
+                        <div className="absolute top-0 right-0 px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-bl">
+                          RARE
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-12 h-12 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: craft.color + '20' }}
+                        >
+                          <Rocket className="w-6 h-6" style={{ color: craft.color }} />
+                        </div>
+                        <div>
+                          <h3 className="font-orbitron font-bold text-white">{craft.name}</h3>
+                          <p className="text-xs text-gray-400">{craft.description}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+                        <div className="p-2 bg-black/40 rounded">
+                          <Zap className="w-3 h-3 mx-auto text-yellow-400 mb-1" />
+                          <span className="text-gray-300">{craft.speed + (owned ? upgrades.engineLevel : 0)}</span>
+                        </div>
+                        <div className="p-2 bg-black/40 rounded">
+                          <Wind className="w-3 h-3 mx-auto text-blue-400 mb-1" />
+                          <span className="text-gray-300">{craft.agility + (owned ? upgrades.thrusterLevel : 0)}</span>
+                        </div>
+                        <div className="p-2 bg-black/40 rounded">
+                          <Shield className="w-3 h-3 mx-auto text-green-400 mb-1" />
+                          <span className="text-gray-300">{craft.shield + (owned ? upgrades.shieldLevel : 0)}</span>
+                        </div>
+                      </div>
+
+                      {owned ? (
+                        <div className="space-y-2">
+                          <div className="text-center py-1 text-cyan-400 text-sm font-medium">
+                            ✓ Owned
+                          </div>
+                          <div className="grid grid-cols-3 gap-1">
+                            {(['engine', 'thruster', 'shield'] as const).map((type) => {
+                              const level = upgrades[`${type}Level` as keyof typeof upgrades] || 0;
+                              const upgradeDef = raceState?.upgradeDefinitions[type];
+                              const upgradeCost = upgradeDef?.cost || 100000;
+                              const maxed = level >= 10;
+                              const canUpgrade = !maxed && canAfford(upgradeCost);
+                              const upgrading = upgradeLoading === `${craft.id}-${type}`;
+                              
+                              return (
+                                <Button
+                                  key={type}
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={maxed || !canUpgrade || upgrading}
+                                  onClick={async () => {
+                                    setUpgradeLoading(`${craft.id}-${type}`);
+                                    await upgradeCraft(craft.id, type);
+                                    setUpgradeLoading(null);
+                                  }}
+                                  className={`text-xs px-1 ${
+                                    maxed ? 'opacity-50' : canUpgrade ? 'border-cyan-500/50' : 'opacity-30'
+                                  }`}
+                                  data-testid={`upgrade-${craft.id}-${type}`}
+                                >
+                                  {upgrading ? '...' : maxed ? '✓' : <ArrowUp className="w-3 h-3" />}
+                                  <span className="ml-1">{level}/10</span>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          disabled={!canBuy || isLoading}
+                          onClick={async () => {
+                            setPurchaseLoading(craft.id);
+                            await buyCraft(craft.id);
+                            setPurchaseLoading(null);
+                          }}
+                          data-testid={`buy-${craft.id}`}
+                        >
+                          {isLoading ? (
+                            'Purchasing...'
+                          ) : !hasNfts ? (
+                            <>
+                              <Lock className="w-4 h-4 mr-1" />
+                              Need {nftReq} NFTs
+                            </>
+                          ) : !affordable ? (
+                            <>
+                              <Coins className="w-4 h-4 mr-1" />
+                              {cost.toLocaleString()} Ore
+                            </>
+                          ) : (
+                            <>
+                              <Coins className="w-4 h-4 mr-1" />
+                              Buy: {cost.toLocaleString()} Ore
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {raceState && raceState.racesRemaining > 0 && (
+                <Card className="p-6 bg-black/80 border-cyan-500/30 mb-6">
+                  <h3 className="text-lg font-orbitron text-white mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-purple-400" />
+                    Place Your Bet (Optional)
+                  </h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Win and earn 2x your bet as BrainX Credits (1-year vest). Lose and forfeit your bet.
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <Slider
+                      value={[betAmount]}
+                      onValueChange={(val) => setBetAmount(val[0])}
+                      max={Math.min(raceState.maxBet, oreBalance)}
+                      step={100}
+                      className="flex-1"
+                      data-testid="bet-slider"
+                    />
+                    <div className="w-28 text-right">
+                      <span className="text-cyan-400 font-mono text-lg">{betAmount.toLocaleString()}</span>
+                      <span className="text-gray-500 text-sm ml-1">Ore</span>
+                    </div>
+                  </div>
+                  {betAmount > 0 && (
+                    <div className="mt-3 text-sm text-purple-400">
+                      Potential win: <span className="font-mono">{(betAmount * 2).toLocaleString()}</span> BrainX Credits
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              <div className="flex gap-4 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setGamePhase('menu')}
+                  className="border-gray-600 px-8"
+                  data-testid="button-back-menu"
+                >
+                  <ChevronLeft className="w-5 h-5 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={() => setGamePhase('select')}
+                  disabled={!raceState || raceState.crafts.length === 0}
+                  className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] disabled:opacity-50"
+                  data-testid="button-select-craft"
+                >
+                  <Rocket className="w-5 h-5 mr-2" />
+                  {raceState?.crafts.length === 0 ? 'Buy a Craft First' : 'Select Craft'}
+                </Button>
+              </div>
+              
+              {raceState && raceState.racesRemaining === 0 && (
+                <div className="mt-6 text-center text-yellow-400">
+                  <Timer className="w-5 h-5 inline mr-2" />
+                  Daily race limit reached. Come back tomorrow!
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -573,9 +833,21 @@ export default function InfinityRace() {
                 Select Your Craft
               </h2>
 
+              {betAmount > 0 && (
+                <div className="mb-6 p-4 bg-purple-500/20 border border-purple-500/30 rounded-lg text-center">
+                  <span className="text-purple-400">Betting: </span>
+                  <span className="text-white font-mono font-bold">{betAmount.toLocaleString()} Ore</span>
+                  <span className="text-gray-400 text-sm ml-2">(Win to earn {(betAmount * 2).toLocaleString()} BrainX)</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {CRAFTS.map((craft) => {
-                  const visual = CRAFT_VISUALS[craft.id];
+                {CRAFTS.filter(craft => hasCraft(craft.id)).map((craft) => {
+                  const upgrades = getCraftUpgrades(craft.id);
+                  const effectiveSpeed = craft.speed + upgrades.engineLevel;
+                  const effectiveAgility = craft.agility + upgrades.thrusterLevel;
+                  const effectiveShield = craft.shield + upgrades.shieldLevel;
+                  
                   return (
                     <Card
                       key={craft.id}
@@ -622,10 +894,10 @@ export default function InfinityRace() {
                           <div className="flex flex-col items-center p-2 rounded bg-black/40">
                             <Zap className="w-4 h-4 text-yellow-400 mb-1" />
                             <div className="flex gap-0.5">
-                              {[...Array(5)].map((_, i) => (
+                              {[...Array(10)].map((_, i) => (
                                 <div
                                   key={i}
-                                  className={`w-2 h-2 rounded-full ${i < craft.speed ? 'bg-yellow-400' : 'bg-gray-700'}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${i < effectiveSpeed ? 'bg-yellow-400' : 'bg-gray-700'}`}
                                 />
                               ))}
                             </div>
@@ -634,10 +906,10 @@ export default function InfinityRace() {
                           <div className="flex flex-col items-center p-2 rounded bg-black/40">
                             <Wind className="w-4 h-4 text-blue-400 mb-1" />
                             <div className="flex gap-0.5">
-                              {[...Array(5)].map((_, i) => (
+                              {[...Array(10)].map((_, i) => (
                                 <div
                                   key={i}
-                                  className={`w-2 h-2 rounded-full ${i < craft.agility ? 'bg-blue-400' : 'bg-gray-700'}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${i < effectiveAgility ? 'bg-blue-400' : 'bg-gray-700'}`}
                                 />
                               ))}
                             </div>
@@ -646,10 +918,10 @@ export default function InfinityRace() {
                           <div className="flex flex-col items-center p-2 rounded bg-black/40">
                             <Shield className="w-4 h-4 text-green-400 mb-1" />
                             <div className="flex gap-0.5">
-                              {[...Array(6)].map((_, i) => (
+                              {[...Array(10)].map((_, i) => (
                                 <div
                                   key={i}
-                                  className={`w-2 h-2 rounded-full ${i < craft.shield ? 'bg-green-400' : 'bg-gray-700'}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${i < effectiveShield ? 'bg-green-400' : 'bg-gray-700'}`}
                                 />
                               ))}
                             </div>
@@ -662,19 +934,34 @@ export default function InfinityRace() {
                 })}
               </div>
 
+              {CRAFTS.filter(craft => hasCraft(craft.id)).length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <Rocket className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <p>No crafts owned. Go back to the hangar to purchase one.</p>
+                </div>
+              )}
+
               <div className="flex gap-4 justify-center">
                 <Button
                   variant="outline"
-                  onClick={() => setGamePhase('menu')}
+                  onClick={() => setGamePhase('shop')}
                   className="border-gray-600 px-8"
-                  data-testid="button-back-menu"
+                  data-testid="button-back-shop"
                 >
                   <ChevronLeft className="w-5 h-5 mr-2" />
-                  Back
+                  Back to Hangar
                 </Button>
                 <Button
-                  onClick={() => setGamePhase('countdown')}
-                  className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)]"
+                  onClick={async () => {
+                    if (!hasCraft(selectedCraft.id)) return;
+                    const result = await startRace(selectedCraft.id, betAmount);
+                    if (result.success && result.raceId) {
+                      setActiveRaceId(result.raceId);
+                      setGamePhase('countdown');
+                    }
+                  }}
+                  disabled={!hasCraft(selectedCraft.id)}
+                  className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] disabled:opacity-50"
                   data-testid="button-launch"
                 >
                   <Rocket className="w-5 h-5 mr-2" />
