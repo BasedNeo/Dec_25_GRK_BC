@@ -1,0 +1,40 @@
+{
+  "snapshotDate": "2025-12-27",
+  "createdAt": "2025-12-27T03:00:00.023Z",
+  "totalWallets": 3,
+  "totalPointsEarned": 140,
+  "totalPointsVested": 0,
+  "totalBrainXLocked": 0,
+  "wallets": [
+    {
+      "walletAddress": "0x1234567890123456789012345678901234567890",
+      "totalEarned": 20,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 20,
+      "lastActivity": "2025-12-26T18:53:33.590Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "anon:test456",
+      "totalEarned": 10,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 10,
+      "lastActivity": "2025-12-26T19:08:37.446Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0xaaaa123456789012345678901234567890123456",
+      "totalEarned": 110,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 110,
+      "lastActivity": "2025-12-26T23:19:40.102Z",
+      "vestingEndDate": null
+    }
+  ]
+}
