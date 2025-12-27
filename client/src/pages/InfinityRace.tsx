@@ -524,12 +524,12 @@ export default function InfinityRace() {
           particlesRef.current = updateParticles(particlesRef.current);
           
           const maxTrailPoints = isMobile ? 20 : 30;
-          const speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2);
+          const trailSpeed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2);
           trailPointsRef.current = updateTrail(
             trailPointsRef.current,
             state.x - Math.cos(state.angle) * 20,
             state.y - Math.sin(state.angle) * 20,
-            speed,
+            trailSpeed,
             maxTrailPoints
           );
         }
@@ -1275,7 +1275,6 @@ export default function InfinityRace() {
                       setBetAmount(0);
                       setActiveRaceId(null);
                       setBrainXWon(0);
-                      refreshState();
                       setGamePhase('shop');
                     }}
                     className="w-full font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_20px_rgba(0,255,255,0.3)]"
