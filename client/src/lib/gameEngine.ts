@@ -84,11 +84,12 @@ function getDifficultyMultiplier(wave: number): number {
 export function getCanvasSize(fullscreen = false) {
   const isMobileDevice = window.innerWidth <= 768 || ('ontouchstart' in window);
   const controlBarHeight = 100;
+  const topHeaderHeight = 48;
   
   if (fullscreen || isMobileDevice) {
     return { 
       width: window.innerWidth, 
-      height: window.innerHeight - controlBarHeight 
+      height: window.innerHeight - controlBarHeight - topHeaderHeight
     };
   }
   const maxW = Math.min(420, window.innerWidth - 24);
@@ -117,7 +118,7 @@ export function createGame(w: number, h: number, extraLife: boolean): GameState 
     stage: 1,
     wave: 1,
     player: {
-      pos: { x: w / 2 - 21, y: h - 60 },
+      pos: { x: w / 2 - 21, y: h - 100 },
       vel: { x: 0, y: 0 },
       size: { x: 42, y: 42 },
       active: true,
@@ -245,7 +246,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
     if (state.time % 60 === 0) {
       if (state.player.lives > 0) {
         state.phase = 'respawning';
-        state.player.pos = { x: w / 2 - 21, y: h - 60 };
+        state.player.pos = { x: w / 2 - 21, y: h - 100 };
         state.player.active = true;
         state.player.invincible = 200;
       } else {
@@ -270,7 +271,7 @@ export function updateGame(state: GameState, w: number, h: number): void {
   p.pos.y += p.vel.y;
   
   p.pos.x = Math.max(0, Math.min(w - p.size.x, p.pos.x));
-  p.pos.y = Math.max(h * (1 - PLAYER_MOVE_ZONE), Math.min(h - p.size.y, p.pos.y));
+  p.pos.y = Math.max(h * (1 - PLAYER_MOVE_ZONE), Math.min(h - 60, p.pos.y));
   
   p.vel.x *= 0.92;
   p.vel.y *= 0.92;

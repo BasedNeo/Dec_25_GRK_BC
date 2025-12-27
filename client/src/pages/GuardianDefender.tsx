@@ -22,6 +22,7 @@ import { useFeatureFlags } from '@/lib/featureFlags';
 import { isMobile, haptic } from '@/lib/mobileUtils';
 
 const FULLSCREEN_CONTROL_HEIGHT = 100;
+const FULLSCREEN_HEADER_HEIGHT = 48;
 
 const LoadingScreen = () => (
   <motion.div
@@ -421,7 +422,40 @@ export function GuardianDefender() {
         )}
         
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4">
+          {isFullscreen && isMobileDevice && phase === 'playing' && (
+            <div className="fixed top-0 left-0 right-0 bg-black/80 backdrop-blur-sm border-b border-cyan-500/30 px-3 py-2 z-40 flex items-center justify-between safe-area-top">
+              <button
+                onClick={() => {
+                  if (animationFrameRef.current) {
+                    cancelAnimationFrame(animationFrameRef.current);
+                    animationFrameRef.current = null;
+                  }
+                  setLocation('/');
+                }}
+                className="flex items-center gap-2 text-cyan-400 active:text-cyan-300 min-w-[44px] min-h-[44px]"
+                data-testid="button-mobile-back-home"
+              >
+                <Home size={24} />
+              </button>
+              <div className="flex items-center gap-3 text-xs font-mono">
+                <span className="text-cyan-400 font-bold">{displayScore.toLocaleString()}</span>
+                <span className="text-purple-400">LV{displayLevel}</span>
+                <div className="flex items-center gap-0.5">
+                  {Array(displayLives).fill(0).map((_, i) => <HeartIcon key={i} size={12} />)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={togglePause} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-cyan-400">
+                  {isPaused ? <Play size={20} /> : <Pause size={20} />}
+                </button>
+                <button onClick={toggleMute} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-cyan-400">
+                  {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <div className={`flex items-center justify-between ${isFullscreen && isMobileDevice && phase === 'playing' ? 'hidden' : 'mb-4'}`}>
             <div className="flex items-center gap-2">
               <RocketIcon size={24} />
               <span className="font-orbitron text-white text-sm tracking-wider">RETRO DEFENDER</span>
@@ -631,7 +665,8 @@ export function GuardianDefender() {
                   style={{ 
                     touchAction: 'none',
                     width: isFullscreen && isMobileDevice ? '100vw' : undefined,
-                    height: isFullscreen && isMobileDevice ? `calc(100vh - ${FULLSCREEN_CONTROL_HEIGHT}px)` : undefined,
+                    height: isFullscreen && isMobileDevice ? `calc(100vh - ${FULLSCREEN_CONTROL_HEIGHT}px - ${FULLSCREEN_HEADER_HEIGHT}px)` : undefined,
+                    marginTop: isFullscreen && isMobileDevice ? `${FULLSCREEN_HEADER_HEIGHT}px` : undefined,
                   }}
                   data-testid="canvas-game"
                 />
@@ -653,22 +688,24 @@ export function GuardianDefender() {
                   </div>
                 )}
                 
-                <div className="absolute top-2 right-2 flex gap-2 z-10">
-                  <Button
-                    onClick={togglePause}
-                    className="w-10 h-10 bg-black/60 border border-cyan-500/40 rounded-lg text-cyan-400 hover:bg-cyan-500/20"
-                    data-testid="button-pause"
-                  >
-                    {isPaused ? <Play size={18} /> : <Pause size={18} />}
-                  </Button>
-                  <Button
-                    onClick={toggleMute}
-                    className="w-10 h-10 bg-black/60 border border-purple-500/40 rounded-lg text-purple-400 hover:bg-purple-500/20"
-                    data-testid="button-mute"
-                  >
-                    {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                  </Button>
-                </div>
+                {!(isFullscreen && isMobileDevice) && (
+                  <div className="absolute top-2 right-2 flex gap-2 z-10">
+                    <Button
+                      onClick={togglePause}
+                      className="w-10 h-10 bg-black/60 border border-cyan-500/40 rounded-lg text-cyan-400 hover:bg-cyan-500/20"
+                      data-testid="button-pause"
+                    >
+                      {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                    </Button>
+                    <Button
+                      onClick={toggleMute}
+                      className="w-10 h-10 bg-black/60 border border-purple-500/40 rounded-lg text-purple-400 hover:bg-purple-500/20"
+                      data-testid="button-mute"
+                    >
+                      {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                    </Button>
+                  </div>
+                )}
                 
                 {showLanderControls && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl z-10">
