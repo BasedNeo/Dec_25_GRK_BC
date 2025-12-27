@@ -571,7 +571,10 @@ export default function GuardianDefense() {
     if (!address) return;
     const loadedStats = GameStorageManager.loadStats('guardian-defense', address);
     setStats(loadedStats);
-    setPlaysToday(loadedStats.gamesPlayed % gameConfig.maxPlaysPerDay);
+    // Use proper daily tracking instead of broken modulo calculation
+    const today = new Date().toDateString();
+    const dailyData = GameStorageManager.getDailyData('guardian-defense', address, today);
+    setPlaysToday(dailyData.gamesPlayed);
   }, [address, gameConfig.maxPlaysPerDay]);
 
   useEffect(() => {
@@ -783,17 +786,26 @@ export default function GuardianDefense() {
     setStats(newStats);
     gameStateRef.current.score = finalScore;
 
+    // Calculate economy points first (used for daily tracking and rewards)
+    const wavesCleared = Math.max(0, state.wave - 1);
+    const wavePoints = Math.min(wavesCleared * 10, 200);
+    const winBonus = won ? 50 : 0;
+    const economyPoints = wavePoints + winBonus;
+
     try {
       submitScore(finalScore, state.wave);
-      setPlaysToday(prev => prev + 1);
+      
+      // Update daily tracking in localStorage (address is guaranteed here - early return guards this)
+      const today = new Date().toDateString();
+      const currentDaily = GameStorageManager.getDailyData('guardian-defense', address, today);
+      GameStorageManager.updateDailyData('guardian-defense', address, today, {
+        gamesPlayed: currentDaily.gamesPlayed + 1,
+        pointsEarned: currentDaily.pointsEarned + economyPoints
+      });
+      setPlaysToday(currentDaily.gamesPlayed + 1);
+      
       updateProgress(state.currentStage, state.globalWave);
       trackEvent('game_complete', 'Game', `Guardian Defense - Stage ${state.currentStage} Wave ${state.stageWave} - ${finalScore} pts`);
-      
-      // Award economy points: 10 per wave cleared + 50 if won (lair bonus), max 500/day
-      const wavesCleared = Math.max(0, state.wave - 1);
-      const wavePoints = Math.min(wavesCleared * 10, 200);
-      const winBonus = won ? 50 : 0;
-      const economyPoints = wavePoints + winBonus;
       
       if (economyPoints > 0) {
         earnEconomyPoints('creature-command', won ? 'lairs' : 'wave', economyPoints);
@@ -2123,7 +2135,7 @@ export default function GuardianDefense() {
         gameType="guardian-defense"
         score={state.score}
         time={Math.floor(state.gameTime / 1000)}
-        playsRemaining={gameConfig.maxPlaysPerDay - playsToday}
+        playsRemaining={Math.max(0, gameConfig.maxPlaysPerDay - playsToday)}
         maxPlays={gameConfig.maxPlaysPerDay}
         isNewBest={state.score > stats.bestScore}
         personalBest={stats.bestScore}
@@ -2382,7 +2394,7 @@ export default function GuardianDefense() {
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-purple-400" />
                     <span className="text-gray-300">
-                      {gameConfig.maxPlaysPerDay - playsToday}/{gameConfig.maxPlaysPerDay} Plays
+                      {Math.max(0, gameConfig.maxPlaysPerDay - playsToday)}/{gameConfig.maxPlaysPerDay} Plays
                     </span>
                   </div>
                   <button
