@@ -36,7 +36,7 @@ import {
 } from '@/game/infinity-race/renderLayers';
 import {
   Rocket, Play, Home, Trophy, Timer, Shield, Zap, Wind, Target, Star, ChevronLeft,
-  Store, Lock, Coins, ArrowUp, TrendingUp
+  Store, Lock, Coins, ArrowUp, TrendingUp, Pause
 } from 'lucide-react';
 
 interface Craft {
@@ -125,6 +125,8 @@ export default function InfinityRace() {
   const [raceWon, setRaceWon] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [fps, setFps] = useState(60);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<p5 | null>(null);
@@ -140,7 +142,18 @@ export default function InfinityRace() {
   const obstaclesRef = useRef<Obstacle[]>([]);
   const trackPointsRef = useRef<{ x: number; y: number }[]>([]);
   const keysRef = useRef<Set<string>>(new Set());
-  const touchRef = useRef<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const touchRef = useRef<{ 
+    startX: number; 
+    startY: number; 
+    currentX: number; 
+    currentY: number;
+    startTime: number;
+    isTap: boolean;
+  } | null>(null);
+  const boostTriggerRef = useRef<boolean>(false);
+  const swipeDirectionRef = useRef<'left' | 'right' | null>(null);
+  const pausedRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const trailPointsRef = useRef<TrailPoint[]>([]);
   const frameCountRef = useRef(0);
@@ -203,10 +216,13 @@ export default function InfinityRace() {
     trailPointsRef.current = [];
     frameCountRef.current = 0;
     lastCollisionRef.current = -1;
+    boostTriggerRef.current = false;
+    swipeDirectionRef.current = null;
     setTimeLeft(RACE_DURATION);
     setDistance(0);
     setScore(0);
     setRaceWon(false);
+    setIsPaused(false);
   }, [selectedCraft]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -228,20 +244,43 @@ export default function InfinityRace() {
         startY: touch.clientY,
         currentX: touch.clientX,
         currentY: touch.clientY,
+        startTime: Date.now(),
+        isTap: true,
       };
+      swipeDirectionRef.current = null;
     }
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (e.touches.length > 0 && touchRef.current) {
       const touch = e.touches[0];
+      const dx = touch.clientX - touchRef.current.startX;
+      const dy = touch.clientY - touchRef.current.startY;
+      const moveDistance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (moveDistance > 15) {
+        touchRef.current.isTap = false;
+      }
+      
+      const SWIPE_THRESHOLD = 40;
+      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+        swipeDirectionRef.current = dx > 0 ? 'right' : 'left';
+      }
+      
       touchRef.current.currentX = touch.clientX;
       touchRef.current.currentY = touch.clientY;
     }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
+    if (touchRef.current) {
+      const elapsed = Date.now() - touchRef.current.startTime;
+      if (touchRef.current.isTap && elapsed < 200) {
+        boostTriggerRef.current = true;
+      }
+    }
     touchRef.current = null;
+    swipeDirectionRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -249,6 +288,24 @@ export default function InfinityRace() {
       fetchProgress(address);
     }
   }, [address, fetchProgress]);
+
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    pausedRef.current = isPaused;
+  }, [isPaused]);
 
   useEffect(() => {
     if (gamePhase !== 'racing') return;
@@ -292,14 +349,16 @@ export default function InfinityRace() {
     if (gamePhase !== 'racing') return;
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setGamePhase('finished');
-          return 0;
-        }
-        return prev - 1;
-      });
+      if (!pausedRef.current) {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setGamePhase('finished');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
@@ -309,11 +368,14 @@ export default function InfinityRace() {
     if (gamePhase !== 'racing' || !canvasRef.current) return;
 
     const sketch = (p: p5) => {
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       let canvasWidth = window.innerWidth;
       let canvasHeight = window.innerHeight;
       let timeLeftLocal = RACE_DURATION;
+      let lastFrameTime = performance.now();
 
       p.setup = () => {
+        p.pixelDensity(pixelRatio);
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(canvasRef.current!);
         p.frameRate(60);
@@ -328,127 +390,149 @@ export default function InfinityRace() {
       };
 
       p.draw = () => {
-        frameCountRef.current++;
+        const now = performance.now();
+        const deltaTime = Math.min((now - lastFrameTime) / 16.67, 2);
+        lastFrameTime = now;
+        
         const state = gameStateRef.current;
         const craft = selectedCraft;
         const craftVisual = CRAFT_VISUALS[craft.id] || CRAFT_VISUALS.neon_fox;
+        const isPaused = pausedRef.current;
 
-        if (frameCountRef.current % 30 === 0) {
-          setFps(Math.round(p.frameRate()));
-          timeLeftLocal = timeLeft;
-        }
+        if (!isPaused) {
+          frameCountRef.current++;
 
-        const accel = 0.15 * (craft.speed / 3);
-        const turnSpeed = 0.08 * (craft.agility / 3);
-        const friction = 0.98;
-        const maxSpeed = 8 + craft.speed * 2;
+          if (frameCountRef.current % 30 === 0) {
+            setFps(Math.round(p.frameRate()));
+            timeLeftLocal = timeLeft;
+          }
 
-        if (keysRef.current.has('ArrowUp')) {
-          state.velocity.x += Math.cos(state.angle) * accel;
-          state.velocity.y += Math.sin(state.angle) * accel;
-        }
-        if (keysRef.current.has('ArrowDown')) {
-          state.velocity.x -= Math.cos(state.angle) * accel * 0.5;
-          state.velocity.y -= Math.sin(state.angle) * accel * 0.5;
-        }
-        if (keysRef.current.has('ArrowLeft')) {
-          state.angle -= turnSpeed;
-        }
-        if (keysRef.current.has('ArrowRight')) {
-          state.angle += turnSpeed;
-        }
+          const accel = 0.15 * (craft.speed / 3) * deltaTime;
+          const turnSpeed = 0.08 * (craft.agility / 3) * deltaTime;
+          const friction = Math.pow(0.98, deltaTime);
+          const maxSpeed = 8 + craft.speed * 2;
 
-        if (touchRef.current) {
-          const dx = touchRef.current.currentX - touchRef.current.startX;
-          const dy = touchRef.current.currentY - touchRef.current.startY;
-          
-          if (dy < -30) {
+          if (keysRef.current.has('ArrowUp')) {
             state.velocity.x += Math.cos(state.angle) * accel;
             state.velocity.y += Math.sin(state.angle) * accel;
           }
-          if (dy > 30) {
+          if (keysRef.current.has('ArrowDown')) {
             state.velocity.x -= Math.cos(state.angle) * accel * 0.5;
             state.velocity.y -= Math.sin(state.angle) * accel * 0.5;
           }
-          if (dx < -30) {
+          if (keysRef.current.has('ArrowLeft')) {
             state.angle -= turnSpeed;
           }
-          if (dx > 30) {
+          if (keysRef.current.has('ArrowRight')) {
             state.angle += turnSpeed;
           }
-        }
 
-        state.velocity.x *= friction;
-        state.velocity.y *= friction;
+          if (boostTriggerRef.current || keysRef.current.has('Space')) {
+            state.velocity.x += Math.cos(state.angle) * accel * 2;
+            state.velocity.y += Math.sin(state.angle) * accel * 2;
+            state.boosting = true;
+            boostTriggerRef.current = false;
+          } else {
+            state.boosting = false;
+          }
 
-        const speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2);
-        if (speed > maxSpeed) {
-          state.velocity.x = (state.velocity.x / speed) * maxSpeed;
-          state.velocity.y = (state.velocity.y / speed) * maxSpeed;
-        }
+          if (swipeDirectionRef.current === 'left') {
+            state.angle -= turnSpeed * 1.5;
+          }
+          if (swipeDirectionRef.current === 'right') {
+            state.angle += turnSpeed * 1.5;
+          }
 
-        state.x += state.velocity.x;
-        state.y += state.velocity.y;
-
-        if (state.x < 0) state.x = 0;
-        if (state.y < -400) state.y = -400;
-        if (state.y > 400) state.y = 400;
-
-        state.distance = state.x;
-        setDistance(Math.floor(state.distance));
-
-        if (state.distance >= TRACK_LENGTH) {
-          setRaceWon(true);
-          const finalScore = Math.floor((RACE_DURATION - timeLeftLocal) * 10 + state.shieldHp * 100);
-          setScore(finalScore);
-          particlesRef.current = spawnFinishParticles(particlesRef.current, state.x, state.y, isMobile);
-          setGamePhase('finished');
-          return;
-        }
-
-        for (let i = 0; i < obstaclesRef.current.length; i++) {
-          const obs = obstaclesRef.current[i];
-          if (obs.x < 0) continue;
-          
-          const dx = state.x - obs.x;
-          const dy = state.y - obs.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          
-          if (dist < obs.radius + 20 && lastCollisionRef.current !== i) {
-            lastCollisionRef.current = i;
-            state.shieldHp -= 1;
-            state.velocity.x = -state.velocity.x * 0.5;
-            state.velocity.y = -state.velocity.y * 0.5;
+          if (touchRef.current && !swipeDirectionRef.current) {
+            const dx = touchRef.current.currentX - touchRef.current.startX;
+            const dy = touchRef.current.currentY - touchRef.current.startY;
             
-            particlesRef.current = spawnCollisionParticles(
-              particlesRef.current,
-              obs.x,
-              obs.y,
-              craftVisual.accentColor,
-              isMobile
-            );
-            
-            obs.x = -9999;
-
-            if (state.shieldHp <= 0) {
-              setRaceWon(false);
-              setScore(Math.floor(state.distance / 10));
-              setGamePhase('finished');
-              return;
+            if (dy < -30) {
+              state.velocity.x += Math.cos(state.angle) * accel;
+              state.velocity.y += Math.sin(state.angle) * accel;
+            }
+            if (dy > 30) {
+              state.velocity.x -= Math.cos(state.angle) * accel * 0.5;
+              state.velocity.y -= Math.sin(state.angle) * accel * 0.5;
+            }
+            if (Math.abs(dx) > 30) {
+              state.angle += (dx > 0 ? turnSpeed : -turnSpeed);
             }
           }
-        }
 
-        particlesRef.current = updateParticles(particlesRef.current);
-        
-        const maxTrailPoints = isMobile ? 20 : 30;
-        trailPointsRef.current = updateTrail(
-          trailPointsRef.current,
-          state.x - Math.cos(state.angle) * 20,
-          state.y - Math.sin(state.angle) * 20,
-          speed,
-          maxTrailPoints
-        );
+          state.velocity.x *= friction;
+          state.velocity.y *= friction;
+
+          const speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2);
+          if (speed > maxSpeed) {
+            state.velocity.x = (state.velocity.x / speed) * maxSpeed;
+            state.velocity.y = (state.velocity.y / speed) * maxSpeed;
+          }
+
+          state.x += state.velocity.x;
+          state.y += state.velocity.y;
+
+          if (state.x < 0) state.x = 0;
+          if (state.y < -400) state.y = -400;
+          if (state.y > 400) state.y = 400;
+
+          state.distance = state.x;
+          setDistance(Math.floor(state.distance));
+
+          if (state.distance >= TRACK_LENGTH) {
+            setRaceWon(true);
+            const finalScore = Math.floor((RACE_DURATION - timeLeftLocal) * 10 + state.shieldHp * 100);
+            setScore(finalScore);
+            particlesRef.current = spawnFinishParticles(particlesRef.current, state.x, state.y, isMobile);
+            setGamePhase('finished');
+            return;
+          }
+
+          for (let i = 0; i < obstaclesRef.current.length; i++) {
+            const obs = obstaclesRef.current[i];
+            if (obs.x < 0) continue;
+            
+            const odx = state.x - obs.x;
+            const ody = state.y - obs.y;
+            const dist = Math.sqrt(odx * odx + ody * ody);
+            
+            if (dist < obs.radius + 20 && lastCollisionRef.current !== i) {
+              lastCollisionRef.current = i;
+              state.shieldHp -= 1;
+              state.velocity.x = -state.velocity.x * 0.5;
+              state.velocity.y = -state.velocity.y * 0.5;
+              
+              particlesRef.current = spawnCollisionParticles(
+                particlesRef.current,
+                obs.x,
+                obs.y,
+                craftVisual.accentColor,
+                isMobile
+              );
+              
+              obs.x = -9999;
+
+              if (state.shieldHp <= 0) {
+                setRaceWon(false);
+                setScore(Math.floor(state.distance / 10));
+                setGamePhase('finished');
+                return;
+              }
+            }
+          }
+
+          particlesRef.current = updateParticles(particlesRef.current);
+          
+          const maxTrailPoints = isMobile ? 20 : 30;
+          const speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2);
+          trailPointsRef.current = updateTrail(
+            trailPointsRef.current,
+            state.x - Math.cos(state.angle) * 20,
+            state.y - Math.sin(state.angle) * 20,
+            speed,
+            maxTrailPoints
+          );
+        }
 
         const renderCtx: RenderContext = {
           cameraX: state.x,
@@ -485,7 +569,7 @@ export default function InfinityRace() {
         renderCraft(p, renderCtx);
         renderHUD(p, renderCtx);
 
-        if (touchRef.current) {
+        if (touchRef.current && !isPaused) {
           p.noFill();
           p.stroke(255, 255, 255, 100);
           p.strokeWeight(2);
@@ -493,6 +577,19 @@ export default function InfinityRace() {
           p.fill(255, 255, 255, 100);
           p.noStroke();
           p.ellipse(touchRef.current.currentX, touchRef.current.currentY, 30, 30);
+        }
+
+        if (isPaused) {
+          p.fill(0, 0, 0, 180);
+          p.noStroke();
+          p.rect(0, 0, canvasWidth, canvasHeight);
+          p.fill(255);
+          p.textSize(Math.min(48, canvasWidth / 10));
+          p.textAlign(p.CENTER, p.CENTER);
+          p.text('PAUSED', canvasWidth / 2, canvasHeight / 2);
+          p.textSize(Math.min(16, canvasWidth / 25));
+          p.fill(150);
+          p.text('Tap play to resume', canvasWidth / 2, canvasHeight / 2 + 50);
         }
       };
     };
@@ -1061,11 +1158,33 @@ export default function InfinityRace() {
         )}
 
         {gamePhase === 'racing' && (
-          <div
-            ref={canvasRef}
-            className="fixed inset-0 w-screen h-screen touch-none"
-            data-testid="race-canvas"
-          />
+          <>
+            <div
+              ref={canvasRef}
+              className="fixed inset-0 w-screen h-screen touch-none"
+              data-testid="race-canvas"
+            />
+            <div className={`fixed z-50 flex gap-2 ${isLandscape ? 'top-4 right-4' : 'top-2 right-2'}`}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsPaused(!isPaused)}
+                className="bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/20"
+                data-testid="button-pause"
+              >
+                {isPaused ? <Play className="w-5 h-5 text-white" /> : <Pause className="w-5 h-5 text-white" />}
+              </Button>
+            </div>
+            {isMobile && !isPaused && (
+              <div className={`fixed z-40 pointer-events-none ${isLandscape ? 'bottom-4 left-4' : 'bottom-20 left-4'}`}>
+                <div className="text-white/40 text-xs space-y-1 bg-black/30 p-2 rounded backdrop-blur-sm">
+                  <div>Swipe L/R: Steer</div>
+                  <div>Tap: Boost</div>
+                  <div>Drag Up: Accelerate</div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {gamePhase === 'finished' && (
