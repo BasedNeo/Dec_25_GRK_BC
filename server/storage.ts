@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -79,6 +79,18 @@ export interface IStorage {
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
   getActivityLogsByWallet(walletAddress: string, limit?: number): Promise<ActivityLog[]>;
   exportActivityLogsForBackup(): Promise<ActivityLog[]>;
+  
+  // Infinity Race Economy
+  getInfinityCraftOwnership(walletAddress: string): Promise<InfinityCraftOwnership[]>;
+  purchaseInfinityCraft(walletAddress: string, craftId: string, source?: string): Promise<InfinityCraftOwnership>;
+  hasInfinityCraft(walletAddress: string, craftId: string): Promise<boolean>;
+  getInfinityCraftUpgrades(walletAddress: string, craftId: string): Promise<InfinityCraftUpgrades | undefined>;
+  upgradeInfinityCraft(walletAddress: string, craftId: string, upgradeType: 'engine' | 'thruster' | 'shield'): Promise<InfinityCraftUpgrades>;
+  createInfinityRaceBet(data: InsertInfinityRaceBet): Promise<InfinityRaceBet>;
+  getActiveInfinityBet(walletAddress: string): Promise<InfinityRaceBet | undefined>;
+  settleInfinityRaceBet(betId: string, outcome: 'win' | 'loss', distanceReached: number, brainxAwarded: number): Promise<InfinityRaceBet>;
+  getInfinityRacesLast24h(walletAddress: string): Promise<number>;
+  getInfinityRaceHistory(walletAddress: string, limit?: number): Promise<InfinityRaceBet[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1325,6 +1337,133 @@ export class DatabaseStorage implements IStorage {
       .from(activityLogs)
       .where(gte(activityLogs.createdAt, thirtyMinutesAgo))
       .orderBy(desc(activityLogs.createdAt));
+  }
+
+  // Infinity Race Economy
+  async getInfinityCraftOwnership(walletAddress: string): Promise<InfinityCraftOwnership[]> {
+    return db.select()
+      .from(infinityCraftOwnership)
+      .where(eq(infinityCraftOwnership.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(infinityCraftOwnership.purchasedAt));
+  }
+
+  async purchaseInfinityCraft(walletAddress: string, craftId: string, source: string = 'purchase'): Promise<InfinityCraftOwnership> {
+    const [result] = await db.insert(infinityCraftOwnership).values({
+      walletAddress: walletAddress.toLowerCase(),
+      craftId,
+      source
+    }).returning();
+    return result;
+  }
+
+  async hasInfinityCraft(walletAddress: string, craftId: string): Promise<boolean> {
+    const [result] = await db.select()
+      .from(infinityCraftOwnership)
+      .where(and(
+        eq(infinityCraftOwnership.walletAddress, walletAddress.toLowerCase()),
+        eq(infinityCraftOwnership.craftId, craftId)
+      ));
+    return !!result;
+  }
+
+  async getInfinityCraftUpgrades(walletAddress: string, craftId: string): Promise<InfinityCraftUpgrades | undefined> {
+    const [result] = await db.select()
+      .from(infinityCraftUpgrades)
+      .where(and(
+        eq(infinityCraftUpgrades.walletAddress, walletAddress.toLowerCase()),
+        eq(infinityCraftUpgrades.craftId, craftId)
+      ));
+    return result;
+  }
+
+  async upgradeInfinityCraft(walletAddress: string, craftId: string, upgradeType: 'engine' | 'thruster' | 'shield'): Promise<InfinityCraftUpgrades> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getInfinityCraftUpgrades(normalizedAddress, craftId);
+    
+    if (existing) {
+      const updateData: Partial<InfinityCraftUpgrades> = { updatedAt: new Date() };
+      
+      if (upgradeType === 'engine') {
+        updateData.engineLevel = Math.min((existing.engineLevel || 0) + 1, 10);
+      } else if (upgradeType === 'thruster') {
+        updateData.thrusterLevel = Math.min((existing.thrusterLevel || 0) + 1, 10);
+      } else if (upgradeType === 'shield') {
+        updateData.shieldLevel = Math.min((existing.shieldLevel || 0) + 1, 10);
+      }
+      
+      const [result] = await db.update(infinityCraftUpgrades)
+        .set(updateData)
+        .where(and(
+          eq(infinityCraftUpgrades.walletAddress, normalizedAddress),
+          eq(infinityCraftUpgrades.craftId, craftId)
+        ))
+        .returning();
+      return result;
+    } else {
+      const insertData: InsertInfinityCraftUpgrades = {
+        walletAddress: normalizedAddress,
+        craftId,
+        engineLevel: upgradeType === 'engine' ? 1 : 0,
+        thrusterLevel: upgradeType === 'thruster' ? 1 : 0,
+        shieldLevel: upgradeType === 'shield' ? 1 : 0
+      };
+      const [result] = await db.insert(infinityCraftUpgrades).values(insertData).returning();
+      return result;
+    }
+  }
+
+  async createInfinityRaceBet(data: InsertInfinityRaceBet): Promise<InfinityRaceBet> {
+    const [result] = await db.insert(infinityRaceBets).values({
+      ...data,
+      walletAddress: data.walletAddress.toLowerCase(),
+      betStatus: 'active'
+    }).returning();
+    return result;
+  }
+
+  async getActiveInfinityBet(walletAddress: string): Promise<InfinityRaceBet | undefined> {
+    const [result] = await db.select()
+      .from(infinityRaceBets)
+      .where(and(
+        eq(infinityRaceBets.walletAddress, walletAddress.toLowerCase()),
+        eq(infinityRaceBets.betStatus, 'active')
+      ))
+      .orderBy(desc(infinityRaceBets.raceStartedAt))
+      .limit(1);
+    return result;
+  }
+
+  async settleInfinityRaceBet(betId: string, outcome: 'win' | 'loss', distanceReached: number, brainxAwarded: number): Promise<InfinityRaceBet> {
+    const [result] = await db.update(infinityRaceBets)
+      .set({
+        betStatus: 'settled',
+        outcome,
+        distanceReached,
+        brainxAwarded,
+        completedAt: new Date()
+      })
+      .where(eq(infinityRaceBets.id, betId))
+      .returning();
+    return result;
+  }
+
+  async getInfinityRacesLast24h(walletAddress: string): Promise<number> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [result] = await db.select({ count: count() })
+      .from(infinityRaceBets)
+      .where(and(
+        eq(infinityRaceBets.walletAddress, walletAddress.toLowerCase()),
+        gte(infinityRaceBets.raceStartedAt, twentyFourHoursAgo)
+      ));
+    return result?.count || 0;
+  }
+
+  async getInfinityRaceHistory(walletAddress: string, limit: number = 20): Promise<InfinityRaceBet[]> {
+    return db.select()
+      .from(infinityRaceBets)
+      .where(eq(infinityRaceBets.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(infinityRaceBets.raceStartedAt))
+      .limit(limit);
   }
 }
 

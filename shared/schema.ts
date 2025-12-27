@@ -709,3 +709,70 @@ export const insertPointsSnapshotSchema = createInsertSchema(pointsSnapshots).om
 
 export type InsertPointsSnapshot = z.infer<typeof insertPointsSnapshotSchema>;
 export type PointsSnapshot = typeof pointsSnapshots.$inferSelect;
+
+// Infinity Race - Craft Ownership
+export const infinityCraftOwnership = pgTable('infinity_craft_ownership', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  craftId: varchar('craft_id', { length: 50 }).notNull(),
+  purchasedAt: timestamp('purchased_at').defaultNow().notNull(),
+  source: varchar('source', { length: 20 }).default('purchase').notNull(),
+}, (table) => [
+  uniqueIndex('infinity_craft_wallet_craft_idx').on(table.walletAddress, table.craftId),
+  index('infinity_craft_wallet_idx').on(table.walletAddress),
+]);
+
+export const insertInfinityCraftOwnershipSchema = createInsertSchema(infinityCraftOwnership).omit({
+  id: true,
+  purchasedAt: true,
+});
+
+export type InsertInfinityCraftOwnership = z.infer<typeof insertInfinityCraftOwnershipSchema>;
+export type InfinityCraftOwnership = typeof infinityCraftOwnership.$inferSelect;
+
+// Infinity Race - Craft Upgrades
+export const infinityCraftUpgrades = pgTable('infinity_craft_upgrades', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  craftId: varchar('craft_id', { length: 50 }).notNull(),
+  engineLevel: integer('engine_level').default(0).notNull(),
+  thrusterLevel: integer('thruster_level').default(0).notNull(),
+  shieldLevel: integer('shield_level').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('infinity_upgrades_wallet_craft_idx').on(table.walletAddress, table.craftId),
+]);
+
+export const insertInfinityCraftUpgradesSchema = createInsertSchema(infinityCraftUpgrades).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertInfinityCraftUpgrades = z.infer<typeof insertInfinityCraftUpgradesSchema>;
+export type InfinityCraftUpgrades = typeof infinityCraftUpgrades.$inferSelect;
+
+// Infinity Race - Bets and Race Tracking
+export const infinityRaceBets = pgTable('infinity_race_bets', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text('wallet_address').notNull(),
+  craftId: varchar('craft_id', { length: 50 }).notNull(),
+  betAmountOre: integer('bet_amount_ore').default(0).notNull(),
+  betStatus: varchar('bet_status', { length: 20 }).default('pending').notNull(),
+  outcome: varchar('outcome', { length: 20 }),
+  brainxAwarded: integer('brainx_awarded').default(0).notNull(),
+  distanceReached: integer('distance_reached').default(0),
+  raceStartedAt: timestamp('race_started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+}, (table) => [
+  index('infinity_bets_wallet_idx').on(table.walletAddress),
+  index('infinity_bets_started_idx').on(table.raceStartedAt),
+]);
+
+export const insertInfinityRaceBetSchema = createInsertSchema(infinityRaceBets).omit({
+  id: true,
+  raceStartedAt: true,
+  completedAt: true,
+});
+
+export type InsertInfinityRaceBet = z.infer<typeof insertInfinityRaceBetSchema>;
+export type InfinityRaceBet = typeof infinityRaceBets.$inferSelect;
