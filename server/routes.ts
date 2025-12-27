@@ -3763,6 +3763,12 @@ export async function registerRoutes(
       // Settle the bet
       const settledBet = await storage.settleInfinityRaceBet(raceId, outcome, distanceReached, brainxAwarded);
 
+      // Increment player progress (gamification)
+      const progressUpdate = await storage.incrementInfinityRaceProgress(walletAddress, won);
+      
+      // Add any achievement BrainX to total
+      brainxAwarded += progressUpdate.brainxAwarded;
+
       // Log activity
       await storage.insertActivityLog({
         walletAddress,
@@ -3790,7 +3796,10 @@ export async function registerRoutes(
         outcome,
         distanceReached,
         brainxAwarded,
-        settledBet
+        settledBet,
+        progress: progressUpdate.progress,
+        newAchievements: progressUpdate.newAchievements,
+        levelUp: progressUpdate.levelUp,
       });
     } catch (error) {
       console.error('Complete race failed:', error);
@@ -3813,6 +3822,50 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Get race history failed:', error);
       res.status(500).json({ error: 'Failed to get race history' });
+    }
+  });
+
+  // Get player progress (gamification)
+  app.get('/api/infinity-race/progress/:walletAddress', async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      const progress = await storage.getOrCreateInfinityRaceProgress(walletAddress);
+      
+      const levelThresholds = [0, 10, 15, 20, 30, 40, 50, 60, 75, 100];
+      const nextLevel = progress.level < 10 ? progress.level + 1 : 10;
+      const racesToNextLevel = levelThresholds[nextLevel - 1] - progress.totalRaces;
+
+      res.json({
+        ...progress,
+        racesToNextLevel: Math.max(0, racesToNextLevel),
+        nextLevelAt: levelThresholds[nextLevel - 1] || 100,
+      });
+    } catch (error) {
+      console.error('Get progress failed:', error);
+      res.status(500).json({ error: 'Failed to get progress' });
+    }
+  });
+
+  // Update selected palette
+  app.post('/api/infinity-race/progress/palette', async (req, res) => {
+    try {
+      const { walletAddress, palette } = req.body;
+      if (!isValidIdentifier(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+      if (!palette || typeof palette !== 'string') {
+        return res.status(400).json({ error: 'Invalid palette' });
+      }
+
+      const progress = await storage.updateInfinityRacePalette(walletAddress, palette);
+      res.json({ success: true, progress });
+    } catch (error) {
+      console.error('Update palette failed:', error);
+      res.status(500).json({ error: 'Failed to update palette' });
     }
   });
 
