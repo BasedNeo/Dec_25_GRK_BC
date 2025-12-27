@@ -1,0 +1,36 @@
+Review RiddleQuestPage.tsx, RiddleGame.tsx, riddle/* components, routes.ts, and chatbot integration (OpenRouter allenai/olmo-3.1-32b-think:free with OPENROUTER_API_KEY).
+
+Current issues:
+- No AI chatbot behavior (static riddles, exact match only — e.g., "halving" variations denied).
+- 33 riddles total, 3 passes allowed (only 30 correct needed) — not reflected in progress/UI.
+- Front screen shows "Oracle" — change to "Guardians".
+- No bubble NFT image used in gameplay chat.
+
+Fix for live, natural chatbot with Mind Warp Strategist:
+
+1. **Full OpenRouter Chatbot**:
+   - Endpoint: https://openrouter.ai/api/v1/chat/completions, model: allenai/olmo-3.1-32b-think:free, auth: Bearer $OPENROUTER_API_KEY.
+   - System Prompt (exact):
+     "You are the Mind Warp Strategist, a cunning Based Guardian NFT character in the cyberpunk universe on BasedAI L1. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, and community governance. Engage in natural conversation: Evaluate user answers semantically (accept close variations, synonyms, extra words/punctuation, or phrasings like 'Is it halving?' for 'halving' — focus on intent, not exact wording). For user questions/clarifications (e.g., 'hint?' or 'what's a clue?'), provide lore-themed hints without spoiling. Responses concise (<150 tokens), mysterious, strategic tone. Never break character or reveal answers directly. Use bubble NFT image for avatar."
+
+2. **Passes & Progress**:
+   - 33 riddles total, 3 passes (30 correct needed to complete).
+   - Track solved/passes in state/DB, show "30/33 (3 passes used)".
+
+3. **UI Changes**:
+   - Front screen: Change "Oracle" to "Guardians".
+   - Gameplay: Use bubble NFT image for Strategist avatar in chat (left-aligned).
+   - Chat window: Typing effect (50ms/char, blinking cursor), full history.
+
+4. **Limits & Down Handling**:
+   - 1 quest/24h (localStorage/DB).
+   - 3 interactions/quest.
+   - Down: "Strategist scheming — riddles baking" + static fallback.
+
+Logging: Console.log API calls/responses.
+
+Plan first: Files/lines, DB changes for passes.
+
+Approve, implement step-by-step. Test: Semantic answer, passes count, bubble image, mobile.
+
+Report logs proving chatbot.

@@ -79,7 +79,7 @@ const BADGES_DATA = [
   { id: 'seeker', name: 'Seeker', icon: Target, color: 'green', description: 'Complete Level 3', levelReq: 3 },
   { id: 'scholar', name: 'Scholar', icon: Brain, color: 'blue', description: 'Complete Level 5', levelReq: 5 },
   { id: 'sage', name: 'Sage', icon: Lightbulb, color: 'purple', description: 'Complete Level 7', levelReq: 7 },
-  { id: 'oracle', name: 'Oracle', icon: Star, color: 'amber', description: 'Complete Level 9', levelReq: 9 },
+  { id: 'oracle', name: 'Guardian', icon: Star, color: 'amber', description: 'Complete Level 9', levelReq: 9 },
   { id: 'master', name: 'Riddle Master', icon: Crown, color: 'yellow', description: 'Complete Level 10', levelReq: 10 },
   { id: 'eternal', name: 'Eternal Sage', icon: Sparkles, color: 'pink', description: 'Complete Bonus Level 11', levelReq: 11 },
   { id: 'streak', name: 'Streak Champion', icon: Flame, color: 'orange', description: '7+ day streak', levelReq: 0 },
@@ -1164,20 +1164,19 @@ export function RiddleQuest() {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full blur-md opacity-70 animate-pulse" />
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 flex items-center justify-center relative border-2 border-purple-500/50 shadow-[0_0_25px_rgba(191,0,255,0.4)]">
-                          <Bot className="w-6 h-6 text-purple-300" />
+                        <div className="w-12 h-12 rounded-full overflow-hidden relative border-2 border-purple-500/50 shadow-[0_0_25px_rgba(191,0,255,0.4)]">
+                          <img 
+                            src={MindWarpStrategist} 
+                            alt="Mind Warp Strategist" 
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       </div>
                       <div>
                         <p className="text-xs text-purple-400 font-mono uppercase tracking-wider">Mind Warp Strategist</p>
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
-                            {oracleInteractionsLeft} uses
-                          </Badge>
-                          <Badge variant="outline" className="border-cyan-500/50 text-purple-400 bg-cyan-500/10 font-mono text-xs">
-                            {questionsRemaining} hints
-                          </Badge>
-                        </div>
+                        <Badge variant="outline" className="border-purple-500/50 text-cyan-400 bg-purple-500/10 font-mono text-xs">
+                          {oracleInteractionsLeft} / 3
+                        </Badge>
                       </div>
                     </div>
                     <div className="text-right">
@@ -1251,7 +1250,7 @@ export function RiddleQuest() {
                         data-testid="button-oracle-hint"
                       >
                         <Lightbulb className="w-4 h-4 mr-2" />
-                        Request Oracle Guidance
+                        Request Strategist Guidance
                       </Button>
                     </div>
                   )}
@@ -1266,7 +1265,7 @@ export function RiddleQuest() {
                         className="mt-4 p-4 rounded-lg bg-cyan-500/20 border border-cyan-500/50 flex items-center gap-3"
                       >
                         <Check className="w-6 h-6 text-cyan-400" />
-                        <span className="text-cyan-400 font-bold">The Oracle acknowledges your wisdom! +{150 + ((progress?.streak || 0) > 3 ? 25 : 0)} points</span>
+                        <span className="text-cyan-400 font-bold">The Strategist acknowledges your wisdom! +{150 + ((progress?.streak || 0) > 3 ? 25 : 0)} points</span>
                       </motion.div>
                     )}
                     
@@ -1278,7 +1277,7 @@ export function RiddleQuest() {
                         className="mt-4 p-4 rounded-lg bg-red-500/20 border border-red-500/50 flex items-center gap-3"
                       >
                         <X className="w-6 h-6 text-red-400" />
-                        <span className="text-red-400">The Oracle awaits a different answer...</span>
+                        <span className="text-red-400">The Strategist awaits a different answer...</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
