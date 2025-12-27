@@ -7,6 +7,7 @@ import {
   rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
+import { http } from 'wagmi';
 
 // Mobile detection utility
 export const isMobileDevice = (): boolean => {
@@ -59,6 +60,13 @@ export const config = getDefaultConfig({
   projectId: WALLETCONNECT_PROJECT_ID,
   chains: [basedL1],
   ssr: false,
+  transports: {
+    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
+      batch: true,
+      retryCount: 2,
+      timeout: 10000,
+    }),
+  },
   wallets: [
     {
       groupName: 'Recommended',

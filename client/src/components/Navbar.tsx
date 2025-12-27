@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShieldAlert, Award, Star, Link2, AlertTriangle, LogOut, Wallet, ExternalLink } from "lucide-react";
@@ -67,6 +67,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   const [isShaking, setIsShaking] = useState(false);
   const [showMobileWalletPicker, setShowMobileWalletPicker] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const connectingWalletRef = useRef<string | null>(null);
+  const deepLinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // const { toast } = useToast(); // Using custom toast
   const { address, isConnected: wagmiConnected, chain } = useAccount();
   const { connectAsync, connectors, error: connectError, isPending: isConnectPending } = useConnect();
@@ -79,21 +81,43 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
   // Reset mobile wallet picker when connection succeeds
   useEffect(() => {
     if (wagmiConnected && showMobileWalletPicker) {
+      console.log('[WalletConnect] Connection successful at:', Date.now());
+      // Clear any pending deep-link timeout
+      if (deepLinkTimeoutRef.current) {
+        clearTimeout(deepLinkTimeoutRef.current);
+        deepLinkTimeoutRef.current = null;
+      }
+      if (connectingWalletRef.current) {
+        console.timeEnd(`[WalletConnect] Mobile ${connectingWalletRef.current} connect time`);
+        connectingWalletRef.current = null;
+      }
       setShowMobileWalletPicker(false);
       setIsMobileMenuOpen(false);
       setIsConnecting(false);
       showToast("Wallet connected!", "success");
     }
   }, [wagmiConnected, showMobileWalletPicker]);
+  
+  // Log when wagmi connection state changes
+  useEffect(() => {
+    if (wagmiConnected) {
+      console.log('[WalletConnect] Wallet connected:', address?.slice(0, 8), 'at:', Date.now());
+    }
+  }, [wagmiConnected, address]);
 
   // Handle mobile wallet connection
   const handleMobileWalletConnect = useCallback(async (walletId: string) => {
+    console.log('[WalletConnect] Mobile wallet connect started:', walletId, 'at:', Date.now());
+    console.time(`[WalletConnect] Mobile ${walletId} connect time`);
+    connectingWalletRef.current = walletId;
     setIsConnecting(true);
     const currentUrl = window.location.href;
     
     const wallet = MOBILE_WALLETS.find(w => w.id === walletId);
     if (!wallet) {
       showToast("Wallet not supported", "error");
+      console.timeEnd(`[WalletConnect] Mobile ${walletId} connect time`);
+      connectingWalletRef.current = null;
       setIsConnecting(false);
       return;
     }
@@ -111,6 +135,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
         await connectAsync({ connector: injectedConnector });
         // Success handled by useEffect above
       } catch (error: any) {
+        console.timeEnd(`[WalletConnect] Mobile ${walletId} connect time`);
+        connectingWalletRef.current = null;
         setIsConnecting(false);
         if (error?.message?.includes("User rejected")) {
           showToast("Connection cancelled", "info");
@@ -129,6 +155,8 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
           await connectAsync({ connector: wcConnector });
           // Success handled by useEffect above
         } catch (error: any) {
+          console.timeEnd(`[WalletConnect] Mobile ${walletId} connect time`);
+          connectingWalletRef.current = null;
           setIsConnecting(false);
           showToast("Connection failed. Please try again.", "error");
         }
@@ -142,7 +170,13 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
       window.location.href = deepLink;
       
       // Fall back to WalletConnect after timeout if deep link fails
-      setTimeout(() => {
+      deepLinkTimeoutRef.current = setTimeout(() => {
+        // Only log if timer hasn't been cleared by success
+        if (connectingWalletRef.current === walletId) {
+          console.timeEnd(`[WalletConnect] Mobile ${walletId} connect time`);
+          connectingWalletRef.current = null;
+        }
+        deepLinkTimeoutRef.current = null;
         setIsConnecting(false);
         // If still on page, the deep link didn't work
         showToast(`If ${wallet.name} didn't open, try WalletConnect instead.`, "info");
@@ -431,6 +465,12 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                   mounted,
                 }) => {
                   const ready = mounted && authenticationStatus !== 'loading';
+                  const handleConnectClick = () => {
+                    console.log('[WalletConnect] Desktop connect button clicked at:', Date.now());
+                    console.time('[WalletConnect] Modal open time');
+                    openConnectModal();
+                    setTimeout(() => console.timeEnd('[WalletConnect] Modal open time'), 0);
+                  };
                   const connected =
                     ready &&
                     account &&
@@ -454,10 +494,15 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                         if (!connected) {
                           return (
                             <Button 
-                              onClick={openConnectModal} 
-                              className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-xs tracking-[0.15em] px-6 py-2.5 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
+                              onClick={handleConnectClick}
+                              disabled={isConnectPending}
+                              className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-xs tracking-[0.15em] px-6 py-2.5 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0 min-w-[100px]"
                             >
-                              CONNECT
+                              {isConnectPending ? (
+                                <span className="flex items-center gap-2">
+                                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                </span>
+                              ) : 'CONNECT'}
                             </Button>
                           );
                         }
@@ -675,11 +720,20 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                             // Desktop: Use standard RainbowKit modal
                             return (
                               <Button 
-                                onClick={openConnectModal} 
+                                onClick={() => {
+                                  console.log('[WalletConnect] Mobile menu connect clicked at:', Date.now());
+                                  openConnectModal();
+                                }}
+                                disabled={isConnectPending}
                                 className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
                                 data-testid="button-mobile-connect-wallet"
                               >
-                                CONNECT WALLET
+                                {isConnectPending ? (
+                                  <span className="flex items-center justify-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                    CONNECTING...
+                                  </span>
+                                ) : 'CONNECT WALLET'}
                               </Button>
                             );
                           }
