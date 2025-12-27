@@ -82,8 +82,10 @@ function getDifficultyMultiplier(wave: number): number {
 }
 
 export function getCanvasSize(fullscreen = false) {
-  if (fullscreen) {
-    const controlBarHeight = 100;
+  const isMobileDevice = window.innerWidth <= 768 || ('ontouchstart' in window);
+  const controlBarHeight = 100;
+  
+  if (fullscreen || isMobileDevice) {
     return { 
       width: window.innerWidth, 
       height: window.innerHeight - controlBarHeight 

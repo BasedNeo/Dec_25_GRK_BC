@@ -105,7 +105,7 @@ export function GuardianDefender() {
   const [gameLoading, setGameLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem('retro_defender_muted') === 'true');
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(() => isMobile);
   const { flags } = useFeatureFlags();
   const isMobileDevice = isMobile;
 
