@@ -9,10 +9,9 @@ import {
   getAbilityList,
   getUpgradeCost,
 } from '@/shared/creatureAbilities';
-import { ChevronUp, Star, Zap, Info } from 'lucide-react';
+import { Star, Zap, Info } from 'lucide-react';
 
 export function CreatureAbilityPanel() {
-  const [expanded, setExpanded] = useState(false);
   const [selectedCreature, setSelectedCreature] = useState<AbilityId>('rapid_fire');
   const { 
     abilityLevels, 
@@ -45,28 +44,16 @@ export function CreatureAbilityPanel() {
             <Zap className="w-4 h-4" />
             Creature Abilities
           </CardTitle>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs">
-              <Star className="w-3 h-3 text-yellow-500" />
-              <span className="text-yellow-400 font-mono" data-testid="total-points">
-                {totalPoints} pts
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-cyan-400"
-              onClick={() => setExpanded(!expanded)}
-              data-testid="toggle-abilities-panel"
-            >
-              <ChevronUp className={`w-4 h-4 transition-transform ${expanded ? '' : 'rotate-180'}`} />
-            </Button>
+          <div className="flex items-center gap-1 text-xs">
+            <Star className="w-3 h-3 text-yellow-500" />
+            <span className="text-yellow-400 font-mono" data-testid="total-points">
+              {totalPoints} pts
+            </span>
           </div>
         </div>
       </CardHeader>
       
-      {expanded && (
-        <CardContent className="py-2 px-3 space-y-3">
+      <CardContent className="py-2 px-3 space-y-3">
           <div className="flex gap-1 flex-wrap justify-center">
             {abilities.map((ability) => {
               const level = abilityLevels[ability.id];
@@ -186,12 +173,11 @@ export function CreatureAbilityPanel() {
             </Button>
           </div>
           
-          <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-gray-800">
-            <span>Earn 20 pts base + 50 pts per stage</span>
-            <span className="text-cyan-400">Session: +{sessionPoints} pts</span>
-          </div>
-        </CardContent>
-      )}
+        <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-gray-800">
+          <span>Earn 20 pts base + 50 pts per stage</span>
+          <span className="text-cyan-400">Session: +{sessionPoints} pts</span>
+        </div>
+      </CardContent>
     </Card>
   );
 }
