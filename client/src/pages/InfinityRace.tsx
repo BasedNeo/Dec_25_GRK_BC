@@ -10,6 +10,25 @@ import { useGamePoints } from '@/hooks/useGamePoints';
 import { logActivity } from '@/hooks/useActivityHistory';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 import {
+  CRAFT_VISUALS,
+  renderBackground,
+  renderGrid,
+  renderTrack,
+  renderObstacles,
+  renderCraft,
+  renderParticles,
+  renderTrail,
+  renderHUD,
+  updateParticles,
+  updateTrail,
+  spawnCollisionParticles,
+  spawnFinishParticles,
+  initGraphicsCache,
+  type Particle,
+  type TrailPoint,
+  type RenderContext,
+} from '@/game/infinity-race/renderLayers';
+import {
   Rocket, Play, Home, Trophy, Timer, Shield, Zap, Wind, Target, Star, ChevronLeft
 } from 'lucide-react';
 
@@ -53,7 +72,6 @@ const OBSTACLE_TYPES = ['asteroid', 'shadow_hack', 'debris', 'pulse_mine', 'void
 
 const RACE_DURATION = 60;
 const TRACK_LENGTH = 10000;
-const CANVAS_ASPECT = 16 / 9;
 
 export default function InfinityRace() {
   const { address, isConnected } = useAccount();
@@ -70,6 +88,7 @@ export default function InfinityRace() {
   const [score, setScore] = useState(0);
   const [raceWon, setRaceWon] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [fps, setFps] = useState(60);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<p5 | null>(null);
@@ -86,6 +105,10 @@ export default function InfinityRace() {
   const trackPointsRef = useRef<{ x: number; y: number }[]>([]);
   const keysRef = useRef<Set<string>>(new Set());
   const touchRef = useRef<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const trailPointsRef = useRef<TrailPoint[]>([]);
+  const frameCountRef = useRef(0);
+  const lastCollisionRef = useRef<number>(-1);
 
   const racerName = useMemo(() => {
     const displayName = getDisplayName();
@@ -93,6 +116,10 @@ export default function InfinityRace() {
     if (address) return `Racer#${walletSuffix || address.slice(-4).toUpperCase()}`;
     return 'Anonymous Racer';
   }, [getDisplayName, walletSuffix, address]);
+
+  const isMobile = useMemo(() => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }, []);
 
   const generateTrack = useCallback((p: p5) => {
     const points: { x: number; y: number }[] = [];
@@ -109,8 +136,9 @@ export default function InfinityRace() {
     trackPointsRef.current = points;
 
     const obstacles: Obstacle[] = [];
-    for (let i = 0; i < 5; i++) {
-      const segmentStart = (TRACK_LENGTH / 6) * (i + 1);
+    const obstacleCount = isMobile ? 4 : 6;
+    for (let i = 0; i < obstacleCount; i++) {
+      const segmentStart = (TRACK_LENGTH / (obstacleCount + 1)) * (i + 1);
       const ox = segmentStart + p.random(-200, 200);
       const trackY = p.noise(ox * 0.002) * 2 - 1;
       obstacles.push({
@@ -122,7 +150,7 @@ export default function InfinityRace() {
       });
     }
     obstaclesRef.current = obstacles;
-  }, []);
+  }, [isMobile]);
 
   const initGame = useCallback(() => {
     const craft = selectedCraft;
@@ -135,6 +163,10 @@ export default function InfinityRace() {
       shieldHp: craft.shield,
       boosting: false,
     };
+    particlesRef.current = [];
+    trailPointsRef.current = [];
+    frameCountRef.current = 0;
+    lastCollisionRef.current = -1;
     setTimeLeft(RACE_DURATION);
     setDistance(0);
     setScore(0);
@@ -237,11 +269,13 @@ export default function InfinityRace() {
     const sketch = (p: p5) => {
       let canvasWidth = window.innerWidth;
       let canvasHeight = window.innerHeight;
+      let timeLeftLocal = RACE_DURATION;
 
       p.setup = () => {
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(canvasRef.current!);
         p.frameRate(60);
+        initGraphicsCache(p);
         generateTrack(p);
       };
 
@@ -252,8 +286,15 @@ export default function InfinityRace() {
       };
 
       p.draw = () => {
+        frameCountRef.current++;
         const state = gameStateRef.current;
         const craft = selectedCraft;
+        const craftVisual = CRAFT_VISUALS[craft.id] || CRAFT_VISUALS.neon_fox;
+
+        if (frameCountRef.current % 30 === 0) {
+          setFps(Math.round(p.frameRate()));
+          timeLeftLocal = timeLeft;
+        }
 
         const accel = 0.15 * (craft.speed / 3);
         const turnSpeed = 0.08 * (craft.agility / 3);
@@ -316,20 +357,35 @@ export default function InfinityRace() {
 
         if (state.distance >= TRACK_LENGTH) {
           setRaceWon(true);
-          const finalScore = Math.floor((RACE_DURATION - timeLeft) * 10 + state.shieldHp * 100);
+          const finalScore = Math.floor((RACE_DURATION - timeLeftLocal) * 10 + state.shieldHp * 100);
           setScore(finalScore);
+          particlesRef.current = spawnFinishParticles(particlesRef.current, state.x, state.y, isMobile);
           setGamePhase('finished');
           return;
         }
 
-        for (const obs of obstaclesRef.current) {
+        for (let i = 0; i < obstaclesRef.current.length; i++) {
+          const obs = obstaclesRef.current[i];
+          if (obs.x < 0) continue;
+          
           const dx = state.x - obs.x;
           const dy = state.y - obs.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < obs.radius + 15) {
+          
+          if (dist < obs.radius + 20 && lastCollisionRef.current !== i) {
+            lastCollisionRef.current = i;
             state.shieldHp -= 1;
             state.velocity.x = -state.velocity.x * 0.5;
             state.velocity.y = -state.velocity.y * 0.5;
+            
+            particlesRef.current = spawnCollisionParticles(
+              particlesRef.current,
+              obs.x,
+              obs.y,
+              craftVisual.accentColor,
+              isMobile
+            );
+            
             obs.x = -9999;
 
             if (state.shieldHp <= 0) {
@@ -341,113 +397,51 @@ export default function InfinityRace() {
           }
         }
 
-        p.background(10, 10, 20);
-
-        p.push();
-        p.translate(canvasWidth / 2 - state.x, canvasHeight / 2);
-
-        p.stroke(30, 30, 50);
-        p.strokeWeight(1);
-        for (let gx = Math.floor((state.x - canvasWidth) / 100) * 100; gx < state.x + canvasWidth; gx += 100) {
-          p.line(gx, -500, gx, 500);
-        }
-        for (let gy = -500; gy <= 500; gy += 100) {
-          p.line(state.x - canvasWidth, gy, state.x + canvasWidth, gy);
-        }
-
-        p.noFill();
-        p.stroke(0, 255, 255, 80);
-        p.strokeWeight(80);
-        p.beginShape();
-        for (const pt of trackPointsRef.current) {
-          if (pt.x > state.x - canvasWidth && pt.x < state.x + canvasWidth) {
-            p.vertex(pt.x, pt.y);
-          }
-        }
-        p.endShape();
-
-        p.stroke(0, 255, 0, 150);
-        p.strokeWeight(4);
-        p.line(TRACK_LENGTH, -200, TRACK_LENGTH, 200);
-        p.fill(0, 255, 0);
-        p.noStroke();
-        p.textSize(16);
-        p.textAlign(p.CENTER);
-        p.text('FINISH', TRACK_LENGTH, -220);
-
-        for (const obs of obstaclesRef.current) {
-          if (obs.x > state.x - canvasWidth / 2 && obs.x < state.x + canvasWidth / 2) {
-            p.push();
-            p.translate(obs.x, obs.y);
-            p.rotate(obs.rotation);
-            
-            if (obs.type === 'asteroid') {
-              p.fill(100, 80, 60);
-              p.stroke(60, 50, 40);
-              p.strokeWeight(2);
-              p.ellipse(0, 0, obs.radius * 2, obs.radius * 1.8);
-            } else if (obs.type === 'shadow_hack') {
-              p.fill(80, 0, 120, 200);
-              p.noStroke();
-              for (let i = 0; i < 6; i++) {
-                p.ellipse(Math.cos(i) * 10, Math.sin(i) * 10, obs.radius, obs.radius);
-              }
-            } else if (obs.type === 'debris') {
-              p.fill(80, 80, 80);
-              p.stroke(50, 50, 50);
-              p.rect(-obs.radius / 2, -obs.radius / 2, obs.radius, obs.radius);
-            } else if (obs.type === 'pulse_mine') {
-              p.fill(255, 50, 50, 150);
-              p.noStroke();
-              p.ellipse(0, 0, obs.radius * 2, obs.radius * 2);
-              p.fill(255, 100, 100);
-              p.ellipse(0, 0, obs.radius, obs.radius);
-            } else {
-              p.fill(30, 0, 60, 180);
-              p.noStroke();
-              p.ellipse(0, 0, obs.radius * 2.5, obs.radius * 2.5);
-            }
-            p.pop();
-          }
-        }
-
-        p.push();
-        p.translate(state.x, state.y);
-        p.rotate(state.angle);
+        particlesRef.current = updateParticles(particlesRef.current);
         
-        const craftColor = p.color(craft.color);
-        p.fill(craftColor);
-        p.stroke(255);
-        p.strokeWeight(2);
-        p.triangle(20, 0, -15, -12, -15, 12);
-        
-        if (speed > 2) {
-          p.noStroke();
-          p.fill(255, 150, 50, 150);
-          p.triangle(-15, 0, -25 - speed * 2, -5, -25 - speed * 2, 5);
-        }
-        p.pop();
+        const maxTrailPoints = isMobile ? 20 : 30;
+        trailPointsRef.current = updateTrail(
+          trailPointsRef.current,
+          state.x - Math.cos(state.angle) * 20,
+          state.y - Math.sin(state.angle) * 20,
+          speed,
+          maxTrailPoints
+        );
 
-        p.pop();
+        const renderCtx: RenderContext = {
+          cameraX: state.x,
+          cameraY: state.y,
+          canvasWidth,
+          canvasHeight,
+          craftVisual,
+          gameState: {
+            x: state.x,
+            y: state.y,
+            angle: state.angle,
+            velocity: state.velocity,
+            shieldHp: state.shieldHp,
+            boosting: state.boosting,
+          },
+          trackPoints: trackPointsRef.current,
+          obstacles: obstaclesRef.current,
+          particles: particlesRef.current,
+          trailPoints: trailPointsRef.current,
+          time: p.millis(),
+          timeLeft: timeLeftLocal,
+          trackLength: TRACK_LENGTH,
+          racerName,
+          frameCount: frameCountRef.current,
+          isMobile,
+        };
 
-        p.fill(255);
-        p.noStroke();
-        p.textSize(14);
-        p.textAlign(p.LEFT);
-        p.text(racerName, 20, 30);
-        p.text(`Distance: ${Math.floor(state.distance)} / ${TRACK_LENGTH}`, 20, 50);
-        p.text(`Time: ${timeLeft}s`, 20, 70);
-        
-        p.fill(craft.color);
-        for (let i = 0; i < state.shieldHp; i++) {
-          p.rect(20 + i * 25, 80, 20, 10);
-        }
-
-        const progress = state.distance / TRACK_LENGTH;
-        p.fill(50);
-        p.rect(canvasWidth / 2 - 150, 20, 300, 10);
-        p.fill(0, 255, 255);
-        p.rect(canvasWidth / 2 - 150, 20, 300 * progress, 10);
+        renderBackground(p, renderCtx);
+        renderGrid(p, renderCtx);
+        renderTrack(p, renderCtx);
+        renderObstacles(p, renderCtx);
+        renderTrail(p, renderCtx);
+        renderParticles(p, renderCtx);
+        renderCraft(p, renderCtx);
+        renderHUD(p, renderCtx);
 
         if (touchRef.current) {
           p.noFill();
@@ -455,6 +449,7 @@ export default function InfinityRace() {
           p.strokeWeight(2);
           p.ellipse(touchRef.current.startX, touchRef.current.startY, 80, 80);
           p.fill(255, 255, 255, 100);
+          p.noStroke();
           p.ellipse(touchRef.current.currentX, touchRef.current.currentY, 30, 30);
         }
       };
@@ -468,7 +463,7 @@ export default function InfinityRace() {
         p5Ref.current = null;
       }
     };
-  }, [gamePhase, selectedCraft, generateTrack, racerName, timeLeft]);
+  }, [gamePhase, selectedCraft, generateTrack, racerName, isMobile, timeLeft]);
 
   useEffect(() => {
     if (gamePhase === 'finished' && address) {
@@ -521,38 +516,45 @@ export default function InfinityRace() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4"
+            className="flex items-center justify-center min-h-screen p-4"
           >
-            <Card className="p-8 bg-black/80 border-cyan-500/30 text-center max-w-lg">
-              <div className="mb-6">
-                <Rocket className="w-20 h-20 text-cyan-400 mx-auto mb-4" />
-                <h1 className="text-4xl font-orbitron font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  INFINITY RACE
-                </h1>
-                <p className="text-gray-400 mt-2">
-                  Procedural tracks. 60 seconds. One goal: Finish.
-                </p>
-              </div>
+            <Card className="p-8 bg-black/90 border-2 border-cyan-500/50 text-center max-w-lg relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10" />
+              <div className="relative z-10">
+                <div className="mb-6">
+                  <div className="relative w-24 h-24 mx-auto mb-4">
+                    <div className="absolute inset-0 bg-cyan-500/20 rounded-full animate-pulse" />
+                    <div className="absolute inset-2 bg-cyan-500/10 rounded-full" />
+                    <Rocket className="absolute inset-0 w-full h-full p-4 text-cyan-400" />
+                  </div>
+                  <h1 className="text-4xl font-orbitron font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]">
+                    INFINITY RACE
+                  </h1>
+                  <p className="text-gray-400 mt-3 text-lg">
+                    Procedural tracks. 60 seconds. One goal: <span className="text-cyan-400">Finish.</span>
+                  </p>
+                </div>
 
-              <div className="space-y-4">
-                <Button
-                  onClick={() => setGamePhase('select')}
-                  className="w-full py-6 text-lg bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400"
-                  data-testid="button-start-race"
-                >
-                  <Play className="w-6 h-6 mr-2" />
-                  Start Race
-                </Button>
+                <div className="space-y-4">
+                  <Button
+                    onClick={() => setGamePhase('select')}
+                    className="w-full py-6 text-lg font-orbitron bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] hover:shadow-[0_0_40px_rgba(0,255,255,0.5)] transition-all"
+                    data-testid="button-start-race"
+                  >
+                    <Play className="w-6 h-6 mr-2" />
+                    Start Race
+                  </Button>
 
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/games')}
-                  className="w-full border-gray-600 text-gray-400 hover:text-white"
-                  data-testid="button-back-arcade"
-                >
-                  <ChevronLeft className="w-5 h-5 mr-2" />
-                  Back to Arcade
-                </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/games')}
+                    className="w-full border-gray-600 text-gray-400 hover:text-white hover:border-cyan-500/50"
+                    data-testid="button-back-arcade"
+                  >
+                    <ChevronLeft className="w-5 h-5 mr-2" />
+                    Back to Arcade
+                  </Button>
+                </div>
               </div>
             </Card>
           </motion.div>
@@ -564,61 +566,107 @@ export default function InfinityRace() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="min-h-[calc(100vh-4rem)] p-4"
+            className="min-h-screen p-4 pt-8"
           >
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-3xl font-orbitron font-bold text-white text-center mb-8">
+              <h2 className="text-3xl font-orbitron font-bold text-center mb-8 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                 Select Your Craft
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {CRAFTS.map((craft) => (
-                  <Card
-                    key={craft.id}
-                    onClick={() => setSelectedCraft(craft)}
-                    className={`p-4 cursor-pointer transition-all ${
-                      selectedCraft.id === craft.id
-                        ? 'border-2 border-cyan-400 bg-cyan-500/10'
-                        : 'border-gray-700 bg-black/60 hover:border-gray-500'
-                    }`}
-                    data-testid={`craft-${craft.id}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: craft.color + '30' }}
-                      >
-                        <Rocket className="w-6 h-6" style={{ color: craft.color }} />
-                      </div>
-                      <div>
-                        <h3 className="font-orbitron font-bold text-white">{craft.name}</h3>
-                        <p className="text-sm text-gray-400">{craft.description}</p>
-                      </div>
-                    </div>
+                {CRAFTS.map((craft) => {
+                  const visual = CRAFT_VISUALS[craft.id];
+                  return (
+                    <Card
+                      key={craft.id}
+                      onClick={() => setSelectedCraft(craft)}
+                      className={`p-4 cursor-pointer transition-all duration-300 relative overflow-hidden ${
+                        selectedCraft.id === craft.id
+                          ? 'border-2 bg-gradient-to-br from-black/80 to-cyan-900/20'
+                          : 'border-gray-700 bg-black/60 hover:border-gray-500'
+                      }`}
+                      style={{
+                        borderColor: selectedCraft.id === craft.id ? craft.color : undefined,
+                        boxShadow: selectedCraft.id === craft.id ? `0 0 30px ${craft.color}40` : undefined,
+                      }}
+                      data-testid={`craft-${craft.id}`}
+                    >
+                      {selectedCraft.id === craft.id && (
+                        <div 
+                          className="absolute inset-0 opacity-20"
+                          style={{ background: `radial-gradient(circle at center, ${craft.color}, transparent 70%)` }}
+                        />
+                      )}
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-14 h-14 rounded-lg flex items-center justify-center relative"
+                            style={{ 
+                              backgroundColor: craft.color + '20',
+                              boxShadow: `inset 0 0 20px ${craft.color}30`
+                            }}
+                          >
+                            <Rocket className="w-7 h-7" style={{ color: craft.color }} />
+                            <div 
+                              className="absolute inset-0 rounded-lg"
+                              style={{ boxShadow: `0 0 15px ${craft.color}40` }}
+                            />
+                          </div>
+                          <div>
+                            <h3 className="font-orbitron font-bold text-white text-lg">{craft.name}</h3>
+                            <p className="text-sm text-gray-400">{craft.description}</p>
+                          </div>
+                        </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Zap className="w-4 h-4 text-yellow-400" />
-                        <span className="text-gray-300">{craft.speed}</span>
+                        <div className="mt-4 grid grid-cols-3 gap-3">
+                          <div className="flex flex-col items-center p-2 rounded bg-black/40">
+                            <Zap className="w-4 h-4 text-yellow-400 mb-1" />
+                            <div className="flex gap-0.5">
+                              {[...Array(5)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full ${i < craft.speed ? 'bg-yellow-400' : 'bg-gray-700'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-gray-500 mt-1">Speed</span>
+                          </div>
+                          <div className="flex flex-col items-center p-2 rounded bg-black/40">
+                            <Wind className="w-4 h-4 text-blue-400 mb-1" />
+                            <div className="flex gap-0.5">
+                              {[...Array(5)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full ${i < craft.agility ? 'bg-blue-400' : 'bg-gray-700'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-gray-500 mt-1">Agility</span>
+                          </div>
+                          <div className="flex flex-col items-center p-2 rounded bg-black/40">
+                            <Shield className="w-4 h-4 text-green-400 mb-1" />
+                            <div className="flex gap-0.5">
+                              {[...Array(6)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full ${i < craft.shield ? 'bg-green-400' : 'bg-gray-700'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-gray-500 mt-1">Shield</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Wind className="w-4 h-4 text-blue-400" />
-                        <span className="text-gray-300">{craft.agility}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Shield className="w-4 h-4 text-green-400" />
-                        <span className="text-gray-300">{craft.shield}</span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
 
               <div className="flex gap-4 justify-center">
                 <Button
                   variant="outline"
                   onClick={() => setGamePhase('menu')}
-                  className="border-gray-600"
+                  className="border-gray-600 px-8"
                   data-testid="button-back-menu"
                 >
                   <ChevronLeft className="w-5 h-5 mr-2" />
@@ -626,7 +674,7 @@ export default function InfinityRace() {
                 </Button>
                 <Button
                   onClick={() => setGamePhase('countdown')}
-                  className="px-8 bg-gradient-to-r from-cyan-500 to-purple-500"
+                  className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)]"
                   data-testid="button-launch"
                 >
                   <Rocket className="w-5 h-5 mr-2" />
@@ -645,17 +693,24 @@ export default function InfinityRace() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black flex items-center justify-center z-50"
           >
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-black to-purple-900/20" />
             <motion.div
               key={countdown}
               initial={{ scale: 2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
-              className="text-center"
+              className="text-center relative z-10"
             >
-              <div className="text-9xl font-orbitron font-bold text-cyan-400">
+              <div 
+                className="text-9xl font-orbitron font-bold"
+                style={{
+                  color: countdown > 0 ? '#00ffff' : '#22c55e',
+                  textShadow: `0 0 60px ${countdown > 0 ? 'rgba(0,255,255,0.8)' : 'rgba(34,197,94,0.8)'}`,
+                }}
+              >
                 {countdown > 0 ? countdown : 'GO!'}
               </div>
-              <p className="text-2xl text-gray-400 mt-4">{selectedCraft.name}</p>
+              <p className="text-2xl text-gray-400 mt-4 font-orbitron">{selectedCraft.name}</p>
             </motion.div>
           </motion.div>
         )}
@@ -674,68 +729,87 @@ export default function InfinityRace() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4"
+            className="flex items-center justify-center min-h-screen p-4"
           >
-            <Card className="p-8 bg-black/80 border-cyan-500/30 text-center max-w-md">
-              {raceWon ? (
-                <>
-                  <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
-                  <h2 className="text-3xl font-orbitron font-bold text-yellow-400 mb-2">
-                    VICTORY!
-                  </h2>
-                  <p className="text-gray-400 mb-4">
-                    You crossed the finish line!
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Target className="w-20 h-20 text-red-400 mx-auto mb-4" />
-                  <h2 className="text-3xl font-orbitron font-bold text-red-400 mb-2">
-                    RACE OVER
-                  </h2>
-                  <p className="text-gray-400 mb-4">
-                    {timeLeft <= 0 ? 'Time ran out!' : 'Shield depleted!'}
-                  </p>
-                </>
-              )}
+            <Card className="p-8 bg-black/90 border-2 text-center max-w-md relative overflow-hidden"
+              style={{
+                borderColor: raceWon ? '#22c55e' : '#ef4444',
+                boxShadow: `0 0 40px ${raceWon ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              }}
+            >
+              <div 
+                className="absolute inset-0 opacity-20"
+                style={{
+                  background: `radial-gradient(circle at center, ${raceWon ? '#22c55e' : '#ef4444'}, transparent 70%)`
+                }}
+              />
+              <div className="relative z-10">
+                {raceWon ? (
+                  <>
+                    <div className="relative w-24 h-24 mx-auto mb-4">
+                      <div className="absolute inset-0 bg-yellow-500/30 rounded-full animate-pulse" />
+                      <Trophy className="w-full h-full p-4 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" />
+                    </div>
+                    <h2 className="text-3xl font-orbitron font-bold text-yellow-400 mb-2 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
+                      VICTORY!
+                    </h2>
+                    <p className="text-gray-400 mb-4">
+                      You crossed the finish line!
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative w-24 h-24 mx-auto mb-4">
+                      <div className="absolute inset-0 bg-red-500/30 rounded-full animate-pulse" />
+                      <Target className="w-full h-full p-4 text-red-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]" />
+                    </div>
+                    <h2 className="text-3xl font-orbitron font-bold text-red-400 mb-2">
+                      RACE OVER
+                    </h2>
+                    <p className="text-gray-400 mb-4">
+                      {timeLeft <= 0 ? 'Time ran out!' : 'Shield depleted!'}
+                    </p>
+                  </>
+                )}
 
-              <div className="space-y-2 mb-6 text-left bg-black/40 p-4 rounded-lg">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Racer:</span>
-                  <span className="text-white font-mono">{racerName}</span>
+                <div className="space-y-3 mb-6 text-left bg-black/60 p-4 rounded-lg border border-gray-800">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Racer:</span>
+                    <span className="text-white font-mono">{racerName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Craft:</span>
+                    <span style={{ color: selectedCraft.color }}>{selectedCraft.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Distance:</span>
+                    <span className="text-cyan-400 font-mono">{distance} / {TRACK_LENGTH}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Score:</span>
+                    <span className="text-purple-400 font-mono text-lg">{score}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Craft:</span>
-                  <span className="text-white">{selectedCraft.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Distance:</span>
-                  <span className="text-cyan-400">{distance} / {TRACK_LENGTH}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Score:</span>
-                  <span className="text-purple-400">{score}</span>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <Button
-                  onClick={() => setGamePhase('select')}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-500"
-                  data-testid="button-race-again"
-                >
-                  <Rocket className="w-5 h-5 mr-2" />
-                  Race Again
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/games')}
-                  className="w-full border-gray-600"
-                  data-testid="button-exit-arcade"
-                >
-                  <Home className="w-5 h-5 mr-2" />
-                  Back to Arcade
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => setGamePhase('select')}
+                    className="w-full font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_20px_rgba(0,255,255,0.3)]"
+                    data-testid="button-race-again"
+                  >
+                    <Rocket className="w-5 h-5 mr-2" />
+                    Race Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/games')}
+                    className="w-full border-gray-600"
+                    data-testid="button-exit-arcade"
+                  >
+                    <Home className="w-5 h-5 mr-2" />
+                    Back to Arcade
+                  </Button>
+                </div>
               </div>
             </Card>
           </motion.div>
