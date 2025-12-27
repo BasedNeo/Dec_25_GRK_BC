@@ -19,12 +19,14 @@ export default function WalletProviders({ children }: WalletProvidersProps) {
         theme={darkTheme({
           accentColor: '#06b6d4',
           accentColorForeground: 'white',
-          borderRadius: 'large',
+          borderRadius: 'medium',
           fontStack: 'system',
+          overlayBlur: 'none',
         })}
         modalSize="compact"
         initialChain={32323}
-        showRecentTransactions={true}
+        showRecentTransactions={false}
+        coolMode={false}
         appInfo={{
           appName: 'Based Guardians',
           learnMoreUrl: 'https://basedguardians.com',

@@ -60,6 +60,7 @@ export const config = getDefaultConfig({
   projectId: WALLETCONNECT_PROJECT_ID,
   chains: [basedL1],
   ssr: false,
+  pollingInterval: 10000, // Reduce block polling frequency (10s instead of default 4s)
   transports: {
     [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
       batch: true,
