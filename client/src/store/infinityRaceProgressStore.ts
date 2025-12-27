@@ -63,6 +63,9 @@ export const useInfinityRaceProgressStore = create<InfinityRaceProgressState>()(
       fetchProgress: async (walletAddress: string) => {
         set({ isLoading: true, connectedWallet: walletAddress });
         
+        const validAchievements: Achievement[] = ['first_win', '10_races', '25_races', '10_wins'];
+        const validPalettes: ColorPalette[] = ['default', 'neon_cyan', 'neon_pink', 'neon_green', 'neon_orange'];
+        
         try {
           const response = await fetch(`/api/infinity-race/progress/${walletAddress}`);
           if (!response.ok) {
@@ -72,21 +75,26 @@ export const useInfinityRaceProgressStore = create<InfinityRaceProgressState>()(
           const data = await response.json();
           set({
             progress: {
-              totalRaces: data.totalRaces,
-              totalWins: data.totalWins,
-              level: data.level,
-              statBonus: data.statBonus,
-              achievements: data.achievements || [],
-              unlockedPalettes: data.unlockedPalettes || ['default'],
-              selectedPalette: data.selectedPalette || 'default',
+              totalRaces: typeof data.totalRaces === 'number' ? data.totalRaces : 0,
+              totalWins: typeof data.totalWins === 'number' ? data.totalWins : 0,
+              level: typeof data.level === 'number' && data.level >= 1 && data.level <= 10 ? data.level : 1,
+              statBonus: typeof data.statBonus === 'number' && data.statBonus >= 0 ? data.statBonus : 0,
+              achievements: (data.achievements || []).filter((a: string) => 
+                validAchievements.includes(a as Achievement)) as Achievement[],
+              unlockedPalettes: (data.unlockedPalettes || ['default']).filter((p: string) => 
+                validPalettes.includes(p as ColorPalette)) as ColorPalette[],
+              selectedPalette: validPalettes.includes(data.selectedPalette as ColorPalette) 
+                ? data.selectedPalette as ColorPalette 
+                : 'default',
             },
             isLoading: false,
           });
         } catch (error) {
           console.error('[InfinityRaceProgress] Failed to fetch:', error);
+          const existingProgress = get().progress;
           set({ 
             isLoading: false,
-            progress: {
+            progress: existingProgress ?? {
               totalRaces: 0,
               totalWins: 0,
               level: 1,

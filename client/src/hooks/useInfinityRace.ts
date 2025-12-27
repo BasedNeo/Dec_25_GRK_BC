@@ -179,7 +179,22 @@ export function useInfinityRace() {
     raceId: string,
     won: boolean,
     distanceReached: number
-  ): Promise<{ success: boolean; brainxAwarded?: number; error?: string }> => {
+  ): Promise<{ 
+    success: boolean; 
+    brainxAwarded?: number; 
+    error?: string;
+    progress?: {
+      totalRaces: number;
+      totalWins: number;
+      level: number;
+      statBonus: number;
+      achievements: string[];
+      unlockedPalettes: string[];
+      selectedPalette: string;
+    };
+    newAchievements?: string[];
+    levelUp?: boolean;
+  }> => {
     if (!address) return { success: false, error: 'Wallet not connected' };
     
     try {
@@ -196,7 +211,13 @@ export function useInfinityRace() {
       }
       
       await fetchState();
-      return { success: true, brainxAwarded: data.brainxAwarded };
+      return { 
+        success: true, 
+        brainxAwarded: data.brainxAwarded,
+        progress: data.progress,
+        newAchievements: data.newAchievements,
+        levelUp: data.levelUp,
+      };
     } catch (err) {
       console.error('[InfinityRace] Complete race failed:', err);
       return { success: false, error: 'Network error' };

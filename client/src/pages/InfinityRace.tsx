@@ -11,6 +11,10 @@ import { useGamePoints } from '@/hooks/useGamePoints';
 import { logActivity } from '@/hooks/useActivityHistory';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 import { useInfinityRace } from '@/hooks/useInfinityRace';
+import { useInfinityRaceProgressStore, type Achievement, type ColorPalette } from '@/store/infinityRaceProgressStore';
+import { AchievementPopup } from '@/components/infinity-race/AchievementPopup';
+import { LevelProgressBar } from '@/components/infinity-race/LevelProgressBar';
+import { PaletteSelector } from '@/components/infinity-race/PaletteSelector';
 import {
   CRAFT_VISUALS,
   renderBackground,
@@ -83,6 +87,13 @@ export default function InfinityRace() {
   const { earnPoints } = useGamePoints();
   const { nfts } = useOwnedNFTs();
   const isNftHolder = nfts.length > 0;
+  
+  const { 
+    progress, 
+    fetchProgress, 
+    updateProgressFromRace,
+    getStatBonus 
+  } = useInfinityRaceProgressStore();
   
   const infinityRace = useInfinityRace();
   const { 
@@ -232,6 +243,12 @@ export default function InfinityRace() {
   const handleTouchEnd = useCallback(() => {
     touchRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (address) {
+      fetchProgress(address);
+    }
+  }, [address, fetchProgress]);
 
   useEffect(() => {
     if (gamePhase !== 'racing') return;
@@ -516,10 +533,33 @@ export default function InfinityRace() {
           if (result.brainxAwarded) {
             setBrainXWon(result.brainxAwarded);
           }
+          if (result.progress) {
+            const validAchievements: Achievement[] = ['first_win', '10_races', '25_races', '10_wins'];
+            const validPalettes: ColorPalette[] = ['default', 'neon_cyan', 'neon_pink', 'neon_green', 'neon_orange'];
+            const p = result.progress;
+            
+            const typedProgress = {
+              totalRaces: typeof p.totalRaces === 'number' ? p.totalRaces : 0,
+              totalWins: typeof p.totalWins === 'number' ? p.totalWins : 0,
+              level: typeof p.level === 'number' && p.level >= 1 && p.level <= 10 ? p.level : 1,
+              statBonus: typeof p.statBonus === 'number' && p.statBonus >= 0 ? p.statBonus : 0,
+              achievements: (p.achievements || []).filter((a: string) => 
+                validAchievements.includes(a as Achievement)) as Achievement[],
+              unlockedPalettes: (p.unlockedPalettes || ['default']).filter((pa: string) => 
+                validPalettes.includes(pa as ColorPalette)) as ColorPalette[],
+              selectedPalette: validPalettes.includes(p.selectedPalette as ColorPalette) 
+                ? p.selectedPalette as ColorPalette 
+                : 'default',
+            };
+            const filteredNewAchievements = (result.newAchievements || []).filter((a: string) => 
+              validAchievements.includes(a as Achievement)) as Achievement[];
+            
+            updateProgressFromRace(typedProgress, filteredNewAchievements, result.levelUp || false);
+          }
         });
       }
     }
-  }, [gamePhase, raceWon, address, score, distance, selectedCraft.name, earnPoints, activeRaceId, completeRace]);
+  }, [gamePhase, raceWon, address, score, distance, selectedCraft.name, earnPoints, activeRaceId, completeRace, updateProgressFromRace]);
 
   if (!isConnected) {
     return (
@@ -541,6 +581,7 @@ export default function InfinityRace() {
 
   return (
     <div className="min-h-screen bg-black overflow-hidden">
+      <AchievementPopup />
 
       <AnimatePresence mode="wait">
         {gamePhase === 'menu' && (
@@ -835,9 +876,14 @@ export default function InfinityRace() {
             className="min-h-screen p-4 pt-8"
           >
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-3xl font-orbitron font-bold text-center mb-8 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <h2 className="text-3xl font-orbitron font-bold text-center mb-4 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                 Select Your Craft
               </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <LevelProgressBar />
+                <PaletteSelector />
+              </div>
 
               {betAmount > 0 && (
                 <div className="mb-6 p-4 bg-purple-500/20 border border-purple-500/30 rounded-lg text-center">
@@ -850,9 +896,10 @@ export default function InfinityRace() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {CRAFTS.filter(craft => hasCraft(craft.id)).map((craft) => {
                   const upgrades = getCraftUpgrades(craft.id);
-                  const effectiveSpeed = craft.speed + upgrades.engineLevel;
-                  const effectiveAgility = craft.agility + upgrades.thrusterLevel;
-                  const effectiveShield = craft.shield + upgrades.shieldLevel;
+                  const statBonus = getStatBonus();
+                  const effectiveSpeed = craft.speed + upgrades.engineLevel + statBonus;
+                  const effectiveAgility = craft.agility + upgrades.thrusterLevel + statBonus;
+                  const effectiveShield = craft.shield + upgrades.shieldLevel + statBonus;
                   
                   return (
                     <Card
