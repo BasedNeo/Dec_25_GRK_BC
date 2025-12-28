@@ -1264,10 +1264,12 @@ export class DatabaseStorage implements IStorage {
       id: pointsSummary.id,
       walletAddress: pointsSummary.walletAddress,
       totalEarned: pointsSummary.totalEarned,
-      todayEarned: pointsSummary.todayEarned,
-      dailyDate: pointsSummary.dailyDate,
+      totalVested: pointsSummary.totalVested,
+      dailyEarnedTotal: pointsSummary.dailyEarnedTotal,
+      globalDailyCap: pointsSummary.globalDailyCap,
       brainXLocked: pointsSummary.brainXLocked,
       brainXUnlocked: pointsSummary.brainXUnlocked,
+      lastActivity: pointsSummary.lastActivity,
       vestingStartDate: pointsSummary.vestingStartDate,
       vestingEndDate: pointsSummary.vestingEndDate,
       updatedAt: pointsSummary.updatedAt,
@@ -1359,12 +1361,11 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.insert(pointsSummary).values({
       walletAddress: normalizedAddress,
       totalEarned: 0,
-      todayEarned: 0,
-      dailyDate: new Date().toISOString().split('T')[0],
       totalVested: 0,
       brainXLocked: 0,
       brainXUnlocked: 0,
-      dailyEarnedTotal: 0
+      dailyEarnedTotal: 0,
+      globalDailyCap: 500
     }).returning();
     return result;
   }

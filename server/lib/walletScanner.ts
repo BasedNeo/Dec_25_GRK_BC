@@ -188,7 +188,7 @@ export class WalletScanner {
       }
       
       return {
-        tokenId,
+        tokenId: typeof tokenId === 'string' ? parseInt(tokenId, 10) : tokenId,
         name: metadata.name || `#${tokenId}`,
         image,
         attributes: metadata.attributes || []

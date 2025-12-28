@@ -518,9 +518,13 @@ export function useOffersV3() {
   useEffect(() => {
     if (txHash && address && receiptLoggedRef.current !== txHash && pendingReceiptRef.current) {
       receiptLoggedRef.current = txHash;
+      const txTypeMap: Record<string, 'offer_made' | 'offer_accepted' | 'buy'> = {
+        offer: 'offer_made', accept_offer: 'offer_accepted', buy: 'buy'
+      };
+      const mappedType = txTypeMap[pendingReceiptRef.current.txType || 'offer'] || 'offer_made';
       logTransactionReceipt({
         walletAddress: address,
-        transactionType: pendingReceiptRef.current.txType || 'offer',
+        transactionType: mappedType,
         transactionHash: txHash,
         tokenId: pendingReceiptRef.current.tokenId,
         amount: pendingReceiptRef.current.amount,

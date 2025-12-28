@@ -3755,8 +3755,9 @@ export async function registerRoutes(
         // Record brainX vesting
         await storage.createVestingRecord({
           walletAddress,
-          pointsConverted: activeBet.betAmountOre,
-          brainxReceived: brainxAwarded,
+          pointsEarned: 0,
+          pointsVested: activeBet.betAmountOre,
+          brainXConverted: brainxAwarded,
           lockExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
         });
       }

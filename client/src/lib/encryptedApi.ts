@@ -42,7 +42,7 @@ export class EncryptedApiClient {
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
     
-    return btoa(String.fromCharCode(...combined));
+    return btoa(String.fromCharCode.apply(null, Array.from(combined)));
   }
   
   static async decrypt(encryptedData: string): Promise<any> {

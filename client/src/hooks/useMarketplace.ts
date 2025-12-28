@@ -302,8 +302,8 @@ export function useMarketplace() {
 
     if (txHash && address && receiptLoggedRef.current !== txHash && state.action !== 'idle' && state.action !== 'approve') {
       receiptLoggedRef.current = txHash;
-      const actionMap: Record<string, 'list' | 'delist' | 'buy' | 'offer' | 'accept_offer' | 'cancel_offer'> = {
-        list: 'list', delist: 'delist', buy: 'buy', offer: 'offer', acceptOffer: 'accept_offer', cancelOffer: 'cancel_offer'
+      const actionMap: Record<string, 'list' | 'delist' | 'buy' | 'offer_made' | 'offer_accepted' | 'offer_cancelled'> = {
+        list: 'list', delist: 'delist', buy: 'buy', offer: 'offer_made', acceptOffer: 'offer_accepted', cancelOffer: 'offer_cancelled'
       };
       const txType = actionMap[state.action] || 'buy';
       logTransactionReceipt({
