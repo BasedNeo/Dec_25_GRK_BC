@@ -3397,10 +3397,15 @@ export async function registerRoutes(
         gameType: gameType || null
       });
 
-      // Broadcast to WebSocket subscribers
-      wsManager.broadcastToWallet(walletAddress, {
-        type: 'activity_log',
-        data: log
+      // Broadcast to WebSocket subscribers (wallet-specific + global activity room)
+      wsManager.broadcastActivityUpdate({
+        id: log.id,
+        walletAddress: log.walletAddress,
+        eventType: log.eventType,
+        details: log.details ?? '',
+        pointsEarned: log.pointsEarned,
+        gameType: log.gameType,
+        createdAt: log.createdAt
       });
 
       res.json({ success: true, log });

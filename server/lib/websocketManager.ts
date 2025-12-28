@@ -248,6 +248,30 @@ export class WebSocketManager {
     });
   }
   
+  broadcastActivityUpdate(data: {
+    id: number;
+    walletAddress: string;
+    eventType: string;
+    details: string;
+    pointsEarned?: number | null;
+    gameType?: string | null;
+    createdAt: Date;
+  }): void {
+    this.broadcastToWallet(data.walletAddress, {
+      type: 'activity_update',
+      data
+    });
+    
+    this.broadcast('activity', {
+      type: 'global_activity',
+      data: {
+        eventType: data.eventType,
+        details: data.details,
+        timestamp: data.createdAt
+      }
+    });
+  }
+  
   getStats(): { clients: number; rooms: number } {
     return {
       clients: this.clients.size,
