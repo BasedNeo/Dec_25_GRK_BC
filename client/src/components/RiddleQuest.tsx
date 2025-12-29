@@ -249,7 +249,7 @@ export function RiddleQuest() {
               eventType: 'riddle_solved',
               details: `Solved riddle ${newSolved}`,
               pointsEarned: 10,
-              gameType: 'riddle-quest'
+              gameType: 'riddle_quest'
             });
           }
           
