@@ -616,13 +616,13 @@ export default function InfinityRace() {
         eventType,
         details,
         pointsEarned: raceWon ? 50 : 10,
-        gameType: 'riddle_quest',
+        gameType: 'infinity_race',
       });
 
       if (raceWon) {
-        earnPoints('riddle-quest', 'challenge', 50);
+        earnPoints('infinity-race', 'race_win');
       } else if (distance > TRACK_LENGTH * 0.5) {
-        earnPoints('riddle-quest', 'riddle', 10);
+        earnPoints('infinity-race', 'race_partial');
       }
       
       if (activeRaceId) {

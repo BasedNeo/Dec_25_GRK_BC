@@ -125,7 +125,7 @@ export async function logActivity(data: {
   eventType: 'riddle_solved' | 'riddle_failed' | 'wave_survived' | 'wave_failed' | 'game_completed' | 'points_earned' | 'level_up' | 'challenge_completed';
   details?: string;
   pointsEarned?: number;
-  gameType?: 'riddle_quest' | 'creature_command' | 'retro_defender' | 'guardian_defense';
+  gameType?: 'riddle_quest' | 'creature_command' | 'retro_defender' | 'guardian_defense' | 'infinity_race';
 }): Promise<boolean> {
   try {
     const response = await fetch('/api/activity/log', {

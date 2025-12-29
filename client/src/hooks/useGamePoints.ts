@@ -27,16 +27,22 @@ interface EarnPointsResult {
   earned: number;
   dailyTotal: number;
   dailyCap: number;
+  globalDailyTotal: number;
   capped: boolean;
   totalEarned: number;
+  vestedBrainX: number;
   brainXProgress: number;
 }
 
-const POINTS_CONFIG = {
+export type GameType = 'riddle-quest' | 'creature-command' | 'retro-defender' | 'infinity-race' | 'guardian-defense';
+
+const POINTS_CONFIG: Record<GameType, { dailyCap: number; actions: Record<string, number> }> = {
   'riddle-quest': { dailyCap: 500, actions: { riddle: 10, challenge: 50 } },
   'creature-command': { dailyCap: 500, actions: { wave: 10, lairs: 50 } },
-  'retro-defender': { dailyCap: 200, actions: { pad: 20, task: 50 } }
-} as const;
+  'retro-defender': { dailyCap: 200, actions: { pad: 20, task: 50 } },
+  'infinity-race': { dailyCap: 500, actions: { race_win: 50, race_partial: 10, brainx_award: 100 } },
+  'guardian-defense': { dailyCap: 500, actions: { wave: 10, lairs: 50, combo: 25 } }
+};
 
 export function useGamePoints() {
   const { address } = useAccount();
@@ -129,12 +135,10 @@ export function useGamePoints() {
   }, [fetchBalance]);
   
   const earnPoints = useCallback(async (
-    game: keyof typeof POINTS_CONFIG,
-    action: string,
-    customAmount?: number
+    game: GameType,
+    action: string
   ): Promise<EarnPointsResult> => {
     const config = POINTS_CONFIG[game];
-    const amount = customAmount ?? (config.actions as any)[action] ?? 10;
     
     try {
       const response = await fetch('/api/points/earn', {
@@ -143,8 +147,7 @@ export function useGamePoints() {
         body: JSON.stringify({
           walletAddress: walletOrSession,
           game,
-          action,
-          amount
+          action
         })
       });
       
@@ -168,7 +171,7 @@ export function useGamePoints() {
         return {
           ...prev,
           totalEarned: result.totalEarned,
-          dailyEarnedTotal: result.dailyTotal,
+          dailyEarnedTotal: result.globalDailyTotal,
           games: updatedGames,
           vestingProgress: result.brainXProgress
         };
@@ -181,9 +184,11 @@ export function useGamePoints() {
         success: false,
         earned: 0,
         dailyTotal: balance?.dailyEarnedTotal || 0,
-        dailyCap: POINTS_CONFIG[game].dailyCap,
+        dailyCap: config.dailyCap,
+        globalDailyTotal: balance?.dailyEarnedTotal || 0,
         capped: true,
         totalEarned: balance?.totalEarned || 0,
+        vestedBrainX: 0,
         brainXProgress: balance?.vestingProgress || 0
       };
     }
