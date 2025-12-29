@@ -399,6 +399,80 @@ export function RiddleQuest() {
     setIsLoading(false);
   };
 
+  const skipRiddle = async () => {
+    if (!progress.currentRiddle || isLoading || isTyping) return;
+    if (progress.passesUsed >= 3) return;
+    
+    setIsLoading(true);
+    setShouldType(false);
+    
+    const newPasses = progress.passesUsed + 1;
+    const totalAnswered = progress.riddlesSolved + newPasses;
+    
+    addChatMessage('user', '[PASS - Skipping this riddle]');
+    addChatMessage('strategist', 'The Strategist notes your tactical retreat. A wise Guardian knows when to preserve their energy.');
+    
+    if (newPasses > 3) {
+      const finalProgress: QuestProgress = {
+        ...progress,
+        passesUsed: newPasses,
+        currentRiddle: null,
+        gameState: 'lost'
+      };
+      saveAndUpdateProgress(finalProgress);
+      setGameState('lost');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (totalAnswered >= 33) {
+      if (progress.riddlesSolved >= 30) {
+        const finalProgress: QuestProgress = {
+          ...progress,
+          passesUsed: newPasses,
+          currentRiddle: null,
+          gameState: 'won'
+        };
+        saveAndUpdateProgress(finalProgress);
+        setGameState('won');
+      } else {
+        const finalProgress: QuestProgress = {
+          ...progress,
+          passesUsed: newPasses,
+          currentRiddle: null,
+          gameState: 'lost'
+        };
+        saveAndUpdateProgress(finalProgress);
+        setGameState('lost');
+      }
+      setIsLoading(false);
+      return;
+    }
+    
+    const currentSolved = progress.riddlesSolved;
+    setTimeout(async () => {
+      const nextRiddle = await generateOracleRiddle(currentSolved, newPasses);
+      
+      if (nextRiddle.success && nextRiddle.message) {
+        setProgress(prev => {
+          const updatedProgress: QuestProgress = {
+            ...prev,
+            passesUsed: newPasses,
+            currentRiddle: nextRiddle.message,
+            chatHistory: [...prev.chatHistory,
+              { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
+            ]
+          };
+          saveQuestProgress(updatedProgress);
+          return updatedProgress;
+        });
+        setLastMessage(nextRiddle.message);
+        setShouldType(true);
+      }
+      setIsLoading(false);
+    }, 1500);
+  };
+
   const resetQuest = () => {
     clearQuestCache();
     setProgress(getInitialProgress());
@@ -680,9 +754,20 @@ export function RiddleQuest() {
               >
                 <Send className="w-4 h-4" />
               </Button>
+              <Button
+                type="button"
+                onClick={skipRiddle}
+                disabled={isLoading || isTyping || apiDown || progress.passesUsed >= 3}
+                variant="outline"
+                className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                data-testid="button-skip-riddle"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Skip ({3 - progress.passesUsed})
+              </Button>
             </form>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              Ask "hint?" or "help" for clues
+              Ask "hint?" or "help" for clues • Skip uses 1 of your 3 passes
             </p>
           </div>
         </Card>
