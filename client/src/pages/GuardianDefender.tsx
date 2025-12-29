@@ -769,13 +769,35 @@ export function GuardianDefender() {
                       </Button>
                     </div>
                     
-                    <Button
-                      onTouchStart={touchStart('up')} onTouchEnd={touchEnd('up')}
-                      className="w-20 h-[76px] bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-2 border-purple-500/50 rounded-xl text-purple-400 active:bg-purple-500/40 active:scale-95 transition-all shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-                      data-testid="button-touch-up"
+                    <div
+                      className="w-20 h-[76px] bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-2 border-purple-500/50 rounded-xl text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.2)] relative overflow-hidden select-none"
+                      data-testid="button-touch-thrust"
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const relativeY = touch.clientY - rect.top;
+                        const isTopHalf = relativeY < rect.height / 2;
+                        if (isTopHalf) {
+                          touchStart('up')(e);
+                        } else {
+                          touchStart('down')(e);
+                        }
+                      }}
+                      onTouchEnd={() => {
+                        touchEnd('up')();
+                        touchEnd('down')();
+                      }}
                     >
-                      <ControlUpIcon size={32} />
-                    </Button>
+                      <div className="absolute inset-0 flex flex-col">
+                        <div className="flex-1 flex items-center justify-center active:bg-purple-500/40 transition-all border-b border-purple-500/30">
+                          <ControlUpIcon size={20} />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center active:bg-purple-500/40 transition-all">
+                          <ControlUpIcon size={20} className="rotate-180" />
+                        </div>
+                      </div>
+                    </div>
                     
                     <Button
                       onTouchStart={touchStart('shoot')} onTouchEnd={touchEnd('shoot')}
