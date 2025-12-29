@@ -912,6 +912,7 @@ export default function GuardianDefense() {
           active: true,
           health: CREATURE_HEALTH[creatureType],
         });
+        state.missilesRemaining--;
       }, WAVE_START_DELAY + i * config.delay + Math.random() * 100);
     }
   }, [toast, playSound, gameOver, endGame]);
@@ -1213,7 +1214,7 @@ export default function GuardianDefense() {
       return;
     }
     
-    if (state.waveActive && state.enemyMissiles.length === 0 && state.explosions.length === 0) {
+    if (state.waveActive && state.enemyMissiles.length === 0 && state.explosions.length === 0 && state.missilesRemaining === 0) {
       state.waveActive = false;
       state.waveComplete = true;
       
