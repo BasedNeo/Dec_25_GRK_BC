@@ -409,13 +409,21 @@ export function RiddleQuest() {
     const newPasses = progress.passesUsed + 1;
     const totalAnswered = progress.riddlesSolved + newPasses;
     
-    addChatMessage('user', '[PASS - Skipping this riddle]');
-    addChatMessage('strategist', 'The Strategist notes your tactical retreat. A wise Guardian knows when to preserve their energy.');
+    const skipProgress: QuestProgress = {
+      ...progress,
+      passesUsed: newPasses,
+      chatHistory: [
+        ...progress.chatHistory,
+        { role: 'user', content: '[PASS - Skipping this riddle]', timestamp: Date.now() },
+        { role: 'strategist', content: 'The Strategist notes your tactical retreat. A wise Guardian knows when to preserve their energy.', timestamp: Date.now() }
+      ]
+    };
+    saveAndUpdateProgress(skipProgress);
+    setProgress(skipProgress);
     
     if (newPasses > 3) {
       const finalProgress: QuestProgress = {
-        ...progress,
-        passesUsed: newPasses,
+        ...skipProgress,
         currentRiddle: null,
         gameState: 'lost'
       };
@@ -428,8 +436,7 @@ export function RiddleQuest() {
     if (totalAnswered >= 33) {
       if (progress.riddlesSolved >= 30) {
         const finalProgress: QuestProgress = {
-          ...progress,
-          passesUsed: newPasses,
+          ...skipProgress,
           currentRiddle: null,
           gameState: 'won'
         };
@@ -437,8 +444,7 @@ export function RiddleQuest() {
         setGameState('won');
       } else {
         const finalProgress: QuestProgress = {
-          ...progress,
-          passesUsed: newPasses,
+          ...skipProgress,
           currentRiddle: null,
           gameState: 'lost'
         };
@@ -457,7 +463,6 @@ export function RiddleQuest() {
         setProgress(prev => {
           const updatedProgress: QuestProgress = {
             ...prev,
-            passesUsed: newPasses,
             currentRiddle: nextRiddle.message,
             chatHistory: [...prev.chatHistory,
               { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
@@ -468,6 +473,9 @@ export function RiddleQuest() {
         });
         setLastMessage(nextRiddle.message);
         setShouldType(true);
+      } else {
+        setApiDown(true);
+        addChatMessage('strategist', 'Mind Warp Strategist is scheming... riddles baking. Return soon, Guardian.');
       }
       setIsLoading(false);
     }, 1500);
