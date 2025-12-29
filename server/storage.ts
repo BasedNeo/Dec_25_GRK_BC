@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, type GovernanceLedger, type InsertGovernanceLedger, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress, governanceLedger } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, type GovernanceLedger, type InsertGovernanceLedger, type Offer, type InsertOffer, type Listing, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress, governanceLedger, offers, listings } from "@shared/schema";
 import { ECONOMY, getActionPoints, getGameDailyCap, isValidAction, type GameType } from "@shared/economy";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -102,6 +102,21 @@ export interface IStorage {
   getOrCreateInfinityRaceProgress(walletAddress: string): Promise<InfinityRaceProgress>;
   incrementInfinityRaceProgress(walletAddress: string, won: boolean): Promise<{ progress: InfinityRaceProgress; newAchievements: string[]; levelUp: boolean; brainxAwarded: number }>;
   updateInfinityRacePalette(walletAddress: string, palette: string): Promise<InfinityRaceProgress>;
+  
+  // MARKETPLACE OVERHAUL: Off-chain Offers
+  createOffer(data: InsertOffer): Promise<Offer>;
+  getOfferById(id: number): Promise<Offer | undefined>;
+  getOffersByToken(collectionAddress: string, tokenId: number): Promise<Offer[]>;
+  getOffersByBuyer(buyerAddress: string): Promise<Offer[]>;
+  getOffersBySeller(sellerAddress: string): Promise<Offer[]>;
+  updateOfferStatus(id: number, status: string, transactionHash?: string): Promise<Offer | undefined>;
+  getActiveOffers(collectionAddress: string): Promise<Offer[]>;
+  cleanupExpiredOffers(): Promise<number>;
+  
+  // MARKETPLACE OVERHAUL: Listings
+  getActiveListings(collectionAddress?: string): Promise<Listing[]>;
+  getListingByToken(collectionAddress: string, tokenId: number): Promise<Listing | undefined>;
+  getMarketplaceSummary(tokenIds: number[], collectionAddress: string): Promise<{ listings: Listing[]; offers: Offer[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1882,6 +1897,135 @@ export class DatabaseStorage implements IStorage {
       .where(eq(infinityRaceProgress.walletAddress, normalizedAddress))
       .returning();
     return updated;
+  }
+
+  // ============================================
+  // MARKETPLACE OVERHAUL: Off-chain Offers
+  // ============================================
+
+  async createOffer(data: InsertOffer): Promise<Offer> {
+    const [result] = await db.insert(offers).values({
+      ...data,
+      buyerAddress: data.buyerAddress.toLowerCase(),
+      sellerAddress: data.sellerAddress?.toLowerCase(),
+      collectionAddress: data.collectionAddress.toLowerCase(),
+    }).returning();
+    return result;
+  }
+
+  async getOfferById(id: number): Promise<Offer | undefined> {
+    const [result] = await db.select().from(offers).where(eq(offers.id, id));
+    return result;
+  }
+
+  async getOffersByToken(collectionAddress: string, tokenId: number): Promise<Offer[]> {
+    const now = Math.floor(Date.now() / 1000);
+    return db.select().from(offers)
+      .where(and(
+        eq(offers.collectionAddress, collectionAddress.toLowerCase()),
+        eq(offers.tokenId, tokenId),
+        eq(offers.status, 'pending'),
+        gte(offers.expiration, now)
+      ))
+      .orderBy(desc(offers.createdAt));
+  }
+
+  async getOffersByBuyer(buyerAddress: string): Promise<Offer[]> {
+    return db.select().from(offers)
+      .where(eq(offers.buyerAddress, buyerAddress.toLowerCase()))
+      .orderBy(desc(offers.createdAt));
+  }
+
+  async getOffersBySeller(sellerAddress: string): Promise<Offer[]> {
+    return db.select().from(offers)
+      .where(eq(offers.sellerAddress, sellerAddress.toLowerCase()))
+      .orderBy(desc(offers.createdAt));
+  }
+
+  async updateOfferStatus(id: number, status: string, transactionHash?: string): Promise<Offer | undefined> {
+    const updateData: Partial<Offer> = { status, updatedAt: new Date() };
+    if (transactionHash) {
+      updateData.transactionHash = transactionHash;
+    }
+    const [result] = await db.update(offers)
+      .set(updateData)
+      .where(eq(offers.id, id))
+      .returning();
+    return result;
+  }
+
+  async getActiveOffers(collectionAddress: string): Promise<Offer[]> {
+    const now = Math.floor(Date.now() / 1000);
+    return db.select().from(offers)
+      .where(and(
+        eq(offers.collectionAddress, collectionAddress.toLowerCase()),
+        eq(offers.status, 'pending'),
+        gte(offers.expiration, now)
+      ))
+      .orderBy(desc(offers.createdAt));
+  }
+
+  async cleanupExpiredOffers(): Promise<number> {
+    const now = Math.floor(Date.now() / 1000);
+    const result = await db.update(offers)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(and(
+        eq(offers.status, 'pending'),
+        lte(offers.expiration, now)
+      ))
+      .returning();
+    return result.length;
+  }
+
+  // ============================================
+  // MARKETPLACE OVERHAUL: Listings
+  // ============================================
+
+  async getActiveListings(collectionAddress?: string): Promise<Listing[]> {
+    if (collectionAddress) {
+      return db.select().from(listings)
+        .where(and(
+          eq(listings.collectionAddress, collectionAddress.toLowerCase()),
+          eq(listings.isActive, true)
+        ))
+        .orderBy(desc(listings.listedAt));
+    }
+    return db.select().from(listings)
+      .where(eq(listings.isActive, true))
+      .orderBy(desc(listings.listedAt));
+  }
+
+  async getListingByToken(collectionAddress: string, tokenId: number): Promise<Listing | undefined> {
+    const [result] = await db.select().from(listings)
+      .where(and(
+        eq(listings.collectionAddress, collectionAddress.toLowerCase()),
+        eq(listings.tokenId, tokenId),
+        eq(listings.isActive, true)
+      ));
+    return result;
+  }
+
+  async getMarketplaceSummary(tokenIds: number[], collectionAddress: string): Promise<{ listings: Listing[]; offers: Offer[] }> {
+    const normalizedCollection = collectionAddress.toLowerCase();
+    const now = Math.floor(Date.now() / 1000);
+    
+    const [listingsResult, offersResult] = await Promise.all([
+      db.select().from(listings)
+        .where(and(
+          eq(listings.collectionAddress, normalizedCollection),
+          eq(listings.isActive, true),
+          sql`${listings.tokenId} = ANY(${tokenIds})`
+        )),
+      db.select().from(offers)
+        .where(and(
+          eq(offers.collectionAddress, normalizedCollection),
+          eq(offers.status, 'pending'),
+          gte(offers.expiration, now),
+          sql`${offers.tokenId} = ANY(${tokenIds})`
+        ))
+    ]);
+    
+    return { listings: listingsResult, offers: offersResult };
   }
 }
 
