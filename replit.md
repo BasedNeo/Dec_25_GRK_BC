@@ -110,6 +110,9 @@ Protected folder structure to isolate core commerce and game code:
 - **V3 Offers Contract**: 0x2a3f9D8b844c2dB2F42095B49817c0D6991514f3
 - **NFT-Gated Features**: Guardian holders can send personal messages with offers.
 - **Off-Chain Proposal System**: Gasless governance for proposals with admin review and multi-choice voting.
+- **Per-NFT Voting (Dec 2024)**: Governance votes are now 1 NFT = 1 vote. Each NFT can only vote once per proposal. NFT ownership is validated on-chain before voting.
+- **Governance Audit Ledger**: All governance events (proposal_created, vote_cast, proposal_cancelled) are tracked in governance_ledger table for audit trail.
+- **Soft-Delete Proposals**: Proposals are set to status='cancelled' instead of hard delete to preserve history.
 - **My Offers Dashboard**: Dedicated marketplace tab for managing user offers.
 - **Diamond Hands Status**: Tracks NFT holding duration.
 - **Guardian Profile**: Custom usernames stored in the database.
