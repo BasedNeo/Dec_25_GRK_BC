@@ -599,6 +599,29 @@ export const insertRiddleAttemptSchema = createInsertSchema(riddleAttempts).omit
 export type InsertRiddleAttempt = z.infer<typeof insertRiddleAttemptSchema>;
 export type RiddleAttempt = typeof riddleAttempts.$inferSelect;
 
+// Riddle Quest Progress - track daily quest progress per wallet (Mind Warp Strategist)
+export const riddleProgress = pgTable('riddle_progress', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  dateKey: varchar('date_key', { length: 10 }).notNull(),
+  riddlesSolved: integer('riddles_solved').default(0).notNull(),
+  passesUsed: integer('passes_used').default(0).notNull(),
+  interactions: integer('interactions').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('riddle_progress_wallet_date_idx').on(table.walletAddress, table.dateKey),
+]);
+
+export const insertRiddleProgressSchema = createInsertSchema(riddleProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRiddleProgress = z.infer<typeof insertRiddleProgressSchema>;
+export type RiddleProgress = typeof riddleProgress.$inferSelect;
+
 // Creature Command Progress - stores player ability levels and points
 export const creatureProgress = pgTable('creature_progress', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),

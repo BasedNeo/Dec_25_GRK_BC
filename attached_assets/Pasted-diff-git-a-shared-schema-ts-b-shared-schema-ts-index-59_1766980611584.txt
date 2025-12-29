@@ -1,0 +1,78 @@
+diff --git a/shared/schema.ts b/shared/schema.ts
+index 5972cf4e0df9d0055479e5951346b3d6f623a682..ea11dce35e0929c3bca5e8e94c4637d265888ff5 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -577,50 +577,73 @@ export const insertRiddleDailyEntrySchema = createInsertSchema(riddleDailyEntrie
+ export type InsertRiddleDailyEntry = z.infer<typeof insertRiddleDailyEntrySchema>;
+ export type RiddleDailyEntry = typeof riddleDailyEntries.$inferSelect;
+ 
+ // Riddle Attempts - track each user's solve attempts
+ export const riddleAttempts = pgTable('riddle_attempts', {
+   id: serial('id').primaryKey(),
+   walletAddress: text('wallet_address').notNull(),
+   riddleEntryId: integer('riddle_entry_id').notNull(),
+   dateKey: varchar('date_key', { length: 10 }).notNull(),
+   attemptCount: integer('attempt_count').default(1).notNull(),
+   solved: boolean('solved').default(false),
+   solveTimeMs: integer('solve_time_ms'),
+   pointsEarned: integer('points_earned').default(0),
+   attemptedAt: timestamp('attempted_at').defaultNow().notNull(),
+   solvedAt: timestamp('solved_at'),
+ });
+ 
+ export const insertRiddleAttemptSchema = createInsertSchema(riddleAttempts).omit({
+   id: true,
+   attemptedAt: true,
+ });
+ 
+ export type InsertRiddleAttempt = z.infer<typeof insertRiddleAttemptSchema>;
+ export type RiddleAttempt = typeof riddleAttempts.$inferSelect;
+ 
++// Riddle Quest Progress - track daily quest progress per wallet
++export const riddleProgress = pgTable('riddle_progress', {
++  id: serial('id').primaryKey(),
++  walletAddress: text('wallet_address').notNull(),
++  dateKey: varchar('date_key', { length: 10 }).notNull(),
++  riddlesSolved: integer('riddles_solved').default(0).notNull(),
++  passesUsed: integer('passes_used').default(0).notNull(),
++  interactions: integer('interactions').default(0).notNull(),
++  createdAt: timestamp('created_at').defaultNow().notNull(),
++  updatedAt: timestamp('updated_at').defaultNow().notNull(),
++}, (table) => [
++  uniqueIndex('riddle_progress_wallet_date_idx').on(table.walletAddress, table.dateKey),
++]);
++
++export const insertRiddleProgressSchema = createInsertSchema(riddleProgress).omit({
++  id: true,
++  createdAt: true,
++  updatedAt: true,
++});
++
++export type InsertRiddleProgress = z.infer<typeof insertRiddleProgressSchema>;
++export type RiddleProgress = typeof riddleProgress.$inferSelect;
++
+ // Creature Command Progress - stores player ability levels and points
+ export const creatureProgress = pgTable('creature_progress', {
+   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+   walletAddress: text('wallet_address').notNull().unique(),
+   totalPoints: integer('total_points').default(0).notNull(),
+   piercingLevel: integer('piercing_level').default(0).notNull(),
+   shieldLevel: integer('shield_level').default(0).notNull(),
+   rapidFireLevel: integer('rapid_fire_level').default(0).notNull(),
+   explosiveLevel: integer('explosive_level').default(0).notNull(),
+   slowFieldLevel: integer('slow_field_level').default(0).notNull(),
+   multiBubbleLevel: integer('multi_bubble_level').default(0).notNull(),
+   regenBurstLevel: integer('regen_burst_level').default(0).notNull(),
+   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+ });
+ 
+ export const insertCreatureProgressSchema = createInsertSchema(creatureProgress).omit({
+   id: true,
+   updatedAt: true,
+ });
+ 
+ export type InsertCreatureProgress = z.infer<typeof insertCreatureProgressSchema>;
+ export type CreatureProgress = typeof creatureProgress.$inferSelect;
+ 
+ // Daily Challenges - tracks daily survival challenges per wallet
+ export const dailyChallenges = pgTable('daily_challenges', {

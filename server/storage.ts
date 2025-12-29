@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, type GovernanceLedger, type InsertGovernanceLedger, type Offer, type InsertOffer, type Listing, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress, governanceLedger, offers, listings } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type RiddleProgress, type InsertRiddleProgress, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, type GovernanceLedger, type InsertGovernanceLedger, type Offer, type InsertOffer, type Listing, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, riddleProgress, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress, governanceLedger, offers, listings } from "@shared/schema";
 import { ECONOMY, getActionPoints, getGameDailyCap, isValidAction, type GameType } from "@shared/economy";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -50,6 +50,11 @@ export interface IStorage {
   createRiddleAttempt(data: InsertRiddleAttempt): Promise<RiddleAttempt>;
   updateRiddleAttempt(id: number, solved: boolean, solveTimeMs: number, pointsEarned: number): Promise<RiddleAttempt | undefined>;
   getUserDailyProgress(walletAddress: string, dateKey: string): Promise<RiddleAttempt[]>;
+
+  // Riddle Quest Progress (Mind Warp Strategist)
+  getLatestRiddleProgress(walletAddress: string): Promise<RiddleProgress | undefined>;
+  getRiddleProgress(walletAddress: string, dateKey: string): Promise<RiddleProgress | undefined>;
+  upsertRiddleProgress(data: InsertRiddleProgress): Promise<RiddleProgress>;
   
   // Creature Command Progress
   getCreatureProgress(walletAddress: string): Promise<CreatureProgress | undefined>;
@@ -997,6 +1002,50 @@ export class DatabaseStorage implements IStorage {
         eq(riddleAttempts.walletAddress, walletAddress.toLowerCase()),
         eq(riddleAttempts.dateKey, dateKey)
       ));
+  }
+
+  // ============================================
+  // RIDDLE QUEST PROGRESS METHODS (Mind Warp Strategist)
+  // ============================================
+
+  async getLatestRiddleProgress(walletAddress: string): Promise<RiddleProgress | undefined> {
+    const [progress] = await db.select()
+      .from(riddleProgress)
+      .where(eq(riddleProgress.walletAddress, walletAddress.toLowerCase()))
+      .orderBy(desc(riddleProgress.dateKey))
+      .limit(1);
+    return progress;
+  }
+
+  async getRiddleProgress(walletAddress: string, dateKey: string): Promise<RiddleProgress | undefined> {
+    const [progress] = await db.select()
+      .from(riddleProgress)
+      .where(and(
+        eq(riddleProgress.walletAddress, walletAddress.toLowerCase()),
+        eq(riddleProgress.dateKey, dateKey)
+      ));
+    return progress;
+  }
+
+  async upsertRiddleProgress(data: InsertRiddleProgress): Promise<RiddleProgress> {
+    const normalized = data.walletAddress.toLowerCase();
+    const [progress] = await db.insert(riddleProgress)
+      .values({
+        ...data,
+        walletAddress: normalized,
+        updatedAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: [riddleProgress.walletAddress, riddleProgress.dateKey],
+        set: {
+          riddlesSolved: data.riddlesSolved,
+          passesUsed: data.passesUsed,
+          interactions: data.interactions,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return progress;
   }
 
   // ============================================

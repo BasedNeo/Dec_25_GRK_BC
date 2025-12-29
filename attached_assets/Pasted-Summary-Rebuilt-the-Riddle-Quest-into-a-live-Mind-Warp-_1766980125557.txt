@@ -1,0 +1,21 @@
+Summary
+Rebuilt the Riddle Quest into a live Mind Warp Strategist chat flow with streaming/typing responses, 33‑riddle progression, pass/interactions limits, and local cache clearing ( client/src/components/RiddleQuest.tsx lines 1–320).
+Simplified the Oracle client and enforced the new strategist prompt + progress-aware riddle generation on the server endpoints ( client/src/lib/oracleClient.ts lines 1–103, server/lib/oracleService.ts lines 1–191, server/routes.ts lines 1200–1485).
+Added persistent quest tracking via the new riddle_progress table and storage helpers/endpoints for the 24h limit ( shared/schema.ts lines 602–623, server/storage.ts lines 1007–1045, server/routes.ts lines 1267–1343).
+Exact edits (path:lines)
+client/src/components/RiddleQuest.tsx: chat UI + state machine + typing effect + progress persistence (lines 1–320).
+client/src/lib/oracleClient.ts: streamlined API calls and question detection (lines 1–103).
+server/lib/oracleService.ts: exact system prompt + progress‑aware riddle prompt (lines 7–191).
+server/routes.ts: oracle route update + quest progress endpoints + oracle‑only daily generation/semantic evaluation (lines 172–213, 1200–1485).
+server/storage.ts: riddle progress CRUD methods (lines 1007–1045).
+shared/schema.ts: new riddle_progress table definition (lines 602–623).
+New table
+riddle_progress ( shared/schema.ts lines 602–623): walletAddress, dateKey, riddlesSolved, passesUsed, interactions, timestamps, unique index on (walletAddress, dateKey).
+OpenRouter logs
+Live call logs and semantic match logging are emitted in server/lib/oracleService.ts (lines 111–133). I couldn’t produce runtime logs without OPENROUTER_API_KEY and a running server.
+Screenshot
+Attempted to capture the updated UI, but the dev server failed to start because DATABASE_URL is not set, so no screenshot is available.
+Testing
+⚠️ npm run dev -- --host 0.0.0.0 --port 4173 (failed: DATABASE_URL not set)
+If you want me to retry the UI screenshot or run a simulated conversation log, please provide DATABASE_URL and OPENROUTER_API_KEY, and I’ll rerun.
+

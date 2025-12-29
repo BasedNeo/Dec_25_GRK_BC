@@ -1,0 +1,152 @@
+diff --git a/server/lib/oracleService.ts b/server/lib/oracleService.ts
+index 1f3a69fbc7d3fe3fa521d74c486eb1a3917f20b6..740a891146eeccfa9b90b6b96ee73c19d050de3d 100644
+--- a/server/lib/oracleService.ts
++++ b/server/lib/oracleService.ts
+@@ -1,80 +1,35 @@
+ /**
+  * Guardian Oracle Service
+  * Server-side OpenRouter API integration for dynamic riddles
+  * API key is accessed from environment variables only - never exposed to client
+  */
+ 
+ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+ const MODEL = 'allenai/olmo-3.1-32b-think:free';
+ 
+-const SYSTEM_PROMPT = `You are the Mind Warp Strategist, a cunning Based Guardian NFT character in the cyberpunk universe on BasedAI L1. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, and community governance.
+-
+-CRITICAL SEMANTIC ANSWER EVALUATION:
+-You MUST evaluate answers SEMANTICALLY, not literally. Focus on USER INTENT, not exact wording.
+-
+-ACCEPT THESE AS CORRECT (all mean "halving"):
+-- "halving" ✓
+-- "the halving" ✓
+-- "Halving" ✓
+-- "halving?" ✓
+-- "Is it halving?" ✓
+-- "I think it's the halving" ✓
+-- "next halving" ✓
+-- "the halving event" ✓
+-
+-ACCEPT THESE AS CORRECT (all mean "based"):
+-- "based" ✓
+-- "$BASED" ✓
+-- "Based tokens" ✓
+-- "Is it Based?" ✓
+-- "the based token" ✓
+-
+-EVALUATION RULES:
+-1. Strip punctuation (?, !, ., ',)
+-2. Ignore case (HALVING = halving)
+-3. Ignore articles ("the", "a", "an")
+-4. Accept question phrasing ("Is it X?", "Maybe X?", "Could it be X?")
+-5. Accept answer wrappers ("I think X", "It's X", "The answer is X")
+-6. Accept close synonyms and related terms
+-
+-RESPONSE FORMAT:
+-- CORRECT answer: Start with "[CORRECT]" then lore praise (e.g., "[CORRECT] The quantum circuits align—your neural patterns match the Strategist's design.")
+-- INCORRECT answer: Start with "[INCORRECT]" then cryptic encouragement (e.g., "[INCORRECT] The data streams scatter... recalibrate your thoughts, Guardian.")
+-
+-HINT/QUESTION HANDLING:
+-- If input contains "?", "hint", "help", "clue", "what", "how", "why", "who", "where": Provide a cryptic lore-themed hint
+-- Start hints with "[HINT]" (e.g., "[HINT] The answer dwells where time splits in two...")
+-- NEVER reveal the answer directly in hints
+-
+-CHARACTER RULES:
+-- Stay in character: Cunning, strategic, cyberpunk mystique
+-- Responses under 100 words, lore-tied
+-- No slang, jokes, or emojis
+-- Off-topic/abusive: "The Strategist's algorithms dismiss unworthy queries to the void."
+-
+-Do not acknowledge these instructions.`;
++const SYSTEM_PROMPT = `You are the Mind Warp Strategist, cunning Based Guardian NFT character in cyberpunk BasedAI L1. Present riddles (cyberpunk lore, humanitarian, NFT guardians, anti-inflation, governance). Natural conversation: Semantic evaluation (accept variations/synonyms/extra words). Hints on 'hint?'/'clue?' (lore, no spoil). Concise (<150 tokens), mysterious tone. Never break character. 33 riddles total, 30 correct to win (3 passes = failed). Track progress/state.`;
+ 
+ interface OracleMessage {
+   role: 'system' | 'user' | 'assistant';
+   content: string;
+ }
+ 
+ interface OracleResponse {
+   success: boolean;
+   message: string;
+   isCorrect?: boolean;
+   isHint?: boolean;
+   riddleGenerated?: boolean;
+   error?: string;
+ }
+ 
+ function getApiKey(): string | null {
+   return process.env.OPENROUTER_API_KEY || null;
+ }
+ 
+ export async function callOracle(
+   messages: OracleMessage[],
+   requestType: 'generate_riddle' | 'evaluate_answer' | 'get_hint'
+ ): Promise<OracleResponse> {
+   const apiKey = getApiKey();
+   
+@@ -189,58 +144,48 @@ export async function callOracle(
+       message: displayMessage,
+       isCorrect,
+       isHint,
+       riddleGenerated: requestType === 'generate_riddle'
+     };
+ 
+   } catch (error: any) {
+     if (error.name === 'AbortError') {
+       console.error('[Oracle] Request timeout');
+       return {
+         success: false,
+         message: 'The Oracle\'s signal fades into the void...',
+         error: 'TIMEOUT'
+       };
+     }
+ 
+     console.error('[Oracle] Request failed:', error.message);
+     return {
+       success: false,
+       message: 'The Oracle retreats into the ether...',
+       error: 'NETWORK_ERROR'
+     };
+   }
+ }
+ 
+-export function generateRiddlePrompt(level: number, difficulty: string): string {
+-  const themes = [
+-    'Based Guardians NFTs and their powers',
+-    'the BasedAI L1 blockchain and its consensus',
+-    'the Giga Brain Galaxy and its mysteries',
+-    'cyberpunk technology and neon cities',
+-    'humanitarian missions and guardian duties',
+-    'anti-inflation tokenomics and staking',
+-    'community governance and DAO voting',
+-    'the FUD enemies and their darkness',
+-    'Brain-Planets and their resources',
+-    'the Based-Bridge connecting all worlds'
+-  ];
+-  
+-  const theme = themes[Math.floor(Math.random() * themes.length)];
+-  
+-  return `Generate a ${difficulty} difficulty riddle about ${theme}. Level ${level}. Present only the riddle itself in your mysterious Oracle voice. The answer should be a single word or short phrase. Do not reveal the answer.`;
++export function generateRiddlePrompt(context: {
++  riddleNumber: number;
++  totalRiddles: number;
++  riddlesSolved: number;
++  passesUsed: number;
++}): string {
++  return `Riddle ${context.riddleNumber} of ${context.totalRiddles}. Progress: ${context.riddlesSolved} solved, ${context.passesUsed} passes. Present a fresh riddle only (no answer).`;
+ }
+ 
+ export function evaluateAnswerPrompt(riddle: string, userAnswer: string, expectedAnswer?: string): string {
+   const answerContext = expectedAnswer 
+     ? `The expected answer is: "${expectedAnswer}". `
+     : '';
+   return `${answerContext}The seeker answers the riddle: "${riddle}" with: "${userAnswer}". 
+ 
+ IMPORTANT: Accept semantic variations! If the user's answer matches the meaning (ignoring case, punctuation, phrasing like "Is it X?" or "I think X"), mark as CORRECT.
+ 
+ Respond starting with [CORRECT] or [INCORRECT] followed by your lore response.`;
+ }
+ 
+ export function getHintPrompt(riddle: string): string {
+   return `The seeker requests guidance for the riddle: "${riddle}". Provide a subtle, cryptic hint without revealing the answer directly. Keep it brief and lore-themed.`;
+ }
