@@ -3,7 +3,7 @@ import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionRe
 import { parseEther, formatEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useInterval } from '@/hooks/useInterval';
-import { CHAIN_ID, MARKETPLACE_V3_CONTRACT } from '@/lib/constants';
+import { CHAIN_ID, MARKETPLACE_V3_CONTRACT, NFT_CONTRACT } from '@/lib/constants';
 import { SecureStorage } from '@/lib/secureStorage';
 import { requestDedup } from '@/lib/requestDeduplicator';
 import { asyncMutex } from '@/lib/asyncMutex';
@@ -156,55 +156,168 @@ const MARKETPLACE_V3_ABI = [
   },
 ] as const;
 
-function getStoredOffers(): OffchainOffer[] {
+// MARKETPLACE OVERHAUL: Server API integration with local cache fallback
+
+async function fetchOffersFromServer(buyerAddress?: string, tokenId?: number, collectionAddress?: string): Promise<OffchainOffer[]> {
+  try {
+    let url = '/api/offers';
+    if (buyerAddress) {
+      url = `/api/offers/buyer/${buyerAddress}`;
+    } else if (tokenId !== undefined && collectionAddress) {
+      url = `/api/offers/token/${collectionAddress}/${tokenId}`;
+    }
+    
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch offers');
+    
+    const data = await res.json();
+    // Map server offers to OffchainOffer format
+    return (data.offers || []).map((o: {
+      id: number;
+      tokenId: number;
+      buyerAddress: string;
+      price: string;
+      priceWei: string;
+      nonce: number;
+      expiration: number;
+      signature: string;
+      status: string;
+      message?: string;
+      createdAt: string;
+      transactionHash?: string;
+    }) => ({
+      id: String(o.id),
+      tokenId: o.tokenId,
+      buyer: o.buyerAddress,
+      price: o.price,
+      priceWei: o.priceWei,
+      nonce: o.nonce,
+      expiration: o.expiration,
+      signature: o.signature,
+      status: o.status as OffchainOffer['status'],
+      createdAt: Math.floor(new Date(o.createdAt).getTime() / 1000),
+      message: o.message,
+      transactionHash: o.transactionHash,
+    }));
+  } catch (e) {
+    console.error('[Offers] Server fetch failed, using local fallback:', e);
+    return getLocalOffers();
+  }
+}
+
+async function postOfferToServer(offer: OffchainOffer): Promise<{ success: boolean; offer?: OffchainOffer }> {
+  try {
+    const res = await fetch('/api/offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokenId: offer.tokenId,
+        collectionAddress: NFT_CONTRACT,
+        buyerAddress: offer.buyer,
+        price: offer.price,
+        priceWei: offer.priceWei,
+        nonce: offer.nonce,
+        expiration: offer.expiration,
+        signature: offer.signature,
+        message: offer.message,
+      }),
+    });
+    
+    if (!res.ok) throw new Error('Failed to post offer');
+    
+    const data = await res.json();
+    return { success: true, offer: data.offer };
+  } catch (e) {
+    console.error('[Offers] Server post failed, saving locally:', e);
+    addLocalOffer(offer);
+    return { success: true };
+  }
+}
+
+async function updateOfferStatusOnServer(offerId: string, status: string, walletAddress: string, transactionHash?: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/offers/${offerId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, walletAddress, transactionHash }),
+    });
+    
+    return res.ok;
+  } catch (e) {
+    console.error('[Offers] Server update failed:', e);
+    updateLocalOfferStatus(offerId, status as OffchainOffer['status']);
+    return true;
+  }
+}
+
+// Local storage fallback functions (kept for offline resilience)
+function getLocalOffers(): OffchainOffer[] {
   try {
     const offers = SecureStorage.get<OffchainOffer[]>('offers_v3');
     if (offers) {
-      const cleaned = cleanupOffers(offers);
-      if (cleaned.length !== offers.length) saveOffers(cleaned);
-      return cleaned;
+      return cleanupOffers(offers);
     }
     
     const oldStored = localStorage.getItem(OFFERS_STORAGE_KEY);
     if (oldStored) {
       const oldOffers = JSON.parse(oldStored) as OffchainOffer[];
-      saveOffers(oldOffers);
+      saveLocalOffers(oldOffers);
       localStorage.removeItem(OFFERS_STORAGE_KEY);
       return cleanupOffers(oldOffers);
     }
     
     return [];
   } catch (e) {
-    console.error('[Offers] Storage read error:', e);
+    console.error('[Offers] Local storage read error:', e);
     return [];
   }
 }
 
-function saveOffers(offers: OffchainOffer[]) {
+function saveLocalOffers(offers: OffchainOffer[]) {
   const success = SecureStorage.set('offers_v3', offers);
   if (!success) {
-    console.error('[Offers] Failed to save - storage full or error');
-    const trimmed = offers.slice(-100);
-    SecureStorage.set('offers_v3', trimmed);
+    console.error('[Offers] Failed to save locally - storage full');
+    SecureStorage.set('offers_v3', offers.slice(-100));
   }
 }
 
-function addOffer(offer: OffchainOffer) {
-  const offers = getStoredOffers();
+function addLocalOffer(offer: OffchainOffer) {
+  const offers = getLocalOffers();
   const filtered = offers.filter(o => !(o.tokenId === offer.tokenId && o.buyer.toLowerCase() === offer.buyer.toLowerCase()));
   filtered.push(offer);
-  saveOffers(filtered);
+  saveLocalOffers(filtered);
+}
+
+function updateLocalOfferStatus(id: string, status: OffchainOffer['status'], extra?: Partial<OffchainOffer>) {
+  const offers = getLocalOffers();
+  const updated = offers.map(o => o.id === id ? { ...o, status, ...extra } : o);
+  saveLocalOffers(updated);
+}
+
+function removeLocalOffer(id: string) {
+  const offers = getLocalOffers();
+  saveLocalOffers(offers.filter(o => o.id !== id));
+}
+
+// Legacy compatibility wrapper functions
+function getStoredOffers(): OffchainOffer[] {
+  return getLocalOffers();
+}
+
+function saveOffers(offers: OffchainOffer[]) {
+  saveLocalOffers(offers);
+}
+
+function addOffer(offer: OffchainOffer) {
+  addLocalOffer(offer);
 }
 
 function updateOfferStatus(id: string, status: OffchainOffer['status'], extra?: Partial<OffchainOffer>) {
-  const offers = getStoredOffers();
-  const updated = offers.map(o => o.id === id ? { ...o, status, ...extra } : o);
-  saveOffers(updated);
+  updateLocalOfferStatus(id, status, extra);
 }
 
 function removeOffer(id: string) {
-  const offers = getStoredOffers();
-  saveOffers(offers.filter(o => o.id !== id));
+  removeLocalOffer(id);
 }
 
 export function useOffersV3() {
@@ -239,8 +352,20 @@ export function useOffersV3() {
     }
   }, [address]);
 
-  const loadOffers = useCallback(() => {
-    const allOffers = getStoredOffers();
+  const loadOffers = useCallback(async () => {
+    // MARKETPLACE OVERHAUL: Fetch from server API with local fallback
+    let allOffers: OffchainOffer[] = [];
+    
+    if (address) {
+      // Try to fetch user's offers from server
+      try {
+        allOffers = await fetchOffersFromServer(address);
+      } catch {
+        allOffers = getStoredOffers();
+      }
+    } else {
+      allOffers = getStoredOffers();
+    }
     
     const now = Math.floor(Date.now() / 1000);
     const validOffers = allOffers.filter(o => {
@@ -348,8 +473,9 @@ export function useOffersV3() {
             message: cleanMessage,
           };
 
-          addOffer(offer);
-          loadOffers();
+          // MARKETPLACE OVERHAUL: Post to server API (falls back to local storage on failure)
+          await postOfferToServer(offer);
+          await loadOffers();
 
           toast({
             title: "Offer Created!",
@@ -460,8 +586,12 @@ export function useOffersV3() {
 
   const cancelOffer = useCallback(async (offerId: string, invalidateOnChain: boolean = false): Promise<boolean> => {
     try {
+      // MARKETPLACE OVERHAUL: Cancel via server API
+      if (address) {
+        await updateOfferStatusOnServer(offerId, 'cancelled', address);
+      }
       removeOffer(offerId);
-      loadOffers();
+      await loadOffers();
 
       if (invalidateOnChain) {
         writeContract({
@@ -484,7 +614,7 @@ export function useOffersV3() {
     } catch {
       return false;
     }
-  }, [writeContract, toast, loadOffers]);
+  }, [address, writeContract, toast, loadOffers]);
 
   const getOffersForToken = useCallback((tokenId: number): OffchainOffer[] => {
     return offersForToken.get(tokenId) || [];
