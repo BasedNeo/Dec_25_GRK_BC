@@ -1,0 +1,80 @@
+Recommended Overhauls (Non‑Mutating, Production‑Ready)
+Below are precise, scalable fixes aligned to a capped, anti‑inflation P2E economy.
+A) Unify the points economy into a single server‑authoritative source
+Goal: prevent inflation + reward mismatches.
+Plan
+
+Create a shared economy config (server + client) and eliminate client‑controlled amounts.
+Server computes pointsAwarded based on:
+game type + action,
+session duration,
+validated score (if applicable).
+Example shared config (new file: shared/economy.ts)
+export const ECONOMY = {
+  GLOBAL_DAILY_CAP: 500,
+  GAMES: {
+    'riddle-quest': { dailyCap: 500, actions: { riddle: 10, challenge: 50 } },
+    'creature-command': { dailyCap: 500, actions: { wave: 10, lairs: 50 } },
+    'retro-defender': { dailyCap: 200, actions: { pad: 20, task: 50 } },
+  },
+} as const;
+Then:
+Client only sends action (riddle, wave)
+Server computes points from config and ignores client amount. [server/routes.ts] [client/src/hooks/useGamePoints.ts]
+B) Introduce a points ledger (append‑only) for audit + idempotency
+Goal: commercial‑grade integrity, easy rollback, no drift.
+Add new table (example)
+
+export const pointsLedger = pgTable('points_ledger', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  game: varchar('game', { length: 50 }).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  delta: integer('delta').notNull(),
+  requestId: varchar('request_id', { length: 64 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+Server flow
+Start transaction.
+Check requestId (idempotent).
+Enforce caps.
+Insert ledger row.
+Update game_points + points_summary.
+Commit. [server/storage.ts]
+C) Merge BrainX systems into one canonical source
+Goal: BrainX tracking is coherent and visible.
+Current issue: Infinity Race writes points_vesting but UI reads points_summary/brainx_points. [server/routes.ts] [server/storage.ts]
+Fix: choose one canonical source (recommend points_summary + ledger) and:
+
+Deprecate brainx_points, or
+Update it in every vesting flow, including Infinity Race.
+D) Fix client/server mismatch in WebSocket totals
+Goal: global daily total is accurate.
+Server currently sends dailyTotal (per‑game), client applies it to global. [server/routes.ts] [client/src/hooks/useGamePoints.ts]
+Fix by sending globalDailyTotal via WebSocket and updating dailyEarnedTotal with that value.
+E) Enforce action whitelist on server
+Goal: eliminate client‑side reward tampering.
+Example in /api/points/earn:
+
+const ActionSchema = z.enum(['riddle', 'challenge', 'wave', 'lairs', 'pad', 'task']);
+Then map action → points server‑side. [server/routes.ts]
+F) Index leaderboards for 5k+ users
+Add indexes for leaderboard sorts:
+index('points_summary_total_earned_idx').on(pointsSummary.totalEarned)
+This improves /api/points/leaderboard. [shared/schema.ts] [server/storage.ts]
+G) Fix mobile cut‑offs with dynamic viewport metrics
+Use visualViewport.height + safe‑area CSS instead of fixed pixel offsets.
+Example idea (GuardianDefense / RetroDefender):
+
+const vh = window.visualViewport?.height ?? window.innerHeight;
+const safeTop = parseInt(getComputedStyle(document.documentElement)
+  .getPropertyValue('env(safe-area-inset-top)') || '0', 10);
+Apply in:
+getCanvasDimensions (GuardianDefense) [client/src/pages/GuardianDefense.tsx]
+getCanvasSize (Retro Defender) [client/src/lib/gameEngine.ts]
+H) Remove Infinity Race “riddle‑quest” points
+Infinity Race should not grant Ore via riddle actions.
+It should only:
+award BrainX (via vesting), and/or
+award Ore via its own game channel with proper caps.
+Currently it awards Riddle Quest points and logs as riddle quest. [client/src/pages/InfinityRace.tsx]

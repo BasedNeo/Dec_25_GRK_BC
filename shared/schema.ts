@@ -639,6 +639,28 @@ export const insertGamePointsSchema = createInsertSchema(gamePoints).omit({
 export type InsertGamePoints = z.infer<typeof insertGamePointsSchema>;
 export type GamePoints = typeof gamePoints.$inferSelect;
 
+// Points Ledger - append-only audit trail for all point transactions (idempotent via requestId)
+export const pointsLedger = pgTable('points_ledger', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  game: varchar('game', { length: 50 }).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  delta: integer('delta').notNull(),
+  requestId: varchar('request_id', { length: 64 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('points_ledger_wallet_idx').on(table.walletAddress),
+  index('points_ledger_created_idx').on(table.createdAt),
+]);
+
+export const insertPointsLedgerSchema = createInsertSchema(pointsLedger).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPointsLedger = z.infer<typeof insertPointsLedgerSchema>;
+export type PointsLedger = typeof pointsLedger.$inferSelect;
+
 // Unified Points Summary - aggregate view for quick lookups
 export const pointsSummary = pgTable('points_summary', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -647,14 +669,19 @@ export const pointsSummary = pgTable('points_summary', {
   totalVested: integer('total_vested').default(0).notNull(),
   brainXLocked: integer('brainx_locked').default(0).notNull(),
   brainXUnlocked: integer('brainx_unlocked').default(0).notNull(),
+  vestedBrainX: integer('vested_brainx').default(0).notNull(),
+  unlockDate: timestamp('unlock_date'),
   dailyEarnedTotal: integer('daily_earned_total').default(0).notNull(),
   globalDailyCap: integer('global_daily_cap').default(500).notNull(),
   lastActivity: timestamp('last_activity').defaultNow().notNull(),
+  lastDailyReset: varchar('last_daily_reset', { length: 10 }),
   vestingStartDate: timestamp('vesting_start_date'),
   vestingEndDate: timestamp('vesting_end_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => [
+  index('points_summary_total_earned_idx').on(table.totalEarned),
+]);
 
 export const insertPointsSummarySchema = createInsertSchema(pointsSummary).omit({
   id: true,
