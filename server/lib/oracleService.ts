@@ -1,35 +1,15 @@
 /**
- * Guardian Oracle Service
- * Server-side OpenRouter API integration for dynamic riddles
+ * Mind Warp Strategist Oracle Service
+ * Server-side OpenRouter API integration for Riddle Quest chatbot
  * API key is accessed from environment variables only - never exposed to client
  */
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'allenai/olmo-3.1-32b-think:free';
 
-const SYSTEM_PROMPT = `You are the Mind Warp Strategist, a cunning Based Guardian NFT character in the cyberpunk universe on BasedAI L1. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, and community governance.
+const SYSTEM_PROMPT = `You are the Mind Warp Strategist, a cunning Based Guardian NFT character in cyberpunk BasedAI L1 universe. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, governance. Natural conversation: Semantic answer evaluation (accept variations, synonyms, extra words/punctuation, 'Is it halving?' for 'halving' — intent focus). Questions ('hint?', 'clue?') = lore hints (no spoil). Concise (<150 tokens), mysterious strategic tone. Never break character. 33 riddles total, 30 correct to win (3 passes). Track progress.
 
-CRITICAL SEMANTIC ANSWER EVALUATION:
-You MUST evaluate answers SEMANTICALLY, not literally. Focus on USER INTENT, not exact wording.
-
-ACCEPT THESE AS CORRECT (all mean "halving"):
-- "halving" ✓
-- "the halving" ✓
-- "Halving" ✓
-- "halving?" ✓
-- "Is it halving?" ✓
-- "I think it's the halving" ✓
-- "next halving" ✓
-- "the halving event" ✓
-
-ACCEPT THESE AS CORRECT (all mean "based"):
-- "based" ✓
-- "$BASED" ✓
-- "Based tokens" ✓
-- "Is it Based?" ✓
-- "the based token" ✓
-
-EVALUATION RULES:
+SEMANTIC ANSWER EVALUATION RULES:
 1. Strip punctuation (?, !, ., ',)
 2. Ignore case (HALVING = halving)
 3. Ignore articles ("the", "a", "an")
@@ -38,13 +18,10 @@ EVALUATION RULES:
 6. Accept close synonyms and related terms
 
 RESPONSE FORMAT:
-- CORRECT answer: Start with "[CORRECT]" then lore praise (e.g., "[CORRECT] The quantum circuits align—your neural patterns match the Strategist's design.")
-- INCORRECT answer: Start with "[INCORRECT]" then cryptic encouragement (e.g., "[INCORRECT] The data streams scatter... recalibrate your thoughts, Guardian.")
-
-HINT/QUESTION HANDLING:
-- If input contains "?", "hint", "help", "clue", "what", "how", "why", "who", "where": Provide a cryptic lore-themed hint
-- Start hints with "[HINT]" (e.g., "[HINT] The answer dwells where time splits in two...")
-- NEVER reveal the answer directly in hints
+- CORRECT answer: Start with "[CORRECT]" then lore praise
+- INCORRECT answer: Start with "[INCORRECT]" then cryptic encouragement
+- HINT request (?, hint, help, clue): Start with "[HINT]" then cryptic lore hint (never reveal answer)
+- NEW RIDDLE: Start with "[RIDDLE]" then present the riddle
 
 CHARACTER RULES:
 - Stay in character: Cunning, strategic, cyberpunk mystique
@@ -82,7 +59,7 @@ export async function callOracle(
     console.error('[Oracle] OPENROUTER_API_KEY not configured');
     return {
       success: false,
-      message: 'Oracle service not configured',
+      message: 'Mind Warp Strategist is scheming... riddles baking.',
       error: 'API_KEY_MISSING'
     };
   }
@@ -94,7 +71,7 @@ export async function callOracle(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -109,8 +86,8 @@ export async function callOracle(
       body: JSON.stringify({
         model: MODEL,
         messages: fullMessages,
-        max_tokens: 150,
-        temperature: 0.6,
+        max_tokens: 200,
+        temperature: 0.7,
         top_p: 0.9
       }),
       signal: controller.signal
@@ -125,14 +102,14 @@ export async function callOracle(
       if (response.status === 429) {
         return {
           success: false,
-          message: 'The Oracle rests momentarily... standard trials resume.',
+          message: 'Mind Warp Strategist is scheming... riddles baking.',
           error: 'RATE_LIMITED'
         };
       }
       
       return {
         success: false,
-        message: 'The Oracle\'s connection wavers...',
+        message: 'Mind Warp Strategist is scheming... riddles baking.',
         error: `HTTP_${response.status}`
       };
     }
@@ -144,44 +121,43 @@ export async function callOracle(
       console.error('[Oracle] Empty response from API');
       return {
         success: false,
-        message: 'The Oracle speaks in silence...',
+        message: 'Mind Warp Strategist is scheming... riddles baking.',
         error: 'EMPTY_RESPONSE'
       };
     }
 
     let isCorrect = false;
     let isHint = false;
+    let riddleGenerated = false;
     let displayMessage = content.trim();
     
     console.log(`[Oracle] Raw response for ${requestType}: ${content.substring(0, 100)}...`);
     
-    if (requestType === 'evaluate_answer') {
-      if (content.startsWith('[CORRECT]')) {
-        isCorrect = true;
-        displayMessage = content.replace('[CORRECT]', '').trim();
-        console.log('[Oracle] Semantic match: CORRECT');
-      } else if (content.startsWith('[INCORRECT]')) {
-        isCorrect = false;
-        displayMessage = content.replace('[INCORRECT]', '').trim();
-        console.log('[Oracle] Semantic match: INCORRECT');
-      } else if (content.startsWith('[HINT]')) {
-        isHint = true;
-        displayMessage = content.replace('[HINT]', '').trim();
-        console.log('[Oracle] Response type: HINT');
-      } else {
-        isCorrect = content.toLowerCase().includes('correct') || 
-          content.toLowerCase().includes('circuits align') ||
-          content.toLowerCase().includes('neural patterns match') ||
-          content.toLowerCase().includes('strategist approves') ||
-          content.toLowerCase().includes('wisdom') ||
-          content.toLowerCase().includes('well done');
-        console.log(`[Oracle] Fallback heuristic: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
-      }
-    } else if (requestType === 'get_hint') {
-      if (content.startsWith('[HINT]')) {
-        displayMessage = content.replace('[HINT]', '').trim();
-      }
+    if (content.startsWith('[RIDDLE]')) {
+      riddleGenerated = true;
+      displayMessage = content.replace('[RIDDLE]', '').trim();
+    } else if (content.startsWith('[CORRECT]')) {
+      isCorrect = true;
+      displayMessage = content.replace('[CORRECT]', '').trim();
+      console.log('[Oracle] Semantic match: CORRECT');
+    } else if (content.startsWith('[INCORRECT]')) {
+      isCorrect = false;
+      displayMessage = content.replace('[INCORRECT]', '').trim();
+      console.log('[Oracle] Semantic match: INCORRECT');
+    } else if (content.startsWith('[HINT]')) {
       isHint = true;
+      displayMessage = content.replace('[HINT]', '').trim();
+      console.log('[Oracle] Response type: HINT');
+    } else if (requestType === 'evaluate_answer') {
+      isCorrect = content.toLowerCase().includes('correct') || 
+        content.toLowerCase().includes('circuits align') ||
+        content.toLowerCase().includes('neural patterns match') ||
+        content.toLowerCase().includes('strategist approves') ||
+        content.toLowerCase().includes('wisdom') ||
+        content.toLowerCase().includes('well done');
+      console.log(`[Oracle] Fallback heuristic: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
+    } else if (requestType === 'generate_riddle') {
+      riddleGenerated = true;
     }
 
     return {
@@ -189,7 +165,7 @@ export async function callOracle(
       message: displayMessage,
       isCorrect,
       isHint,
-      riddleGenerated: requestType === 'generate_riddle'
+      riddleGenerated
     };
 
   } catch (error: any) {
@@ -197,7 +173,7 @@ export async function callOracle(
       console.error('[Oracle] Request timeout');
       return {
         success: false,
-        message: 'The Oracle\'s signal fades into the void...',
+        message: 'Mind Warp Strategist is scheming... riddles baking.',
         error: 'TIMEOUT'
       };
     }
@@ -205,13 +181,14 @@ export async function callOracle(
     console.error('[Oracle] Request failed:', error.message);
     return {
       success: false,
-      message: 'The Oracle retreats into the ether...',
+      message: 'Mind Warp Strategist is scheming... riddles baking.',
       error: 'NETWORK_ERROR'
     };
   }
 }
 
-export function generateRiddlePrompt(level: number, difficulty: string): string {
+export function generateRiddlePrompt(solved: number, passes: number): string {
+  const remaining = 33 - solved - passes;
   const themes = [
     'Based Guardians NFTs and their powers',
     'the BasedAI L1 blockchain and its consensus',
@@ -226,15 +203,14 @@ export function generateRiddlePrompt(level: number, difficulty: string): string 
   ];
   
   const theme = themes[Math.floor(Math.random() * themes.length)];
+  const difficulty = solved < 10 ? 'easy' : solved < 20 ? 'medium' : 'hard';
   
-  return `Generate a ${difficulty} difficulty riddle about ${theme}. Level ${level}. Present only the riddle itself in your mysterious Oracle voice. The answer should be a single word or short phrase. Do not reveal the answer.`;
+  return `[Progress: ${solved}/30 correct, ${passes}/3 passes, ${remaining} riddles remaining]
+Generate a ${difficulty} riddle about ${theme}. Present only the riddle itself in your mysterious Strategist voice. The answer should be a single word or short phrase. Start with [RIDDLE].`;
 }
 
-export function evaluateAnswerPrompt(riddle: string, userAnswer: string, expectedAnswer?: string): string {
-  const answerContext = expectedAnswer 
-    ? `The expected answer is: "${expectedAnswer}". `
-    : '';
-  return `${answerContext}The seeker answers the riddle: "${riddle}" with: "${userAnswer}". 
+export function evaluateAnswerPrompt(riddle: string, userAnswer: string): string {
+  return `The seeker answers the riddle: "${riddle}" with: "${userAnswer}". 
 
 IMPORTANT: Accept semantic variations! If the user's answer matches the meaning (ignoring case, punctuation, phrasing like "Is it X?" or "I think X"), mark as CORRECT.
 
@@ -242,5 +218,5 @@ Respond starting with [CORRECT] or [INCORRECT] followed by your lore response.`;
 }
 
 export function getHintPrompt(riddle: string): string {
-  return `The seeker requests guidance for the riddle: "${riddle}". Provide a subtle, cryptic hint without revealing the answer directly. Keep it brief and lore-themed.`;
+  return `The seeker requests guidance for the riddle: "${riddle}". Provide a subtle, cryptic hint without revealing the answer directly. Keep it brief and lore-themed. Start with [HINT].`;
 }
