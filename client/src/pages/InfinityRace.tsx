@@ -38,6 +38,7 @@ import {
   Rocket, Play, Home, Trophy, Timer, Shield, Zap, Wind, Target, Star, ChevronLeft,
   Store, Lock, Coins, ArrowUp, TrendingUp, Pause
 } from 'lucide-react';
+import { isAdminAddress } from '@/lib/constants';
 
 interface Craft {
   id: string;
@@ -110,6 +111,13 @@ export default function InfinityRace() {
     meetsNftRequirement,
     loading: economyLoading
   } = infinityRace;
+
+  // ADMIN TESTING ONLY — free baseline ship + mock Ore display — remove after testing
+  // NOTE: Backend still validates real Ore for bets/upgrades; this bypasses frontend gating only
+  const isAdminTesting = isAdminAddress(address);
+  const effectiveOreBalance = isAdminTesting ? 10000000 : oreBalance;
+  const effectiveHasCraft = (craftId: string) => (isAdminTesting && craftId === 'neon_fox') || hasCraft(craftId);
+  const effectiveCanAfford = canAfford; // Use real canAfford - only baseline ship is free
 
   const [gamePhase, setGamePhase] = useState<'menu' | 'shop' | 'select' | 'countdown' | 'racing' | 'finished'>('menu');
   const [betAmount, setBetAmount] = useState(0);
@@ -735,7 +743,7 @@ export default function InfinityRace() {
                     </div>
                     <div className="flex items-center justify-between text-sm mt-2">
                       <span className="text-gray-400">Ore Balance:</span>
-                      <span className="text-green-400 font-mono">{oreBalance.toLocaleString()}</span>
+                      <span className="text-green-400 font-mono">{effectiveOreBalance.toLocaleString()}</span>
                     </div>
                   </div>
                 )}
@@ -759,7 +767,7 @@ export default function InfinityRace() {
                 </h2>
                 <div className="flex items-center gap-4">
                   <div className="px-3 py-1.5 bg-green-500/20 rounded-lg border border-green-500/30">
-                    <span className="text-green-400 font-mono text-sm">{oreBalance.toLocaleString()} Ore</span>
+                    <span className="text-green-400 font-mono text-sm">{effectiveOreBalance.toLocaleString()} Ore</span>
                   </div>
                   <div className="px-3 py-1.5 bg-purple-500/20 rounded-lg border border-purple-500/30">
                     <span className="text-purple-400 font-mono text-sm">{nftCount} NFTs</span>
@@ -769,13 +777,13 @@ export default function InfinityRace() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {CRAFTS.map((craft) => {
-                  const owned = hasCraft(craft.id);
+                  const owned = effectiveHasCraft(craft.id);
                   const craftDef = raceState?.craftDefinitions[craft.id];
                   const cost = craftDef?.cost || 100000;
                   const nftReq = craftDef?.nftRequired || 0;
                   const tier = craftDef?.tier || 'basic';
                   const upgrades = getCraftUpgrades(craft.id);
-                  const affordable = canAfford(cost);
+                  const affordable = effectiveCanAfford(cost);
                   const hasNfts = meetsNftRequirement(nftReq);
                   const canBuy = !owned && affordable && hasNfts;
                   const isLoading = purchaseLoading === craft.id;
@@ -840,7 +848,7 @@ export default function InfinityRace() {
                               const upgradeDef = raceState?.upgradeDefinitions[type];
                               const upgradeCost = upgradeDef?.cost || 100000;
                               const maxed = level >= 10;
-                              const canUpgrade = !maxed && canAfford(upgradeCost);
+                              const canUpgrade = !maxed && effectiveCanAfford(upgradeCost);
                               const upgrading = upgradeLoading === `${craft.id}-${type}`;
                               
                               return (
@@ -915,7 +923,7 @@ export default function InfinityRace() {
                     <Slider
                       value={[betAmount]}
                       onValueChange={(val) => setBetAmount(val[0])}
-                      max={Math.min(raceState.maxBet, oreBalance)}
+                      max={Math.min(raceState.maxBet, effectiveOreBalance)}
                       step={100}
                       className="flex-1"
                       data-testid="bet-slider"
@@ -991,7 +999,7 @@ export default function InfinityRace() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {CRAFTS.filter(craft => hasCraft(craft.id)).map((craft) => {
+                {CRAFTS.filter(craft => effectiveHasCraft(craft.id)).map((craft) => {
                   const upgrades = getCraftUpgrades(craft.id);
                   const statBonus = getStatBonus();
                   const effectiveSpeed = craft.speed + upgrades.engineLevel + statBonus;
@@ -1084,7 +1092,7 @@ export default function InfinityRace() {
                 })}
               </div>
 
-              {CRAFTS.filter(craft => hasCraft(craft.id)).length === 0 && (
+              {CRAFTS.filter(craft => effectiveHasCraft(craft.id)).length === 0 && (
                 <div className="text-center py-12 text-gray-400">
                   <Rocket className="w-16 h-16 mx-auto mb-4 opacity-30" />
                   <p>No crafts owned. Go back to the hangar to purchase one.</p>
@@ -1103,7 +1111,7 @@ export default function InfinityRace() {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (!hasCraft(selectedCraft.id) || launchLoading) return;
+                    if (!effectiveHasCraft(selectedCraft.id) || launchLoading) return;
                     setLaunchLoading(true);
                     try {
                       const result = await startRace(selectedCraft.id, betAmount);
@@ -1115,7 +1123,7 @@ export default function InfinityRace() {
                       setLaunchLoading(false);
                     }
                   }}
-                  disabled={!hasCraft(selectedCraft.id) || launchLoading}
+                  disabled={!effectiveHasCraft(selectedCraft.id) || launchLoading}
                   className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] disabled:opacity-50"
                   data-testid="button-launch"
                 >
