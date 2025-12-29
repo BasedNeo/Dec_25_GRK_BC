@@ -3946,5 +3946,223 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // MARKETPLACE OVERHAUL: Off-chain Offers API
+  // ============================================
+
+  // Create new offer (EIP-712 signed off-chain)
+  app.post('/api/offers', writeLimiter, async (req, res) => {
+    try {
+      const { tokenId, collectionAddress, buyerAddress, price, priceWei, nonce, expiration, signature, message } = req.body;
+      
+      if (!tokenId || !collectionAddress || !buyerAddress || !price || !priceWei || nonce === undefined || !expiration || !signature) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      if (!isValidIdentifier(buyerAddress) || !isValidIdentifier(collectionAddress)) {
+        return res.status(400).json({ error: 'Invalid address format' });
+      }
+      
+      const now = Math.floor(Date.now() / 1000);
+      if (expiration < now) {
+        return res.status(400).json({ error: 'Offer already expired' });
+      }
+      
+      const offer = await storage.createOffer({
+        tokenId: Number(tokenId),
+        collectionAddress,
+        buyerAddress,
+        price,
+        priceWei,
+        nonce: Number(nonce),
+        expiration: Number(expiration),
+        signature,
+        status: 'pending',
+        message: message || null,
+      });
+      
+      res.status(201).json({ success: true, offer });
+    } catch (error) {
+      console.error('Create offer failed:', error);
+      res.status(500).json({ error: 'Failed to create offer' });
+    }
+  });
+
+  // Get offers for a token
+  app.get('/api/offers/token/:collectionAddress/:tokenId', async (req, res) => {
+    try {
+      const { collectionAddress, tokenId } = req.params;
+      
+      if (!isValidIdentifier(collectionAddress)) {
+        return res.status(400).json({ error: 'Invalid collection address' });
+      }
+      
+      const offers = await storage.getOffersByToken(collectionAddress, Number(tokenId));
+      res.json({ offers });
+    } catch (error) {
+      console.error('Get offers failed:', error);
+      res.status(500).json({ error: 'Failed to get offers' });
+    }
+  });
+
+  // Get offers made by a buyer
+  app.get('/api/offers/buyer/:buyerAddress', async (req, res) => {
+    try {
+      const { buyerAddress } = req.params;
+      
+      if (!isValidIdentifier(buyerAddress)) {
+        return res.status(400).json({ error: 'Invalid address' });
+      }
+      
+      const offers = await storage.getOffersByBuyer(buyerAddress);
+      res.json({ offers });
+    } catch (error) {
+      console.error('Get buyer offers failed:', error);
+      res.status(500).json({ error: 'Failed to get offers' });
+    }
+  });
+
+  // Get offers received by a seller
+  app.get('/api/offers/seller/:sellerAddress', async (req, res) => {
+    try {
+      const { sellerAddress } = req.params;
+      
+      if (!isValidIdentifier(sellerAddress)) {
+        return res.status(400).json({ error: 'Invalid address' });
+      }
+      
+      const offers = await storage.getOffersBySeller(sellerAddress);
+      res.json({ offers });
+    } catch (error) {
+      console.error('Get seller offers failed:', error);
+      res.status(500).json({ error: 'Failed to get offers' });
+    }
+  });
+
+  // Update offer status (accept, cancel, complete)
+  app.patch('/api/offers/:offerId/status', writeLimiter, async (req, res) => {
+    try {
+      const { offerId } = req.params;
+      const { status, transactionHash, walletAddress } = req.body;
+      
+      if (!['accepted', 'cancelled', 'completed', 'expired'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
+      
+      const offer = await storage.getOfferById(Number(offerId));
+      if (!offer) {
+        return res.status(404).json({ error: 'Offer not found' });
+      }
+      
+      if (status === 'cancelled' && offer.buyerAddress.toLowerCase() !== walletAddress?.toLowerCase()) {
+        return res.status(403).json({ error: 'Only buyer can cancel offer' });
+      }
+      
+      const updated = await storage.updateOfferStatus(Number(offerId), status, transactionHash);
+      res.json({ success: true, offer: updated });
+    } catch (error) {
+      console.error('Update offer status failed:', error);
+      res.status(500).json({ error: 'Failed to update offer' });
+    }
+  });
+
+  // Get all active offers for a collection
+  app.get('/api/offers/collection/:collectionAddress', async (req, res) => {
+    try {
+      const { collectionAddress } = req.params;
+      
+      if (!isValidIdentifier(collectionAddress)) {
+        return res.status(400).json({ error: 'Invalid collection address' });
+      }
+      
+      const offers = await storage.getActiveOffers(collectionAddress);
+      res.json({ offers });
+    } catch (error) {
+      console.error('Get collection offers failed:', error);
+      res.status(500).json({ error: 'Failed to get offers' });
+    }
+  });
+
+  // ============================================
+  // MARKETPLACE OVERHAUL: Listings API
+  // ============================================
+
+  // Get active listings
+  app.get('/api/marketplace/listings', async (req, res) => {
+    try {
+      const { collectionAddress } = req.query;
+      
+      const listings = await storage.getActiveListings(
+        typeof collectionAddress === 'string' ? collectionAddress : undefined
+      );
+      res.json({ listings });
+    } catch (error) {
+      console.error('Get listings failed:', error);
+      res.status(500).json({ error: 'Failed to get listings' });
+    }
+  });
+
+  // Get listing for specific token
+  app.get('/api/marketplace/listing/:collectionAddress/:tokenId', async (req, res) => {
+    try {
+      const { collectionAddress, tokenId } = req.params;
+      
+      if (!isValidIdentifier(collectionAddress)) {
+        return res.status(400).json({ error: 'Invalid collection address' });
+      }
+      
+      const listing = await storage.getListingByToken(collectionAddress, Number(tokenId));
+      res.json({ listing: listing || null });
+    } catch (error) {
+      console.error('Get listing failed:', error);
+      res.status(500).json({ error: 'Failed to get listing' });
+    }
+  });
+
+  // Batch marketplace summary (listings + offers for multiple tokens)
+  app.get('/api/marketplace/summary', async (req, res) => {
+    try {
+      const { tokenIds, collectionAddress } = req.query;
+      
+      if (!collectionAddress || typeof collectionAddress !== 'string') {
+        return res.status(400).json({ error: 'Collection address required' });
+      }
+      
+      if (!isValidIdentifier(collectionAddress)) {
+        return res.status(400).json({ error: 'Invalid collection address' });
+      }
+      
+      let tokenIdArray: number[] = [];
+      if (typeof tokenIds === 'string') {
+        tokenIdArray = tokenIds.split(',').map(id => Number(id.trim())).filter(id => !isNaN(id));
+      }
+      
+      if (tokenIdArray.length === 0) {
+        return res.status(400).json({ error: 'Token IDs required' });
+      }
+      
+      if (tokenIdArray.length > 100) {
+        return res.status(400).json({ error: 'Maximum 100 tokens per request' });
+      }
+      
+      const summary = await storage.getMarketplaceSummary(tokenIdArray, collectionAddress);
+      res.json(summary);
+    } catch (error) {
+      console.error('Get marketplace summary failed:', error);
+      res.status(500).json({ error: 'Failed to get summary' });
+    }
+  });
+
+  // Cleanup expired offers (can be called by cron or manually)
+  app.post('/api/offers/cleanup', async (_req, res) => {
+    try {
+      const count = await storage.cleanupExpiredOffers();
+      res.json({ success: true, expiredCount: count });
+    } catch (error) {
+      console.error('Cleanup offers failed:', error);
+      res.status(500).json({ error: 'Failed to cleanup offers' });
+    }
+  });
+
   return httpServer;
 }
