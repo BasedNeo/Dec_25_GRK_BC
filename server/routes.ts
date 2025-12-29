@@ -74,6 +74,10 @@ const FEEDBACK_EMAIL = "team@BasedGuardians.trade";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN_placeholder_key_for_development';
 
+// GOVERNANCE OVERHAUL — Codex Audit Fix: NFT contract and RPC for ownership verification
+const NFT_CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS || '0xaE51dc5fD1499A129f8654963560f9340773ad59';
+const RPC_URL = process.env.RPC_URL || 'https://mainnet.basedaibridge.com/rpc/';
+
 // Ethereum address validation regex (checksummed or lowercase)
 const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
@@ -1026,35 +1030,37 @@ export async function registerRoutes(
     }
   });
 
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Soft-delete with audit trail
   app.delete("/api/proposals/:id", writeLimiter, async (req, res) => {
     try {
       const { walletAddress, confirmations } = req.body;
 
       if (!ADMIN_WALLETS.includes(walletAddress?.toLowerCase())) {
-        return res.status(403).json({ error: "Only admins can delete proposals" });
+        return res.status(403).json({ error: "Only admins can cancel proposals" });
       }
 
       if (confirmations !== 3) {
-        return res.status(400).json({ error: "Must confirm deletion 3 times" });
+        return res.status(400).json({ error: "Must confirm cancellation 3 times" });
       }
 
-      const success = await storage.deleteProposal(req.params.id);
+      const success = await storage.deleteProposal(req.params.id, walletAddress);
       if (!success) {
-        return res.status(500).json({ error: "Failed to delete proposal" });
+        return res.status(500).json({ error: "Failed to cancel proposal" });
       }
 
-      console.log(`[Proposals] Deleted proposal #${req.params.id} by ${walletAddress}`);
+      console.log(`[Proposals] Cancelled proposal #${req.params.id} by ${walletAddress}`);
       return res.json({ success: true });
     } catch (error) {
-      console.error("[Proposals] Error deleting:", error);
-      return res.status(500).json({ error: "Failed to delete proposal" });
+      console.error("[Proposals] Error cancelling:", error);
+      return res.status(500).json({ error: "Failed to cancel proposal" });
     }
   });
 
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Per-NFT voting with ownership validation
   app.post("/api/proposals/:id/vote", writeLimiter, async (req, res) => {
     try {
       const proposalId = req.params.id;
-      const { voter, vote, votingPower } = req.body;
+      const { voter, vote, nftIds } = req.body;
 
       if (!voter || !vote) {
         return res.status(400).json({ error: "Missing voter or vote" });
@@ -1062,6 +1068,11 @@ export async function registerRoutes(
 
       if (vote !== 'for' && vote !== 'against') {
         return res.status(400).json({ error: "Vote must be 'for' or 'against'" });
+      }
+
+      // GOVERNANCE OVERHAUL — Codex Audit Fix: nftIds required for voting
+      if (!nftIds || !Array.isArray(nftIds) || nftIds.length === 0) {
+        return res.status(400).json({ error: "Must provide NFT IDs to vote with" });
       }
 
       const proposal = await storage.getProposalById(proposalId);
@@ -1077,15 +1088,59 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Voting period has ended" });
       }
 
-      const nftBalance = votingPower || 1;
+      // Get NFTs that have already voted on this proposal
+      const votedNfts = await storage.getVotedNfts(proposalId);
+      const votedNftsSet = new Set(votedNfts);
       
-      const success = await storage.castVote(proposalId, voter, vote, nftBalance);
-      if (!success) {
-        return res.status(500).json({ error: "Failed to cast vote" });
+      // Validate NFT ownership and filter out already-voted NFTs
+      const validNftIds: number[] = [];
+      const errors: string[] = [];
+      
+      for (const nftId of nftIds) {
+        const numId = Number(nftId);
+        
+        // Check if NFT already voted
+        if (votedNftsSet.has(numId)) {
+          errors.push(`NFT #${numId} has already voted`);
+          continue;
+        }
+        
+        // Verify ownership on-chain
+        const isOwned = await WalletScanner.verifyNftOwnership(
+          voter,
+          NFT_CONTRACT_ADDRESS,
+          numId,
+          RPC_URL
+        );
+        
+        if (!isOwned) {
+          errors.push(`NFT #${numId} not owned by voter`);
+          continue;
+        }
+        
+        validNftIds.push(numId);
+      }
+      
+      if (validNftIds.length === 0) {
+        return res.status(400).json({ 
+          error: "No valid NFTs to vote with", 
+          details: errors 
+        });
+      }
+      
+      // Cast one vote per NFT
+      let successCount = 0;
+      for (const nftId of validNftIds) {
+        const success = await storage.castVote(proposalId, voter, vote, 1, nftId);
+        if (success) successCount++;
       }
 
-      console.log(`[Proposals] ${voter} voted ${vote} on proposal #${proposalId}`);
-      return res.json({ success: true });
+      console.log(`[Proposals] ${voter} voted ${vote} on proposal #${proposalId} with ${successCount} NFTs`);
+      return res.json({ 
+        success: true, 
+        votescast: successCount,
+        errors: errors.length > 0 ? errors : undefined
+      });
     } catch (error) {
       console.error("[Proposals] Error voting:", error);
       return res.status(500).json({ error: "Failed to cast vote" });
@@ -3276,7 +3331,6 @@ export async function registerRoutes(
           earned,
           dailyTotal: points.dailyEarned,
           dailyCap: points.dailyCap,
-          globalDailyTotal,
           totalEarned: result.totalEarned,
           brainXProgress: result.brainXProgress
         });
