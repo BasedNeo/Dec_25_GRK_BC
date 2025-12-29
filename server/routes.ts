@@ -3779,9 +3779,13 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'You have an active race. Finish it first.' });
       }
 
-      // Check craft ownership
+      // ADMIN TESTING ONLY: Bypass craft ownership for baseline ship
+      // NOTE: This trusts walletAddress from request. For production, verify via signature.
+      // Remove this bypass after testing is complete.
+      const isAdmin = ADMIN_WALLETS.includes(walletAddress.toLowerCase());
+      const adminBypass = isAdmin && craftId === 'neon_fox';
       const owned = await storage.hasInfinityCraft(walletAddress, craftId);
-      if (!owned) {
+      if (!owned && !adminBypass) {
         return res.status(403).json({ error: 'You do not own this craft' });
       }
 

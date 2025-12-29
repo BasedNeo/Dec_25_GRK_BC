@@ -953,12 +953,12 @@ export default function InfinityRace() {
                 </Button>
                 <Button
                   onClick={() => setGamePhase('select')}
-                  disabled={!raceState || raceState.crafts.length === 0}
+                  disabled={!raceState || (raceState.crafts.length === 0 && !isAdminTesting)}
                   className="px-12 font-orbitron bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_30px_rgba(0,255,255,0.3)] disabled:opacity-50"
                   data-testid="button-select-craft"
                 >
                   <Rocket className="w-5 h-5 mr-2" />
-                  {raceState?.crafts.length === 0 ? 'Buy a Craft First' : 'Select Craft'}
+                  {raceState?.crafts.length === 0 && !isAdminTesting ? 'Buy a Craft First' : 'Select Craft'}
                 </Button>
               </div>
               

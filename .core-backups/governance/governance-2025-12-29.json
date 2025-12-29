@@ -1,0 +1,84 @@
+{
+  "snapshotDate": "2025-12-29",
+  "createdAt": "2025-12-29T05:00:00.043Z",
+  "totalProposals": 3,
+  "totalVotes": 3,
+  "totalLedgerEntries": 0,
+  "proposals": [
+    {
+      "id": "1d50a2b9-57d4-4733-b908-4c8e03ef54a9",
+      "title": "Monthly Charity Initiative",
+      "description": "Vote to dedicate 1% of monthly sales royalties to Destiny Rescue for their humanitarian mission. This aligns with our Humanitarian Horizon goals.",
+      "proposer": "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
+      "status": "active",
+      "votesFor": 1,
+      "votesAgainst": 0,
+      "startDate": "2025-12-19T19:19:53.727Z",
+      "endDate": "2026-01-02T19:19:53.727Z",
+      "category": "community",
+      "requiredQuorum": 5,
+      "createdAt": "2025-12-19T19:19:53.727Z",
+      "updatedAt": "2025-12-21T19:40:10.120Z"
+    },
+    {
+      "id": "c45a6bb4-7395-48d6-a746-607aad677a68",
+      "title": "Race-to-Base Game Dev",
+      "description": "Our Race-to-Base game is meant to use AI agents in a 3D game that's nothing like the mini-games we have now and our development on this could take reasonable time as we plan to make it multi-chain to merge with other communities. If we could release the game faster but limited it to just BasedAI L1, would you rather this than a longer release timeline to be multi-chain?",
+      "proposer": "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
+      "status": "active",
+      "votesFor": 1,
+      "votesAgainst": 0,
+      "startDate": "2025-12-19T19:19:53.727Z",
+      "endDate": "2025-12-29T19:19:53.727Z",
+      "category": "features",
+      "requiredQuorum": 15,
+      "createdAt": "2025-12-19T19:19:53.727Z",
+      "updatedAt": "2025-12-21T19:40:14.485Z"
+    },
+    {
+      "id": "71003b25-9d55-4c45-bbc8-3d0fe6064e3c",
+      "title": "NFT Related Gaming",
+      "description": "Make all games able to be played without NFT but Non-NFT holders do not earn points.",
+      "proposer": "0xae543104fdbe456478e19894f7f0e01f0971c9b4",
+      "status": "active",
+      "votesFor": 1,
+      "votesAgainst": 0,
+      "startDate": "2025-12-19T19:19:53.727Z",
+      "endDate": "2026-01-09T23:40:14.689Z",
+      "category": "features",
+      "requiredQuorum": 10,
+      "createdAt": "2025-12-19T19:19:53.727Z",
+      "updatedAt": "2025-12-26T23:40:14.689Z"
+    }
+  ],
+  "votes": [
+    {
+      "id": "bfe1c564-7a59-43f0-bf49-94d45031604b",
+      "proposalId": "1d50a2b9-57d4-4733-b908-4c8e03ef54a9",
+      "walletAddress": "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
+      "nftId": null,
+      "selectedOption": "for",
+      "votingPower": 1,
+      "createdAt": "2025-12-21T19:40:10.095Z"
+    },
+    {
+      "id": "de1d4a97-2e5d-44bb-96e1-0ba870b650a1",
+      "proposalId": "c45a6bb4-7395-48d6-a746-607aad677a68",
+      "walletAddress": "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
+      "nftId": null,
+      "selectedOption": "for",
+      "votingPower": 1,
+      "createdAt": "2025-12-21T19:40:14.480Z"
+    },
+    {
+      "id": "b4733ed5-ef94-4a01-a76e-4e1489e6ed2c",
+      "proposalId": "71003b25-9d55-4c45-bbc8-3d0fe6064e3c",
+      "walletAddress": "0xbba49256a93a06fcf3b0681fead2b4e3042b9124",
+      "nftId": null,
+      "selectedOption": "for",
+      "votingPower": 1,
+      "createdAt": "2025-12-21T19:40:35.909Z"
+    }
+  ],
+  "ledger": []
+}
