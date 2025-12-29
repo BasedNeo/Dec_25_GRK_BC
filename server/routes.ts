@@ -44,6 +44,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { ethers } from "ethers";
 import { WalletScanner } from './lib/walletScanner';
+import { ECONOMY, VALID_GAMES, isValidAction, getActionPoints, GameType } from "@shared/economy";
 import crypto from "crypto";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -3272,19 +3273,9 @@ export async function registerRoutes(
 
   app.post('/api/points/earn', gameLimiter, async (req, res) => {
     try {
-      const VALID_GAMES = ['riddle-quest', 'creature-command', 'retro-defender', 'infinity-race', 'guardian-defense'] as const;
-      
-      const VALID_ACTIONS: Record<string, string[]> = {
-        'riddle-quest': ['riddle', 'challenge'],
-        'creature-command': ['wave', 'lairs'],
-        'retro-defender': ['pad', 'task'],
-        'infinity-race': ['race_win', 'race_partial', 'brainx_award'],
-        'guardian-defense': ['wave', 'lairs', 'combo']
-      };
-
       const earnSchema = z.object({
         walletAddress: z.string().refine(isValidIdentifier, 'Invalid wallet/session ID'),
-        game: z.enum(VALID_GAMES),
+        game: z.enum(VALID_GAMES as unknown as [string, ...string[]]),
         action: z.string().min(1).max(50)
       });
 
@@ -3295,8 +3286,7 @@ export async function registerRoutes(
 
       const { walletAddress, game, action } = parsed.data;
 
-      const validActions = VALID_ACTIONS[game];
-      if (!validActions?.includes(action)) {
+      if (!isValidAction(game as GameType, action)) {
         return res.status(400).json({ error: `Invalid action '${action}' for game '${game}'` });
       }
 
@@ -3317,12 +3307,12 @@ export async function registerRoutes(
         dailyTotal: points.dailyEarned,
         dailyCap: points.dailyCap,
         globalDailyTotal,
-        globalDailyCap: 500,
+        globalDailyCap: ECONOMY.GLOBAL_DAILY_CAP,
         capped,
         globalCapped,
         totalEarned: summary?.totalEarned || earned,
         vestedBrainX,
-        brainXProgress: summary ? ((summary.totalEarned - summary.totalVested) / 10000) * 100 : 0
+        brainXProgress: summary ? ((summary.totalEarned - summary.totalVested) / ECONOMY.VESTING_THRESHOLD) * 100 : 0
       };
 
       if (earned > 0) {
@@ -3332,7 +3322,8 @@ export async function registerRoutes(
           dailyTotal: points.dailyEarned,
           dailyCap: points.dailyCap,
           totalEarned: result.totalEarned,
-          brainXProgress: result.brainXProgress
+          brainXProgress: result.brainXProgress,
+          globalDailyTotal
         });
       }
 

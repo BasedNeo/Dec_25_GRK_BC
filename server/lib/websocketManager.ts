@@ -222,6 +222,7 @@ export class WebSocketManager {
     dailyCap: number;
     totalEarned: number;
     brainXProgress: number;
+    globalDailyTotal: number;
   }): void {
     this.broadcastToWallet(walletAddress, {
       type: 'points_update',

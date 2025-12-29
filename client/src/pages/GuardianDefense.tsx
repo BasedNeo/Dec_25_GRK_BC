@@ -818,7 +818,7 @@ export default function GuardianDefense() {
       trackEvent('game_complete', 'Game', `Guardian Defense - Stage ${state.currentStage} Wave ${state.stageWave} - ${finalScore} pts`);
       
       if (economyPoints > 0) {
-        earnEconomyPoints('creature-command', won ? 'lairs' : 'wave', economyPoints);
+        earnEconomyPoints('guardian-defense', won ? 'lairs' : 'wave');
       }
       
       // Log activity
@@ -1061,7 +1061,7 @@ export default function GuardianDefense() {
             if (checkAndAwardChallenge()) {
               addScore(state, 50, false);
               createScorePopup('🏆 DAILY CHALLENGE! +50', CANVAS_WIDTH / 2, 100, '#fbbf24', true);
-              earnPoints(0, 20);
+              earnEconomyPoints('guardian-defense', 'combo');
             }
           } else {
             playSound('hit');
@@ -1110,7 +1110,7 @@ export default function GuardianDefense() {
         });
       }
     });
-  }, [createExplosion, createScorePopup, playSound, toast, abilityModifiers.piercingCount, abilityModifiers.shieldReduction, abilityModifiers.explosionRadiusMultiplier, incrementSurvives, checkAndAwardChallenge, earnPoints]);
+  }, [createExplosion, createScorePopup, playSound, toast, abilityModifiers.piercingCount, abilityModifiers.shieldReduction, abilityModifiers.explosionRadiusMultiplier, incrementSurvives, checkAndAwardChallenge, earnEconomyPoints]);
 
   const update = useCallback((deltaMs: number) => {
     if (gameOver) return;
@@ -1235,7 +1235,9 @@ export default function GuardianDefense() {
       const actualWavePoints = addScore(state, completionBonus, false);
       
       const comboPoints = Math.min(Math.floor(finalWaveCombo / 3), 15);
-      earnPoints(1, comboPoints);
+      if (comboPoints > 0) {
+        earnEconomyPoints('guardian-defense', 'combo');
+      }
       
       // Log wave survived activity
       if (address) {
@@ -1319,7 +1321,7 @@ export default function GuardianDefense() {
         }
       }, isStageComplete ? 3000 : 1500);
     }
-  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnPoints, earnLairPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
+  }, [gameOver, spawnShootingStar, checkCollisions, createExplosion, createScorePopup, spawnWave, toast, endGame, earnEconomyPoints, earnLairPoints, abilityModifiers.regenChance, abilityModifiers.explosionRadiusMultiplier, abilityModifiers.slowFieldStrength, playSound]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
