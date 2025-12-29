@@ -2,6 +2,7 @@ import * as cron from 'node-cron';
 import { DatabaseBackupService } from '../../script/backup-database';
 import { pointsBackupService } from './pointsBackupService';
 import { activityBackupService } from './activityBackupService';
+import { governanceBackupService } from './governanceBackupService';
 
 export class BackupScheduler {
   private static service: DatabaseBackupService;
@@ -73,6 +74,27 @@ export class BackupScheduler {
     });
     
     this.jobs.set('activity-snapshot', activityJob);
+    
+    // GOVERNANCE OVERHAUL — Codex Audit Fix: Daily governance backup
+    const governanceSnapshotSchedule = process.env.GOVERNANCE_SNAPSHOT_SCHEDULE || '0 5 * * *';
+    
+    console.log(`[BACKUP SCHEDULER] Scheduling governance snapshots: ${governanceSnapshotSchedule}`);
+    
+    const governanceJob = cron.schedule(governanceSnapshotSchedule, async () => {
+      console.log('[BACKUP SCHEDULER] Running governance snapshot...');
+      try {
+        const result = await governanceBackupService.createDailySnapshot();
+        if (result.success) {
+          console.log(`[BACKUP SCHEDULER] Governance snapshot completed: ${result.filePath}`);
+        } else {
+          console.error(`[BACKUP SCHEDULER] Governance snapshot failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('[BACKUP SCHEDULER] Governance snapshot failed:', error);
+      }
+    });
+    
+    this.jobs.set('governance-snapshot', governanceJob);
     this.initialized = true;
     
     console.log('[BACKUP SCHEDULER] Initialized (backups will run on schedule only)');
