@@ -590,7 +590,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="md:hidden bg-gradient-to-b from-black/98 to-black/95 border-b border-cyan-500/10 backdrop-blur-2xl"
           >
-            <div className="px-6 pt-4 pb-10 space-y-2 flex flex-col items-center">
+            <div className="px-4 pt-3 pb-6 space-y-1.5 flex flex-col items-center">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -616,7 +616,7 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                     }
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full py-4 font-orbitron text-sm tracking-[0.2em] text-center rounded-xl transition-all duration-200 ${
+                  className={`w-full py-3 font-orbitron text-xs tracking-[0.2em] text-center rounded-lg transition-all duration-200 ${
                     activeTab === item.id 
                       ? 'text-cyan-400 bg-gradient-to-r from-cyan-500/15 via-cyan-400/10 to-transparent border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.1)]' 
                       : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -627,25 +627,21 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
               ))}
               
               
-              <div className="w-full flex flex-col items-center gap-4 pt-6 border-t border-white/5 mt-4">
+              <div className="w-full flex flex-col items-center gap-3 pt-4 border-t border-white/5 mt-3">
                 <NotificationBell />
                 <NotificationSettings />
                 <ConnectButton.Custom>
                   {({
                     account,
-                    chain,
+                    chain: rkChain,
                     openChainModal,
                     openConnectModal,
                     authenticationStatus,
                     mounted,
                   }) => {
                     const ready = mounted && authenticationStatus !== 'loading';
-                    const connected =
-                      ready &&
-                      account &&
-                      chain &&
-                      (!authenticationStatus ||
-                        authenticationStatus === 'authenticated');
+                    // Use wagmiConnected for reliable state, but respect RainbowKit's mounted guard
+                    const connected = ready && wagmiConnected;
 
                     return (
                       <div
@@ -659,119 +655,113 @@ export function Navbar({ activeTab, onTabChange, isConnected }: NavbarProps) {
                           },
                         })}
                       >
-                        {(() => {
-                          if (!connected) {
-                            // Mobile: Show custom wallet picker
-                            if (isMobile) {
-                              return (
-                                <div className="w-full space-y-3">
-                                  {!showMobileWalletPicker ? (
-                                    <Button 
-                                      onClick={() => setShowMobileWalletPicker(true)} 
-                                      className="w-full h-14 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0 flex items-center justify-center gap-2"
-                                      data-testid="button-mobile-connect-wallet"
-                                    >
-                                      <Wallet size={18} />
-                                      CONNECT WALLET
-                                    </Button>
-                                  ) : (
-                                    <motion.div
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      className="w-full space-y-3"
-                                    >
-                                      <p className="text-center text-white/70 text-sm font-rajdhani mb-4">
-                                        Choose your wallet
-                                      </p>
-                                      {MOBILE_WALLETS.map((wallet) => (
-                                        <button
-                                          key={wallet.id}
-                                          onClick={() => handleMobileWalletConnect(wallet.id)}
-                                          disabled={isConnecting}
-                                          className="w-full h-16 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-between px-5 disabled:opacity-50"
-                                          style={{ 
-                                            borderColor: `${wallet.color}40`,
-                                            touchAction: 'manipulation'
-                                          }}
-                                          data-testid={`button-wallet-${wallet.id}`}
-                                        >
-                                          <div className="flex items-center gap-4">
-                                            <span className="text-2xl">{wallet.icon}</span>
-                                            <span className="text-white font-orbitron text-sm tracking-wider">
-                                              {wallet.name}
-                                            </span>
-                                          </div>
-                                          <ExternalLink size={16} className="text-white/40" />
-                                        </button>
-                                      ))}
-                                      <Button
-                                        onClick={() => setShowMobileWalletPicker(false)}
-                                        variant="ghost"
-                                        className="w-full text-white/50 hover:text-white hover:bg-white/5 mt-2"
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </motion.div>
-                                  )}
-                                </div>
-                              );
-                            }
+                        {connected ? (
+                          <div className="w-full space-y-2">
+                            {/* Wallet Address Display */}
+                            <div className="w-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-3 text-center">
+                              <p className="text-xs text-white/50 font-rajdhani mb-1">Connected Wallet</p>
+                              <p className="text-cyan-400 font-orbitron text-sm tracking-wider">
+                                {account?.displayName || (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected')}
+                              </p>
+                            </div>
                             
-                            // Desktop: Use standard RainbowKit modal
-                            return (
+                            {/* Wrong Network Warning */}
+                            {(rkChain?.unsupported || isWrongNetwork) && (
+                              <Button 
+                                onClick={openChainModal}
+                                className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-xs tracking-wider rounded-xl px-4 py-2"
+                              >
+                                Switch to BasedAI
+                              </Button>
+                            )}
+                            
+                            {/* Disconnect Button */}
+                            <Button 
+                              onClick={() => {
+                                disconnect();
+                                setIsMobileMenuOpen(false);
+                                showToast("Wallet disconnected", "info");
+                              }}
+                              className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-xs tracking-[0.1em] px-4 py-2 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+                              data-testid="button-mobile-disconnect"
+                            >
+                              <LogOut size={14} />
+                              DISCONNECT WALLET
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            {isMobile ? (
+                              <div className="w-full space-y-2">
+                                {!showMobileWalletPicker ? (
+                                  <Button 
+                                    onClick={() => setShowMobileWalletPicker(true)} 
+                                    className="w-full h-12 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-xs tracking-[0.15em] px-6 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0 flex items-center justify-center gap-2"
+                                    data-testid="button-mobile-connect-wallet"
+                                  >
+                                    <Wallet size={16} />
+                                    CONNECT WALLET
+                                  </Button>
+                                ) : (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="w-full space-y-2"
+                                  >
+                                    <p className="text-center text-white/70 text-xs font-rajdhani mb-2">
+                                      Choose your wallet
+                                    </p>
+                                    {MOBILE_WALLETS.map((wallet) => (
+                                      <button
+                                        key={wallet.id}
+                                        onClick={() => handleMobileWalletConnect(wallet.id)}
+                                        disabled={isConnecting}
+                                        className="w-full h-12 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-between px-4 disabled:opacity-50"
+                                        style={{ 
+                                          borderColor: `${wallet.color}40`,
+                                          touchAction: 'manipulation'
+                                        }}
+                                        data-testid={`button-wallet-${wallet.id}`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-xl">{wallet.icon}</span>
+                                          <span className="text-white font-orbitron text-xs tracking-wider">
+                                            {wallet.name}
+                                          </span>
+                                        </div>
+                                        <ExternalLink size={14} className="text-white/40" />
+                                      </button>
+                                    ))}
+                                    <Button
+                                      onClick={() => setShowMobileWalletPicker(false)}
+                                      variant="ghost"
+                                      className="w-full text-white/50 hover:text-white hover:bg-white/5 mt-1 text-xs"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </motion.div>
+                                )}
+                              </div>
+                            ) : (
                               <Button 
                                 onClick={() => {
                                   console.log('[WalletConnect] Mobile menu connect clicked at:', Date.now());
                                   openConnectModal();
                                 }}
                                 disabled={isConnectPending}
-                                className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-sm tracking-[0.15em] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
+                                className="w-full h-12 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-orbitron text-xs tracking-[0.15em] px-6 rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(0,255,255,0.6)] hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 border-0"
                                 data-testid="button-mobile-connect-wallet"
                               >
                                 {isConnectPending ? (
                                   <span className="flex items-center justify-center gap-2">
-                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                    <span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                                     CONNECTING...
                                   </span>
                                 ) : 'CONNECT WALLET'}
                               </Button>
-                            );
-                          }
-
-                          if (chain.unsupported) {
-                            return (
-                              <Button onClick={openChainModal} className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-wider rounded-xl px-6 py-3">
-                                Wrong network
-                              </Button>
-                            );
-                          }
-
-                          return (
-                            <div className="w-full space-y-3">
-                              {/* Wallet Address Display */}
-                              <div className="w-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-4 text-center">
-                                <p className="text-xs text-white/50 font-rajdhani mb-1">Connected Wallet</p>
-                                <p className="text-cyan-400 font-orbitron text-sm tracking-wider">
-                                  {account.displayName}
-                                </p>
-                              </div>
-                              
-                              {/* Disconnect Button */}
-                              <Button 
-                                onClick={() => {
-                                  disconnect();
-                                  setIsMobileMenuOpen(false);
-                                  showToast("Wallet disconnected", "info");
-                                }}
-                                className="w-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-orbitron text-sm tracking-[0.1em] px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
-                                data-testid="button-mobile-disconnect"
-                              >
-                                <LogOut size={16} />
-                                DISCONNECT
-                              </Button>
-                            </div>
-                          );
-                        })()}
+                            )}
+                          </>
+                        )}
                       </div>
                     );
                   }}
