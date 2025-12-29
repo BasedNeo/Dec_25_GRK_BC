@@ -155,16 +155,21 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
 
+// GOVERNANCE OVERHAUL — Codex Audit Fix: Added nftId for per-NFT voting
+// Note: nftId is nullable initially for legacy vote migration, will be enforced via app logic
 export const proposalVotes = pgTable("proposal_votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   proposalId: varchar("proposal_id").notNull(),
   walletAddress: text("wallet_address").notNull(),
+  nftId: integer("nft_id"), // GOVERNANCE OVERHAUL — Codex Audit Fix: 1 NFT = 1 vote (nullable for legacy)
   selectedOption: varchar("selected_option", { length: 20 }).notNull(),
   votingPower: integer("voting_power").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-  uniqueVote: uniqueIndex("unique_vote_per_proposal").on(table.proposalId, table.walletAddress),
-}));
+}, (table) => [
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Unique vote per NFT per proposal (legacy votes have null nftId)
+  index("proposal_votes_nft_idx").on(table.proposalId, table.nftId),
+  index("proposal_votes_wallet_idx").on(table.walletAddress),
+]);
 
 export const insertVoteSchema = createInsertSchema(proposalVotes).omit({
   id: true,
@@ -173,6 +178,30 @@ export const insertVoteSchema = createInsertSchema(proposalVotes).omit({
 
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 export type Vote = typeof proposalVotes.$inferSelect;
+
+// GOVERNANCE OVERHAUL — Codex Audit Fix: Governance ledger for audit trail
+export const governanceLedger = pgTable("governance_ledger", {
+  id: serial("id").primaryKey(),
+  proposalId: varchar("proposal_id").notNull(),
+  walletAddress: text("wallet_address").notNull(),
+  nftId: integer("nft_id"),
+  voteType: varchar("vote_type", { length: 20 }), // 'for' | 'against' | null for non-vote events
+  eventType: varchar("event_type", { length: 30 }).notNull(), // 'proposal_created' | 'vote_cast' | 'proposal_cancelled' | 'vote_revoked'
+  metadata: text("metadata"), // JSON string for additional context
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("governance_ledger_proposal_idx").on(table.proposalId),
+  index("governance_ledger_wallet_idx").on(table.walletAddress),
+  index("governance_ledger_created_idx").on(table.createdAt),
+]);
+
+export const insertGovernanceLedgerSchema = createInsertSchema(governanceLedger).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGovernanceLedger = z.infer<typeof insertGovernanceLedgerSchema>;
+export type GovernanceLedger = typeof governanceLedger.$inferSelect;
 
 export const gameScores = pgTable("game_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
