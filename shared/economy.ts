@@ -30,15 +30,15 @@ export const ECONOMY = {
       actions: {
         race_win: 50,
         race_partial: 10,
-        brainx_award: 0
+        brainx_award: 100
       }
     },
     'guardian-defense': {
       dailyCap: 500,
       actions: {
-        wave: 100,
+        wave: 10,
         lairs: 50,
-        combo: 10
+        combo: 25
       }
     }
   }
