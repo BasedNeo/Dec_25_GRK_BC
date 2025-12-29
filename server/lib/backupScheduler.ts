@@ -3,6 +3,7 @@ import { DatabaseBackupService } from '../../script/backup-database';
 import { pointsBackupService } from './pointsBackupService';
 import { activityBackupService } from './activityBackupService';
 import { governanceBackupService } from './governanceBackupService';
+import { treasuryBackupService } from './treasuryBackupService';
 
 export class BackupScheduler {
   private static service: DatabaseBackupService;
@@ -95,6 +96,27 @@ export class BackupScheduler {
     });
     
     this.jobs.set('governance-snapshot', governanceJob);
+    
+    // TREASURY OVERHAUL: Daily treasury backup
+    const treasurySnapshotSchedule = process.env.TREASURY_SNAPSHOT_SCHEDULE || '0 6 * * *';
+    
+    console.log(`[BACKUP SCHEDULER] Scheduling treasury snapshots: ${treasurySnapshotSchedule}`);
+    
+    const treasuryJob = cron.schedule(treasurySnapshotSchedule, async () => {
+      console.log('[BACKUP SCHEDULER] Running treasury snapshot...');
+      try {
+        const result = await treasuryBackupService.createDailySnapshot();
+        if (result.success) {
+          console.log(`[BACKUP SCHEDULER] Treasury snapshot completed: ${result.filePath}`);
+        } else {
+          console.error(`[BACKUP SCHEDULER] Treasury snapshot failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('[BACKUP SCHEDULER] Treasury snapshot failed:', error);
+      }
+    });
+    
+    this.jobs.set('treasury-snapshot', treasuryJob);
     this.initialized = true;
     
     console.log('[BACKUP SCHEDULER] Initialized (backups will run on schedule only)');

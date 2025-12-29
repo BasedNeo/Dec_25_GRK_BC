@@ -1,0 +1,21 @@
+{
+  "date": "2025-12-29",
+  "mintedCount": 9,
+  "mintRevenue": 318637,
+  "royaltyRevenue": 0,
+  "emissionsRevenue": 180600,
+  "platformFees": 0,
+  "totalTreasury": 499237,
+  "backedValuePerNFT": 55470,
+  "daysElapsed": 28,
+  "timestamp": "2025-12-29T02:55:33.166Z",
+  "source": "cached",
+  "config": {
+    "mintPrice": 69420,
+    "mintTreasuryPercent": 51,
+    "royaltyTreasuryPercent": 2,
+    "emissionsDailyTotal": 64500,
+    "emissionsTreasuryPercent": 10,
+    "platformFeePercent": 1
+  }
+}

@@ -4155,5 +4155,84 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // TREASURY API ROUTES
+  // ============================================
+
+  const { treasuryBackupService, TREASURY_CONFIG } = await import('./lib/treasuryBackupService');
+
+  /**
+   * GET /api/treasury/summary
+   * Returns complete treasury summary with server-side calculations
+   */
+  app.get('/api/treasury/summary', async (req, res) => {
+    try {
+      const salesVolume = Number(req.query.salesVolume) || 0;
+      const summary = await treasuryBackupService.calculateTreasurySummary(salesVolume);
+      
+      res.json({
+        ...summary,
+        config: {
+          mintPrice: TREASURY_CONFIG.MINT_PRICE,
+          mintTreasuryPercent: TREASURY_CONFIG.MINT_TREASURY_PERCENT,
+          royaltyTreasuryPercent: TREASURY_CONFIG.ROYALTY_TREASURY_PERCENT,
+          totalRoyaltyPercent: TREASURY_CONFIG.TOTAL_ROYALTY_PERCENT,
+          emissionsDailyTotal: TREASURY_CONFIG.EMISSIONS_DAILY,
+          emissionsTreasuryPercent: TREASURY_CONFIG.EMISSIONS_TREASURY_PERCENT,
+          platformFeePercent: TREASURY_CONFIG.PLATFORM_FEE_PERCENT,
+        }
+      });
+    } catch (error) {
+      console.error('Treasury summary failed:', error);
+      res.status(500).json({ error: 'Failed to get treasury summary' });
+    }
+  });
+
+  /**
+   * GET /api/treasury/snapshots
+   * Returns historical treasury snapshots from backups
+   */
+  app.get('/api/treasury/snapshots', async (_req, res) => {
+    try {
+      const snapshots = treasuryBackupService.getSnapshots();
+      res.json({ snapshots });
+    } catch (error) {
+      console.error('Treasury snapshots failed:', error);
+      res.status(500).json({ error: 'Failed to get treasury snapshots' });
+    }
+  });
+
+  /**
+   * POST /api/treasury/snapshot
+   * Manually trigger a treasury snapshot
+   */
+  app.post('/api/treasury/snapshot', async (_req, res) => {
+    try {
+      const result = await treasuryBackupService.createDailySnapshot();
+      if (result.success) {
+        res.json({ success: true, filePath: result.filePath });
+      } else {
+        res.status(500).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      console.error('Treasury snapshot creation failed:', error);
+      res.status(500).json({ error: 'Failed to create treasury snapshot' });
+    }
+  });
+
+  /**
+   * GET /api/mint/count
+   * Returns on-chain minted NFT count (cached 5min)
+   */
+  app.get('/api/mint/count', async (_req, res) => {
+    try {
+      const { count, source } = await treasuryBackupService.getMintedCount();
+      res.json({ mintedCount: count, source });
+    } catch (error) {
+      console.error('Mint count failed:', error);
+      res.status(500).json({ error: 'Failed to get mint count' });
+    }
+  });
+
   return httpServer;
 }
