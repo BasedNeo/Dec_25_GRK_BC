@@ -1,0 +1,127 @@
+Audit Summary (Key Findings)
+1) Points economy is inconsistent across client/server and can mis-award or reject rewards
+Impact: inflation risk, player confusion, and failed rewards → bad retention + support load.
+Evidence & gaps
+	•	Daily caps conflict across layers:
+	•	Client economy config claims daily cap 5,000 (ECONOMY_CONFIG.DAILY_POINT_CAP). [client/src/lib/gameRegistry.ts]
+	•	Local storage cap for daily points is 50,000. [client/src/lib/gameStorage.ts]
+	•	Server enforces global cap 500 and per‑game caps 200/500. [server/routes.ts]
+	•	DB schema default daily cap is 500 in game_points. [shared/schema.ts]
+	•	Client awards can exceed server validation: GuardianDefense can award up to ~250 points per game end (200 wave + 50 win), but server /api/points/earn only accepts amount ≤ 100, so many legitimate awards are rejected. [client/src/pages/GuardianDefense.tsx] [server/routes.ts]
+	•	Two parallel points systems exist:
+	•	Riddle Quest awards points in riddle_leaderboard via /api/riddle-quest/attempt. [server/routes.ts] [shared/schema.ts]
+	•	The unified points economy uses /api/points/earn with its own tracking. [server/routes.ts] => Players can “earn points” that are not reflected in the unified balance, or vice‑versa, creating drift.
+	•	BrainX is split across two storage models:
+	•	brainx_points table tracks locked/unlocked and daily cap. [shared/schema.ts] [server/storage.ts]
+	•	points_summary + points_vesting also track BrainX in a different model. [shared/schema.ts] [server/storage.ts]
+	•	Infinity Race only writes points_vesting and never updates points_summary or brainx_points, so UI balance can be wrong. [server/routes.ts]
+	•	Infinity Race incorrectly awards Riddle Quest points and logs as riddle_quest in activity: [client/src/pages/InfinityRace.tsx] That breaks economy semantics and skews stats.
+	•	WebSocket updates overwrite global daily totals with per‑game totals: Server broadcasts dailyTotal (per‑game), but client writes it into dailyEarnedTotal (global). [server/routes.ts] [client/src/hooks/useGamePoints.ts]
+	•	Server lets client send arbitrary action + amount; action isn’t validated beyond string length, so rewards are client‑controlled within 1–100. [server/routes.ts]
+
+2) Data integrity risks: non‑transactional updates + missing indexes
+Impact: race conditions at scale (5k+ users), leaderboard latency.
+	•	earnGamePoints updates game_points and points_summary without a transaction. If one update fails, totals drift. [server/storage.ts]
+	•	points_summary has no leaderboard index (only unique wallet), yet leaderboard sorts on totalEarned. This will become slow at scale. [shared/schema.ts] [server/storage.ts]
+	•	weeklyEarned and weeklyCap exist but aren’t updated anywhere, which means weekly caps do nothing. [shared/schema.ts] [server/storage.ts]
+
+3) Mobile UX risks from fixed UI offsets
+Impact: cut‑offs/scroll and mis‑sized canvases.
+	•	GuardianDefense uses fixed navbar/control sizes (e.g., MOBILE_NAVBAR_HEIGHT = 64, fixed control bar heights), then derives canvas size from those constants. This is fragile on mobile browsers with dynamic address bars or safe‑area insets, which can cause the “top 20% cut‑off” you observed. [client/src/pages/GuardianDefense.tsx]
+	•	Retro Defender (GuardianDefender) uses fixed controlBarHeight + topHeaderHeight in getCanvasSize, which can under‑allocate space on mobile and create cut‑offs. [client/src/lib/gameEngine.ts] [client/src/pages/GuardianDefender.tsx]
+
+4) Wallet connect reliability risk from single RPC
+Impact: connection delays and reduced uptime.
+	•	Only one RPC endpoint is configured for BasedAI in Wagmi config. No fallback. [client/src/lib/wagmi.ts]
+
+✅ Recommended Overhauls (Non‑Mutating, Production‑Ready)
+Below are precise, scalable fixes aligned to a capped, anti‑inflation P2E economy.
+
+A) Unify the points economy into a single server‑authoritative source
+Goal: prevent inflation + reward mismatches.
+Plan
+	1	Create a shared economy config (server + client) and eliminate client‑controlled amounts.
+	2	Server computes pointsAwarded based on:
+	•	game type + action,
+	•	session duration,
+	•	validated score (if applicable).
+Example shared config (new file: shared/economy.ts)
+
+export const ECONOMY = {
+  GLOBAL_DAILY_CAP: 500,
+  GAMES: {
+    'riddle-quest': { dailyCap: 500, actions: { riddle: 10, challenge: 50 } },
+    'creature-command': { dailyCap: 500, actions: { wave: 10, lairs: 50 } },
+    'retro-defender': { dailyCap: 200, actions: { pad: 20, task: 50 } },
+  },
+} as const;
+Then:
+	•	Client only sends action (riddle, wave)
+	•	Server computes points from config and ignores client amount. [server/routes.ts] [client/src/hooks/useGamePoints.ts]
+
+B) Introduce a points ledger (append‑only) for audit + idempotency
+Goal: commercial‑grade integrity, easy rollback, no drift.
+Add new table (example)
+
+export const pointsLedger = pgTable('points_ledger', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  game: varchar('game', { length: 50 }).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  delta: integer('delta').notNull(),
+  requestId: varchar('request_id', { length: 64 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+Server flow
+	•	Start transaction.
+	•	Check requestId (idempotent).
+	•	Enforce caps.
+	•	Insert ledger row.
+	•	Update game_points + points_summary.
+	•	Commit. [server/storage.ts]
+
+C) Merge BrainX systems into one canonical source
+Goal: BrainX tracking is coherent and visible.
+Current issue: Infinity Race writes points_vesting but UI reads points_summary/brainx_points. [server/routes.ts] [server/storage.ts] Fix: choose one canonical source (recommend points_summary + ledger) and:
+	•	Deprecate brainx_points, or
+	•	Update it in every vesting flow, including Infinity Race.
+
+D) Fix client/server mismatch in WebSocket totals
+Goal: global daily total is accurate.
+	•	Server currently sends dailyTotal (per‑game), client applies it to global. [server/routes.ts] [client/src/hooks/useGamePoints.ts]
+	•	Fix by sending globalDailyTotal via WebSocket and updating dailyEarnedTotal with that value.
+
+E) Enforce action whitelist on server
+Goal: eliminate client‑side reward tampering.
+Example in /api/points/earn:
+
+const ActionSchema = z.enum(['riddle', 'challenge', 'wave', 'lairs', 'pad', 'task']);
+Then map action → points server‑side. [server/routes.ts]
+
+F) Index leaderboards for 5k+ users
+Add indexes for leaderboard sorts:
+
+index('points_summary_total_earned_idx').on(pointsSummary.totalEarned)
+This improves /api/points/leaderboard. [shared/schema.ts] [server/storage.ts]
+
+G) Fix mobile cut‑offs with dynamic viewport metrics
+Use visualViewport.height + safe‑area CSS instead of fixed pixel offsets.
+Example idea (GuardianDefense / RetroDefender):
+
+const vh = window.visualViewport?.height ?? window.innerHeight;
+const safeTop = parseInt(getComputedStyle(document.documentElement)
+  .getPropertyValue('env(safe-area-inset-top)') || '0', 10);
+Apply in:
+	•	getCanvasDimensions (GuardianDefense) [client/src/pages/GuardianDefense.tsx]
+	•	getCanvasSize (Retro Defender) [client/src/lib/gameEngine.ts]
+
+H) Remove Infinity Race “riddle‑quest” points
+Infinity Race should not grant Ore via riddle actions. It should only:
+	•	award BrainX (via vesting), and/or
+	•	award Ore via its own game channel with proper caps. Currently it awards Riddle Quest points and logs as riddle quest. [client/src/pages/InfinityRace.tsx]
+
+✅ Additional UX/Gamification Ideas (Mobile‑First)
+These are low‑risk, high‑impact improvements aligned to your vision:
+	•	Typing‑effect oracle responses in RiddleQuest to improve immersion. [client/src/components/RiddleQuest.tsx]
+	•	Lore galaxy map tied to Riddle Quest and Infinity Race achievements (use AchievementPopup system). [client/src/pages/InfinityRace.tsx]
+	•	Persistent “daily cap” ribbon in PointsDisplay, showing remaining daily points. [client/src/components/PointsDisplay.tsx]

@@ -1557,12 +1557,39 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  // Points Vesting History
+  // Points Vesting History - ALSO updates points_summary for consistency
   async createVestingRecord(data: InsertPointsVesting): Promise<PointsVesting> {
+    const normalizedAddress = data.walletAddress.toLowerCase();
+    
+    // Insert vesting record
     const [result] = await db.insert(pointsVesting).values({
       ...data,
-      walletAddress: data.walletAddress.toLowerCase()
+      walletAddress: normalizedAddress
     }).returning();
+    
+    // Also update points_summary.brainXLocked for consistency (BrainX merge requirement)
+    if (data.brainXConverted && data.brainXConverted > 0) {
+      const summary = await this.getPointsSummary(normalizedAddress);
+      if (summary) {
+        await db.update(pointsSummary)
+          .set({
+            brainXLocked: summary.brainXLocked + data.brainXConverted,
+            vestingStartDate: summary.vestingStartDate || new Date(),
+            vestingEndDate: data.lockExpiresAt || summary.vestingEndDate,
+            updatedAt: new Date()
+          })
+          .where(eq(pointsSummary.id, summary.id));
+      } else {
+        // Create points_summary if it doesn't exist
+        await db.insert(pointsSummary).values({
+          walletAddress: normalizedAddress,
+          brainXLocked: data.brainXConverted,
+          vestingStartDate: new Date(),
+          vestingEndDate: data.lockExpiresAt
+        });
+      }
+    }
+    
     return result;
   }
 
