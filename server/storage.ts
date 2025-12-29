@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, type GovernanceLedger, type InsertGovernanceLedger, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress, governanceLedger } from "@shared/schema";
 import { ECONOMY, getActionPoints, getGameDailyCap, isValidAction, type GameType } from "@shared/economy";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -323,6 +323,7 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Enhanced createProposal with ledger tracking
   async createProposal(data: {
     title: string;
     description: string;
@@ -334,12 +335,21 @@ export class DatabaseStorage implements IStorage {
     const [proposal] = await db.insert(proposals).values({
       title: data.title,
       description: data.description,
-      proposer: data.proposer,
+      proposer: data.proposer.toLowerCase(),
       endDate: data.endDate,
       category: data.category || 'general',
       requiredQuorum: data.requiredQuorum || 10,
       status: 'active',
     }).returning();
+    
+    // Log to governance ledger
+    await db.insert(governanceLedger).values({
+      proposalId: proposal.id,
+      walletAddress: data.proposer.toLowerCase(),
+      eventType: 'proposal_created',
+      metadata: JSON.stringify({ title: data.title, category: data.category || 'general' }),
+    });
+    
     return proposal;
   }
 
@@ -358,42 +368,56 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(proposals).orderBy(desc(proposals.createdAt));
   }
 
-  async deleteProposal(id: string): Promise<boolean> {
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Soft-delete with ledger tracking
+  async deleteProposal(id: string, cancelledBy?: string): Promise<boolean> {
     try {
-      await db.delete(proposalVotes).where(eq(proposalVotes.proposalId, id));
-      await db.delete(proposals).where(eq(proposals.id, id));
+      // Soft-delete: set status to 'cancelled' instead of hard delete
+      await db.update(proposals)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(eq(proposals.id, id));
+      
+      // Log to governance ledger
+      if (cancelledBy) {
+        await db.insert(governanceLedger).values({
+          proposalId: id,
+          walletAddress: cancelledBy.toLowerCase(),
+          eventType: 'proposal_cancelled',
+          metadata: JSON.stringify({ cancelledAt: new Date().toISOString() }),
+        });
+      }
+      
       return true;
-    } catch {
+    } catch (error) {
+      console.error('[Storage] Error cancelling proposal:', error);
       return false;
     }
   }
 
-  async castVote(proposalId: string, voter: string, voteType: 'for' | 'against', votingPower: number = 1): Promise<boolean> {
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Per-NFT voting with ledger tracking
+  // Note: nftId is required for new votes (1 NFT = 1 vote), null only for legacy
+  async castVote(proposalId: string, voter: string, voteType: 'for' | 'against', votingPower: number = 1, nftId?: number): Promise<boolean> {
     try {
-      const existingVote = await db.select().from(proposalVotes)
-        .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.walletAddress, voter.toLowerCase())));
-
-      if (existingVote.length > 0) {
-        await db.delete(proposalVotes)
-          .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.walletAddress, voter.toLowerCase())));
+      // If nftId provided, check if this NFT already voted on this proposal
+      if (nftId !== undefined) {
+        const existingNftVote = await db.select().from(proposalVotes)
+          .where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.nftId, nftId)));
         
-        const proposal = await this.getProposalById(proposalId);
-        if (proposal) {
-          if (existingVote[0].selectedOption === 'for') {
-            await db.update(proposals).set({ votesFor: proposal.votesFor - existingVote[0].votingPower, updatedAt: new Date() }).where(eq(proposals.id, proposalId));
-          } else {
-            await db.update(proposals).set({ votesAgainst: proposal.votesAgainst - existingVote[0].votingPower, updatedAt: new Date() }).where(eq(proposals.id, proposalId));
-          }
+        if (existingNftVote.length > 0) {
+          console.log(`[Storage] NFT #${nftId} already voted on proposal ${proposalId}`);
+          return false; // NFT already voted
         }
       }
 
+      // Insert the vote with nftId
       await db.insert(proposalVotes).values({
         proposalId,
         walletAddress: voter.toLowerCase(),
+        nftId: nftId ?? null,
         selectedOption: voteType,
         votingPower,
       });
 
+      // Update proposal vote counts
       const proposal = await this.getProposalById(proposalId);
       if (proposal) {
         if (voteType === 'for') {
@@ -403,11 +427,52 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // Log to governance ledger
+      await db.insert(governanceLedger).values({
+        proposalId,
+        walletAddress: voter.toLowerCase(),
+        nftId: nftId ?? null,
+        voteType,
+        eventType: 'vote_cast',
+        metadata: JSON.stringify({ votingPower }),
+      });
+
       return true;
     } catch (error) {
       console.error('[Storage] Error casting vote:', error);
       return false;
     }
+  }
+  
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Get votes by NFT for a proposal
+  async getVotedNfts(proposalId: string): Promise<number[]> {
+    const votes = await db.select({ nftId: proposalVotes.nftId })
+      .from(proposalVotes)
+      .where(and(eq(proposalVotes.proposalId, proposalId), sql`${proposalVotes.nftId} IS NOT NULL`));
+    return votes.map(v => v.nftId!).filter(id => id !== null);
+  }
+  
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Get governance ledger for audit
+  async getGovernanceLedger(proposalId?: string, limit: number = 100): Promise<GovernanceLedger[]> {
+    if (proposalId) {
+      return db.select().from(governanceLedger)
+        .where(eq(governanceLedger.proposalId, proposalId))
+        .orderBy(desc(governanceLedger.createdAt))
+        .limit(limit);
+    }
+    return db.select().from(governanceLedger)
+      .orderBy(desc(governanceLedger.createdAt))
+      .limit(limit);
+  }
+  
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Export governance data for backup
+  async exportGovernanceDataForBackup(): Promise<{ proposals: Proposal[]; votes: Vote[]; ledger: GovernanceLedger[] }> {
+    const [allProposals, allVotes, allLedger] = await Promise.all([
+      db.select().from(proposals),
+      db.select().from(proposalVotes),
+      db.select().from(governanceLedger),
+    ]);
+    return { proposals: allProposals, votes: allVotes, ledger: allLedger };
   }
 
   async getUserVote(proposalId: string, voter: string): Promise<string | null> {

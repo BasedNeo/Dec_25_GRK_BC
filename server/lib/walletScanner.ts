@@ -199,4 +199,64 @@ export class WalletScanner {
       return null;
     }
   }
+  
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Check if wallet owns a specific NFT
+  static async verifyNftOwnership(
+    walletAddress: string,
+    contractAddress: string,
+    tokenId: number,
+    rpcUrl: string
+  ): Promise<boolean> {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const abi = ['function ownerOf(uint256 tokenId) view returns (address)'];
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      
+      const owner = await contract.ownerOf(tokenId);
+      return owner.toLowerCase() === walletAddress.toLowerCase();
+    } catch (error) {
+      console.error(`[WalletScanner] Failed to verify NFT ownership for token ${tokenId}:`, error);
+      return false;
+    }
+  }
+  
+  // GOVERNANCE OVERHAUL — Codex Audit Fix: Get all owned NFT IDs for a specific contract
+  static async getOwnedNftIds(
+    walletAddress: string,
+    contractAddress: string,
+    rpcUrl: string
+  ): Promise<number[]> {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const abi = [
+        'function balanceOf(address owner) view returns (uint256)',
+        'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
+        'function ownerOf(uint256 tokenId) view returns (address)'
+      ];
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      
+      const balance = await contract.balanceOf(walletAddress);
+      const balanceNum = Number(balance);
+      
+      if (balanceNum === 0) return [];
+      
+      const tokenIds: number[] = [];
+      
+      // Try tokenOfOwnerByIndex first (ERC721Enumerable)
+      try {
+        for (let i = 0; i < balanceNum && i < 100; i++) {
+          const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+          tokenIds.push(Number(tokenId));
+        }
+        return tokenIds;
+      } catch {
+        // If not enumerable, return empty - caller should use verifyNftOwnership for specific tokens
+        console.warn(`[WalletScanner] Contract ${contractAddress} does not support ERC721Enumerable`);
+        return [];
+      }
+    } catch (error) {
+      console.error(`[WalletScanner] Failed to get owned NFT IDs:`, error);
+      return [];
+    }
+  }
 }
