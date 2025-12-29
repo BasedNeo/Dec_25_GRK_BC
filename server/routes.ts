@@ -3217,11 +3217,20 @@ export async function registerRoutes(
 
   app.post('/api/points/earn', gameLimiter, async (req, res) => {
     try {
+      const VALID_GAMES = ['riddle-quest', 'creature-command', 'retro-defender', 'infinity-race', 'guardian-defense'] as const;
+      
+      const VALID_ACTIONS: Record<string, string[]> = {
+        'riddle-quest': ['riddle', 'challenge'],
+        'creature-command': ['wave', 'lairs'],
+        'retro-defender': ['pad', 'task'],
+        'infinity-race': ['race_win', 'race_partial', 'brainx_award'],
+        'guardian-defense': ['wave', 'lairs', 'combo']
+      };
+
       const earnSchema = z.object({
         walletAddress: z.string().refine(isValidIdentifier, 'Invalid wallet/session ID'),
-        game: z.enum(['riddle-quest', 'creature-command', 'retro-defender']),
-        action: z.string().min(1).max(50),
-        amount: z.number().int().min(1).max(100).optional()
+        game: z.enum(VALID_GAMES),
+        action: z.string().min(1).max(50)
       });
 
       const parsed = earnSchema.safeParse(req.body);
@@ -3229,15 +3238,20 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Invalid points data', details: parsed.error.flatten() });
       }
 
-      const { walletAddress, game, action, amount } = parsed.data;
-      const config = POINTS_CONFIG[game];
-      const pointsAmount = amount ?? (config.actions as any)[action] ?? 10;
+      const { walletAddress, game, action } = parsed.data;
 
-      const { points, earned, capped, globalCapped } = await storage.earnGamePoints(
+      const validActions = VALID_ACTIONS[game];
+      if (!validActions?.includes(action)) {
+        return res.status(400).json({ error: `Invalid action '${action}' for game '${game}'` });
+      }
+
+      const requestId = crypto.randomUUID();
+
+      const { points, earned, capped, globalCapped, globalDailyTotal, vestedBrainX } = await storage.earnGamePoints(
         walletAddress,
         game,
-        pointsAmount,
-        config.dailyCap
+        action,
+        requestId
       );
 
       const summary = await storage.getPointsSummary(walletAddress);
@@ -3246,12 +3260,13 @@ export async function registerRoutes(
         success: earned > 0,
         earned,
         dailyTotal: points.dailyEarned,
-        dailyCap: config.dailyCap,
-        globalDailyTotal: summary?.dailyEarnedTotal || 0,
+        dailyCap: points.dailyCap,
+        globalDailyTotal,
         globalDailyCap: 500,
         capped,
         globalCapped,
         totalEarned: summary?.totalEarned || earned,
+        vestedBrainX,
         brainXProgress: summary ? ((summary.totalEarned - summary.totalVested) / 10000) * 100 : 0
       };
 
@@ -3260,7 +3275,8 @@ export async function registerRoutes(
           game,
           earned,
           dailyTotal: points.dailyEarned,
-          dailyCap: config.dailyCap,
+          dailyCap: points.dailyCap,
+          globalDailyTotal,
           totalEarned: result.totalEarned,
           brainXProgress: result.brainXProgress
         });

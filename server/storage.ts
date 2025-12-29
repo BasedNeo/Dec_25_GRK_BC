@@ -1,4 +1,5 @@
-import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress } from "@shared/schema";
+import { type User, type InsertUser, type InsertFeedback, type Feedback, type InsertStory, type Story, type InsertPushSubscription, type PushSubscription, type InsertEmail, type EmailEntry, type GuardianProfile, type DiamondHandsStats, type InsertDiamondHandsStats, type Proposal, type InsertProposal, type Vote, type InsertVote, type GameScore, type InsertGameScore, type FeatureFlag, type AdminNonce, type TransactionReceipt, type InsertTransactionReceipt, type RiddleLeaderboard, type InsertRiddleLeaderboard, type RiddleDailySet, type InsertRiddleDailySet, type RiddleDailyEntry, type InsertRiddleDailyEntry, type RiddleAttempt, type InsertRiddleAttempt, type CreatureProgress, type InsertCreatureProgress, type DailyChallenge, type InsertDailyChallenge, type BrainXPoints, type InsertBrainXPoints, type GamePoints, type InsertGamePoints, type PointsSummary, type InsertPointsSummary, type PointsVesting, type InsertPointsVesting, type PointsSnapshot, type InsertPointsSnapshot, type PointsLedger, type InsertPointsLedger, type ActivityLog, type InsertActivityLog, type InfinityCraftOwnership, type InsertInfinityCraftOwnership, type InfinityCraftUpgrades, type InsertInfinityCraftUpgrades, type InfinityRaceBet, type InsertInfinityRaceBet, type InfinityRaceProgress, users, feedback, storySubmissions, pushSubscriptions, emailList, guardianProfiles, diamondHandsStats, proposals, proposalVotes, gameScores, featureFlags, adminNonces, transactionReceipts, riddleLeaderboard, riddleDailySets, riddleDailyEntries, riddleAttempts, creatureProgress, dailyChallenges, brainXPoints, gamePoints, pointsSummary, pointsVesting, pointsSnapshots, pointsLedger, activityLogs, infinityCraftOwnership, infinityCraftUpgrades, infinityRaceBets, infinityRaceProgress } from "@shared/schema";
+import { ECONOMY, getActionPoints, getGameDailyCap, isValidAction, type GameType } from "@shared/economy";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, sql, count, ne, gte, lte } from "drizzle-orm";
@@ -1081,22 +1082,37 @@ export class DatabaseStorage implements IStorage {
   async earnGamePoints(
     walletAddress: string,
     game: string,
-    amount: number,
-    dailyCap: number = 500
-  ): Promise<{ points: GamePoints; earned: number; capped: boolean; globalCapped: boolean }> {
+    action: string,
+    requestId: string
+  ): Promise<{ 
+    points: GamePoints; 
+    earned: number; 
+    capped: boolean; 
+    globalCapped: boolean;
+    globalDailyTotal: number;
+    vestedBrainX: number;
+  }> {
     const normalizedAddress = walletAddress.toLowerCase();
     const today = new Date().toISOString().split('T')[0];
-    const GLOBAL_DAILY_CAP = 500;
+    const GLOBAL_DAILY_CAP = ECONOMY.GLOBAL_DAILY_CAP;
+    const VESTING_THRESHOLD = ECONOMY.VESTING_THRESHOLD;
+    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-    const summary = await this.getPointsSummary(normalizedAddress);
-    const summaryIsNewDay = summary && summary.lastActivity.toISOString().split('T')[0] !== today;
-    const currentGlobalDaily = summaryIsNewDay ? 0 : (summary?.dailyEarnedTotal || 0);
-    const globalRemaining = Math.max(0, GLOBAL_DAILY_CAP - currentGlobalDaily);
+    const delta = getActionPoints(game as GameType, action) ?? 0;
+    const dailyCap = getGameDailyCap(game as GameType);
 
-    if (globalRemaining <= 0) {
+    if (delta <= 0) {
       const existingPoints = await this.getGamePoints(normalizedAddress, game);
       if (existingPoints) {
-        return { points: existingPoints, earned: 0, capped: true, globalCapped: true };
+        const summary = await this.getPointsSummary(normalizedAddress);
+        return { 
+          points: existingPoints, 
+          earned: 0, 
+          capped: false, 
+          globalCapped: false,
+          globalDailyTotal: summary?.dailyEarnedTotal || 0,
+          vestedBrainX: summary?.vestedBrainX || 0
+        };
       }
       const [newRecord] = await db.insert(gamePoints)
         .values({
@@ -1110,7 +1126,71 @@ export class DatabaseStorage implements IStorage {
           lastDailyReset: today
         })
         .returning();
-      return { points: newRecord, earned: 0, capped: true, globalCapped: true };
+      return { 
+        points: newRecord, 
+        earned: 0, 
+        capped: false, 
+        globalCapped: false,
+        globalDailyTotal: 0,
+        vestedBrainX: 0
+      };
+    }
+
+    const existingLedger = await db.select()
+      .from(pointsLedger)
+      .where(eq(pointsLedger.requestId, requestId))
+      .limit(1);
+
+    if (existingLedger.length > 0) {
+      const existingPoints = await this.getGamePoints(normalizedAddress, game);
+      const summary = await this.getPointsSummary(normalizedAddress);
+      return {
+        points: existingPoints!,
+        earned: existingLedger[0].delta,
+        capped: false,
+        globalCapped: false,
+        globalDailyTotal: summary?.dailyEarnedTotal || 0,
+        vestedBrainX: summary?.vestedBrainX || 0
+      };
+    }
+
+    const summary = await this.getPointsSummary(normalizedAddress);
+    const summaryIsNewDay = summary && (summary.lastDailyReset !== today);
+    const currentGlobalDaily = summaryIsNewDay ? 0 : (summary?.dailyEarnedTotal || 0);
+    const globalRemaining = Math.max(0, GLOBAL_DAILY_CAP - currentGlobalDaily);
+
+    if (globalRemaining <= 0) {
+      const existingPoints = await this.getGamePoints(normalizedAddress, game);
+      if (existingPoints) {
+        return { 
+          points: existingPoints, 
+          earned: 0, 
+          capped: true, 
+          globalCapped: true,
+          globalDailyTotal: currentGlobalDaily,
+          vestedBrainX: summary?.vestedBrainX || 0
+        };
+      }
+      const [newRecord] = await db.insert(gamePoints)
+        .values({
+          walletAddress: normalizedAddress,
+          game,
+          earned: 0,
+          vested: 0,
+          dailyEarned: 0,
+          weeklyEarned: 0,
+          dailyCap,
+          lastDailyReset: today
+        })
+        .returning();
+      return { 
+        points: newRecord, 
+        earned: 0, 
+        capped: true, 
+        globalCapped: true,
+        globalDailyTotal: currentGlobalDaily,
+        vestedBrainX: summary?.vestedBrainX || 0
+      };
     }
 
     const existing = await this.getGamePoints(normalizedAddress, game);
@@ -1119,13 +1199,28 @@ export class DatabaseStorage implements IStorage {
       const isNewDay = existing.lastDailyReset !== today;
       const currentDailyEarned = isNewDay ? 0 : existing.dailyEarned;
       const gameRemaining = dailyCap - currentDailyEarned;
-      const actualEarned = Math.min(amount, Math.max(0, gameRemaining), globalRemaining);
-      const capped = actualEarned < amount;
-      const globalCapped = actualEarned < amount && globalRemaining <= amount;
+      const actualEarned = Math.min(delta, Math.max(0, gameRemaining), globalRemaining);
+      const capped = actualEarned < delta;
+      const globalCapped = actualEarned < delta && globalRemaining <= delta;
 
       if (actualEarned <= 0) {
-        return { points: existing, earned: 0, capped: true, globalCapped: globalRemaining <= 0 };
+        return { 
+          points: existing, 
+          earned: 0, 
+          capped: true, 
+          globalCapped: globalRemaining <= 0,
+          globalDailyTotal: currentGlobalDaily,
+          vestedBrainX: summary?.vestedBrainX || 0
+        };
       }
+
+      await db.insert(pointsLedger).values({
+        walletAddress: normalizedAddress,
+        game,
+        action,
+        delta: actualEarned,
+        requestId
+      });
 
       const [updated] = await db.update(gamePoints)
         .set({
@@ -1137,14 +1232,35 @@ export class DatabaseStorage implements IStorage {
         .where(eq(gamePoints.id, existing.id))
         .returning();
 
-      await this.updatePointsSummary(normalizedAddress, actualEarned, today);
+      const updatedSummary = await this.updatePointsSummaryWithVesting(
+        normalizedAddress, 
+        actualEarned, 
+        today,
+        VESTING_THRESHOLD,
+        ONE_YEAR_MS
+      );
 
-      return { points: updated, earned: actualEarned, capped, globalCapped };
+      return { 
+        points: updated, 
+        earned: actualEarned, 
+        capped, 
+        globalCapped,
+        globalDailyTotal: updatedSummary.dailyEarnedTotal,
+        vestedBrainX: updatedSummary.vestedBrainX
+      };
     }
 
-    const actualEarned = Math.min(amount, dailyCap, globalRemaining);
-    const capped = actualEarned < amount;
-    const globalCapped = globalRemaining <= amount;
+    const actualEarned = Math.min(delta, dailyCap, globalRemaining);
+    const capped = actualEarned < delta;
+    const globalCapped = globalRemaining <= delta;
+
+    await db.insert(pointsLedger).values({
+      walletAddress: normalizedAddress,
+      game,
+      action,
+      delta: actualEarned,
+      requestId
+    });
 
     const [result] = await db.insert(gamePoints)
       .values({
@@ -1159,9 +1275,81 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
-    await this.updatePointsSummary(normalizedAddress, actualEarned, today);
+    const updatedSummary = await this.updatePointsSummaryWithVesting(
+      normalizedAddress, 
+      actualEarned, 
+      today,
+      VESTING_THRESHOLD,
+      ONE_YEAR_MS
+    );
 
-    return { points: result, earned: actualEarned, capped, globalCapped };
+    return { 
+      points: result, 
+      earned: actualEarned, 
+      capped, 
+      globalCapped,
+      globalDailyTotal: updatedSummary.dailyEarnedTotal,
+      vestedBrainX: updatedSummary.vestedBrainX
+    };
+  }
+
+  async updatePointsSummaryWithVesting(
+    walletAddress: string, 
+    pointsEarned: number, 
+    today: string,
+    vestingThreshold: number,
+    oneYearMs: number
+  ): Promise<PointsSummary> {
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await this.getPointsSummary(normalizedAddress);
+    const GLOBAL_DAILY_CAP = ECONOMY.GLOBAL_DAILY_CAP;
+
+    if (existing) {
+      const isNewDay = existing.lastDailyReset !== today;
+      const currentDailyTotal = isNewDay ? 0 : existing.dailyEarnedTotal;
+      const newTotalEarned = existing.totalEarned + pointsEarned;
+      
+      const previousVestedBrainX = Math.floor(existing.totalEarned / vestingThreshold);
+      const newVestedBrainX = Math.floor(newTotalEarned / vestingThreshold);
+      const additionalVested = newVestedBrainX - previousVestedBrainX;
+
+      const updateData: Record<string, unknown> = {
+        totalEarned: newTotalEarned,
+        dailyEarnedTotal: currentDailyTotal + pointsEarned,
+        lastActivity: new Date(),
+        lastDailyReset: today,
+        updatedAt: new Date()
+      };
+
+      if (additionalVested > 0) {
+        updateData.vestedBrainX = existing.vestedBrainX + additionalVested;
+        updateData.unlockDate = new Date(Date.now() + oneYearMs);
+      }
+
+      const [updated] = await db.update(pointsSummary)
+        .set(updateData)
+        .where(eq(pointsSummary.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const vestedBrainX = Math.floor(pointsEarned / vestingThreshold);
+    const [result] = await db.insert(pointsSummary)
+      .values({
+        walletAddress: normalizedAddress,
+        totalEarned: pointsEarned,
+        totalVested: 0,
+        brainXLocked: 0,
+        brainXUnlocked: 0,
+        vestedBrainX,
+        unlockDate: vestedBrainX > 0 ? new Date(Date.now() + oneYearMs) : null,
+        dailyEarnedTotal: pointsEarned,
+        globalDailyCap: GLOBAL_DAILY_CAP,
+        lastActivity: new Date(),
+        lastDailyReset: today
+      })
+      .returning();
+    return result;
   }
 
   async getPointsSummary(walletAddress: string): Promise<PointsSummary | undefined> {
@@ -1269,7 +1457,10 @@ export class DatabaseStorage implements IStorage {
       globalDailyCap: pointsSummary.globalDailyCap,
       brainXLocked: pointsSummary.brainXLocked,
       brainXUnlocked: pointsSummary.brainXUnlocked,
+      vestedBrainX: pointsSummary.vestedBrainX,
+      unlockDate: pointsSummary.unlockDate,
       lastActivity: pointsSummary.lastActivity,
+      lastDailyReset: pointsSummary.lastDailyReset,
       vestingStartDate: pointsSummary.vestingStartDate,
       vestingEndDate: pointsSummary.vestingEndDate,
       updatedAt: pointsSummary.updatedAt,
