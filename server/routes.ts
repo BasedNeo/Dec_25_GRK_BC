@@ -210,18 +210,18 @@ async function generateDailyRiddleSet(dateKey: string) {
   if (useOracle) {
     for (let i = 0; i < 5; i++) {
       try {
-        const difficulties = ['easy', 'medium', 'medium', 'hard', 'hard'];
         const result = await callOracle(
-          [{ role: 'user', content: generateRiddlePrompt(i + 1, difficulties[i]) }],
+          [{ role: 'user', content: generateRiddlePrompt(i, 0) }],
           'generate_riddle'
         );
         
         if (result.success && result.riddleGenerated) {
+          const difficulty = i < 2 ? 'easy' : i < 4 ? 'medium' : 'hard';
           oracleRiddles.push({
             question: result.message || `Oracle Riddle ${i + 1}`,
             answers: extractAnswersFromOracle(result.message || ''),
             hint: 'Consult the Oracle for guidance',
-            difficulty: difficulties[i],
+            difficulty,
             theme: 'oracle'
           });
         }
@@ -1264,7 +1264,7 @@ export async function registerRoutes(
   // Mind Warp Strategist API Endpoint for Riddle Quest
   app.post("/api/oracle", gameLimiter, async (req, res) => {
     try {
-      const { action, level, difficulty, riddle, userAnswer, messages } = req.body;
+      const { action, solved, passes, riddle, userAnswer, messages } = req.body;
 
       if (!action || !['generate_riddle', 'evaluate_answer', 'get_hint'].includes(action)) {
         return res.status(400).json({ error: "Invalid action" });
@@ -1273,9 +1273,9 @@ export async function registerRoutes(
       let promptMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
       if (action === 'generate_riddle') {
-        const lvl = typeof level === 'number' ? level : 1;
-        const diff = typeof difficulty === 'string' ? difficulty : 'medium';
-        const prompt = generateRiddlePrompt(lvl, diff);
+        const solvedCount = typeof solved === 'number' ? solved : 0;
+        const passesCount = typeof passes === 'number' ? passes : 0;
+        const prompt = generateRiddlePrompt(solvedCount, passesCount);
         promptMessages = [{ role: 'user', content: prompt }];
       } else if (action === 'evaluate_answer') {
         if (!riddle || !userAnswer) {
@@ -1298,7 +1298,7 @@ export async function registerRoutes(
         return res.status(503).json({
           success: false,
           fallback: true,
-          message: "Mind Warp Strategist is scheming... Riddles are baking, return soon.",
+          message: "Mind Warp Strategist is scheming... riddles baking.",
           error: result.error
         });
       }
@@ -1315,9 +1315,46 @@ export async function registerRoutes(
       return res.status(500).json({
         success: false,
         fallback: true,
-        message: "Mind Warp Strategist is scheming... Riddles are baking, return soon.",
+        message: "Mind Warp Strategist is scheming... riddles baking.",
         error: "INTERNAL_ERROR"
       });
+    }
+  });
+
+  // Riddle Quest Progress Endpoints
+  app.get("/api/riddle-quest/progress/:wallet", async (req, res) => {
+    try {
+      const { wallet } = req.params;
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const progress = await storage.getRiddleProgress(wallet, dateKey);
+      return res.json({ 
+        success: true, 
+        progress: progress || { riddlesSolved: 0, passesUsed: 0, interactions: 0 }
+      });
+    } catch (error) {
+      console.error("[RiddleQuest] Error fetching progress:", error);
+      return res.status(500).json({ error: "Failed to fetch progress" });
+    }
+  });
+
+  app.post("/api/riddle-quest/progress", gameLimiter, async (req, res) => {
+    try {
+      const { walletAddress, riddlesSolved, passesUsed, interactions } = req.body;
+      if (!walletAddress) {
+        return res.status(400).json({ error: "walletAddress required" });
+      }
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const progress = await storage.upsertRiddleProgress({
+        walletAddress,
+        dateKey,
+        riddlesSolved: riddlesSolved || 0,
+        passesUsed: passesUsed || 0,
+        interactions: interactions || 0
+      });
+      return res.json({ success: true, progress });
+    } catch (error) {
+      console.error("[RiddleQuest] Error saving progress:", error);
+      return res.status(500).json({ error: "Failed to save progress" });
     }
   });
 
