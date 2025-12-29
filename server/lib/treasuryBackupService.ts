@@ -25,6 +25,8 @@ export const TREASURY_CONFIG = {
   PLATFORM_FEE_PERCENT: 1,
   RPC_URL: 'https://mainnet.basedaibridge.com/rpc/',
   NFT_CONTRACT: '0xaE51dc5fD1499A129f8654963560f9340773ad59',
+  // Future Brain-Staking (treasury staked, APY TBD — mock for now)
+  STAKING_APY: 5,
 };
 
 const NFT_ABI = ['function totalMinted() view returns (uint256)'];
@@ -37,6 +39,7 @@ export interface TreasurySummary {
   platformFees: number;
   totalTreasury: number;
   backedValuePerNFT: number;
+  stakingApy: number;
   daysElapsed: number;
   timestamp: string;
   source: 'on-chain' | 'cached' | 'fallback';
@@ -134,6 +137,7 @@ class TreasuryBackupService {
       platformFees,
       totalTreasury,
       backedValuePerNFT,
+      stakingApy: TREASURY_CONFIG.STAKING_APY,
       daysElapsed,
       timestamp: new Date().toISOString(),
       source,

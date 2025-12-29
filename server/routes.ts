@@ -4180,6 +4180,7 @@ export async function registerRoutes(
           emissionsDailyTotal: TREASURY_CONFIG.EMISSIONS_DAILY,
           emissionsTreasuryPercent: TREASURY_CONFIG.EMISSIONS_TREASURY_PERCENT,
           platformFeePercent: TREASURY_CONFIG.PLATFORM_FEE_PERCENT,
+          stakingApy: TREASURY_CONFIG.STAKING_APY,
         }
       });
     } catch (error) {
