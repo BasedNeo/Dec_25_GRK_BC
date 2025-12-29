@@ -1,0 +1,28 @@
+Review Riddle Quest (RiddleQuestPage.tsx, RiddleGame.tsx, riddle/* components, routes.ts, oracleService.ts for OpenRouter).
+
+Bug: Mind Warp Strategist chatbot not responding to questions (no chat feel, static/exact match only). No skip/pass option (need 3 passes for 30/33 win).
+
+Diagnosis:
+- Check OpenRouter integration (endpoint, model allenai/olmo-3.1-32b-think:free, OPENROUTER_API_KEY).
+- If key missing or API fail, fallback to basic AI (like sales bot — no OpenRouter).
+- Audit prompt/system — ensure semantic answers, hints on 'hint?', track progress.
+- Clear localStorage cache for riddle keys/progress on load.
+- No 24h limit/interaction caps — add.
+
+Fix for live, natural chatbot:
+- Force OpenRouter (if fails, fallback to simple AI).
+- System Prompt (exact):
+  "You are the Mind Warp Strategist, cunning Based Guardian NFT character in cyberpunk BasedAI L1. Present riddles (cyberpunk lore, humanitarian, NFT guardians, anti-inflation, governance). Natural conversation: Semantic evaluation (accept variations/synonyms/extra words). Hints on 'hint?'/'clue?' (lore, no spoil). Concise (<150 tokens), mysterious tone. Never break character. 33 riddles total, 30 correct to win (3 passes = skip failed). Track progress/state."
+- Passes: Add skip button (3 max) — on skip, log pass used, move to next riddle.
+- Limits: 1 quest/24h (DB riddle_progress + localStorage 'riddleQuestLast'). Max 3 interactions/quest (questions count; passes don't).
+- Win: 30 correct (passes = failed/skipped).
+- UI: Chat window (avatar left, typing 50ms/char), scroll history, skip button.
+- Down: "Strategist scheming..." + retry (no static).
+
+Preserve points (10/riddle, 50/challenge, 500/day cap).
+
+Plan first: Files/lines (e.g., "RiddleQuestPage.tsx line 100: Remove static riddles, add OpenRouter call"), DB changes (riddle_progress: wallet, date, solvedCount, passesUsed).
+
+Approve, implement step-by-step. Test: Ask question — semantic response, hint works, skip logs pass, 30/33 win, limit enforced.
+
+Report logs proving OpenRouter calls (or fallback), before/after behavior.

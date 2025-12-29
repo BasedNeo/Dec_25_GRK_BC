@@ -100,8 +100,6 @@ export function RiddleQuest() {
   const { earnPoints: earnEconomyPoints } = useGamePoints();
 
   useEffect(() => {
-    clearQuestCache();
-    
     const checkQuestLimit = () => {
       const canPlay = canStartNewQuest();
       setCanPlayQuest(canPlay);
@@ -117,11 +115,44 @@ export function RiddleQuest() {
 
   useEffect(() => {
     if (address) {
-      const stored = loadQuestProgress();
-      if (stored && stored.gameState === 'active') {
-        setProgress(stored);
-        setGameState('playing');
-      }
+      fetch(`/api/riddle-quest/progress/${address}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.progress) {
+            const stored = loadQuestProgress();
+            if (stored && stored.gameState === 'active') {
+              const merged = {
+                ...stored,
+                riddlesSolved: Math.max(stored.riddlesSolved, data.progress.riddlesSolved || 0),
+                passesUsed: Math.max(stored.passesUsed, data.progress.passesUsed || 0),
+                interactions: Math.max(stored.interactions, data.progress.interactions || 0)
+              };
+              setProgress(merged);
+              setGameState('playing');
+              saveQuestProgress(merged);
+            } else if (data.progress.riddlesSolved > 0 || data.progress.passesUsed > 0) {
+              setProgress(prev => ({
+                ...prev,
+                riddlesSolved: data.progress.riddlesSolved || 0,
+                passesUsed: data.progress.passesUsed || 0,
+                interactions: data.progress.interactions || 0
+              }));
+            }
+          } else {
+            const stored = loadQuestProgress();
+            if (stored && stored.gameState === 'active') {
+              setProgress(stored);
+              setGameState('playing');
+            }
+          }
+        })
+        .catch(() => {
+          const stored = loadQuestProgress();
+          if (stored && stored.gameState === 'active') {
+            setProgress(stored);
+            setGameState('playing');
+          }
+        });
     }
   }, [address]);
 
@@ -274,23 +305,24 @@ export function RiddleQuest() {
               colors: ['#ffd700', '#ff6b6b', '#00ffff', '#bf00ff']
             });
           } else if (totalAnswered < 33) {
+            const currentPasses = progress.passesUsed;
             setTimeout(async () => {
               setIsLoading(true);
-              const nextRiddle = await generateOracleRiddle(newSolved, progress.passesUsed);
+              const nextRiddle = await generateOracleRiddle(newSolved, currentPasses);
               
               if (nextRiddle.success && nextRiddle.message) {
-                const updatedProgress: QuestProgress = {
-                  ...progress,
-                  riddlesSolved: newSolved,
-                  currentRiddle: nextRiddle.message,
-                  chatHistory: [...progress.chatHistory, 
-                    { role: 'user', content: userInput, timestamp: Date.now() },
-                    { role: 'strategist', content: evalResult.message || '', timestamp: Date.now() },
-                    { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
-                  ]
-                };
-                setProgress(updatedProgress);
-                saveQuestProgress(updatedProgress);
+                setProgress(prev => {
+                  const updatedProgress: QuestProgress = {
+                    ...prev,
+                    riddlesSolved: newSolved,
+                    currentRiddle: nextRiddle.message,
+                    chatHistory: [...prev.chatHistory, 
+                      { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
+                    ]
+                  };
+                  saveQuestProgress(updatedProgress);
+                  return updatedProgress;
+                });
                 setLastMessage(nextRiddle.message);
                 setShouldType(true);
               }
@@ -312,23 +344,24 @@ export function RiddleQuest() {
             saveAndUpdateProgress(finalProgress);
             setGameState('lost');
           } else if (totalAnswered < 33) {
+            const currentSolved = progress.riddlesSolved;
             setTimeout(async () => {
               setIsLoading(true);
-              const nextRiddle = await generateOracleRiddle(progress.riddlesSolved, newPasses);
+              const nextRiddle = await generateOracleRiddle(currentSolved, newPasses);
               
               if (nextRiddle.success && nextRiddle.message) {
-                const updatedProgress: QuestProgress = {
-                  ...progress,
-                  passesUsed: newPasses,
-                  currentRiddle: nextRiddle.message,
-                  chatHistory: [...progress.chatHistory,
-                    { role: 'user', content: userInput, timestamp: Date.now() },
-                    { role: 'strategist', content: evalResult.message || '', timestamp: Date.now() },
-                    { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
-                  ]
-                };
-                setProgress(updatedProgress);
-                saveQuestProgress(updatedProgress);
+                setProgress(prev => {
+                  const updatedProgress: QuestProgress = {
+                    ...prev,
+                    passesUsed: newPasses,
+                    currentRiddle: nextRiddle.message,
+                    chatHistory: [...prev.chatHistory,
+                      { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
+                    ]
+                  };
+                  saveQuestProgress(updatedProgress);
+                  return updatedProgress;
+                });
                 setLastMessage(nextRiddle.message);
                 setShouldType(true);
               }
