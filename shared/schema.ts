@@ -435,6 +435,38 @@ export const insertListingSchema = createInsertSchema(listings).omit({
 export type InsertListing = z.infer<typeof insertListingSchema>;
 export type Listing = typeof listings.$inferSelect;
 
+// MARKETPLACE OVERHAUL: Off-chain offers table for shared orderbook
+export const offers = pgTable('offers', {
+  id: serial('id').primaryKey(),
+  tokenId: integer('token_id').notNull(),
+  collectionAddress: text('collection_address').notNull(),
+  buyerAddress: text('buyer_address').notNull(),
+  sellerAddress: text('seller_address'),
+  price: text('price').notNull(),
+  priceWei: text('price_wei').notNull(),
+  nonce: integer('nonce').notNull(),
+  expiration: bigint('expiration', { mode: 'number' }).notNull(),
+  signature: text('signature').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  message: text('message'),
+  transactionHash: text('transaction_hash'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('offers_token_idx').on(table.collectionAddress, table.tokenId),
+  index('offers_buyer_idx').on(table.buyerAddress),
+  index('offers_status_idx').on(table.status),
+]);
+
+export const insertOfferSchema = createInsertSchema(offers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
+
 // Collection Activity for trending and analytics
 export const collectionActivity = pgTable('collection_activity', {
   id: serial('id').primaryKey(),
