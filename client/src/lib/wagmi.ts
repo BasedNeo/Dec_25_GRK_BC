@@ -7,7 +7,7 @@ import {
   rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { type Chain } from 'wagmi/chains';
-import { http } from 'wagmi';
+import { http, fallback } from 'wagmi';
 
 // Mobile detection utility
 export const isMobileDevice = (): boolean => {
@@ -21,6 +21,13 @@ export const MOBILE_COMPATIBLE_WALLETS = ['metaMask', 'rainbow', 'coinbase', 'wa
 // Extension-only wallets to hide on mobile
 export const EXTENSION_ONLY_WALLETS = ['phantom', 'rabby', 'brave'] as const;
 
+// MARKETPLACE OVERHAUL: RPC endpoints with fallback for resilience
+export const RPC_ENDPOINTS = [
+  'https://mainnet.basedaibridge.com/rpc/',
+  'https://rpc.basedai.network/',
+  'https://basedai-rpc.publicnode.com/',
+] as const;
+
 // BasedAI L1 Chain Configuration (Chain ID: 32323)
 const basedL1 = {
   id: 32323,
@@ -32,10 +39,10 @@ const basedL1 = {
   },
   rpcUrls: {
     default: { 
-      http: ['https://mainnet.basedaibridge.com/rpc/'] 
+      http: [...RPC_ENDPOINTS] 
     },
     public: { 
-      http: ['https://mainnet.basedaibridge.com/rpc/'] 
+      http: [...RPC_ENDPOINTS] 
     },
   },
   blockExplorers: {
@@ -62,11 +69,15 @@ export const config = getDefaultConfig({
   ssr: false,
   pollingInterval: 10000, // Reduce block polling frequency (10s instead of default 4s)
   transports: {
-    [basedL1.id]: http('https://mainnet.basedaibridge.com/rpc/', {
-      batch: true,
-      retryCount: 2,
-      timeout: 10000,
-    }),
+    // MARKETPLACE OVERHAUL: RPC fallback for resilience
+    [basedL1.id]: fallback(
+      RPC_ENDPOINTS.map(rpc => http(rpc, {
+        batch: true,
+        retryCount: 2,
+        timeout: 10000,
+      })),
+      { rank: true } // Auto-rank by latency
+    ),
   },
   wallets: [
     {
