@@ -9,6 +9,7 @@ import { rpcCache } from '@/lib/rpcCache';
 
 const NFT_ABI = [
   'function tokensOfOwner(address owner) view returns (uint256[])',
+  'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
   'function tokenURI(uint256 tokenId) view returns (string)',
   'function balanceOf(address owner) view returns (uint256)',
 ];
@@ -55,9 +56,25 @@ export function useOwnedNFTs() {
         );
         tokenIds = tokenIdsBigInt.map((id: bigint) => Number(id));
       } catch (e) {
-        setError('Could not fetch owned tokens');
-        setIsLoading(false);
-        return;
+        // MARKETPLACE OVERHAUL: Fallback to tokenOfOwnerByIndex for non-standard contracts
+        console.log('[useOwnedNFTs] tokensOfOwner failed, falling back to tokenOfOwnerByIndex');
+        try {
+          const maxToFetch = Math.min(userBalance, 20);
+          const tokenIdPromises: Promise<bigint | null>[] = [];
+          
+          for (let i = 0; i < maxToFetch; i++) {
+            tokenIdPromises.push(
+              contract.tokenOfOwnerByIndex(address, i).catch(() => null)
+            );
+          }
+          
+          const results = await Promise.all(tokenIdPromises);
+          tokenIds = results.filter((id): id is bigint => id !== null).map(id => Number(id));
+        } catch (fallbackError) {
+          setError('Could not fetch owned tokens');
+          setIsLoading(false);
+          return;
+        }
       }
 
       const fetchedNFTs: Guardian[] = [];
