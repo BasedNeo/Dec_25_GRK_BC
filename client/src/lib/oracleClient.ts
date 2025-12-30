@@ -119,6 +119,11 @@ export async function callOracleAPI(
   }
 ): Promise<OracleResponse> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    
+    console.log(`[OracleClient] Calling API: ${action}`);
+    
     const response = await fetch('/api/oracle', {
       method: 'POST',
       headers: {
@@ -127,27 +132,41 @@ export async function callOracleAPI(
       body: JSON.stringify({
         action,
         ...params
-      })
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.warn(`[OracleClient] API returned ${response.status}:`, errorData);
       return {
         success: false,
         fallback: true,
-        message: errorData.message || "Mind Warp Strategist is scheming... riddles baking.",
+        message: errorData.message || "Mind Warp Strategist awakening... the neural pathways are connecting.",
         error: errorData.error || `HTTP_${response.status}`
       };
     }
 
     const data = await response.json();
+    console.log(`[OracleClient] Success:`, data.success, data.message?.substring(0, 50));
     return data;
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('[OracleClient] Request timeout');
+      return {
+        success: false,
+        fallback: true,
+        message: "Mind Warp Strategist is connecting through deep neural pathways...",
+        error: 'TIMEOUT'
+      };
+    }
     console.error('[OracleClient] API error:', error.message);
     return {
       success: false,
       fallback: true,
-      message: "Mind Warp Strategist is scheming... riddles baking.",
+      message: "Mind Warp Strategist awakening... the neural pathways are connecting.",
       error: 'NETWORK_ERROR'
     };
   }

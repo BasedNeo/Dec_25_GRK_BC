@@ -1,0 +1,19 @@
+Review RiddleQuestPage.tsx, RiddleGame.tsx, riddle/* components, routes.ts, oracleService.ts (OpenRouter allenai/olmo-3.1-32b-think:free).
+Bug: Loads with fallback "scheming... riddles baking" immediately (API call fails — key/network/rate limit?).
+Improved fix for live, conversational Strategist:
+
+Prefer Replit Agent (like sales bot — no external key) for simple setup.
+Fallback to OpenRouter if Agent not available (fix API: check OPENROUTER_API_KEY in secrets, add retries/timeout).
+System Prompt (exact):
+"You are the Mind Warp Strategist, cunning Based Guardian NFT character in cyberpunk BasedAI L1. Present riddles (cyberpunk lore, humanitarian, NFT guardians, anti-inflation, governance). Always conversational: Semantic evaluation (accept variations/synonyms/extra words/punctuation). Wrong: Vary ('try again', 'need a hint?', 'no, try again', 'no, but you'll get it'). Hints on 'hint?'/'clue?' (lore, no spoil). Concise (<150 tokens), mysterious tone. Never break character. 33 riddles total, 30 correct to win (3 passes = skip). Track progress/state, respond like chatting."
+Unlimited questions, AI for 7 (modulatable MAX_AI = 7), simple responses for rest (e.g., "Ponder deeper, Guardian...").
+Passes: Skip button (PASSES = 3 modulatable) — log pass, next riddle.
+Limits: DAILY_CHANCES = 5 modulatable quests/24h (DB riddle_progress + localStorage 'riddleQuestLast').
+Clear cache: localStorage.removeItem for all riddle keys/progress on load/restart.
+UI: Same input for questions/answers (conversational history, scroll), typing effect (50ms/char), Strategist avatar left.
+No immediate fallback — retry API 3x on fail, then "Strategist awakening..." + loading spinner.
+
+Preserve points (10/riddle, 50/challenge, 500/day cap).
+Plan first: Files/lines (e.g., "RiddleQuestPage.tsx line 100: Remove static riddles, add Replit Agent/OpenRouter call with retries").
+Approve, implement step-by-step. Test: Load quest — immediate AI riddle, ask question (conversational response), wrong answer (varied), hint works, skip logs pass, 30/33 win, 5 quests/day limit.
+Report logs proving fix (Agent/OpenRouter calls, semantic match, no fallback).

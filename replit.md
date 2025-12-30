@@ -155,11 +155,15 @@ Protected folder structure to isolate core commerce and game code:
 ### Feature Specifications
 - **Retro Defender Game**: 5-level space arcade minigame accessible to all users (`/game`). Guardian holders receive perks. Includes lifetime score tracking.
 - **Riddle Quest - Mind Warp Strategist** (Updated Dec 2024): AI-powered riddle experience with chat-based interface.
-  - Character: "Mind Warp Strategist" replaces "Guardian Oracle"
-  - 24-hour quest cooldown: Users can only start 1 Mind Warp Strategist quest per 24 hours (tracked via localStorage)
-  - 3 questions/hints per quest: Natural language hints detected by patterns ("?", "hint", "help", "clue")
-  - Semantic answer validation: Accepts variations like "halving", "the halving", "Is it halving?" as correct
-  - API down handling: Displays "Mind Warp Strategist is scheming..." message and falls back to static riddles
+  - Character: "Mind Warp Strategist" - cunning cyberpunk AI riddler
+  - **Daily Limits**: 5 quests per day (MAX_DAILY_CHANCES = 5 in oracleClient.ts, tracked via localStorage)
+  - **Skip Passes**: 3 passes per quest (only consumed by Skip button, not wrong answers)
+  - **AI Model**: google/gemma-3-27b-it:free via OpenRouter (changed from olmo-3.1 due to empty response issues)
+  - **AI Gating**: First 7 interactions use AI; after that, local responses for hints to reduce API costs
+  - **Retry Logic**: 3 attempts with exponential backoff (1s, 2s, 4s) before fallback
+  - **Semantic Evaluation**: Accepts variations like "halving", "the halving", "Is it halving?" as correct
+  - **Hint Detection**: Natural language patterns ("?", "hint", "help", "clue")
+  - **API Files**: `server/lib/oracleService.ts`, `client/src/lib/oracleClient.ts`
 - **Pool Tracker Enhancements**: Comprehensive display of payment structure, including community treasury and ecosystem revenue breakdowns.
 - **Interactive Lore Explorer**: Discover character backstories, locations, historical events, and factions of the Based Universe.
 - **Lore-Gamification Integration**: Higher game ranks (Star Commander, Fleet Admiral, Based Eternal) require lore discovery progress (25%, 50%, 75% respectively) plus at least 1 game played. Ranks are locked until requirements are met, with UI showing unlock requirements.

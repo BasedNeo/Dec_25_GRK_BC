@@ -1291,17 +1291,20 @@ export async function registerRoutes(
         promptMessages = Array.isArray(messages) ? [...messages.slice(-6), { role: 'user', content: prompt }] : [{ role: 'user', content: prompt }];
       }
 
+      console.log(`[Mind Warp Strategist] Processing ${action} request`);
       const result = await callOracle(promptMessages, action as any);
       
       if (!result.success) {
-        console.warn(`[Mind Warp Strategist] API call failed: ${result.error}`);
+        console.warn(`[Mind Warp Strategist] API call failed: ${result.error} (retries: ${result.retryCount || 0})`);
         return res.status(503).json({
           success: false,
           fallback: true,
-          message: "Mind Warp Strategist is scheming... riddles baking.",
+          message: result.message || "Mind Warp Strategist awakening... the neural pathways are connecting.",
           error: result.error
         });
       }
+      
+      console.log(`[Mind Warp Strategist] Success: ${result.message?.substring(0, 50)}...`);
 
       return res.json({
         success: true,
@@ -1315,7 +1318,7 @@ export async function registerRoutes(
       return res.status(500).json({
         success: false,
         fallback: true,
-        message: "Mind Warp Strategist is scheming... riddles baking.",
+        message: "Mind Warp Strategist awakening... the neural pathways are connecting.",
         error: "INTERNAL_ERROR"
       });
     }
