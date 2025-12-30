@@ -1,10 +1,10 @@
 /**
  * Mind Warp Strategist Client
- * Client-side service for Oracle API with 24h quest limit and chat-based UI
+ * Client-side service for Oracle API with daily quest limits and chat-based UI
  */
 
-const QUEST_LIMIT_KEY = 'riddleQuestLastPlayed';
-const QUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const DAILY_USAGE_KEY = 'riddleQuestDailyUsage';
+const MAX_DAILY_CHANCES = 5;
 
 export interface OracleResponse {
   success: boolean;
@@ -25,10 +25,16 @@ export interface ChatMessage {
 export interface QuestProgress {
   riddlesSolved: number;
   passesUsed: number;
+  wrongAnswers: number;
   interactions: number;
   currentRiddle: string | null;
   chatHistory: ChatMessage[];
   gameState: 'idle' | 'active' | 'won' | 'lost';
+}
+
+interface DailyUsage {
+  dateKey: string;
+  used: number;
 }
 
 const QUESTION_PATTERNS = [
@@ -52,34 +58,45 @@ export function normalizeAnswer(input: string): string {
     .trim();
 }
 
-function getTodayString(): string {
+function getTodayKey(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export function canStartNewQuest(): boolean {
-  const lastPlayed = localStorage.getItem(QUEST_LIMIT_KEY);
-  if (!lastPlayed) return true;
-  
-  const lastPlayedTime = parseInt(lastPlayed, 10);
-  const timeSince = Date.now() - lastPlayedTime;
-  return timeSince >= QUEST_COOLDOWN_MS;
+function getDailyUsage(): DailyUsage {
+  try {
+    const stored = localStorage.getItem(DAILY_USAGE_KEY);
+    if (stored) {
+      const usage = JSON.parse(stored) as DailyUsage;
+      if (usage.dateKey === getTodayKey()) {
+        return usage;
+      }
+    }
+  } catch {}
+  return { dateKey: getTodayKey(), used: 0 };
 }
 
-export function getTimeUntilNextQuest(): { hours: number; minutes: number } {
-  const lastPlayed = localStorage.getItem(QUEST_LIMIT_KEY);
-  if (!lastPlayed) return { hours: 0, minutes: 0 };
-  
-  const lastPlayedTime = parseInt(lastPlayed, 10);
-  const timeSince = Date.now() - lastPlayedTime;
-  const remaining = Math.max(0, QUEST_COOLDOWN_MS - timeSince);
-  
-  const hours = Math.floor(remaining / (1000 * 60 * 60));
-  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-  return { hours, minutes };
+function saveDailyUsage(usage: DailyUsage): void {
+  localStorage.setItem(DAILY_USAGE_KEY, JSON.stringify(usage));
+}
+
+export function canStartNewQuest(): boolean {
+  const usage = getDailyUsage();
+  return usage.used < MAX_DAILY_CHANCES;
+}
+
+export function getRemainingChances(): number {
+  const usage = getDailyUsage();
+  return Math.max(0, MAX_DAILY_CHANCES - usage.used);
+}
+
+export function getMaxDailyChances(): number {
+  return MAX_DAILY_CHANCES;
 }
 
 export function markQuestStarted(): void {
-  localStorage.setItem(QUEST_LIMIT_KEY, Date.now().toString());
+  const usage = getDailyUsage();
+  usage.used += 1;
+  saveDailyUsage(usage);
 }
 
 export function clearQuestCache(): void {
@@ -177,9 +194,42 @@ export function getInitialProgress(): QuestProgress {
   return {
     riddlesSolved: 0,
     passesUsed: 0,
+    wrongAnswers: 0,
     interactions: 0,
     currentRiddle: null,
     chatHistory: [],
     gameState: 'idle'
   };
+}
+
+// Local responses for when AI gating kicks in (after 7 AI interactions)
+const LOCAL_INCORRECT_RESPONSES = [
+  "Not quite, Guardian. Try again.",
+  "The circuits don't align. Another guess?",
+  "Hmm, that's not it. Need a hint?",
+  "Close, but the Strategist expects more precision.",
+  "The neural pathways reject that answer. Keep thinking.",
+  "No, Guardian. Focus your mind on the riddle.",
+  "That answer fades into the void. Try once more.",
+  "The algorithm disagrees. What else could it be?"
+];
+
+const LOCAL_HINT_RESPONSES = [
+  "Think about what powers the Guardian network...",
+  "Consider the fundamentals of our blockchain realm...",
+  "The answer lies within the lore of BasedAI...",
+  "Look deeper, Guardian. The clue is in the words.",
+  "Every riddle echoes through the Giga Brain Galaxy..."
+];
+
+export function getLocalIncorrectResponse(): string {
+  return LOCAL_INCORRECT_RESPONSES[Math.floor(Math.random() * LOCAL_INCORRECT_RESPONSES.length)];
+}
+
+export function getLocalHintResponse(): string {
+  return LOCAL_HINT_RESPONSES[Math.floor(Math.random() * LOCAL_HINT_RESPONSES.length)];
+}
+
+export function shouldUseAI(interactions: number): boolean {
+  return interactions < 7;
 }

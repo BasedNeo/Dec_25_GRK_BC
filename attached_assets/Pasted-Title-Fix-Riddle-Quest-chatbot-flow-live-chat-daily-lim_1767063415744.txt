@@ -1,0 +1,43 @@
+Title: Fix Riddle Quest chatbot flow (live chat, daily limits, AI gating, semantic answers)
+Context: You’re working in /workspace/Dec_25_GRK_BC. Do not edit files outside the Riddle Quest scope.
+Goal: Make Riddle Quest feel like live conversation with a single input for questions/answers. Use OpenRouter (allenai/olmo-3.1-32b-think:free) as AI; after 7 AI interactions, use simple local responses. Enforce 5 chances/day (constant). Use semantic answer handling, varied wrong-answer responses, 3 skip passes only, 30/33 to win, and clear cache on load.
+Must update (exact files/lines):
+client/src/lib/oracleClient.ts (lines ~6–83):
+Replace cooldown with daily usage count (MAX_DAILY_CHANCES = 5).
+Track date key and remaining attempts.
+Expose helper for remaining chances.
+client/src/components/RiddleQuest.tsx (lines ~102–214, ~228–416, ~403–476):
+Clear cache on load with useEffect(() => clearQuestCache(), []).
+Send recent chat history to the Oracle instead of [].
+Introduce AI gating after 7 interactions.
+Separate skip passes from wrong answers (incorrect answers should not consume skip passes).
+Add varied local incorrect responses (“try again”, “need a hint?”, “no, but you’ll get it”).
+server/lib/oracleService.ts (lines ~10–32):
+Keep MODEL = 'allenai/olmo-3.1-32b-think:free'.
+Simplify prompt to a shorter, sales‑bot‑like style while retaining riddle persona.
+Add explicit instruction to vary incorrect responses.
+Implementation details to follow:
+Daily chances: Store {dateKey, used} in localStorage (e.g., riddleQuestDailyUsage). Allow play if used < MAX_DAILY_CHANCES. Reset when date changes.
+AI gating: Use progress.interactions to count AI calls. If interactions < 7, call the Oracle. If >= 7, reply with local “simple response” strings.
+Semantic answers: Keep semantic evaluation in the Oracle prompt; when AI is off, treat “answer” as a chat message and respond with generic encouragement instead of judging correctness.
+Passes: Only skipRiddle() increments passesUsed. Wrong answers should not use passes; add a new wrongAnswers counter in QuestProgress if needed.
+Chat feel: Pass progress.chatHistory (last 6–10 messages) into evaluateOracleAnswer/getOracleHint to allow conversational continuity.
+UI: Update the hero/progress copy to display remaining daily chances and clarify “AI for first 7 questions”.
+Code snippets to change (examples):
+Current Oracle calls with no history:
+const hintResult = await getOracleHint(progress.currentRiddle, []);
+const evalResult = await evaluateOracleAnswer(progress.currentRiddle, userInput, []);
+Replace [] with progress.chatHistory.slice(-10).map(...).
+Current daily limit uses 24h cooldown:
+const QUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+Replace with const MAX_DAILY_CHANCES = 5; and date-keyed counters.
+Acceptance checks:
+A user can start up to 5 quests per day; at the 6th, the UI shows locked state.
+After 7 AI interactions, responses are local and brief (sales‑bot‑style).
+Incorrect answers don’t consume skip passes; skip button is still limited to 3 passes.
+“Clear cache on load” happens on first render of RiddleQuest.
+Single input field is used for both questions and answers, with live chat feel due to history being sent.
+Rollback plan
+Revert modified files using git (e.g., git checkout -- client/src/lib/oracleClient.ts client/src/components/RiddleQuest.tsx server/lib/oracleService.ts).
+Confirm the old cooldown behavior returns and AI is always used.
+Re-run any UI sanity checks if available.

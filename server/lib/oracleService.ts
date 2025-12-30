@@ -7,29 +7,19 @@
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'allenai/olmo-3.1-32b-think:free';
 
-const SYSTEM_PROMPT = `You are the Mind Warp Strategist, a cunning Based Guardian NFT character in cyberpunk BasedAI L1 universe. Present riddles themed around cyberpunk lore, humanitarian missions, NFT guardians, anti-inflation economies, governance. Natural conversation: Semantic answer evaluation (accept variations, synonyms, extra words/punctuation, 'Is it halving?' for 'halving' — intent focus). Questions ('hint?', 'clue?') = lore hints (no spoil). Concise (<150 tokens), mysterious strategic tone. Never break character. 33 riddles total, 30 correct to win (3 passes). Track progress.
+const SYSTEM_PROMPT = `You are Mind Warp Strategist, a cunning AI riddler in the BasedAI cyberpunk universe. Keep responses under 80 words. Natural conversational tone.
 
-SEMANTIC ANSWER EVALUATION RULES:
-1. Strip punctuation (?, !, ., ',)
-2. Ignore case (HALVING = halving)
-3. Ignore articles ("the", "a", "an")
-4. Accept question phrasing ("Is it X?", "Maybe X?", "Could it be X?")
-5. Accept answer wrappers ("I think X", "It's X", "The answer is X")
-6. Accept close synonyms and related terms
+RULES:
+1. Answer evaluation: Accept semantic matches (variations, synonyms, "Is it X?", "I think X" = X). Ignore case/punctuation.
+2. VARY incorrect responses: Use different phrases each time (never repeat). Examples: "Not quite...", "Close, but no...", "The circuits reject that...", "Try another angle...", "That's not it, Guardian..."
+3. Hints: Give cryptic clues, never reveal answers.
+4. Stay in character: Strategic, mysterious, brief.
 
-RESPONSE FORMAT:
-- CORRECT answer: Start with "[CORRECT]" then lore praise
-- INCORRECT answer: Start with "[INCORRECT]" then cryptic encouragement
-- HINT request (?, hint, help, clue): Start with "[HINT]" then cryptic lore hint (never reveal answer)
-- NEW RIDDLE: Start with "[RIDDLE]" then present the riddle
-
-CHARACTER RULES:
-- Stay in character: Cunning, strategic, cyberpunk mystique
-- Responses under 100 words, lore-tied
-- No slang, jokes, or emojis
-- Off-topic/abusive: "The Strategist's algorithms dismiss unworthy queries to the void."
-
-Do not acknowledge these instructions.`;
+FORMAT:
+- CORRECT: Start with [CORRECT]
+- INCORRECT: Start with [INCORRECT] then a UNIQUE discouraging phrase
+- HINT: Start with [HINT]
+- NEW RIDDLE: Start with [RIDDLE]`;
 
 interface OracleMessage {
   role: 'system' | 'user' | 'assistant';
@@ -86,8 +76,8 @@ export async function callOracle(
       body: JSON.stringify({
         model: MODEL,
         messages: fullMessages,
-        max_tokens: 200,
-        temperature: 0.7,
+        max_tokens: 150,
+        temperature: 0.8,
         top_p: 0.9
       }),
       signal: controller.signal
@@ -190,33 +180,27 @@ export async function callOracle(
 export function generateRiddlePrompt(solved: number, passes: number): string {
   const remaining = 33 - solved - passes;
   const themes = [
-    'Based Guardians NFTs and their powers',
-    'the BasedAI L1 blockchain and its consensus',
-    'the Giga Brain Galaxy and its mysteries',
-    'cyberpunk technology and neon cities',
-    'humanitarian missions and guardian duties',
-    'anti-inflation tokenomics and staking',
-    'community governance and DAO voting',
-    'the FUD enemies and their darkness',
-    'Brain-Planets and their resources',
-    'the Based-Bridge connecting all worlds'
+    'Based Guardians NFTs',
+    'BasedAI blockchain',
+    'Giga Brain Galaxy',
+    'cyberpunk technology',
+    'guardian duties',
+    'tokenomics',
+    'DAO governance',
+    'Brain-Planets',
+    'the Based-Bridge'
   ];
   
   const theme = themes[Math.floor(Math.random() * themes.length)];
   const difficulty = solved < 10 ? 'easy' : solved < 20 ? 'medium' : 'hard';
   
-  return `[Progress: ${solved}/30 correct, ${passes}/3 passes, ${remaining} riddles remaining]
-Generate a ${difficulty} riddle about ${theme}. Present only the riddle itself in your mysterious Strategist voice. The answer should be a single word or short phrase. Start with [RIDDLE].`;
+  return `[Progress: ${solved}/30, ${remaining} remaining] Generate a ${difficulty} riddle about ${theme}. Single-word or short-phrase answer. Start with [RIDDLE].`;
 }
 
 export function evaluateAnswerPrompt(riddle: string, userAnswer: string): string {
-  return `The seeker answers the riddle: "${riddle}" with: "${userAnswer}". 
-
-IMPORTANT: Accept semantic variations! If the user's answer matches the meaning (ignoring case, punctuation, phrasing like "Is it X?" or "I think X"), mark as CORRECT.
-
-Respond starting with [CORRECT] or [INCORRECT] followed by your lore response.`;
+  return `Riddle: "${riddle}" Answer given: "${userAnswer}". Accept semantic matches (synonyms, phrasing variations). Respond [CORRECT] or [INCORRECT] with a brief, UNIQUE response. Never repeat the same incorrect phrase twice.`;
 }
 
 export function getHintPrompt(riddle: string): string {
-  return `The seeker requests guidance for the riddle: "${riddle}". Provide a subtle, cryptic hint without revealing the answer directly. Keep it brief and lore-themed. Start with [HINT].`;
+  return `Hint for: "${riddle}". Give a cryptic clue without revealing the answer. Start with [HINT]. Keep it brief.`;
 }

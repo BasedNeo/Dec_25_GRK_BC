@@ -1,0 +1,80 @@
+{
+  "snapshotDate": "2025-12-30",
+  "createdAt": "2025-12-30T03:00:00.047Z",
+  "totalWallets": 7,
+  "totalPointsEarned": 190,
+  "totalPointsVested": 0,
+  "totalBrainXLocked": 0,
+  "wallets": [
+    {
+      "walletAddress": "0x1234567890123456789012345678901234567890",
+      "totalEarned": 20,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 20,
+      "lastActivity": "2025-12-26T18:53:33.590Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "anon:test456",
+      "totalEarned": 10,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 10,
+      "lastActivity": "2025-12-26T19:08:37.446Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0xaaaa123456789012345678901234567890123456",
+      "totalEarned": 110,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 110,
+      "lastActivity": "2025-12-26T23:19:40.102Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0x0000000000000000000000000000000000000000",
+      "totalEarned": 10,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 10,
+      "lastActivity": "2025-12-28T22:34:07.206Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0x0000000000000000000000000000000000000001",
+      "totalEarned": 10,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 10,
+      "lastActivity": "2025-12-28T22:34:07.210Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0x0000000000000000000000000000000000000002",
+      "totalEarned": 20,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 20,
+      "lastActivity": "2025-12-28T22:34:07.220Z",
+      "vestingEndDate": null
+    },
+    {
+      "walletAddress": "0x0000000000000000000000000000000000000003",
+      "totalEarned": 10,
+      "totalVested": 0,
+      "brainXLocked": 0,
+      "brainXUnlocked": 0,
+      "dailyEarnedTotal": 10,
+      "lastActivity": "2025-12-28T22:34:07.222Z",
+      "vestingEndDate": null
+    }
+  ]
+}

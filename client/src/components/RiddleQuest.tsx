@@ -19,7 +19,8 @@ import { triggerConfetti } from '@/lib/dynamicImports';
 import { useOwnedNFTs } from '@/hooks/useOwnedNFTs';
 import { 
   canStartNewQuest,
-  getTimeUntilNextQuest,
+  getRemainingChances,
+  getMaxDailyChances,
   markQuestStarted,
   clearQuestCache,
   generateOracleRiddle,
@@ -29,6 +30,9 @@ import {
   saveQuestProgress,
   loadQuestProgress,
   getInitialProgress,
+  shouldUseAI,
+  getLocalIncorrectResponse,
+  getLocalHintResponse,
   type ChatMessage,
   type QuestProgress
 } from '@/lib/oracleClient';
@@ -94,7 +98,7 @@ export function RiddleQuest() {
   const { displayedText, isTyping } = useTypingEffect(lastMessage, shouldType);
   
   const [canPlayQuest, setCanPlayQuest] = useState(true);
-  const [timeUntilNextQuest, setTimeUntilNextQuest] = useState({ hours: 0, minutes: 0 });
+  const [remainingChances, setRemainingChances] = useState(getMaxDailyChances());
   const [apiDown, setApiDown] = useState(false);
   
   const { earnPoints: earnEconomyPoints } = useGamePoints();
@@ -103,9 +107,7 @@ export function RiddleQuest() {
     const checkQuestLimit = () => {
       const canPlay = canStartNewQuest();
       setCanPlayQuest(canPlay);
-      if (!canPlay) {
-        setTimeUntilNextQuest(getTimeUntilNextQuest());
-      }
+      setRemainingChances(getRemainingChances());
     };
     
     checkQuestLimit();
@@ -199,6 +201,7 @@ export function RiddleQuest() {
     const initialProgress: QuestProgress = {
       riddlesSolved: 0,
       passesUsed: 0,
+      wrongAnswers: 0,
       interactions: 0,
       currentRiddle: null,
       chatHistory: [],
@@ -239,160 +242,123 @@ export function RiddleQuest() {
     setShouldType(false);
     
     const isHintRequest = isQuestionOrHintRequest(userInput);
+    const chatHistory = progress.chatHistory.slice(-10).map(msg => ({
+      role: msg.role === 'strategist' ? 'assistant' : 'user',
+      content: msg.content
+    }));
+    
+    const useAI = shouldUseAI(progress.interactions);
+    const newInteractions = progress.interactions + 1;
     
     if (isHintRequest) {
-      const newInteractions = progress.interactions + 1;
-      const updatedProgress = { ...progress, interactions: newInteractions };
-      saveAndUpdateProgress(updatedProgress);
+      saveAndUpdateProgress({ ...progress, interactions: newInteractions });
       
-      const hintResult = await getOracleHint(progress.currentRiddle, []);
-      
-      if (hintResult.success && hintResult.message) {
-        addChatMessage('strategist', hintResult.message);
-        setLastMessage(hintResult.message);
-        setShouldType(true);
+      let responseMessage: string;
+      if (useAI) {
+        const hintResult = await getOracleHint(progress.currentRiddle, chatHistory);
+        responseMessage = hintResult.success && hintResult.message 
+          ? hintResult.message 
+          : getLocalHintResponse();
       } else {
-        addChatMessage('strategist', 'The neural pathways dim... focus on the riddle, Guardian.');
+        responseMessage = getLocalHintResponse();
       }
-    } else {
-      const evalResult = await evaluateOracleAnswer(progress.currentRiddle, userInput, []);
       
-      if (evalResult.success) {
-        addChatMessage('strategist', evalResult.message || '');
-        setLastMessage(evalResult.message || '');
-        setShouldType(true);
+      addChatMessage('strategist', responseMessage);
+      setLastMessage(responseMessage);
+      setShouldType(true);
+      setIsLoading(false);
+      return;
+    }
+    
+    let isCorrect = false;
+    let responseMessage = '';
+    
+    const evalResult = await evaluateOracleAnswer(progress.currentRiddle, userInput, chatHistory);
+    
+    if (evalResult.success) {
+      isCorrect = evalResult.isCorrect || false;
+      responseMessage = evalResult.message || (isCorrect ? 'Correct!' : getLocalIncorrectResponse());
+    } else {
+      responseMessage = getLocalIncorrectResponse();
+      setApiDown(true);
+    }
+    
+    saveAndUpdateProgress({ ...progress, interactions: newInteractions });
+    addChatMessage('strategist', responseMessage);
+    setLastMessage(responseMessage);
+    setShouldType(true);
+    
+    if (isCorrect) {
+      const newSolved = progress.riddlesSolved + 1;
+      const totalAnswered = newSolved + progress.passesUsed;
+      
+      triggerConfetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#00ffff', '#bf00ff', '#ffffff']
+      });
+      
+      if (address) {
+        earnEconomyPoints('riddle-quest', 'riddle');
+        logActivity({
+          walletAddress: address,
+          eventType: 'riddle_solved',
+          details: `Solved riddle ${newSolved}`,
+          pointsEarned: 10,
+          gameType: 'riddle_quest'
+        });
+      }
+      
+      if (newSolved >= 30) {
+        const finalProgress: QuestProgress = {
+          ...progress,
+          riddlesSolved: newSolved,
+          currentRiddle: null,
+          gameState: 'won'
+        };
+        saveAndUpdateProgress(finalProgress);
+        setGameState('won');
         
-        if (evalResult.isCorrect) {
-          const newSolved = progress.riddlesSolved + 1;
-          const totalAnswered = newSolved + progress.passesUsed;
-          
-          triggerConfetti({
-            particleCount: 80,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: ['#00ffff', '#bf00ff', '#ffffff']
-          });
-          
-          if (address) {
-            earnEconomyPoints('riddle-quest', 'riddle');
-            logActivity({
-              walletAddress: address,
-              eventType: 'riddle_solved',
-              details: `Solved riddle ${newSolved}`,
-              pointsEarned: 10,
-              gameType: 'riddle_quest'
-            });
-          }
-          
-          if (newSolved >= 30) {
-            const finalProgress: QuestProgress = {
-              ...progress,
-              riddlesSolved: newSolved,
-              currentRiddle: null,
-              gameState: 'won'
-            };
-            saveAndUpdateProgress(finalProgress);
-            setGameState('won');
-            
-            if (address) {
-              earnEconomyPoints('riddle-quest', 'challenge');
-            }
-            
-            triggerConfetti({
-              particleCount: 200,
-              spread: 120,
-              origin: { y: 0.4 },
-              colors: ['#ffd700', '#ff6b6b', '#00ffff', '#bf00ff']
-            });
-          } else if (totalAnswered < 33) {
-            const currentPasses = progress.passesUsed;
-            setTimeout(async () => {
-              setIsLoading(true);
-              const nextRiddle = await generateOracleRiddle(newSolved, currentPasses);
-              
-              if (nextRiddle.success && nextRiddle.message) {
-                setProgress(prev => {
-                  const updatedProgress: QuestProgress = {
-                    ...prev,
-                    riddlesSolved: newSolved,
-                    currentRiddle: nextRiddle.message,
-                    chatHistory: [...prev.chatHistory, 
-                      { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
-                    ]
-                  };
-                  saveQuestProgress(updatedProgress);
-                  return updatedProgress;
-                });
-                setLastMessage(nextRiddle.message);
-                setShouldType(true);
-              }
-              setIsLoading(false);
-            }, 2000);
-            return;
-          }
-        } else {
-          const newPasses = progress.passesUsed + 1;
-          const totalAnswered = progress.riddlesSolved + newPasses;
-          
-          if (newPasses > 3) {
-            const finalProgress: QuestProgress = {
-              ...progress,
-              passesUsed: newPasses,
-              currentRiddle: null,
-              gameState: 'lost'
-            };
-            saveAndUpdateProgress(finalProgress);
-            setGameState('lost');
-          } else if (totalAnswered < 33) {
-            const currentSolved = progress.riddlesSolved;
-            setTimeout(async () => {
-              setIsLoading(true);
-              const nextRiddle = await generateOracleRiddle(currentSolved, newPasses);
-              
-              if (nextRiddle.success && nextRiddle.message) {
-                setProgress(prev => {
-                  const updatedProgress: QuestProgress = {
-                    ...prev,
-                    passesUsed: newPasses,
-                    currentRiddle: nextRiddle.message,
-                    chatHistory: [...prev.chatHistory,
-                      { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
-                    ]
-                  };
-                  saveQuestProgress(updatedProgress);
-                  return updatedProgress;
-                });
-                setLastMessage(nextRiddle.message);
-                setShouldType(true);
-              }
-              setIsLoading(false);
-            }, 2000);
-            return;
-          } else {
-            if (progress.riddlesSolved >= 30) {
-              const finalProgress: QuestProgress = {
-                ...progress,
-                passesUsed: newPasses,
-                currentRiddle: null,
-                gameState: 'won'
-              };
-              saveAndUpdateProgress(finalProgress);
-              setGameState('won');
-            } else {
-              const finalProgress: QuestProgress = {
-                ...progress,
-                passesUsed: newPasses,
-                currentRiddle: null,
-                gameState: 'lost'
-              };
-              saveAndUpdateProgress(finalProgress);
-              setGameState('lost');
-            }
-          }
+        if (address) {
+          earnEconomyPoints('riddle-quest', 'challenge');
         }
-      } else {
-        addChatMessage('strategist', 'Mind Warp Strategist is scheming... riddles baking.');
-        setApiDown(true);
+        
+        triggerConfetti({
+          particleCount: 200,
+          spread: 120,
+          origin: { y: 0.4 },
+          colors: ['#ffd700', '#ff6b6b', '#00ffff', '#bf00ff']
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      if (totalAnswered < 33) {
+        const currentPasses = progress.passesUsed;
+        setTimeout(async () => {
+          setIsLoading(true);
+          const nextRiddle = await generateOracleRiddle(newSolved, currentPasses);
+          
+          if (nextRiddle.success && nextRiddle.message) {
+            setProgress(prev => {
+              const updatedProgress: QuestProgress = {
+                ...prev,
+                riddlesSolved: newSolved,
+                currentRiddle: nextRiddle.message,
+                chatHistory: [...prev.chatHistory, 
+                  { role: 'strategist', content: nextRiddle.message, timestamp: Date.now() }
+                ]
+              };
+              saveQuestProgress(updatedProgress);
+              return updatedProgress;
+            });
+            setLastMessage(nextRiddle.message);
+            setShouldType(true);
+          }
+          setIsLoading(false);
+        }, 2000);
+        return;
       }
     }
     
@@ -569,25 +535,29 @@ export function RiddleQuest() {
               <div className="bg-gray-800/50 rounded-lg p-6 max-w-md mx-auto mb-8 border border-amber-500/30">
                 <div className="flex items-center justify-center gap-2 text-amber-400 mb-2">
                   <Lock className="w-5 h-5" />
-                  <span className="font-semibold">Quest on Cooldown</span>
+                  <span className="font-semibold">Daily Limit Reached</span>
                 </div>
                 <p className="text-gray-400">
-                  Next quest available in{' '}
-                  <span className="text-white font-bold">
-                    {timeUntilNextQuest.hours}h {timeUntilNextQuest.minutes}m
-                  </span>
+                  You've used all <span className="text-white font-bold">{getMaxDailyChances()}</span> daily chances.
+                  <br />
+                  <span className="text-sm">Come back tomorrow, Guardian.</span>
                 </p>
               </div>
             ) : (
-              <Button
-                onClick={startQuest}
-                size="lg"
-                className="bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-lg px-8 py-6"
-                data-testid="button-start-quest"
-              >
-                <Zap className="w-5 h-5 mr-2" />
-                Begin Quest
-              </Button>
+              <div className="flex flex-col items-center gap-4">
+                <Button
+                  onClick={startQuest}
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-lg px-8 py-6"
+                  data-testid="button-start-quest"
+                >
+                  <Zap className="w-5 h-5 mr-2" />
+                  Begin Quest
+                </Button>
+                <p className="text-gray-400 text-sm">
+                  <span className="text-cyan-400 font-bold">{remainingChances}</span> of {getMaxDailyChances()} daily chances remaining
+                </p>
+              </div>
             )}
             
             {isNftHolder && (
